@@ -1,0 +1,18 @@
+[build-wasm]
+canister          = "greet"
+did_path          = "src/greet.did"
+cpp_paths         = ["src/greet.cpp"]
+cpp_header_paths  = ["src/greet.h"]
+cpp_compile_flags = []
+cpp_link_flags    = []
+c_paths           = []
+c_header_paths    = []
+c_compile_flags   = []
+[build-native]
+cpp_paths         = ["native/main.cpp"]
+cpp_header_paths  = ["native/main.h"]
+cpp_compile_flags = []
+cpp_link_flags    = []
+c_paths           = []
+c_header_paths    = []
+c_compile_flags   = []

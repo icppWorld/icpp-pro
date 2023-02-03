@@ -1,0 +1,22 @@
+# Declare python project metadata
+# https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "icpp"
+dynamic = [
+    "version",
+    "description",
+    "authors",
+    "readme",
+    "requires-python",
+    "classifiers",
+    "keywords",
+    "urls",
+    "entry-points",
+    "dependencies",
+    "optional-dependencies"
+]

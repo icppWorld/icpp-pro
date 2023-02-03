@@ -1,0 +1,18 @@
+service: {
+    "test_ic_api" : () -> (int) query;
+    "test_candid" : () -> (int) query;
+    "test_vendors" : () -> (int) query;
+    "roundtrip_record" : (record { name: text; "secret float64": float64; "secret int": int })  -> 
+                         (record { greeting: text; message: text; "secret float64": float64; "secret int": int }) 
+                         query;
+    "canister_sends_record" : () -> 
+                              (record { greeting: text; message: text; month: text; year: int }) 
+                              query;
+    "canister_sends_int_as_int" : () -> (int) query;
+    "canister_sends_double_as_float64" : () -> (float64) query;
+    "canister_sends_char_as_text" : () -> (text) query;
+    "canister_sends_string_as_text" : () -> (text) query;
+    "canister_sends_json_as_text" : () -> (text) query;
+    "roundtrip_text_to_json_to_text" : (text) -> (text) query;
+    "roundtrip_text_to_json_to_text_long_message" : (text) -> (text) query;
+}

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "canisters": {
+    "greet": {
+      "type": "custom",
+      "candid": "build/greet.did",
+      "wasm": "build/greet.wasm",
+      "build": "icpp build-wasm"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  }
+}

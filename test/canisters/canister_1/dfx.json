@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "canisters": {
+    "my_canister": {
+      "type": "custom",
+      "candid": "build/my_canister.did",
+      "wasm": "build/my_canister.wasm",
+      "build": "icpp build-wasm"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  }
+}

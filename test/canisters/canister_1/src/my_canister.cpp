@@ -13,6 +13,14 @@
 
 #include "vendors/nlohmann/json/json.hpp"
 
+void roundtrip_bool() {
+  IC_API ic_api(false);
+
+  bool in{false};
+  ic_api.from_wire(CandidTypeBool(&in));
+  ic_api.to_wire(CandidTypeBool(in));
+}
+
 void roundtrip_record() {
   IC_API ic_api(false);
 

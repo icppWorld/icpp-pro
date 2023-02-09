@@ -50,6 +50,7 @@ def call_canister_api(
         response = run_shell_cmd(
             arg, capture_output=True, cwd=Path(dfx_json_path).parent
         )
+        response = response.rstrip("\n")
     except subprocess.CalledProcessError as e:
         if "Error: Failed to determine id for canister" in e.output:
             msg = (

@@ -33,12 +33,19 @@ int main() {
                   "4449444c00017c00");
 
   //----------------------------------------------------------------------------------
+  // '(true)' -> '(true)'
+  mockIC.run_test("roundtrip_bool", roundtrip_bool, "4449444c00017e01",
+                  "4449444c00017e01");
+  // '(false)' -> '(false)'
+  mockIC.run_test("roundtrip_bool", roundtrip_bool, "4449444c00017e00",
+                  "4449444c00017e00");
+
   // from_wire:
-  // '()' -> '(record {"name" = "C++ Developer"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})'
-  // '()' -> '(record {1_224_700_491 = "C++ Developer"; 1_274_861_098 = 0.01 : float64; 2_143_348_543 = 11 : int;})'
+  // '(record {"name" = "C++ Developer"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})'
+  // '(record {1_224_700_491 = "C++ Developer"; 1_274_861_098 = 0.01 : float64; 2_143_348_543 = 11 : int;})'
   // to_wire:
-  // '()' -> '(record {"greeting" = "Hello C++ Developer!"; "message" = "Your secret numbers are:"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})'
-  // '()' -> '(record {1_274_861_098 = 0.01 : float64; 1_583_063_481 = "Hello C++ Developer!"; 2_143_348_543 = 11 : int; 2_584_819_143 = "Your secret numbers are:";})'
+  // '(record {"greeting" = "Hello C++ Developer!"; "message" = "Your secret numbers are:"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})'
+  // '(record {1_274_861_098 = 0.01 : float64; 1_583_063_481 = "Hello C++ Developer!"; 2_143_348_543 = 11 : int; 2_584_819_143 = "Your secret numbers are:";})'
   mockIC.run_test(
       "roundtrip_record", roundtrip_record,
       "4449444c016c03cbe4fdc70471aaacf3df0472bfce83fe077c01000d432b2b20446576656c6f7065727b14ae47e17a843f0b",

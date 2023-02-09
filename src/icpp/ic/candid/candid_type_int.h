@@ -8,8 +8,8 @@ class CandidTypeInt : public CandidTypePrim {
 public:
   // Constructors
   CandidTypeInt();
-  CandidTypeInt(const __int128_t &v);
   CandidTypeInt(__int128_t *v);
+  CandidTypeInt(const __int128_t &v);
 
   // Destructor
   ~CandidTypeInt();

@@ -2,6 +2,7 @@ service: {
     "test_ic_api" : () -> (int) query;
     "test_candid" : () -> (int) query;
     "test_vendors" : () -> (int) query;
+    "roundtrip_bool" : (bool) -> (bool) query;
     "roundtrip_record" : (record { name: text; "secret float64": float64; "secret int": int })  -> 
                          (record { greeting: text; message: text; "secret float64": float64; "secret int": int }) 
                          query;

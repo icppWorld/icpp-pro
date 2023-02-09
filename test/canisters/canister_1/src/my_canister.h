@@ -6,7 +6,9 @@ void test_ic_api() WASM_SYMBOL_EXPORTED("canister_query test_ic_api");
 void test_candid() WASM_SYMBOL_EXPORTED("canister_query test_candid");
 void test_vendors() WASM_SYMBOL_EXPORTED("canister_query test_vendors");
 
+void roundtrip_bool() WASM_SYMBOL_EXPORTED("canister_query roundtrip_bool");
 void roundtrip_record() WASM_SYMBOL_EXPORTED("canister_query canister_record");
+
 void canister_sends_record()
     WASM_SYMBOL_EXPORTED("canister_query canister_sends_record");
 

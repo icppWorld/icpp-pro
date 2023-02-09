@@ -26,7 +26,7 @@ def test__greet_0(network: str) -> None:
         canister_argument="()",
         network=network,
     )
-    expected_response = '("hello!")\n'
+    expected_response = '("hello!")'
     assert response == expected_response
 
 
@@ -38,7 +38,7 @@ def test__greet_1(network: str) -> None:
         canister_argument="()",
         network=network,
     )
-    expected_response = "(2_023 : int)\n"
+    expected_response = "(2_023 : int)"
     assert response == expected_response
 
 
@@ -50,7 +50,7 @@ def test__greet_2(network: str) -> None:
         canister_argument='("C++ Developer")',
         network=network,
     )
-    expected_response = '("hello C++ Developer!")\n'
+    expected_response = '("hello C++ Developer!")'
     assert response == expected_response
 
 
@@ -62,7 +62,7 @@ def test__greet_3(network: str) -> None:
         canister_argument='(record { "icpp version" = 1 : int; OS = "Linux" : text })',
         network=network,
     )
-    expected_response = '(record { icpp Release Details = "Version = 1 & Operating System = Linux"; release year = 2_023 : int;})\n'
+    expected_response = '(record { icpp Release Details = "Version = 1 & Operating System = Linux"; release year = 2_023 : int;})'
     assert response == expected_response
 
 
@@ -74,5 +74,7 @@ def test__greet_4(network: str) -> None:
         canister_argument="(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })",
         network=network,
     )
-    expected_response = '("Hello!", "Your secret numbers are:", 42 : int, 43 : int, 44 : int, 45 : int)\n'
+    expected_response = (
+        '("Hello!", "Your secret numbers are:", 42 : int, 43 : int, 44 : int, 45 : int)'
+    )
     assert response == expected_response

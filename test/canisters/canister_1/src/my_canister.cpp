@@ -21,6 +21,14 @@ void roundtrip_bool() {
   ic_api.to_wire(CandidTypeBool(in));
 }
 
+void roundtrip_nat() {
+  IC_API ic_api(false);
+
+  __uint128_t in{0};
+  ic_api.from_wire(CandidTypeNat(&in));
+  ic_api.to_wire(CandidTypeNat(in));
+}
+
 void roundtrip_record() {
   IC_API ic_api(false);
 

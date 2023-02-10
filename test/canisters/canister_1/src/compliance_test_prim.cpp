@@ -164,7 +164,8 @@ void test_nat() {
   {
     // assert blob "DIDL\00\01\7d\00" == "(0)"         : (nat) "nat: 0";
     // didc encode '(0: nat)'
-    CandidTypeNat c(0);
+    __uint128_t in{0};
+    CandidTypeNat c(in);
     if (CandidSerialize(c).assert_candid("4449444c00017d00", true))
       IC_API::trap(std::string(__func__) + ": 1");
     // TODO: roundtrip decoding check

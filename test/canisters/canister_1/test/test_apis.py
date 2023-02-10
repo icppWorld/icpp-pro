@@ -85,6 +85,18 @@ def test__roundtrip_bool_2(network: str) -> None:
     assert response == expected_response
 
 
+def test__roundtrip_nat(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_nat",
+        canister_argument="(101 : nat)",
+        network=network,
+    )
+    expected_response = "(101 : nat)"
+    assert response == expected_response
+
+
 # Older tests for sending only
 def test__canister_sends_int_as_int(network: str) -> None:
     response = call_canister_api(

@@ -40,6 +40,10 @@ int main() {
   mockIC.run_test("roundtrip_bool", roundtrip_bool, "4449444c00017e00",
                   "4449444c00017e00");
 
+  // '(101 : nat)' -> '(101 : nat)'
+  mockIC.run_test("roundtrip_nat", roundtrip_nat, "4449444c00017d65",
+                  "4449444c00017d65");
+
   // from_wire:
   // '(record {"name" = "C++ Developer"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})'
   // '(record {1_224_700_491 = "C++ Developer"; 1_274_861_098 = 0.01 : float64; 2_143_348_543 = 11 : int;})'

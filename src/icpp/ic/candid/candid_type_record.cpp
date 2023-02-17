@@ -94,8 +94,8 @@ void CandidTypeRecord::encode_T() {
   m_T.append_byte((std::byte)m_datatype_hex);
   m_T.append_uleb128(__uint128_t(m_fields.size()));
   for (size_t i = 0; i < m_fields.size(); ++i) {
-    // id or hash of the record field
-    m_T.append_uint32_t(m_field_ids[i]);
+    // id or hash of the record field, append without packing into a fixed width
+    m_T.append_uleb128(__uint128_t(m_field_ids[i]));
 
     // data type of the record field
     VecBytes I = std::visit([](auto &&c) { return c.get_I(); }, m_fields[i]);
@@ -123,7 +123,7 @@ bool CandidTypeRecord::decode_T(VecBytes B, __uint128_t &offset,
 
   for (size_t i = 0; i < num_fields; ++i) {
     // id or hash of the record field
-    uint32_t field_id;
+    __uint128_t field_id;
     __uint128_t numbytes;
     if (B.parse_uleb128(offset, field_id, numbytes, parse_error)) {
       return true;

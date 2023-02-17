@@ -56,55 +56,61 @@ public:
   void append_didl();
 
   void append_byte(std::byte b);
+  void append_bytes(uint8_t *bytes, unsigned long num_bytes);
 
-  void append_sleb128(const bool &v);
-  void append_sleb128(const int &v);
   void append_sleb128(const __int128_t &v);
-  void append_sleb128(const __uint128_t &v);
   template <class T> void append_sleb128(T) = delete;
 
   void append_uleb128(const bool &v);
-  void append_uleb128(const int &v);
-  void append_uleb128(const __int128_t &v);
   void append_uleb128(const __uint128_t &v);
   template <class T> void append_uleb128(T) = delete;
 
-  void append_uint32_t(const uint32_t &x);
-  void append_uint64_t(const uint64_t &x);
-  void append_uint128_t(const __uint128_t &x);
+  void append_fixed_width(const int8_t &v);
+  void append_fixed_width(const int16_t &v);
+  void append_fixed_width(const int32_t &v);
+  void append_fixed_width(const int64_t &v);
+  void append_fixed_width(const uint8_t &v);
+  void append_fixed_width(const uint16_t &v);
+  void append_fixed_width(const uint32_t &v);
+  void append_fixed_width(const uint64_t &v);
+  template <class T> void append_fixed_width(T) = delete;
+
   void append_float64(double x);
 
   // parse methods
   void trap_if_vec_does_not_start_with_DIDL();
 
-  bool parse_uleb128(__uint128_t &offset, uint8_t &v, __uint128_t &numbytes,
-                     std::string &parse_error);
-  bool parse_uleb128(__uint128_t &offset, uint16_t &v, __uint128_t &numbytes,
-                     std::string &parse_error);
-  bool parse_uleb128(__uint128_t &offset, uint32_t &v, __uint128_t &numbytes,
-                     std::string &parse_error);
-  bool parse_uleb128(__uint128_t &offset, uint64_t &v, __uint128_t &numbytes,
-                     std::string &parse_error);
   bool parse_uleb128(__uint128_t &offset, __uint128_t &v, __uint128_t &numbytes,
                      std::string &parse_error);
   template <class T>
   bool parse_uleb128(__uint128_t &, T, __uint128_t &numbytes,
                      std::string &parse_error) = delete;
 
-  bool parse_sleb128(__uint128_t &offset, int8_t &v, __uint128_t &numbytes,
-                     std::string &parse_error);
-  bool parse_sleb128(__uint128_t &offset, int16_t &v, __uint128_t &numbytes,
-                     std::string &parse_error);
-  bool parse_sleb128(__uint128_t &offset, int32_t &v, __uint128_t &numbytes,
-                     std::string &parse_error);
-  bool parse_sleb128(__uint128_t &offset, int64_t &v, __uint128_t &numbytes,
-                     std::string &parse_error);
   bool parse_sleb128(__uint128_t &offset, __int128_t &v, __uint128_t &numbytes,
                      std::string &parse_error);
   template <class T>
   bool parse_sleb128(__uint128_t &, T, __uint128_t &numbytes,
                      std::string &parse_error) = delete;
 
+  bool parse_fixed_width(__uint128_t &offset, uint8_t &v, __uint128_t &numbytes,
+                         std::string &parse_error);
+  bool parse_fixed_width(__uint128_t &offset, uint16_t &v,
+                         __uint128_t &numbytes, std::string &parse_error);
+  bool parse_fixed_width(__uint128_t &offset, uint32_t &v,
+                         __uint128_t &numbytes, std::string &parse_error);
+  bool parse_fixed_width(__uint128_t &offset, uint64_t &v,
+                         __uint128_t &numbytes, std::string &parse_error);
+  bool parse_fixed_width(__uint128_t &offset, int8_t &v, __uint128_t &numbytes,
+                         std::string &parse_error);
+  bool parse_fixed_width(__uint128_t &offset, int16_t &v, __uint128_t &numbytes,
+                         std::string &parse_error);
+  bool parse_fixed_width(__uint128_t &offset, int32_t &v, __uint128_t &numbytes,
+                         std::string &parse_error);
+  bool parse_fixed_width(__uint128_t &offset, int64_t &v, __uint128_t &numbytes,
+                         std::string &parse_error);
+  template <class T>
+  bool parse_fixed_width(__uint128_t &, T, __uint128_t &numbytes,
+                         std::string &parse_error) = delete;
   // store methods
   void store(const uint8_t *bytes, const uint32_t num_bytes);
   void store_hex_string(const std::string candid_in);
@@ -116,6 +122,9 @@ public:
   const std::vector<uint8_t> &vec_uint8_t() const { return m_vec_uint8_t; };
   int size() const { return m_vec.size(); }
   void clear();
+  bool is_little_endian();
+  bool is_big_endian();
+  bool is_mixed_endian();
 
   // Provide an equal operator to enable comparisons
   friend bool operator==(VecBytes const &lhs, VecBytes const &rhs) {
@@ -123,6 +132,9 @@ public:
   }
 
 private:
+  void check_endian();
+
   std::vector<std::byte> m_vec;
   std::vector<uint8_t> m_vec_uint8_t;
+  std::string m_endian_type = "";
 };

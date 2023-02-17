@@ -13,20 +13,242 @@
 
 #include "vendors/nlohmann/json/json.hpp"
 
-void roundtrip_bool() {
+void roundtrip_bool_true() {
   IC_API ic_api(false);
-
   bool in{false};
   ic_api.from_wire(CandidTypeBool(&in));
+  if (!in) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
   ic_api.to_wire(CandidTypeBool(in));
 }
 
-void roundtrip_nat() {
+void roundtrip_bool_false() {
   IC_API ic_api(false);
+  bool in{false};
+  ic_api.from_wire(CandidTypeBool(&in));
+  if (in) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeBool(in));
+}
 
+void roundtrip_nat_101() {
+  IC_API ic_api(false);
   __uint128_t in{0};
   ic_api.from_wire(CandidTypeNat(&in));
+  if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
   ic_api.to_wire(CandidTypeNat(in));
+}
+
+void roundtrip_nat_1001() {
+  IC_API ic_api(false);
+  __uint128_t in{0};
+  ic_api.from_wire(CandidTypeNat(&in));
+  if (in != 1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeNat(in));
+}
+
+void roundtrip_int_101() {
+  IC_API ic_api(false);
+  __int128_t in{0};
+  ic_api.from_wire(CandidTypeInt(&in));
+  if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt(in));
+}
+
+void roundtrip_int_1001() {
+  IC_API ic_api(false);
+  __int128_t in{0};
+  ic_api.from_wire(CandidTypeInt(&in));
+  if (in != 1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt(in));
+}
+
+void roundtrip_int_101_neg() {
+  IC_API ic_api(false);
+  __int128_t in{0};
+  ic_api.from_wire(CandidTypeInt(&in));
+  if (in != -101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt(in));
+}
+
+void roundtrip_int_1001_neg() {
+  IC_API ic_api(false);
+  __int128_t in{0};
+  ic_api.from_wire(CandidTypeInt(&in));
+  if (in != -1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt(in));
+}
+
+void roundtrip_nat8_101() {
+  IC_API ic_api(false);
+  uint8_t in{0};
+  ic_api.from_wire(CandidTypeNat8(&in));
+  if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeNat8(in));
+}
+
+void roundtrip_nat16_101() {
+  IC_API ic_api(false);
+  uint16_t in{0};
+  ic_api.from_wire(CandidTypeNat16(&in));
+  if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeNat16(in));
+}
+
+void roundtrip_nat16_1001() {
+  IC_API ic_api(false);
+  uint16_t in{0};
+  ic_api.from_wire(CandidTypeNat16(&in));
+  if (in != 1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeNat16(in));
+}
+
+void roundtrip_nat32_101() {
+  IC_API ic_api(false);
+  uint32_t in{0};
+  ic_api.from_wire(CandidTypeNat32(&in));
+  if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeNat32(in));
+}
+
+void roundtrip_nat32_1_000_000_001() {
+  IC_API ic_api(false);
+  uint32_t in{0};
+  ic_api.from_wire(CandidTypeNat32(&in));
+  if (in != 1000000001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeNat32(in));
+}
+
+void roundtrip_nat64_101() {
+  IC_API ic_api(false);
+
+  uint64_t in{0};
+  ic_api.from_wire(CandidTypeNat64(&in));
+  if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeNat64(in));
+}
+
+void roundtrip_nat64_1_000_000_000_000_000_001() {
+  IC_API ic_api(false);
+
+  uint64_t in{0};
+  ic_api.from_wire(CandidTypeNat64(&in));
+  if (in != 1000000000000000001)
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeNat64(in));
+}
+
+void roundtrip_int8_101() {
+  IC_API ic_api(false);
+  int8_t in{0};
+  ic_api.from_wire(CandidTypeInt8(&in));
+  if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt8(in));
+}
+
+void roundtrip_int8_101_neg() {
+  IC_API ic_api(false);
+  int8_t in{0};
+  ic_api.from_wire(CandidTypeInt8(&in));
+  if (in != -101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt8(in));
+}
+
+void roundtrip_int16_101() {
+  IC_API ic_api(false);
+  int16_t in{0};
+  ic_api.from_wire(CandidTypeInt16(&in));
+  if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt16(in));
+}
+
+void roundtrip_int16_101_neg() {
+  IC_API ic_api(false);
+  int16_t in{0};
+  ic_api.from_wire(CandidTypeInt16(&in));
+  if (in != -101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt16(in));
+}
+
+void roundtrip_int16_1001() {
+  IC_API ic_api(false);
+  int16_t in{0};
+  ic_api.from_wire(CandidTypeInt16(&in));
+  if (in != 1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt16(in));
+}
+
+void roundtrip_int16_1001_neg() {
+  IC_API ic_api(false);
+  int16_t in{0};
+  ic_api.from_wire(CandidTypeInt16(&in));
+  if (in != -1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt16(in));
+}
+
+void roundtrip_int32_101() {
+  IC_API ic_api(false);
+  int32_t in{0};
+  ic_api.from_wire(CandidTypeInt32(&in));
+  if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt32(in));
+}
+
+void roundtrip_int32_101_neg() {
+  IC_API ic_api(false);
+  int32_t in{0};
+  ic_api.from_wire(CandidTypeInt32(&in));
+  if (in != -101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt32(in));
+}
+
+void roundtrip_int32_1_000_000_001() {
+  IC_API ic_api(false);
+  int32_t in{0};
+  ic_api.from_wire(CandidTypeInt32(&in));
+  if (in != 1000000001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt32(in));
+}
+
+void roundtrip_int32_1_000_000_001_neg() {
+  IC_API ic_api(false);
+  int32_t in{0};
+  ic_api.from_wire(CandidTypeInt32(&in));
+  if (in != -1000000001)
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt32(in));
+}
+
+void roundtrip_int64_101() {
+  IC_API ic_api(false);
+  int64_t in{0};
+  ic_api.from_wire(CandidTypeInt64(&in));
+  if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt64(in));
+}
+
+void roundtrip_int64_101_neg() {
+  IC_API ic_api(false);
+  int64_t in{0};
+  ic_api.from_wire(CandidTypeInt64(&in));
+  if (in != -101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt64(in));
+}
+
+void roundtrip_int64_1_000_000_000_000_000_001() {
+  IC_API ic_api(false);
+  int64_t in{0};
+  ic_api.from_wire(CandidTypeInt64(&in));
+  if (in != 1000000000000000001)
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt64(in));
+}
+
+void roundtrip_int64_1_000_000_000_000_000_001_neg() {
+  IC_API ic_api(false);
+  int64_t in{0};
+  ic_api.from_wire(CandidTypeInt64(&in));
+  if (in != -1000000000000000001)
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeInt64(in));
 }
 
 void roundtrip_record() {

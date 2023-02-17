@@ -22,6 +22,14 @@ class CandidTypeEmpty;
 class CandidTypeFloat64;
 class CandidTypeInt;
 class CandidTypeNat;
+class CandidTypeNat8;
+class CandidTypeNat16;
+class CandidTypeNat32;
+class CandidTypeNat64;
+class CandidTypeInt8;
+class CandidTypeInt16;
+class CandidTypeInt32;
+class CandidTypeInt64;
 class CandidTypeNull;
 class CandidTypeRecord;
 class CandidTypeText;
@@ -36,8 +44,10 @@ class CandidSerialize;
 // The std::variant alias
 using CandidType =
     std::variant<CandidTypeBool, CandidTypeEmpty, CandidTypeFloat64,
-                 CandidTypeInt, CandidTypeNat, CandidTypeNull, CandidTypeRecord,
-                 CandidTypeText>;
+                 CandidTypeInt, CandidTypeNat, CandidTypeNat8, CandidTypeNat16,
+                 CandidTypeNat32, CandidTypeNat64, CandidTypeInt8,
+                 CandidTypeInt16, CandidTypeInt32, CandidTypeInt64,
+                 CandidTypeNull, CandidTypeRecord, CandidTypeText>;
 
 // https://subscription.packtpub.com/book/programming/9781787120495/8/ch08lvl1sec91/storing-different-types-with-stdvariant
 template <typename T> bool is_CandidType(const CandidType &c) {
@@ -61,7 +71,15 @@ template <typename T> bool is_CandidType(const CandidType &c) {
 #include "candid_type_empty.h"
 #include "candid_type_float64.h"
 #include "candid_type_int.h"
+#include "candid_type_int16.h"
+#include "candid_type_int32.h"
+#include "candid_type_int64.h"
+#include "candid_type_int8.h"
 #include "candid_type_nat.h"
+#include "candid_type_nat16.h"
+#include "candid_type_nat32.h"
+#include "candid_type_nat64.h"
+#include "candid_type_nat8.h"
 #include "candid_type_null.h"
 #include "candid_type_record.h"
 #include "candid_type_text.h"

@@ -40,7 +40,7 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
                      const std::string &candid_out_expected) {
   ++m_tests_total;
   std::cout << "\n----------\n";
-  std::cout << "Test: " << test_name << ": \n";
+  std::cout << "MockIC run_test: " << test_name << ": \n";
 
   m_B_in.clear();
   m_B_out.clear();

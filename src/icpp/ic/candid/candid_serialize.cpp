@@ -93,7 +93,7 @@ void CandidSerialize::serialize() {
     VecBytes T = std::visit([](auto &&c) { return c.get_T(); }, m_A[i]);
     if (T.size() > 0) {
       // For <comptypes>, we use the index into the type table we defined above
-      m_B.append_sleb128(m_type_table_A_index[i]);
+      m_B.append_uleb128(m_type_table_A_index[i]);
     } else {
       // For <primtypes>, use the Opcode, already stored
       VecBytes I = std::visit([](auto &&c) { return c.get_I(); }, m_A[i]);

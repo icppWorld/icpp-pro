@@ -2,8 +2,35 @@ service: {
     "test_ic_api" : () -> (int) query;
     "test_candid" : () -> (int) query;
     "test_vendors" : () -> (int) query;
-    "roundtrip_bool" : (bool) -> (bool) query;
-    "roundtrip_nat" : (nat) -> (nat) query;
+    "roundtrip_bool_true" : (bool) -> (bool) query;
+    "roundtrip_bool_false" : (bool) -> (bool) query;
+    "roundtrip_nat_101" : (nat) -> (nat) query;
+    "roundtrip_nat_1001" : (nat) -> (nat) query;
+    "roundtrip_int_101" : (int) -> (int) query;
+    "roundtrip_int_1001" : (int) -> (int) query;
+    "roundtrip_int_101_neg" : (int) -> (int) query;
+    "roundtrip_int_1001_neg" : (int) -> (int) query;
+    "roundtrip_nat8_101" : (nat8) -> (nat8) query;
+    "roundtrip_nat16_101" : (nat16) -> (nat16) query;
+    "roundtrip_nat16_1001" : (nat16) -> (nat16) query;
+    "roundtrip_nat32_101" : (nat32) -> (nat32) query;
+    "roundtrip_nat32_1_000_000_001" : (nat32) -> (nat32) query;
+    "roundtrip_nat64_101" : (nat64) -> (nat64) query;
+    "roundtrip_nat64_1_000_000_000_000_000_001" : (nat64) -> (nat64) query;
+    "roundtrip_int8_101" : (int8) -> (int8) query;
+    "roundtrip_int8_101_neg" : (int8) -> (int8) query;
+    "roundtrip_int16_101" : (int16) -> (int16) query;
+    "roundtrip_int16_1001" : (int16) -> (int16) query;
+    "roundtrip_int16_101_neg" : (int16) -> (int16) query;
+    "roundtrip_int16_1001_neg" : (int16) -> (int16) query;
+    "roundtrip_int32_101" : (int32) -> (int32) query;
+    "roundtrip_int32_1_000_000_001" : (int32) -> (int32) query;
+    "roundtrip_int32_101_neg" : (int32) -> (int32) query;
+    "roundtrip_int32_1_000_000_001_neg" : (int32) -> (int32) query;
+    "roundtrip_int64_101" : (int64) -> (int64) query;
+    "roundtrip_int64_1_000_000_000_000_000_001" : (int64) -> (int64) query;
+    "roundtrip_int64_101_neg" : (int64) -> (int64) query;
+    "roundtrip_int64_1_000_000_000_000_000_001_neg" : (int64) -> (int64) query;
     "roundtrip_record" : (record { name: text; "secret float64": float64; "secret int": int })  -> 
                          (record { greeting: text; message: text; "secret float64": float64; "secret int": int }) 
                          query;

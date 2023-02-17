@@ -56,7 +56,7 @@ void CandidTypeText::encode_M(const std::string &v) {
   // M(t : text)     = leb128(|utf8(t)|) i8*(utf8(t))
 
   // encoded size of string - leb128(|utf8(t)|)
-  m_M.append_uint64_t(v.size());
+  m_M.append_uleb128(__uint128_t(v.size()));
 
   // encoded string - i8*(utf8(t))
   for (char const &c : v) {
@@ -73,7 +73,7 @@ bool CandidTypeText::decode_M(VecBytes B, __uint128_t &offset,
   __uint128_t offset_start = offset;
   __uint128_t numbytes;
   parse_error = "";
-  uint64_t numBytes_text;
+  __uint128_t numBytes_text;
   if (B.parse_uleb128(offset, numBytes_text, numbytes, parse_error)) {
     std::string to_be_parsed = "Size of text- leb128(|utf8(t)|)";
     CandidDeserialize::trap_with_parse_error(offset_start, offset, to_be_parsed,
@@ -91,7 +91,7 @@ bool CandidTypeText::decode_M(VecBytes B, __uint128_t &offset,
         "ERROR - Size of text is wrong. The remaining bytes in the byte stream on wire is ";
     msg.append(std::to_string(len));
     msg.append(", but specified size is ");
-    msg.append(std::to_string(numBytes_text));
+    msg.append(VecBytes::my_uint128_to_string(numBytes_text));
     IC_API::trap(msg);
   }
 

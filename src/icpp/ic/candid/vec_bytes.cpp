@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include <algorithm>
+#include <bit>
 #include <string>
 
 #include <limits.h>
@@ -16,7 +17,7 @@
 
 #define INT_STR_SIZE (sizeof(int) * CHAR_BIT / 3 + 3)
 
-VecBytes::VecBytes() {}
+VecBytes::VecBytes() { check_endian(); }
 
 VecBytes::~VecBytes() {}
 
@@ -126,35 +127,16 @@ void VecBytes::append_didl() {
   append_byte((std::byte)'L');
 }
 
-// Encode with uleb128 and append bytes
-void VecBytes::append_uleb128(const int &v) {
-  __uint128_t v1 = __uint128_t(v);
-  if (v1 != v) {
-    std::string msg;
-    msg.append("ERROR: cannot convert int to __uint128_t without data loss.\n");
-    msg.append(__func__);
-    IC_API::trap(msg);
-  }
-  append_uleb128(__uint128_t(v));
-}
-// Encode with uleb128 and append bytes
+// ------------------------------------------------------------------------------
+// append_uleb128
+
+// append bool as uleb128
 void VecBytes::append_uleb128(const bool &v) {
   if (v) append_uleb128(__uint128_t(1));
   else append_uleb128(__uint128_t(0));
 }
-// Encode with uleb128 and append bytes
-void VecBytes::append_uleb128(const __int128_t &v) {
-  __uint128_t v1 = __uint128_t(v);
-  if (v1 != v) {
-    std::string msg;
-    msg.append(
-        "ERROR: cannot convert __int128_t to __uint128_t without data loss.\n");
-    msg.append(__func__);
-    IC_API::trap(msg);
-  }
-  append_uleb128(__uint128_t(v));
-}
-// Encode with uleb128 and append bytes
+
+// append __uint128_t as uleb128
 void VecBytes::append_uleb128(const __uint128_t &v) {
   uint8_t Bytes[1024];
   auto numBytes = encode_uleb128(v, Bytes);
@@ -164,26 +146,10 @@ void VecBytes::append_uleb128(const __uint128_t &v) {
   }
 }
 
-// Encode with sleb128 and append bytes
-void VecBytes::append_sleb128(const int &v) { append_sleb128(__int128_t(v)); }
-// Encode with sleb128 and append bytes
-void VecBytes::append_sleb128(const bool &v) {
-  if (v) append_sleb128(__uint128_t(1));
-  else append_sleb128(__uint128_t(0));
-}
-// Encode with sleb128 and append bytes
-void VecBytes::append_sleb128(const __uint128_t &v) {
-  __int128_t v1 = __int128_t(v);
-  if (v1 != v) {
-    std::string msg;
-    msg.append(
-        "ERROR: cannot convert __uint128_t to int128_t without data loss.\n");
-    msg.append(__func__);
-    IC_API::trap(msg);
-  }
-  append_sleb128(__int128_t(v));
-}
-// Encode with sleb128 and append bytes
+// ------------------------------------------------------------------------------
+// append_sleb128
+
+// append __int128_t as sleb128
 void VecBytes::append_sleb128(const __int128_t &v) {
   uint8_t Bytes[1024];
   auto numBytes = encode_sleb128(v, Bytes);
@@ -193,71 +159,7 @@ void VecBytes::append_sleb128(const __int128_t &v) {
   }
 }
 
-// Decode bytes with uleb128, starting at & updating offset
-bool VecBytes::parse_uleb128(__uint128_t &offset, uint8_t &v,
-                             __uint128_t &numbytes, std::string &parse_error) {
-  __uint128_t x;
-  if (parse_uleb128(offset, x, numbytes, parse_error)) {
-    v = 0;
-    return true;
-  }
-  v = uint8_t(x);
-  if (v != x) {
-    parse_error.append("Number is too large to fit a uint8_t (" +
-                       my_uint128_to_string(x) + ") ");
-    return true;
-  }
-  return false;
-}
-// Decode bytes with uleb128, starting at & updating offset
-bool VecBytes::parse_uleb128(__uint128_t &offset, uint16_t &v,
-                             __uint128_t &numbytes, std::string &parse_error) {
-  __uint128_t x;
-  if (parse_uleb128(offset, x, numbytes, parse_error)) {
-    v = 0;
-    return true;
-  }
-  v = uint16_t(x);
-  if (v != x) {
-    parse_error.append("Number is too large to fit a uint16_t (" +
-                       my_uint128_to_string(x) + ") ");
-    return true;
-  }
-  return false;
-}
-// Decode bytes with uleb128, starting at & updating offset
-bool VecBytes::parse_uleb128(__uint128_t &offset, uint32_t &v,
-                             __uint128_t &numbytes, std::string &parse_error) {
-  __uint128_t x;
-  if (parse_uleb128(offset, x, numbytes, parse_error)) {
-    v = 0;
-    return true;
-  }
-  v = uint32_t(x);
-  if (v != x) {
-    parse_error.append("Number is too large to fit a uint32_t (" +
-                       my_uint128_to_string(x) + ") ");
-    return true;
-  }
-  return false;
-}
-// Decode bytes with uleb128, starting at & updating offset
-bool VecBytes::parse_uleb128(__uint128_t &offset, uint64_t &v,
-                             __uint128_t &numbytes, std::string &parse_error) {
-  __uint128_t x;
-  if (parse_uleb128(offset, x, numbytes, parse_error)) {
-    v = 0;
-    return true;
-  }
-  v = uint64_t(x);
-  if (v != x) {
-    parse_error.append("Number is too large to fit a uint64_t (" +
-                       my_uint128_to_string(x) + ") ");
-    return true;
-  }
-  return false;
-}
-// Decode bytes with uleb128, starting at & updating offset
+// Decode with uleb128, starting at & updating offset
 bool VecBytes::parse_uleb128(__uint128_t &offset, __uint128_t &v,
                              __uint128_t &numbytes, std::string &parse_error) {
   __uint128_t len = m_vec.size() - offset;
@@ -277,74 +179,6 @@ bool VecBytes::parse_uleb128(__uint128_t &offset, __uint128_t &v,
 }
 
 // Decode bytes with sleb128, starting at & updating offset
-bool VecBytes::parse_sleb128(__uint128_t &offset, int8_t &v,
-                             __uint128_t &numbytes, std::string &parse_error) {
-  __int128_t x;
-  if (parse_sleb128(offset, x, numbytes, parse_error)) {
-    v = 0;
-    return true;
-  }
-  v = int8_t(x);
-  if (v != x) {
-    parse_error.append(
-        "Absolute value of number is too large to fit a int8_t (" +
-        my_uint128_to_string(x) + ") ");
-    return true;
-  }
-  return false;
-}
-// Decode bytes with sleb128, starting at & updating offset
-bool VecBytes::parse_sleb128(__uint128_t &offset, int16_t &v,
-                             __uint128_t &numbytes, std::string &parse_error) {
-  __int128_t x;
-  if (parse_sleb128(offset, x, numbytes, parse_error)) {
-    v = 0;
-    return true;
-  }
-  v = int16_t(x);
-  if (v != x) {
-    parse_error.append(
-        "Absolute value of number is too large to fit a int16_t (" +
-        my_uint128_to_string(x) + ") ");
-    return true;
-  }
-  return false;
-}
-// Decode bytes with sleb128, starting at & updating offset
-bool VecBytes::parse_sleb128(__uint128_t &offset, int32_t &v,
-                             __uint128_t &numbytes, std::string &parse_error) {
-  __int128_t x;
-  if (parse_sleb128(offset, x, numbytes, parse_error)) {
-    v = 0;
-    return true;
-  }
-  v = int32_t(x);
-  if (v != x) {
-    parse_error.append(
-        "Absolute value of number is too large to fit a int32_t (" +
-        my_uint128_to_string(x) + ") ");
-    return true;
-  }
-  return false;
-}
-// Decode bytes with sleb128, starting at & updating offset
-bool VecBytes::parse_sleb128(__uint128_t &offset, int64_t &v,
-                             __uint128_t &numbytes, std::string &parse_error) {
-  __int128_t x;
-  if (parse_sleb128(offset, x, numbytes, parse_error)) {
-    v = 0;
-    return true;
-  }
-  v = int64_t(x);
-  if (v != x) {
-    parse_error.append(
-        "Absolute value of number is too large to fit a int64_t (" +
-        my_uint128_to_string(x) + ") ");
-    return true;
-  }
-  return false;
-}
-// Decode bytes with sleb128, starting at & updating offset
 bool VecBytes::parse_sleb128(__uint128_t &offset, __int128_t &v,
                              __uint128_t &numbytes, std::string &parse_error) {
   __uint128_t len = m_vec.size() - offset;
@@ -362,6 +196,232 @@ bool VecBytes::parse_sleb128(__uint128_t &offset, __int128_t &v,
 
   return false;
 }
+
+// -------------------------------------------------------------------------------
+// Fixed width types - start
+// Decode bytes with memcpy, starting at & updating offset
+bool VecBytes::parse_fixed_width(__uint128_t &offset, int8_t &v,
+                                 __uint128_t &numbytes,
+                                 std::string &parse_error) {
+  __uint128_t len = m_vec.size() - offset;
+
+  uint8_t *buf = &m_vec_uint8_t[offset];
+  uint8_t *buf_end = &m_vec_uint8_t[offset + len];
+
+  parse_error = "";
+  std::memcpy(&v, buf, sizeof(v));
+
+  offset += sizeof(v);
+
+  return false;
+}
+// Decode bytes with memcpy, starting at & updating offset
+bool VecBytes::parse_fixed_width(__uint128_t &offset, int16_t &v,
+                                 __uint128_t &numbytes,
+                                 std::string &parse_error) {
+  __uint128_t len = m_vec.size() - offset;
+
+  uint8_t *buf = &m_vec_uint8_t[offset];
+  uint8_t *buf_end = &m_vec_uint8_t[offset + len];
+
+  parse_error = "";
+  std::memcpy(&v, buf, sizeof(v));
+
+  offset += sizeof(v);
+
+  return false;
+}
+// Decode bytes with memcpy, starting at & updating offset
+bool VecBytes::parse_fixed_width(__uint128_t &offset, int32_t &v,
+                                 __uint128_t &numbytes,
+                                 std::string &parse_error) {
+  __uint128_t len = m_vec.size() - offset;
+
+  uint8_t *buf = &m_vec_uint8_t[offset];
+  uint8_t *buf_end = &m_vec_uint8_t[offset + len];
+
+  parse_error = "";
+  std::memcpy(&v, buf, sizeof(v));
+
+  offset += sizeof(v);
+
+  return false;
+}
+// Decode bytes with memcpy, starting at & updating offset
+bool VecBytes::parse_fixed_width(__uint128_t &offset, int64_t &v,
+                                 __uint128_t &numbytes,
+                                 std::string &parse_error) {
+  __uint128_t len = m_vec.size() - offset;
+
+  uint8_t *buf = &m_vec_uint8_t[offset];
+  uint8_t *buf_end = &m_vec_uint8_t[offset + len];
+
+  parse_error = "";
+  std::memcpy(&v, buf, sizeof(v));
+
+  offset += sizeof(v);
+
+  return false;
+}
+// Decode bytes with memcpy, starting at & updating offset
+bool VecBytes::parse_fixed_width(__uint128_t &offset, uint8_t &v,
+                                 __uint128_t &numbytes,
+                                 std::string &parse_error) {
+  __uint128_t len = m_vec.size() - offset;
+
+  uint8_t *buf = &m_vec_uint8_t[offset];
+  uint8_t *buf_end = &m_vec_uint8_t[offset + len];
+
+  parse_error = "";
+  std::memcpy(&v, buf, sizeof(v));
+
+  offset += sizeof(v);
+
+  return false;
+}
+// Decode bytes with memcpy, starting at & updating offset
+bool VecBytes::parse_fixed_width(__uint128_t &offset, uint16_t &v,
+                                 __uint128_t &numbytes,
+                                 std::string &parse_error) {
+  __uint128_t len = m_vec.size() - offset;
+
+  uint8_t *buf = &m_vec_uint8_t[offset];
+  uint8_t *buf_end = &m_vec_uint8_t[offset + len];
+
+  parse_error = "";
+  std::memcpy(&v, buf, sizeof(v));
+
+  offset += sizeof(v);
+
+  return false;
+}
+// Decode bytes with memcpy, starting at & updating offset
+bool VecBytes::parse_fixed_width(__uint128_t &offset, uint32_t &v,
+                                 __uint128_t &numbytes,
+                                 std::string &parse_error) {
+  __uint128_t len = m_vec.size() - offset;
+
+  uint8_t *buf = &m_vec_uint8_t[offset];
+  uint8_t *buf_end = &m_vec_uint8_t[offset + len];
+
+  parse_error = "";
+  std::memcpy(&v, buf, sizeof(v));
+
+  offset += sizeof(v);
+
+  return false;
+}
+// Decode bytes with memcpy, starting at & updating offset
+bool VecBytes::parse_fixed_width(__uint128_t &offset, uint64_t &v,
+                                 __uint128_t &numbytes,
+                                 std::string &parse_error) {
+  __uint128_t len = m_vec.size() - offset;
+
+  uint8_t *buf = &m_vec_uint8_t[offset];
+  uint8_t *buf_end = &m_vec_uint8_t[offset + len];
+
+  parse_error = "";
+  std::memcpy(&v, buf, sizeof(v));
+
+  offset += sizeof(v);
+
+  return false;
+}
+// Fixed width parse end
+
+// Fixed width append start
+void VecBytes::append_fixed_width(const uint8_t &v) {
+  uint8_t *bytes{nullptr};
+  if (is_little_endian()) bytes = (uint8_t *)&v;
+  else
+    // Probably best to do a memcpy and then a byteswap
+    IC_API::trap(
+        "ERROR: append_fixed_width not yet implemented on big endian architecture");
+
+  append_bytes(bytes, sizeof(v));
+}
+
+void VecBytes::append_fixed_width(const uint16_t &v) {
+  uint8_t *bytes{nullptr};
+  if (is_little_endian()) bytes = (uint8_t *)&v;
+  else
+    // Probably best to do a memcpy and then a byteswap
+    IC_API::trap(
+        "ERROR: append_fixed_width not yet implemented on big endian architecture");
+
+  append_bytes(bytes, sizeof(v));
+}
+
+void VecBytes::append_fixed_width(const uint32_t &v) {
+  uint8_t *bytes{nullptr};
+  if (is_little_endian()) bytes = (uint8_t *)&v;
+  else
+    // Probably best to do a memcpy and then a byteswap
+    IC_API::trap(
+        "ERROR: append_fixed_width not yet implemented on big endian architecture");
+
+  append_bytes(bytes, sizeof(v));
+}
+
+void VecBytes::append_fixed_width(const uint64_t &v) {
+  uint8_t *bytes{nullptr};
+  if (is_little_endian()) bytes = (uint8_t *)&v;
+  else
+    // Probably best to do a memcpy and then a byteswap
+    IC_API::trap(
+        "ERROR: append_fixed_width not yet implemented on big endian architecture");
+
+  append_bytes(bytes, sizeof(v));
+}
+
+void VecBytes::append_fixed_width(const int8_t &v) {
+  uint8_t *bytes{nullptr};
+  if (is_little_endian()) bytes = (uint8_t *)&v;
+  else
+    // Probably best to do a memcpy and then a byteswap
+    IC_API::trap(
+        "ERROR: append_fixed_width not yet implemented on big endian architecture");
+
+  append_bytes(bytes, sizeof(v));
+}
+
+void VecBytes::append_fixed_width(const int16_t &v) {
+  uint8_t *bytes{nullptr};
+  if (is_little_endian()) bytes = (uint8_t *)&v;
+  else
+    // Probably best to do a memcpy and then a byteswap
+    IC_API::trap(
+        "ERROR: append_fixed_width not yet implemented on big endian architecture");
+
+  append_bytes(bytes, sizeof(v));
+}
+
+void VecBytes::append_fixed_width(const int32_t &v) {
+  uint8_t *bytes{nullptr};
+  if (is_little_endian()) bytes = (uint8_t *)&v;
+  else
+    // Probably best to do a memcpy and then a byteswap
+    IC_API::trap(
+        "ERROR: append_fixed_width not yet implemented on big endian architecture");
+
+  append_bytes(bytes, sizeof(v));
+}
+
+void VecBytes::append_fixed_width(const int64_t &v) {
+  uint8_t *bytes{nullptr};
+  if (is_little_endian()) bytes = (uint8_t *)&v;
+  else
+    // Probably best to do a memcpy and then a byteswap
+    IC_API::trap(
+        "ERROR: append_fixed_width not yet implemented on big endian architecture");
+
+  append_bytes(bytes, sizeof(v));
+}
+
+// Fixed width append end
+
+// Fixed width types - end
+// -------------------------------------------------------------------------------
 
 void VecBytes::store(const uint8_t *bytes, const uint32_t num_bytes) {
   clear();
@@ -410,16 +470,12 @@ void VecBytes::append_byte(std::byte b) {
   m_vec_uint8_t.push_back((uint8_t)n);
 }
 
-void VecBytes::append_uint32_t(const uint32_t &x) { append_uint64_t(x); }
-
-void VecBytes::append_uint64_t(const uint64_t &x) { append_uint128_t(x); }
-
-void VecBytes::append_uint128_t(const __uint128_t &x) {
-  uint8_t Bytes[1024]; // Arbitrarily chosen buffer size
-  auto numBytes = encode_uleb128(x, Bytes);
-  assert(numBytes < sizeof(Bytes));
-  for (size_t i = 0; i < numBytes; ++i) {
-    append_byte((std::byte)Bytes[i]);
+void VecBytes::append_bytes(uint8_t *bytes, unsigned long num_bytes) {
+  uint32_t off_now = 0;
+  for (size_t i = 0; i < num_bytes; ++i) {
+    int n = (int)*(bytes + off_now);
+    append_byte((std::byte)n);
+    off_now += 1;
   }
 }
 
@@ -448,7 +504,7 @@ void VecBytes::append_float64(double x) {
 
   uint32_t off_now = 0;
   uint8_t *bytes = (uint8_t *)&x;
-  for (size_t i = 0; i < 8; ++i) {
+  for (size_t i = 0; i < sizeof(x); ++i) {
     int n = (int)*(bytes + off_now);
     append_byte((std::byte)n);
     off_now += 1;
@@ -690,4 +746,33 @@ unsigned VecBytes::getSLEB128Size(int64_t Value) {
     Size += sizeof(int8_t);
   } while (IsMore);
   return Size;
+}
+
+// Utility function to check if we are running on little-endian
+bool VecBytes::is_little_endian() {
+  if constexpr (std::endian::native == std::endian::little) return true;
+  else return false;
+}
+
+// Utility function to check if we are running on big-endian
+bool VecBytes::is_big_endian() {
+  if constexpr (std::endian::native == std::endian::big) return true;
+  else return false;
+}
+
+// Utility function to check if we are running on mixed-endian
+bool VecBytes::is_mixed_endian() {
+  if (is_little_endian() || is_big_endian()) return false;
+  else return true;
+}
+
+void VecBytes::check_endian() {
+  if (is_little_endian()) m_endian_type = "little";
+  else if (is_big_endian()) {
+    m_endian_type = "big";
+  } else if (is_mixed_endian()) {
+    m_endian_type = "mixed";
+  } else {
+    IC_API::trap("Could not determine endianness of architecture. ");
+  }
 }

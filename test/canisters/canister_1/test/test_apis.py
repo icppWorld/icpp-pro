@@ -61,11 +61,11 @@ def test__test_vendors(network: str) -> None:
 
 
 # Roundtrip tests
-def test__roundtrip_bool_1(network: str) -> None:
+def test__roundtrip_bool_true(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
-        canister_method="roundtrip_bool",
+        canister_method="roundtrip_bool_true",
         canister_argument="(true)",
         network=network,
     )
@@ -73,11 +73,11 @@ def test__roundtrip_bool_1(network: str) -> None:
     assert response == expected_response
 
 
-def test__roundtrip_bool_2(network: str) -> None:
+def test__roundtrip_bool_false(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
-        canister_method="roundtrip_bool",
+        canister_method="roundtrip_bool_false",
         canister_argument="(false)",
         network=network,
     )
@@ -85,15 +85,327 @@ def test__roundtrip_bool_2(network: str) -> None:
     assert response == expected_response
 
 
-def test__roundtrip_nat(network: str) -> None:
+def test__roundtrip_nat_101(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
-        canister_method="roundtrip_nat",
+        canister_method="roundtrip_nat_101",
         canister_argument="(101 : nat)",
         network=network,
     )
     expected_response = "(101 : nat)"
+    assert response == expected_response
+
+
+def test__roundtrip_nat_1001(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_nat_1001",
+        canister_argument="(1001 : nat)",
+        network=network,
+    )
+    expected_response = "(1_001 : nat)"
+    assert response == expected_response
+
+
+def test__roundtrip_int_101(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int_101",
+        canister_argument="(101 : int)",
+        network=network,
+    )
+    expected_response = "(101 : int)"
+    assert response == expected_response
+
+
+def test__roundtrip_int_1001(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int_1001",
+        canister_argument="(1001 : int)",
+        network=network,
+    )
+    expected_response = "(1_001 : int)"
+    assert response == expected_response
+
+
+def test__roundtrip_int_101_neg(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int_101_neg",
+        canister_argument="(-101 : int)",
+        network=network,
+    )
+    expected_response = "(-101 : int)"
+    assert response == expected_response
+
+
+def test__roundtrip_int_1001_neg(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int_1001_neg",
+        canister_argument="(-1001 : int)",
+        network=network,
+    )
+    expected_response = "(-1_001 : int)"
+    assert response == expected_response
+
+
+def test__roundtrip_nat8_101(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_nat8_101",
+        canister_argument="(101 : nat8)",
+        network=network,
+    )
+    expected_response = "(101 : nat8)"
+    assert response == expected_response
+
+
+def test__roundtrip_nat16_101(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_nat16_101",
+        canister_argument="(101 : nat16)",
+        network=network,
+    )
+    expected_response = "(101 : nat16)"
+    assert response == expected_response
+
+
+def test__roundtrip_nat16_1001(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_nat16_1001",
+        canister_argument="(1001 : nat16)",
+        network=network,
+    )
+    expected_response = "(1_001 : nat16)"
+    assert response == expected_response
+
+
+def test__roundtrip_nat32_101(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_nat32_101",
+        canister_argument="(101 : nat32)",
+        network=network,
+    )
+    expected_response = "(101 : nat32)"
+    assert response == expected_response
+
+
+def test__roundtrip_nat32_1_000_000_001(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_nat32_1_000_000_001",
+        canister_argument="(1_000_000_001 : nat32)",
+        network=network,
+    )
+    expected_response = "(1_000_000_001 : nat32)"
+    assert response == expected_response
+
+
+def test__roundtrip_nat64_101(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_nat64_101",
+        canister_argument="(101 : nat64)",
+        network=network,
+    )
+    expected_response = "(101 : nat64)"
+    assert response == expected_response
+
+
+def test__roundtrip_nat64_1_000_000_000_000_000_001(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_nat64_1_000_000_000_000_000_001",
+        canister_argument="(1_000_000_000_000_000_001 : nat64)",
+        network=network,
+    )
+    expected_response = "(1_000_000_000_000_000_001 : nat64)"
+    assert response == expected_response
+
+
+def test__roundtrip_int8_101(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int8_101",
+        canister_argument="(101 : int8)",
+        network=network,
+    )
+    expected_response = "(101 : int8)"
+    assert response == expected_response
+
+
+def test__roundtrip_int8_101_neg(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int8_101_neg",
+        canister_argument="(-101 : int8)",
+        network=network,
+    )
+    expected_response = "(-101 : int8)"
+    assert response == expected_response
+
+
+def test__roundtrip_int16_101(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int16_101",
+        canister_argument="(101 : int16)",
+        network=network,
+    )
+    expected_response = "(101 : int16)"
+    assert response == expected_response
+
+
+def test__roundtrip_int16_1001(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int16_1001",
+        canister_argument="(1001 : int16)",
+        network=network,
+    )
+    expected_response = "(1_001 : int16)"
+    assert response == expected_response
+
+
+def test__roundtrip_int16_101_neg(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int16_101_neg",
+        canister_argument="(-101 : int16)",
+        network=network,
+    )
+    expected_response = "(-101 : int16)"
+    assert response == expected_response
+
+
+def test__roundtrip_int16_1001_neg(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int16_1001_neg",
+        canister_argument="(-1001 : int16)",
+        network=network,
+    )
+    expected_response = "(-1_001 : int16)"
+    assert response == expected_response
+
+
+def test__roundtrip_int32_101(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int32_101",
+        canister_argument="(101 : int32)",
+        network=network,
+    )
+    expected_response = "(101 : int32)"
+    assert response == expected_response
+
+
+def test__roundtrip_int32_1_000_000_001(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int32_1_000_000_001",
+        canister_argument="(1_000_000_001 : int32)",
+        network=network,
+    )
+    expected_response = "(1_000_000_001 : int32)"
+    assert response == expected_response
+
+
+def test__roundtrip_int32_101_neg(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int32_101_neg",
+        canister_argument="(-101 : int32)",
+        network=network,
+    )
+    expected_response = "(-101 : int32)"
+    assert response == expected_response
+
+
+def test__roundtrip_int32_1_000_000_001_neg(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int32_1_000_000_001_neg",
+        canister_argument="(-1_000_000_001 : int32)",
+        network=network,
+    )
+    expected_response = "(-1_000_000_001 : int32)"
+    assert response == expected_response
+
+
+def test__roundtrip_int64_101(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int64_101",
+        canister_argument="(101 : int64)",
+        network=network,
+    )
+    expected_response = "(101 : int64)"
+    assert response == expected_response
+
+
+def test__roundtrip_int64_1_000_000_000_000_000_001(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int64_1_000_000_000_000_000_001",
+        canister_argument="(1_000_000_000_000_000_001 : int64)",
+        network=network,
+    )
+    expected_response = "(1_000_000_000_000_000_001 : int64)"
+    assert response == expected_response
+
+
+def test__roundtrip_int64_101_neg(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int64_101_neg",
+        canister_argument="(-101 : int64)",
+        network=network,
+    )
+    expected_response = "(-101 : int64)"
+    assert response == expected_response
+
+
+def test__roundtrip_int64_1_000_000_000_000_000_001_neg(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_int64_1_000_000_000_000_000_001_neg",
+        canister_argument="(-1_000_000_000_000_000_001 : int64)",
+        network=network,
+    )
+    expected_response = "(-1_000_000_000_000_000_001 : int64)"
     assert response == expected_response
 
 

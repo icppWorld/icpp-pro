@@ -1,3 +1,3 @@
 # `greet`
 
-See the [Getting Started docs](https://github.com/icppWorld/icpp).
+See the [Getting Started tutorial](https://icpp.world/getting-started.html).

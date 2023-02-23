@@ -47,7 +47,7 @@ void CandidTypeNat32::encode_I() {
 void CandidTypeNat32::encode_M(const uint32_t &v) {
   // https://github.com/dfinity/candid/blob/master/spec/Candid.md#memory
   // M(n : nat<N>)   = i<N>(n)    (Litte Endian)
-  m_M.append_fixed_width(v);
+  m_M.append_int_fixed_width(v);
 }
 
 // Decode the values, starting at & updating offset
@@ -55,9 +55,8 @@ bool CandidTypeNat32::decode_M(VecBytes B, __uint128_t &offset,
                                std::string &parse_error,
                                CandidTypeBase *p_expected) {
   __uint128_t offset_start = offset;
-  __uint128_t numbytes;
   parse_error = "";
-  if (B.parse_fixed_width(offset, m_v, numbytes, parse_error)) {
+  if (B.parse_int_fixed_width(offset, m_v, parse_error)) {
     std::string to_be_parsed = "Value for CandidTypeNat32";
     CandidDeserialize::trap_with_parse_error(offset_start, offset, to_be_parsed,
                                              parse_error);

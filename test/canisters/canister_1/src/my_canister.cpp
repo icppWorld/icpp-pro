@@ -251,33 +251,150 @@ void roundtrip_int64_1_000_000_000_000_000_001_neg() {
   ic_api.to_wire(CandidTypeInt64(in));
 }
 
+void roundtrip_text() {
+  IC_API ic_api(false);
+  std::string in{""};
+  ic_api.from_wire(CandidTypeText(&in));
+  if (in != "Hello C++ Canister")
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeText(in));
+}
+
+void roundtrip_text_to_json_to_text() {
+  IC_API ic_api(false);
+
+  // Get the Candid Text from the wire
+  std::string in{""};
+  ic_api.from_wire(CandidTypeText(&in));
+
+  // Convert it into a nlohmann/json object
+  // See: https://json.nlohmann.me/api/basic_json/parse/
+  nlohmann::json j = nlohmann::json::parse(in);
+
+  // Example of how to extract the data from the json object
+  // find an entry
+  std::string project;
+  if (j.contains("project")) {
+    // there is an entry with key "project"
+    project = j["project"];
+  } else {
+    IC_API::trap(std::string("\n\tapi_jsontext_to_jsontext: ERROR in JSON:\n\t "
+                             "- missing key 'project' "));
+  }
+
+  int cpp_version;
+  if (j.contains("C++")) {
+    // there is an entry with key "C++"
+    cpp_version = j["C++"];
+  } else {
+    IC_API::trap(std::string("\n\tapi_jsontext_to_jsontext: ERROR in JSON:\n\t "
+                             "- missing key 'C++' "));
+  }
+
+  // Modify the JSON:
+  j["C++"] = 20;
+  j["project"] = "icpp";
+
+  std::string s = j.dump();
+  IC_API::debug_print("roundtrip_text_to_json_to_text: replying with text:");
+  IC_API::debug_print(s);
+
+  ic_api.to_wire(CandidTypeText(s));
+}
+
+void roundtrip_text_to_json_to_text_long_message() {
+  IC_API ic_api(false);
+
+  // Get the Candid Text from the wire
+  std::string in{""};
+  ic_api.from_wire(CandidTypeText(&in));
+
+  // Convert it into a nlohmann/json object
+  // See: https://json.nlohmann.me/api/basic_json/parse/
+  nlohmann::json j = nlohmann::json::parse(in);
+
+  // just return the same thing, as a string
+  std::string s = j.dump();
+
+  IC_API::debug_print(
+      "roundtrip_text_to_json_to_text_long_message: replying with text:");
+  IC_API::debug_print(s);
+
+  ic_api.to_wire(CandidTypeText(s));
+}
+
+void roundtrip_reserved() {
+  IC_API ic_api(false);
+  ic_api.from_wire(CandidTypeReserved());
+  ic_api.to_wire(CandidTypeReserved());
+}
+
+void roundtrip_float32() {
+  IC_API ic_api(false);
+  float in{0.0};
+  ic_api.from_wire(CandidTypeFloat32(&in));
+  if (!is_approximately_equal(in, (float)1001.1001))
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeFloat32(in));
+}
+
+void roundtrip_float32_neg() {
+  IC_API ic_api(false);
+  float in{0.0};
+  ic_api.from_wire(CandidTypeFloat32(&in));
+  if (!is_approximately_equal(in, (float)-1001.1001))
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeFloat32(in));
+}
+
+void roundtrip_float64() {
+  IC_API ic_api(false);
+  double in{0.0};
+  ic_api.from_wire(CandidTypeFloat64(&in));
+  if (!is_approximately_equal(in, (double)1001.1001))
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeFloat64(in));
+}
+
+void roundtrip_float64_neg() {
+  IC_API ic_api(false);
+  double in{0.0};
+  ic_api.from_wire(CandidTypeFloat64(&in));
+  if (!is_approximately_equal(in, (double)-1001.1001))
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeFloat64(in));
+}
+
 void roundtrip_record() {
   IC_API ic_api(false);
 
   // ---------------------------------------------------------------------------
   // Get the data from the wire
 
-  // TODO: Once we implemented CandidTypeFloat64...
-  // __int128_t icpp_version{0};
-  // std::string OS{""};
+  std::string name{""};
+  double secret_x{0.0};
+  __int128_t secret_i{0};
 
-  // std::string name{""};
-  // double secret_x{0.0};
-  // __int128_t secret_i{0};
+  CandidTypeRecord r_in;
+  r_in.append("name", CandidTypeText(&name));
+  r_in.append("secret float64", CandidTypeFloat64(&secret_x));
+  r_in.append("secret int", CandidTypeInt(&secret_i));
+  //
+  std::vector<CandidType> args_in;
+  args_in.push_back(r_in);
+  //
+  ic_api.from_wire(args_in);
 
-  // CandidTypeRecord r_in;
-  // r_in.append("name", CandidTypeText(&name));
-  // r_in.append("secret float64", CandidTypeFloat64(&secret_x));
-  // r_in.append("secret int", CandidTypeInt(&secret_i));
-  // //
-  // std::vector<CandidType> args_in;
-  // args_in.push_back(r_in);
-  // //
-  // ic_api.from_wire(args_in);
+  // std::string name = "C++ Developer";
+  // double secret_x = 0.01;
+  // int secret_i = 11;
 
-  std::string name = "C++ Developer";
-  double secret_x = 0.01;
-  int secret_i = 11;
+  if (name != "C++ Developer")
+    IC_API::trap("ASSERT ERROR string - " + std::string(__func__));
+  if (!is_approximately_equal(secret_x, (double)0.01))
+    IC_API::trap("ASSERT ERROR double - " + std::string(__func__));
+  if (secret_i != 11)
+    IC_API::trap("ASSERT ERROR int - " + std::string(__func__));
   // ---------------------------------------------------------------------------
 
   std::string greeting = "Hello " + name + "!";
@@ -345,15 +462,6 @@ void canister_sends_int_as_int() {
   ic_api.to_wire(CandidTypeInt(n));
 }
 
-void canister_sends_double_as_float64() {
-  IC_API ic_api;
-
-  double x = 1001.1001;
-
-  // C++ type double => Candid type float64
-  ic_api.to_wire(CandidTypeFloat64(x));
-}
-
 void canister_sends_char_as_text() {
   IC_API ic_api(false);
 
@@ -361,19 +469,6 @@ void canister_sends_char_as_text() {
 
   // C++ type const char => Candid type text
   ic_api.to_wire(CandidTypeText(c));
-}
-
-void canister_sends_string_as_text() {
-  IC_API ic_api(false);
-
-  std::string s;
-  s.append("Hello!!!");
-
-  std::string msg;
-  msg.append("canister_sends_string_as_text: Replying with text = ");
-  msg.append(s);
-
-  ic_api.to_wire(CandidTypeText(s));
 }
 
 void canister_sends_json_as_text() {
@@ -389,69 +484,6 @@ void canister_sends_json_as_text() {
   std::string s = j.dump();
 
   IC_API::debug_print("canister_sends_json_as_text: replying with text:");
-  IC_API::debug_print(s);
-
-  ic_api.to_wire(CandidTypeText(s));
-}
-
-void roundtrip_text_to_json_to_text() {
-  IC_API ic_api(false);
-
-  // Get the Candid Text from the wire
-  std::string in{""};
-  ic_api.from_wire(CandidTypeText(&in));
-
-  // Convert it into a nlohmann/json object
-  // See: https://json.nlohmann.me/api/basic_json/parse/
-  nlohmann::json j = nlohmann::json::parse(in);
-
-  // Example of how to extract the data from the json object
-  // find an entry
-  std::string project;
-  if (j.contains("project")) {
-    // there is an entry with key "project"
-    project = j["project"];
-  } else {
-    IC_API::trap(std::string("\n\tapi_jsontext_to_jsontext: ERROR in JSON:\n\t "
-                             "- missing key 'project' "));
-  }
-
-  int cpp_version;
-  if (j.contains("C++")) {
-    // there is an entry with key "C++"
-    cpp_version = j["C++"];
-  } else {
-    IC_API::trap(std::string("\n\tapi_jsontext_to_jsontext: ERROR in JSON:\n\t "
-                             "- missing key 'C++' "));
-  }
-
-  // Modify the JSON:
-  j["C++"] = 20;
-  j["project"] = "icpp";
-
-  std::string s = j.dump();
-  IC_API::debug_print("roundtrip_text_to_json_to_text: replying with text:");
-  IC_API::debug_print(s);
-
-  ic_api.to_wire(CandidTypeText(s));
-}
-
-void roundtrip_text_to_json_to_text_long_message() {
-  IC_API ic_api(false);
-
-  // Get the Candid Text from the wire
-  std::string in{""};
-  ic_api.from_wire(CandidTypeText(&in));
-
-  // Convert it into a nlohmann/json object
-  // See: https://json.nlohmann.me/api/basic_json/parse/
-  nlohmann::json j = nlohmann::json::parse(in);
-
-  // just return the same thing, as a string
-  std::string s = j.dump();
-
-  IC_API::debug_print(
-      "roundtrip_text_to_json_to_text_long_message: replying with text:");
   IC_API::debug_print(s);
 
   ic_api.to_wire(CandidTypeText(s));

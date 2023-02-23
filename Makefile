@@ -44,8 +44,11 @@ CLANG_TIDY = $(ICPP_COMPILER_ROOT)/bin/clang-tidy
 # CI/CD - Phony Makefile targets
 #
 .PHONY: all-tests
-all-tests: all-static-check all-canister-native all-canister-deploy-local-pytest 
+all-tests: dfx-identity-default all-static all-canister-native all-canister-deploy-local-pytest 
 
+.PHONY: dfx-identity-default
+	dfx identity use default
+	
 .PHONY: all-canister-deploy-local-pytest
 all-canister-deploy-local-pytest:
 	@python -m scripts.all_canister_deploy_local_pytest
@@ -57,18 +60,12 @@ all-canister-native:
 .PHONY: all-static
 all-static: \
 	cpp-format cpp-lint \
-	python-format python-lint
-
-.PHONY: all-static-check
-all-static-check: \
-	cpp-format-check cpp-lint-check \
-	python-format-check python-lint-check python-type-check
+	python-format python-lint python-type
 	
 CPP_AND_H_FILES = $(shell ls \
 src/icpp/ic/*/*.cpp src/icpp/ic/*/*.h \
 src/icpp/canisters/*/src/*.cpp src/icpp/canisters/*/src/*.h \
 src/icpp/canisters/*/native/*.cpp src/icpp/canisters/*/native/*.h \
-test/ic/*/*.cpp test/ic/*/*.h \
 test/canisters/*/src/*.cpp test/canisters/*/src/*.h \
 test/canisters/*/native/*.cpp test/canisters/*/native/*.h)
 
@@ -78,22 +75,10 @@ cpp-format:
 	@echo "cpp-format"
 	$(CLANG_FORMAT) --style=file --verbose -i $(CPP_AND_H_FILES)
 
-.PHONY: cpp-format-check
-cpp-format-check:
-	@echo "---"
-	@echo "cpp-format-check"
-	$(CLANG_FORMAT) --style=file --verbose -i --dry-run $(CPP_AND_H_FILES)
-
 .PHONY: cpp-lint
 cpp-lint:
 	@echo "---"
 	@echo "cpp-lint"
-	@echo "TO IMPLEMENT with clang-tidy"
-
-.PHONY: cpp-lint-check
-cpp-lint-check:
-	@echo "---"
-	@echo "cpp-lint-check"
 	@echo "TO IMPLEMENT with clang-tidy"
 
 .PHONY: dfx-canisters-of-project-local
@@ -148,28 +133,16 @@ python-format:
 	@echo "python-format"
 	python -m black $(PYTHON_DIRS)
 
-.PHONY: python-format-check
-python-format-check:
-	@echo "---"
-	@echo "python-format-check"
-	python -m black --check $(PYTHON_DIRS)
-
 .PHONY: python-lint
 python-lint:
 	@echo "---"
 	@echo "python-lint"
 	python -m pylint --jobs=0 --rcfile=.pylintrc $(PYTHON_DIRS)
 
-.PHONY: python-lint-check
-python-lint-check:
+.PHONY: python-type
+python-type:
 	@echo "---"
-	@echo "python-lint-check"
-	python -m pylint --jobs=0 --rcfile=.pylintrc $(PYTHON_DIRS)
-
-.PHONY: python-type-check
-python-type-check:
-	@echo "---"
-	@echo "python-type-check"
+	@echo "python-type"
 	python -m mypy --config-file .mypy.ini --show-column-numbers --strict $(PYTHON_DIRS)
 
 

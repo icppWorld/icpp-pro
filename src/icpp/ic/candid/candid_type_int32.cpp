@@ -47,7 +47,7 @@ void CandidTypeInt32::encode_I() {
 void CandidTypeInt32::encode_M(const int32_t &v) {
   // https://github.com/dfinity/candid/blob/master/spec/Candid.md#memory
   // M(n : int<N>)   = i<N>(signed_N^-1(i))    (Litte Endian)
-  m_M.append_fixed_width(v);
+  m_M.append_int_fixed_width(v);
 }
 
 // Decode the values, starting at & updating offset
@@ -56,9 +56,8 @@ bool CandidTypeInt32::decode_M(VecBytes B, __uint128_t &offset,
                                CandidTypeBase *p_expected) {
 
   __uint128_t offset_start = offset;
-  __uint128_t numbytes;
   parse_error = "";
-  if (B.parse_fixed_width(offset, m_v, numbytes, parse_error)) {
+  if (B.parse_int_fixed_width(offset, m_v, parse_error)) {
     std::string to_be_parsed = "Value for CandidTypeInt32";
     CandidDeserialize::trap_with_parse_error(offset_start, offset, to_be_parsed,
                                              parse_error);

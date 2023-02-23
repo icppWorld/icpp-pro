@@ -31,6 +31,14 @@ service: {
     "roundtrip_int64_1_000_000_000_000_000_001" : (int64) -> (int64) query;
     "roundtrip_int64_101_neg" : (int64) -> (int64) query;
     "roundtrip_int64_1_000_000_000_000_000_001_neg" : (int64) -> (int64) query;
+    "roundtrip_text" : (text) -> (text) query;
+    "roundtrip_text_to_json_to_text" : (text) -> (text) query;
+    "roundtrip_text_to_json_to_text_long_message" : (text) -> (text) query;
+    "roundtrip_reserved" : (reserved) -> (reserved) query;
+    "roundtrip_float32" : (float32) -> (float32) query;
+    "roundtrip_float32_neg" : (float32) -> (float32) query;
+    "roundtrip_float64" : (float64) -> (float64) query;
+    "roundtrip_float64_neg" : (float64) -> (float64) query;
     "roundtrip_record" : (record { name: text; "secret float64": float64; "secret int": int })  -> 
                          (record { greeting: text; message: text; "secret float64": float64; "secret int": int }) 
                          query;
@@ -38,10 +46,6 @@ service: {
                               (record { greeting: text; message: text; month: text; year: int }) 
                               query;
     "canister_sends_int_as_int" : () -> (int) query;
-    "canister_sends_double_as_float64" : () -> (float64) query;
     "canister_sends_char_as_text" : () -> (text) query;
-    "canister_sends_string_as_text" : () -> (text) query;
     "canister_sends_json_as_text" : () -> (text) query;
-    "roundtrip_text_to_json_to_text" : (text) -> (text) query;
-    "roundtrip_text_to_json_to_text_long_message" : (text) -> (text) query;
 }

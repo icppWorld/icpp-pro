@@ -1,5 +1,8 @@
 #pragma once
 
+#include <limits>
+#include <math.h>
+
 #include "wasm_symbol.h"
 
 void test_ic_api() WASM_SYMBOL_EXPORTED("canister_query test_ic_api");
@@ -64,23 +67,44 @@ void roundtrip_int64_101_neg()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_int64_101_neg");
 void roundtrip_int64_1_000_000_000_000_000_001_neg() WASM_SYMBOL_EXPORTED(
     "canister_query roundtrip_int64_1_000_000_000_000_000_001_neg");
-void roundtrip_record() WASM_SYMBOL_EXPORTED("canister_query canister_record");
+void roundtrip_text() WASM_SYMBOL_EXPORTED("canister_query roundtrip_text");
+void roundtrip_text_to_json_to_text()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_text_to_json_to_text");
+void roundtrip_text_to_json_to_text_long_message() WASM_SYMBOL_EXPORTED(
+    "canister_query roundtrip_text_to_json_to_text_long_message");
+void roundtrip_reserved()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_reserved");
+void roundtrip_float32()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_float32");
+void roundtrip_float32_neg()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_float32_neg");
+void roundtrip_float64()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_float64");
+void roundtrip_float64_neg()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_float64_neg");
+void roundtrip_record() WASM_SYMBOL_EXPORTED("canister_query roundtrip_record");
 
 void canister_sends_record()
     WASM_SYMBOL_EXPORTED("canister_query canister_sends_record");
 
 void canister_sends_int_as_int()
     WASM_SYMBOL_EXPORTED("canister_query canister_sends_int_as_int");
-void canister_sends_double_as_float64()
-    WASM_SYMBOL_EXPORTED("canister_query canister_sends_double_as_float64");
 void canister_sends_char_as_text()
     WASM_SYMBOL_EXPORTED("canister_query canister_sends_char_as_text");
-void canister_sends_string_as_text()
-    WASM_SYMBOL_EXPORTED("canister_query canister_sends_string_as_text");
+
 void canister_sends_json_as_text()
     WASM_SYMBOL_EXPORTED("canister_query canister_sends_json_as_text");
 
-void roundtrip_text_to_json_to_text()
-    WASM_SYMBOL_EXPORTED("canister_query roundtrip_text_to_json_to_text");
-void roundtrip_text_to_json_to_text_long_message() WASM_SYMBOL_EXPORTED(
-    "canister_query roundtrip_text_to_json_to_text_long_message");
+// from:https://stackoverflow.com/a/41405501/5480536
+//implements relative method - do not use for comparing with zero
+//use this most of the time, tolerance needs to be meaningful in your context
+template <typename TReal>
+static bool is_approximately_equal(
+    TReal a, TReal b, TReal tolerance = std::numeric_limits<TReal>::epsilon()) {
+  TReal diff = fabs(a - b);
+  if (diff <= tolerance) return true;
+
+  if (diff < fmax(fabs(a), fabs(b)) * tolerance) return true;
+
+  return false;
+}

@@ -409,59 +409,15 @@ def test__roundtrip_int64_1_000_000_000_000_000_001_neg(network: str) -> None:
     assert response == expected_response
 
 
-# Older tests for sending only
-def test__canister_sends_int_as_int(network: str) -> None:
+def test__canister_roundtrip_text(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
-        canister_method="canister_sends_int_as_int",
+        canister_method="roundtrip_text",
+        canister_argument='("Hello C++ Canister")',
         network=network,
     )
-    expected_response = "(101 : int)"
-    assert response == expected_response
-
-
-def test__canister_sends_double_as_float64(network: str) -> None:
-    response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
-        canister_name=CANISTER_NAME,
-        canister_method="canister_sends_double_as_float64",
-        network=network,
-    )
-    expected_response = "(1001.1001 : float64)"
-    assert response == expected_response
-
-
-def test__canister_sends_char_as_text(network: str) -> None:
-    response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
-        canister_name=CANISTER_NAME,
-        canister_method="canister_sends_char_as_text",
-        network=network,
-    )
-    expected_response = '("Hello!!!")'
-    assert response == expected_response
-
-
-def test__canister_sends_string_as_text(network: str) -> None:
-    response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
-        canister_name=CANISTER_NAME,
-        canister_method="canister_sends_string_as_text",
-        network=network,
-    )
-    expected_response = '("Hello!!!")'
-    assert response == expected_response
-
-
-def test__canister_sends_json_as_text(network: str) -> None:
-    response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
-        canister_name=CANISTER_NAME,
-        canister_method="canister_sends_json_as_text",
-        network=network,
-    )
-    expected_response = '("{\\"happy\\":true,\\"pi\\":3.141}")'
+    expected_response = '("Hello C++ Canister")'
     assert response == expected_response
 
 
@@ -522,3 +478,109 @@ def test__roundtrip_text_to_json_to_text__negative_2(network: str) -> None:
         network=network,
     )
     assert "trapped explicitly" in response
+
+
+def test__roundtrip_reserved(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_reserved",
+        canister_argument="(null : reserved)",
+        network=network,
+    )
+    expected_response = "(null : reserved)"
+    assert response == expected_response
+
+
+def test__roundtrip_float32(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_float32",
+        canister_argument="(1001.1001 : float32)",
+        network=network,
+    )
+    expected_response = "(1001.1001 : float32)"
+    assert response == expected_response
+
+
+def test__roundtrip_float32_neg(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_float32_neg",
+        canister_argument="(-1001.1001 : float32)",
+        network=network,
+    )
+    expected_response = "(-1001.1001 : float32)"
+    assert response == expected_response
+
+
+def test__roundtrip_float64(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_float64",
+        canister_argument="(1001.1001 : float64)",
+        network=network,
+    )
+    expected_response = "(1001.1001 : float64)"
+    assert response == expected_response
+
+
+def test__roundtrip_float64_neg(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_float64_neg",
+        canister_argument="(-1001.1001 : float64)",
+        network=network,
+    )
+    expected_response = "(-1001.1001 : float64)"
+    assert response == expected_response
+
+
+def test__roundtrip_record(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record",
+        canister_argument='(record {"name" = "C++ Developer"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})',
+        network=network,
+    )
+    expected_response = '(record { secret float64 = 0.01 : float64; greeting = "Hello C++ Developer!"; secret int = 11 : int; message = "Your secret numbers are:";})'
+    assert response == expected_response
+
+
+# Older tests for sending only
+def test__canister_sends_int_as_int(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="canister_sends_int_as_int",
+        network=network,
+    )
+    expected_response = "(101 : int)"
+    assert response == expected_response
+
+
+def test__canister_sends_char_as_text(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="canister_sends_char_as_text",
+        network=network,
+    )
+    expected_response = '("Hello!!!")'
+    assert response == expected_response
+
+
+def test__canister_sends_json_as_text(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="canister_sends_json_as_text",
+        network=network,
+    )
+    expected_response = '("{\\"happy\\":true,\\"pi\\":3.141}")'
+    assert response == expected_response

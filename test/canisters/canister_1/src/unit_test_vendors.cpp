@@ -2,6 +2,7 @@
 
 #include "unit_test_vendors.h"
 
+#include <algorithm>
 #include <string>
 
 #include "ZipIterator.hpp"

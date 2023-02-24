@@ -2,6 +2,7 @@
 
 #include "unit_test_candid.h"
 
+#include <algorithm>
 #include <string>
 
 #include "ic_api.h"

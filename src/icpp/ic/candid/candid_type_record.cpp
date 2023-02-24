@@ -4,6 +4,7 @@
 #include "candid_opcode.h"
 #include "ic_api.h"
 
+#include <algorithm>
 #include <cassert>
 #include <utility>
 

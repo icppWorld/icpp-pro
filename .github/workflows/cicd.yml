@@ -1,0 +1,69 @@
+name: cicd
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/**"
+      - "test/**"
+      - "Makefile"
+      - ".github/trigger.txt"
+      - ".github/workflows/cicd.yml"
+
+env:
+  PYTHON_VERSION: 3.9
+
+jobs:
+  all:
+    name: all
+    runs-on: ubuntu-latest
+    steps:
+      # https://github.com/marketplace/actions/setup-miniconda
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: install
+        shell: bash -l {0} # activates the default conda environment ('test')
+        run: |
+          echo "Installing tool chains & dependencies"
+          sudo apt update
+          sudo apt install build-essential
+          make install-dfx
+          make install-python
+          make install-clang-ubuntu
+          make install-jp
+
+      - name: versions
+        shell: bash -l {0}
+        run: |
+          echo "icpp --version: $(icpp --version)"
+          echo "clang++ --version: $(clang++ --version)"
+          echo "g++ --version: $(g++ --version)"
+          #echo "wasm2wat version: $(wasm2wat --version)"
+          echo "pip version     : $(pip --version)"
+          echo "python version  : $(python --version)"
+          echo "jp version      : $(jp --version)"
+          #echo "rustc version   : $(rustc --version)"
+          echo "dfx version    : $(dfx --version)"
+          echo "Ensure conda works properly"
+          conda info
+          which pip
+          which python
+          which icpp
+
+      - name: install-wasi-sdk
+        shell: bash -l {0}
+        run: |
+          echo "Installing wasi-sdk"
+          icpp install-wasi-sdk
+
+      - name: all-tests
+        shell: bash -l {0}
+        run: |
+          make all-tests

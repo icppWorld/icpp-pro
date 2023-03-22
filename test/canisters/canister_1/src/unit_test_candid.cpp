@@ -81,63 +81,133 @@ int unit_test_candid() {
         IC_API::trap(std::string(__func__) + ": 3g");
     }
   }
-  { // Verify serialization & deserializtion of 2 records
-    // didc encode '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })'
+  {// Verify serialization & deserializtion of 2 records
+   // didc encode '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })'
 
-    { // serialize
-      CandidTypeRecord r1;
-      r1.append(6, CandidTypeInt(42));
-      r1.append(9, CandidTypeInt(43));
-      //
-      CandidTypeRecord r2;
-      r2.append(7, CandidTypeInt(44));
-      r2.append(10, CandidTypeInt(45));
-      //
-      std::vector<CandidType> A;
-      A.push_back(r1);
-      A.push_back(r2);
-      //
-      if (CandidSerialize(A).assert_candid(
-              "4449444c026c02067c097c6c02077c0a7c0200012a2b2c2d", true))
-        IC_API::trap(std::string(__func__) + ": 4a");
-    }
+   {// serialize
+    CandidTypeRecord r1;
+  r1.append(6, CandidTypeInt(42));
+  r1.append(9, CandidTypeInt(43));
+  //
+  CandidTypeRecord r2;
+  r2.append(7, CandidTypeInt(44));
+  r2.append(10, CandidTypeInt(45));
+  //
+  std::vector<CandidType> A;
+  A.push_back(r1);
+  A.push_back(r2);
+  //
+  if (CandidSerialize(A).assert_candid(
+          "4449444c026c02067c097c6c02077c0a7c0200012a2b2c2d", true))
+    IC_API::trap(std::string(__func__) + ": 4a");
+}
 
-    { // deserialize
-      __int128_t r1_i1;
-      __int128_t r1_i2;
-      CandidTypeRecord r1;
-      r1.append(6, CandidTypeInt(&r1_i1));
-      r1.append(9, CandidTypeInt(&r1_i2));
-      //
-      __int128_t r2_i1;
-      __int128_t r2_i2;
-      CandidTypeRecord r2;
-      r2.append(7, CandidTypeInt(&r2_i1));
-      r2.append(10, CandidTypeInt(&r2_i2));
-      //
-      std::vector<CandidType> A;
-      A.push_back(r1);
-      A.push_back(r2);
-      //
-      CandidDeserialize("4449444c026c02067c097c6c02077c0a7c0200012a2b2c2d", A);
-      if (r1_i1 != 42 || r1_i2 != 43 || r2_i1 != 44 || r2_i2 != 45)
-        IC_API::trap(std::string(__func__) + ": 4b");
-      // std::string name = record_in["name"];
-      // double secret_x = record_in["secret float64"];
-      // int secret_i = record_in["secret int"];}
-    }
-  }
+{ // deserialize
+  __int128_t r1_i1;
+  __int128_t r1_i2;
+  CandidTypeRecord r1;
+  r1.append(6, CandidTypeInt(&r1_i1));
+  r1.append(9, CandidTypeInt(&r1_i2));
+  //
+  __int128_t r2_i1;
+  __int128_t r2_i2;
+  CandidTypeRecord r2;
+  r2.append(7, CandidTypeInt(&r2_i1));
+  r2.append(10, CandidTypeInt(&r2_i2));
+  //
+  std::vector<CandidType> A;
+  A.push_back(r1);
+  A.push_back(r2);
+  //
+  CandidDeserialize("4449444c026c02067c097c6c02077c0a7c0200012a2b2c2d", A);
+  if (r1_i1 != 42 || r1_i2 != 43 || r2_i1 != 44 || r2_i2 != 45)
+    IC_API::trap(std::string(__func__) + ": 4b");
+  // std::string name = record_in["name"];
+  // double secret_x = record_in["secret float64"];
+  // int secret_i = record_in["secret int"];}
+}
+}
 
-  // TODO: cannot do this on the IC, because exceptions are not allowed
-  //       Move this into a dedicated interface that verifies this traps
-  // Verify that a Record traps on hash collission
-  // try {
-  //   CandidTypeRecord r;
-  //   r.append("syndactyle", CandidTypeText("some text"));
-  //   r.append("rectum", CandidTypeText("another text"));
-  //   IC_API::trap(std::string(__func__) + ": 5");
-  // } catch (const std::exception &e) {
-  // }
+// Verify CandidTypePrincipal (https://internetcomputer.org/docs/current/references/id-encoding-spec#decode)
+{
+  std::string s = "2ibo7-dia";
+  CandidTypePrincipal p = CandidTypePrincipal(s);
+  std::vector<std::byte> v = p.get_M().vec();
+  std::vector<std::byte> v_expected{std::byte('\x01'), std::byte('\x01'),
+                                    std::byte('\x00')};
+  if (v != v_expected) IC_API::trap(std::string(__func__) + ": 5a");
+}
+{
+  std::string s = "w3gef-eqbai";
+  CandidTypePrincipal p = CandidTypePrincipal(s);
+  std::vector<std::byte> v = p.get_M().vec();
+  std::vector<std::byte> v_expected{std::byte('\x01'), std::byte('\x02'),
+                                    std::byte('\x01'), std::byte('\x02')};
+  if (v != v_expected) IC_API::trap(std::string(__func__) + ": 5b");
+}
 
-  return 0;
+// // TODO: cannot do this on the IC, because exceptions are not allowed
+// //       For now, when testing locally, you can uncomment this and tests will work
+
+// // Verify that a Record traps on hash collission
+// try {
+//   CandidTypeRecord r;
+//   r.append("syndactyle", CandidTypeText("some text"));
+//   r.append("rectum", CandidTypeText("another text"));
+//   IC_API::trap(std::string(__func__) + ": did not trap 1a");
+// } catch (const std::exception &e) {
+// }
+// //
+// // Verify wrong text representations of of Principal
+// // https://internetcomputer.org/docs/current/references/id-encoding-spec#decode
+// // {
+// //   std::string s = "w3gef-eqbaj";
+// //   CandidTypePrincipal p = CandidTypePrincipal(s);
+// // }
+// try {
+//   std::string s =
+//       "aaaaa-aaaaa-bbbbb-bbbbb-22222-22222-33333-33333-44444-44444-5555";
+//   CandidTypePrincipal p = CandidTypePrincipal(s);
+//   IC_API::trap(std::string(__func__) + ": did not trap 2a");
+// } catch (const std::exception &e) {
+// }
+// try {
+//   std::string s =
+//       "aaaaa-aaaaa-bbbbb-bbbbb-22222-22222-33333-33333-44444-44444-555";
+//   CandidTypePrincipal p = CandidTypePrincipal(s);
+//   IC_API::trap(std::string(__func__) + ": did not trap 2b");
+// } catch (const std::exception &e) {
+// }
+// try {
+//   std::string s = "a2345-678";
+//   CandidTypePrincipal p = CandidTypePrincipal(s);
+//   IC_API::trap(std::string(__func__) + ": did not trap 2c");
+// } catch (const std::exception &e) {
+// }
+// try {
+//   std::string s = "2ibo7-dib";
+//   CandidTypePrincipal p = CandidTypePrincipal(s);
+//   IC_API::trap(std::string(__func__) + ": did not trap 2d");
+// } catch (const std::exception &e) {
+// }
+// try {
+//   std::string s = "2ibo7dia";
+//   CandidTypePrincipal p = CandidTypePrincipal(s);
+//   IC_API::trap(std::string(__func__) + ": did not trap 2e");
+// } catch (const std::exception &e) {
+// }
+// try {
+//   std::string s = "2ibo-7dia";
+//   CandidTypePrincipal p = CandidTypePrincipal(s);
+//   IC_API::trap(std::string(__func__) + ": did not trap 2f");
+// } catch (const std::exception &e) {
+// }
+// try {
+//   std::string s = "2ibo7--dia";
+//   CandidTypePrincipal p = CandidTypePrincipal(s);
+//   IC_API::trap(std::string(__func__) + ": did not trap 2g");
+// } catch (const std::exception &e) {
+// }
+
+return 0;
 }

@@ -27,7 +27,7 @@ protected:
   void initialize(const uint16_t &v);
   void set_datatype();
   void encode_I();
-  void encode_M(const uint16_t &v);
+  void encode_M();
 
   uint16_t m_v;
   uint16_t *m_pv{nullptr};

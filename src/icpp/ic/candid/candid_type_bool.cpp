@@ -26,7 +26,7 @@ void CandidTypeBool::initialize(const bool &v) {
   m_v = v;
   set_datatype();
   encode_I();
-  encode_M(v);
+  encode_M();
 }
 
 // pointer to data in caller, for storing decoded value
@@ -44,10 +44,10 @@ void CandidTypeBool::encode_I() {
   m_I.append_byte((std::byte)m_datatype_hex);
 }
 
-void CandidTypeBool::encode_M(const bool &v) {
+void CandidTypeBool::encode_M() {
   // https://github.com/dfinity/candid/blob/master/spec/Candid.md#memory
   // M(b : bool)     = i8(if b then 1 else 0)
-  m_M.append_uleb128(v);
+  m_M.append_uleb128(m_v);
 }
 
 // Decode the values, starting at & updating offset

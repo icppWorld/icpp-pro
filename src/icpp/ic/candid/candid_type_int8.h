@@ -27,7 +27,7 @@ protected:
   void initialize(const int8_t &v);
   void set_datatype();
   void encode_I();
-  void encode_M(const int8_t &v);
+  void encode_M();
 
   int8_t m_v;
   int8_t *m_pv{nullptr};

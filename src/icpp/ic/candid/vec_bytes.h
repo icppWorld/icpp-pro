@@ -69,8 +69,8 @@ public:
   // append methods
   void append_didl();
 
-  void append_byte(std::byte b);
-  void append_bytes(uint8_t *bytes, unsigned long num_bytes);
+  void append_byte(const std::byte b);
+  void append_bytes(const uint8_t *bytes, const uint32_t num_bytes);
 
   void append_sleb128(const __int128_t &v);
   template <class T> void append_sleb128(T) = delete;
@@ -110,6 +110,12 @@ public:
   template <typename T>
   requires MyFloats<T>
   bool parse_float_ieee754(__uint128_t &offset, T &v, std::string &parse_error);
+
+  bool parse_bytes(__uint128_t &offset, std::vector<std::byte> &v,
+                   __uint128_t &n, __uint128_t &numbytes,
+                   std::string &parse_error);
+  bool parse_bytes(__uint128_t &offset, std::vector<uint8_t> &v, __uint128_t &n,
+                   __uint128_t &numbytes, std::string &parse_error);
 
   // store methods
   void store(const uint8_t *bytes, const uint32_t num_bytes);

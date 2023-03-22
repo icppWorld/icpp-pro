@@ -36,7 +36,7 @@ class CandidTypeInt16;
 class CandidTypeInt32;
 class CandidTypeInt64;
 class CandidTypeText;
-// class CandidTypePrincipal;
+class CandidTypePrincipal;
 
 // <constype>
 // class CandidTypeOpt;
@@ -58,7 +58,7 @@ using CandidType =
                  CandidTypeInt, CandidTypeNat, CandidTypeNat8, CandidTypeNat16,
                  CandidTypeNat32, CandidTypeNat64, CandidTypeInt8,
                  CandidTypeInt16, CandidTypeInt32, CandidTypeInt64,
-                 CandidTypeText, CandidTypeRecord>;
+                 CandidTypeText, CandidTypePrincipal, CandidTypeRecord>;
 
 // https://subscription.packtpub.com/book/programming/9781787120495/8/ch08lvl1sec91/storing-different-types-with-stdvariant
 template <typename T> bool is_CandidType(const CandidType &c) {
@@ -94,8 +94,10 @@ template <typename T> bool is_CandidType(const CandidType &c) {
 #include "candid_type_nat64.h"
 #include "candid_type_nat8.h"
 #include "candid_type_null.h"
+#include "candid_type_principal.h"
 #include "candid_type_reserved.h"
 #include "candid_type_text.h"
+
 // <constype>
 #include "candid_type_record.h"
 

@@ -26,7 +26,7 @@ void CandidTypeNat8::initialize(const uint8_t &v) {
   m_v = v;
   set_datatype();
   encode_I();
-  encode_M(v);
+  encode_M();
 }
 
 // pointer to data in caller, for storing decoded value
@@ -44,10 +44,10 @@ void CandidTypeNat8::encode_I() {
   m_I.append_byte((std::byte)m_datatype_hex);
 }
 
-void CandidTypeNat8::encode_M(const uint8_t &v) {
+void CandidTypeNat8::encode_M() {
   // https://github.com/dfinity/candid/blob/master/spec/Candid.md#memory
   // M(n : nat<N>)   = i<N>(n)    (Litte Endian)
-  m_M.append_int_fixed_width(v);
+  m_M.append_int_fixed_width(m_v);
 }
 
 // Decode the values, starting at & updating offset

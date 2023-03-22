@@ -27,7 +27,7 @@ protected:
   void initialize(const double &v);
   void set_datatype();
   void encode_I();
-  void encode_M(const double &v);
+  void encode_M();
 
   double m_v;
   double *m_pv{nullptr};

@@ -26,7 +26,7 @@ void CandidTypeInt::initialize(const __int128_t &v) {
   m_v = v;
   set_datatype();
   encode_I();
-  encode_M(v);
+  encode_M();
 }
 
 // pointer to data in caller, for storing decoded value
@@ -44,10 +44,10 @@ void CandidTypeInt::encode_I() {
   m_I.append_byte((std::byte)m_datatype_hex);
 }
 
-void CandidTypeInt::encode_M(const __int128_t &v) {
+void CandidTypeInt::encode_M() {
   // https://github.com/dfinity/candid/blob/master/spec/Candid.md#memory
   // M(i : int)      = sleb128(i)
-  m_M.append_sleb128(v);
+  m_M.append_sleb128(m_v);
 }
 
 // Decode the values, starting at & updating offset

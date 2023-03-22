@@ -88,16 +88,8 @@ int MockIC::test_summary() {
 }
 
 void MockIC::msg_reply_data_append(uintptr_t src, uint32_t size) {
-  uint32_t off_now = 0;
   uint8_t *bytes = (uint8_t *)(void *)src;
-  for (size_t i = 0; i < size; ++i) {
-    // The IC works with a byte stored as (uint8_t). Cast it from that.
-    int n = (int)*(bytes + off_now);
-
-    m_B_out.append_byte((std::byte)n);
-
-    off_now += 1;
-  }
+  m_B_out.append_bytes(bytes, size);
 }
 
 // Assert the serialized candid VecBytes against a string in "hex" format (didc encode)

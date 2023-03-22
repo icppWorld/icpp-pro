@@ -60,7 +60,7 @@ IC_C_FILES = (
             + list(ICPP_PATH.glob("ic/wasi_sdk_traps/*.c"))
             + list(ICPP_PATH.glob("ic/candid/*.c"))
             + list(ICPP_PATH.glob("ic/icapi/*.c"))
-            + list(ICPP_PATH.glob("ic/vendors/*.c"))
+            # + list(ICPP_PATH.glob("ic/vendors/*.c"))
         ]
     )
     + " "
@@ -72,7 +72,10 @@ IC_CPP_FILES = (
             for x in list(ICPP_PATH.glob("ic/ic0/*.cpp"))
             + list(ICPP_PATH.glob("ic/candid/*.cpp"))
             + list(ICPP_PATH.glob("ic/icapi/*.cpp"))
-            + list(ICPP_PATH.glob("ic/vendors/*.cpp"))
+            + list(
+                ICPP_PATH.glob("ic/vendors/hash-library/crc32.cpp")
+            )  # TODO: Amalgate into .hpp
+            # + list(ICPP_PATH.glob("ic/vendors/*.cpp"))
         ]
     )
     + " "
@@ -85,8 +88,8 @@ IC_HEADER_FILES = (
             + list(ICPP_PATH.glob("ic/wasi_sdk_traps/*.h"))
             + list(ICPP_PATH.glob("ic/candid/*.h"))
             + list(ICPP_PATH.glob("ic/icapi/*.h"))
-            + list(ICPP_PATH.glob("ic/vendors/*.h"))
-            + list(ICPP_PATH.glob("ic/vendors/*.hpp"))
+            # + list(ICPP_PATH.glob("ic/vendors/*.h"))
+            # + list(ICPP_PATH.glob("ic/vendors/*.hpp"))
         ]
     )
     + " "
@@ -123,7 +126,7 @@ MOCKIC_C_FILES = (
             for x in list(ICPP_PATH.glob("ic/ic0mock/*.c"))
             + list(ICPP_PATH.glob("ic/candid/*.c"))
             + list(ICPP_PATH.glob("ic/icapi/*.c"))
-            + list(ICPP_PATH.glob("ic/vendors/*.c"))
+            # + list(ICPP_PATH.glob("ic/vendors/*.c"))
         ]
     )
     + " "
@@ -135,7 +138,10 @@ MOCKIC_CPP_FILES = (
             for x in list(ICPP_PATH.glob("ic/ic0mock/*.cpp"))
             + list(ICPP_PATH.glob("ic/candid/*.cpp"))
             + list(ICPP_PATH.glob("ic/icapi/*.cpp"))
-            + list(ICPP_PATH.glob("ic/vendors/*.cpp"))
+            + list(
+                ICPP_PATH.glob("ic/vendors/hash-library/crc32.cpp")
+            )  # TODO: Amalgate into .hpp
+            # + list(ICPP_PATH.glob("ic/vendors/*.cpp"))
         ]
     )
     + " "
@@ -147,8 +153,8 @@ MOCKIC_HEADER_FILES = (
             for x in list(ICPP_PATH.glob("ic/ic0mock/*.h"))
             + list(ICPP_PATH.glob("ic/candid/*.h"))
             + list(ICPP_PATH.glob("ic/icapi/*.h"))
-            + list(ICPP_PATH.glob("ic/vendors/*.h"))
-            + list(ICPP_PATH.glob("ic/vendors/*.hpp"))
+            # + list(ICPP_PATH.glob("ic/vendors/*.h"))
+            # + list(ICPP_PATH.glob("ic/vendors/*.hpp"))
         ]
     )
     + " "

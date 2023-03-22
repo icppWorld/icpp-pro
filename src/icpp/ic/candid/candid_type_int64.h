@@ -27,7 +27,7 @@ protected:
   void initialize(const int64_t &v);
   void set_datatype();
   void encode_I();
-  void encode_M(const int64_t &v);
+  void encode_M();
 
   int64_t m_v;
   int64_t *m_pv{nullptr};

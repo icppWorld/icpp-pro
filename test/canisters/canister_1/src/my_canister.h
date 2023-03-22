@@ -83,6 +83,8 @@ void roundtrip_float64()
 void roundtrip_float64_neg()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_float64_neg");
 void roundtrip_record() WASM_SYMBOL_EXPORTED("canister_query roundtrip_record");
+void roundtrip_principal()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_principal");
 
 void canister_sends_record()
     WASM_SYMBOL_EXPORTED("canister_query canister_sends_record");

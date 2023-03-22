@@ -33,7 +33,7 @@ void CandidTypeText::initialize(const std::string &v) {
   m_v = v;
   set_datatype();
   encode_I();
-  encode_M(v);
+  encode_M();
 }
 
 // pointer to data in caller, for storing decoded value
@@ -51,15 +51,15 @@ void CandidTypeText::encode_I() {
   m_I.append_byte((std::byte)m_datatype_hex);
 }
 
-void CandidTypeText::encode_M(const std::string &v) {
+void CandidTypeText::encode_M() {
   // https://github.com/dfinity/candid/blob/master/spec/Candid.md#memory
   // M(t : text)     = leb128(|utf8(t)|) i8*(utf8(t))
 
   // encoded size of string - leb128(|utf8(t)|)
-  m_M.append_uleb128(__uint128_t(v.size()));
+  m_M.append_uleb128(__uint128_t(m_v.size()));
 
   // encoded string - i8*(utf8(t))
-  for (char const &c : v) {
+  for (char const &c : m_v) {
     m_M.append_byte((std::byte)c);
   }
 }
@@ -80,27 +80,16 @@ bool CandidTypeText::decode_M(VecBytes B, __uint128_t &offset,
                                              parse_error);
   }
 
-  // Get the text
-  int len = B.size() - offset;
-
-  std::vector<std::byte> vec = B.vec();
-
-  const std::byte *data = vec.data();
-  if (numBytes_text > len) {
-    std::string msg =
-        "ERROR - Size of text is wrong. The remaining bytes in the byte stream on wire is ";
-    msg.append(std::to_string(len));
-    msg.append(", but specified size is ");
-    msg.append(VecBytes::my_uint128_to_string(numBytes_text));
-    IC_API::trap(msg);
+  std::vector<std::byte> data_bytes;
+  if (B.parse_bytes(offset, data_bytes, numBytes_text, numbytes, parse_error)) {
+    std::string to_be_parsed = "Data bytes for Text";
+    CandidDeserialize::trap_with_parse_error(offset_start, offset, to_be_parsed,
+                                             parse_error);
   }
 
   m_v = "";
   for (size_t i = 0; i < numBytes_text; ++i) {
-    m_v.append(VecBytes::byte_to_char(vec[offset]));
-
-    ++offset;
-    --len;
+    m_v.append(VecBytes::byte_to_char(data_bytes[i]));
   }
 
   // Fill the user's data placeholder, if a pointer was provided

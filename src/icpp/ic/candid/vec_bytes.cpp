@@ -197,14 +197,63 @@ bool VecBytes::parse_sleb128(__uint128_t &offset, __int128_t &v,
   return false;
 }
 
-void VecBytes::store(const uint8_t *bytes, const uint32_t num_bytes) {
-  clear();
+// Parse n bytes, starting at & updating offset
+bool VecBytes::parse_bytes(__uint128_t &offset, std::vector<std::byte> &v,
+                           __uint128_t &n, __uint128_t &numbytes,
+                           std::string &parse_error) {
+  parse_error = "";
+  numbytes = 0;
 
-  for (size_t i = 0; i < num_bytes; ++i) {
-    append_byte((const std::byte)bytes[i]);
+  __uint128_t len = m_vec.size() - offset;
+
+  if (n > len) {
+    parse_error =
+        "Not enough bytes left. The remaining bytes in the byte stream on wire is ";
+    parse_error.append(VecBytes::my_uint128_to_string(len));
+    parse_error.append(", but specified number to parse is ");
+    parse_error.append(VecBytes::my_uint128_to_string(n));
+    return true;
   }
 
-  trap_if_vec_does_not_start_with_DIDL();
+  std::copy(m_vec.begin() + offset, m_vec.begin() + offset + n,
+            std::back_inserter(v));
+
+  numbytes = n;
+  offset += numbytes;
+
+  return false;
+}
+
+// Parse n bytes, starting at & updating offset
+bool VecBytes::parse_bytes(__uint128_t &offset, std::vector<uint8_t> &v,
+                           __uint128_t &n, __uint128_t &numbytes,
+                           std::string &parse_error) {
+  parse_error = "";
+  numbytes = 0;
+
+  __uint128_t len = m_vec.size() - offset;
+
+  if (n > len) {
+    parse_error =
+        "Not enough bytes left. The remaining bytes in the byte stream on wire is ";
+    parse_error.append(VecBytes::my_uint128_to_string(len));
+    parse_error.append(", but specified number to parse is ");
+    parse_error.append(VecBytes::my_uint128_to_string(n));
+    return true;
+  }
+
+  std::copy(m_vec_uint8_t.begin() + offset, m_vec_uint8_t.begin() + offset + n,
+            std::back_inserter(v));
+
+  numbytes = n;
+  offset += numbytes;
+
+  return false;
+}
+
+void VecBytes::store(const uint8_t *bytes, const uint32_t num_bytes) {
+  clear();
+  append_bytes(bytes, num_bytes);
 }
 
 // Initializes m_vec from a bytes array string in hex format.
@@ -244,12 +293,9 @@ void VecBytes::append_byte(std::byte b) {
   m_vec_uint8_t.push_back((uint8_t)n);
 }
 
-void VecBytes::append_bytes(uint8_t *bytes, unsigned long num_bytes) {
-  uint32_t off_now = 0;
+void VecBytes::append_bytes(const uint8_t *bytes, const uint32_t num_bytes) {
   for (size_t i = 0; i < num_bytes; ++i) {
-    int n = (int)*(bytes + off_now);
-    append_byte((std::byte)n);
-    off_now += 1;
+    append_byte((const std::byte)bytes[i]);
   }
 }
 

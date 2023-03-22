@@ -34,7 +34,7 @@ void CandidTypeFloat32::initialize(const float &v) {
   m_v = v;
   set_datatype();
   encode_I();
-  encode_M(v);
+  encode_M();
 }
 
 // pointer to data in caller, for storing decoded value
@@ -52,10 +52,10 @@ void CandidTypeFloat32::encode_I() {
   m_I.append_byte((std::byte)m_datatype_hex);
 }
 
-void CandidTypeFloat32::encode_M(const float &v) {
+void CandidTypeFloat32::encode_M() {
   // https://github.com/dfinity/candid/blob/master/spec/Candid.md#memory
   // M(z : float<N>) = f<N>(z)
-  m_M.append_float_ieee754(v);
+  m_M.append_float_ieee754(m_v);
 }
 
 // Decode the values, starting at & updating offset

@@ -42,6 +42,7 @@ service: {
     "roundtrip_record" : (record { name: text; "secret float64": float64; "secret int": int })  -> 
                          (record { greeting: text; message: text; "secret float64": float64; "secret int": int }) 
                          query;
+    "roundtrip_principal" : (principal) -> (principal) query;
     "canister_sends_record" : () -> 
                               (record { greeting: text; message: text; month: text; year: int }) 
                               query;

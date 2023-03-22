@@ -31,7 +31,7 @@ protected:
   void initialize(const std::string &v);
   void set_datatype();
   void encode_I();
-  void encode_M(const std::string &v);
+  void encode_M();
 
   std::string m_v;
   std::string *m_pv{nullptr};

@@ -24,31 +24,8 @@ CANISTER_NAME = "my_canister"
 #
 
 
-# Unit tests for ic_api
-def test__test_ic_api(network: str) -> None:
-    response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
-        canister_name=CANISTER_NAME,
-        canister_method="test_ic_api",
-        network=network,
-    )
-    expected_response = "(0 : int)"
-    assert response == expected_response
-
-
-# Unit & compliance tests for candid
-def test__test_candid(network: str) -> None:
-    response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
-        canister_name=CANISTER_NAME,
-        canister_method="test_candid",
-        network=network,
-    )
-    expected_response = "(0 : int)"
-    assert response == expected_response
-
-
-# Unit tests for 3rd party vendor libraries
+# ----------------------------------------------------------------------------------
+# Run all unit tests for vendor libraries
 def test__test_vendors(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
@@ -60,7 +37,34 @@ def test__test_vendors(network: str) -> None:
     assert response == expected_response
 
 
-# Roundtrip tests
+# ----------------------------------------------------------------------------------
+# Run all unit & compliance tests for candid
+def test__test_candid(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_candid",
+        network=network,
+    )
+    expected_response = "(0 : int)"
+    assert response == expected_response
+
+
+# ----------------------------------------------------------------------------------
+# Run all unit tests for ic_api
+def test__test_ic_api(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_ic_api",
+        network=network,
+    )
+    expected_response = "(0 : int)"
+    assert response == expected_response
+
+
+# ----------------------------------------------------------------------------------
+# Run all roundtrip tests
 def test__roundtrip_bool_true(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
@@ -549,6 +553,20 @@ def test__roundtrip_record(network: str) -> None:
         network=network,
     )
     expected_response = '(record { secret float64 = 0.01 : float64; greeting = "Hello C++ Developer!"; secret int = 11 : int; message = "Your secret numbers are:";})'
+    assert response == expected_response
+
+
+def test__roundtrip_principal(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_principal",
+        canister_argument='(principal "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae")',
+        network=network,
+    )
+    expected_response = (
+        '(principal "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae")'
+    )
     assert response == expected_response
 
 

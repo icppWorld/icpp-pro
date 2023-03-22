@@ -385,10 +385,6 @@ void roundtrip_record() {
   //
   ic_api.from_wire(args_in);
 
-  // std::string name = "C++ Developer";
-  // double secret_x = 0.01;
-  // int secret_i = 11;
-
   if (name != "C++ Developer")
     IC_API::trap("ASSERT ERROR string - " + std::string(__func__));
   if (!is_approximately_equal(secret_x, (double)0.01))
@@ -407,6 +403,15 @@ void roundtrip_record() {
   record_out.append("secret int", CandidTypeInt(secret_i));
 
   ic_api.to_wire(record_out);
+}
+
+void roundtrip_principal() {
+  IC_API ic_api(false);
+  std::string in{""};
+  ic_api.from_wire(CandidTypePrincipal(&in));
+  if (in != "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae")
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypePrincipal(in));
 }
 
 void test_vendors() {

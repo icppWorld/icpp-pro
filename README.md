@@ -1,3 +1,4 @@
+[![icpp](https://github.com/icppWorld/icpp/actions/workflows/cicd.yml/badge.svg)](https://github.com/icppWorld/icpp/actions/workflows/cicd.yml)
 # icpp
 
 Modern C++ for the [Internet Computer](https://internetcomputer.org/).

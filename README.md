@@ -7,4 +7,4 @@ Modern C++ for the [Internet Computer](https://internetcomputer.org/).
 
 icpp is a command-line application for compiling C++20 code to WebAssembly that runs in a canister of the Internet Computer.
 
-For details, [read the docs at icpp.world](https://icpp.world/) !
+For details, see [docs.icpp.world](https://docs.icpp.world/) !

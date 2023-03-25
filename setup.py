@@ -71,7 +71,7 @@ setup(
     #
     # This field corresponds to the "Home-Page" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#home-page-optional
-    url="https://icpp.world/",  # Optional
+    url="https://docs.icpp.world/",  # Optional
     #
     # This should be your name or the name of the organization which owns the project.
     author="icpp team",  # Optional
@@ -189,6 +189,11 @@ setup(
             "ic/*/*.cpp",
             "ic/*/*.h",
             "ic/*/*.hpp",
+            "ic/vendors/cppcodec/*",
+            "ic/vendors/cppcodec/*/data/*",
+            "ic/vendors/cppcodec/*/detail/*",
+            "ic/vendors/hash-library/*",
+            "ic/vendors/hash-library/tests/*",
             "py.typed",
         ],
     },

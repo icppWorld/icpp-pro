@@ -11,7 +11,7 @@ from icpp import config_default
 def init() -> None:
     """Copies the greet project into a new subdirectory.
 
-    See the Getting Started tutorial: https://icpp.world/getting-started.html
+    See the Getting Started tutorial: https://docs.icpp.world/getting-started.html
     """
     icpp_init_path = config_default.ICPP_INIT_PATH
     local_init_path = config_default.LOCAL_INIT_PATH

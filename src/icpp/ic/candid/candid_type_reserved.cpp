@@ -33,8 +33,7 @@ void CandidTypeReserved::encode_M() {
 
 // Decode the values, starting at & updating offset
 bool CandidTypeReserved::decode_M(VecBytes B, __uint128_t &offset,
-                                  std::string &parse_error,
-                                  CandidTypeBase *p_expected) {
+                                  std::string &parse_error) {
   // To be ignored
   return false;
 }

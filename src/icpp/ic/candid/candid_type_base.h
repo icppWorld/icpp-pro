@@ -18,7 +18,10 @@ public:
   virtual void trap_if_wrong_type_on_wire(const std::string &type_on_wire);
   int get_datatype_opcode() { return m_datatype_opcode; }
   uint8_t get_datatype_hex() { return m_datatype_hex; }
-  std::string get_datatype_textual() { return m_datatype_textual; };
+  std::string get_datatype_textual() { return m_datatype_textual; }
+  int get_content_type_opcode() { return m_datatype_opcode; }
+  uint8_t get_content_type_hex() { return m_datatype_hex; }
+  std::string get_content_type_textual() { return m_datatype_textual; }
   VecBytes get_T() { return m_T; }
   VecBytes get_I() { return m_I; }
   VecBytes get_M() { return m_M; }
@@ -30,21 +33,27 @@ public:
     return lhs.m_datatype_opcode < rhs.m_datatype_opcode;
   }
 
-  // Virtual method to be implemented by the <comptype> CandidTypes
+  // Virtual methods to be implemented by the <comptype> CandidTypes
   // Non <comptype> should not call this method.
   virtual bool decode_T(const VecBytes B, __uint128_t &offset,
                         std::string &parse_error);
+  virtual void set_content_type();
 
-  // Virtual method to be implemented by all CandidTypes
+  // Virtual methods to be implemented by all CandidTypes
   virtual bool decode_M(VecBytes B, __uint128_t &offset,
-                        std::string &parse_error,
-                        CandidTypeBase *p_expected = nullptr);
+                        std::string &parse_error);
+  virtual void encode_M();
 
 protected:
   // The datatype
   int m_datatype_opcode{0};
   uint8_t m_datatype_hex{0x00};
   std::string m_datatype_textual{""};
+
+  // The content type (only used by vector & opt)
+  int m_content_type_opcode{0};
+  uint8_t m_content_type_hex{0x00};
+  std::string m_content_type_textual{""};
 
   // The encoded byte vector for the Type Table
   VecBytes m_T;

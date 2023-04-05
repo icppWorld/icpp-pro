@@ -197,12 +197,12 @@ void ic0_debug_print(uintptr_t src, uint32_t size) {
   std::cout << str << std::endl;
 };
 
+// Optionally prints the trap message, and always throws a std::runtime_error(msg)
 void ic0_trap(uintptr_t src, uint32_t size) {
-  // ic0mock IC throws a std::runtime_error(\"trap: msg\")...
   std::string msg = "Mock IC trap: ";
   msg.append((const char *)(void *)src);
 
-  IC_API::debug_print(msg);
+  if (!global_mockIC->get_silent_on_trap()) IC_API::debug_print(msg);
 
   throw std::runtime_error(msg);
 };

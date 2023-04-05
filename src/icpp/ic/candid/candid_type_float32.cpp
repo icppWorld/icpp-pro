@@ -60,8 +60,7 @@ void CandidTypeFloat32::encode_M() {
 
 // Decode the values, starting at & updating offset
 bool CandidTypeFloat32::decode_M(VecBytes B, __uint128_t &offset,
-                                 std::string &parse_error,
-                                 CandidTypeBase *p_expected) {
+                                 std::string &parse_error) {
   __uint128_t offset_start = offset;
   parse_error = "";
   if (B.parse_float_ieee754(offset, m_v, parse_error)) {

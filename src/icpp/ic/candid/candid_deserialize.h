@@ -28,12 +28,6 @@ public:
 
 private:
   void deserialize();
-  bool deserialize_values_comptype(__uint128_t &B_offset, const size_t i,
-                                   __uint128_t &numbytes,
-                                   std::string &parse_error);
-  bool deserialize_values_primtype(__uint128_t &B_offset, const size_t i,
-                                   __uint128_t &numbytes,
-                                   std::string &parse_error);
 
   // The vector with placeholders for the expected arguments of the byte stream coming in
   std::vector<CandidType> m_A;

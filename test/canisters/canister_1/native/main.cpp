@@ -12,7 +12,8 @@
 #include "mock_ic.h"
 
 int main() {
-  MockIC mockIC(true);
+  bool exit_on_fail = true;
+  MockIC mockIC(exit_on_fail);
 
   //----------------------------------------------------------------------------------
   // Run all unit tests for vendor libraries
@@ -189,6 +190,18 @@ int main() {
       "4449444c000168011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d602",
       "4449444c000168011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d602");
 
+  // '(vec { 101 : nat16; 102 : nat16; 103 : nat16 })' -> '(vec { 101 : nat16; 102 : nat16; 103 : nat16 })'
+  mockIC.run_test("roundtrip_vec_nat16", roundtrip_vec_nat16,
+                  "4449444c016d7a010003650066006700",
+                  "4449444c016d7a010003650066006700");
+
+  // '(vec { true : bool; false : bool }, vec { 101 : nat; 102 : nat; 103 : nat }, vec { 101 : nat8; 102 : nat8; 103 : nat8 }, vec { 101 : nat16; 102 : nat16; 103 : nat16 }, vec { 101 : nat32; 102 : nat32; 103 : nat32 }, vec { 101 : nat64; 102 : nat64; 103 : nat64 }, vec { -101 : int; -102 : int; -103 : int }, vec { -101 : int8; -102 : int8; -103 : int8 }, vec { -101 : int16; -102 : int16; -103 : int16 }, vec { -101 : int32; -102 : int32; -103 : int32 }, vec { -101 : int64; -102 : int64; -103 : int64 }, vec { -1.01 : float32; -1.02 : float32; -1.03 : float32 }, vec { -1.01 : float64; -1.02 : float64; -1.03 : float64 }, vec { "Hello 101" : text; "Hello 102" : text; "Hello 103" : text }, vec { principal "2ibo7-dia"; principal "w3gef-eqbai"; principal "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae"})'
+  // -> same
+  mockIC.run_test(
+      "roundtrip_vec_all", roundtrip_vec_all,
+      "4449444c0f6d7e6d7d6d7b6d7a6d796d786d7c6d776d766d756d746d736d726d716d680f000102030405060708090a0b0c0d0e0201000365666703656667036500660067000365000000660000006700000003650000000000000066000000000000006700000000000000039b7f9a7f997f039b9a99039bff9aff99ff039bffffff9affffff99ffffff039bffffffffffffff9affffffffffffff99ffffffffffffff03ae4781bf5c8f82bf0ad783bf03295c8fc2f528f0bf52b81e85eb51f0bf7b14ae47e17af0bf030948656c6c6f203130310948656c6c6f203130320948656c6c6f203130330301010001020102011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d602",
+      "4449444c0f6d7e6d7d6d7b6d7a6d796d786d7c6d776d766d756d746d736d726d716d680f000102030405060708090a0b0c0d0e0201000365666703656667036500660067000365000000660000006700000003650000000000000066000000000000006700000000000000039b7f9a7f997f039b9a99039bff9aff99ff039bffffff9affffff99ffffff039bffffffffffffff9affffffffffffff99ffffffffffffff03ae4781bf5c8f82bf0ad783bf03295c8fc2f528f0bf52b81e85eb51f0bf7b14ae47e17af0bf030948656c6c6f203130310948656c6c6f203130320948656c6c6f203130330301010001020102011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d602");
+
   // from_wire:
   // '(record {"name" = "C++ Developer"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})'
   // '(record {1_224_700_491 = "C++ Developer"; 1_274_861_098 = 0.01 : float64; 2_143_348_543 = 11 : int;})'
@@ -200,27 +213,77 @@ int main() {
       "4449444c016c03cbe4fdc70471aaacf3df0472bfce83fe077c01000d432b2b20446576656c6f7065727b14ae47e17a843f0b",
       "4449444c016c04aaacf3df0472b9c3eef20571bfce83fe077cc7ebc4d0097101007b14ae47e17a843f1448656c6c6f20432b2b20446576656c6f706572210b18596f757220736563726574206e756d62657273206172653a");
 
-  // -----------------------------------------------------------------------------------------
-  // OLDER tests for sending data only
+  // ----------------------------------------------------------------------------------
+  // Trap testing
   //
-  // When you didc encode, these give same result, due to hashing & sorting:
-  // '()' -> '(record {207_603_520 = "February"; 1_346_881_981 = 2_023 : int; 1_583_063_481 = "Hello!"; 2_584_819_143 = "icpp was first release in this month & year:"})'
-  // '()' -> '(record {"month" = "February"; "year" = 2_023 : int; "greeting" = "Hello!"; "message" = "icpp was first release in this month & year:"})'
-  // '()' -> '(record {"greeting" = "Hello!"; "message" = "icpp was first release in this month & year:"; "month" = "February"; "year" = 2_023 : int;})'
-  mockIC.run_test(
-      "canister_sends_record", canister_sends_record, "4449444c0000",
-      "4449444c016c04c08eff6271bd939f82057cb9c3eef20571c7ebc4d009710100084665627275617279e70f0648656c6c6f212c69637070207761732066697273742072656c6561736520696e2074686973206d6f6e7468202620796561723a");
+  bool silent_on_trap = true;
 
-  // '()' -> '("Hello!!!")'
-  mockIC.run_test("canister_sends_char_as_text", canister_sends_char_as_text,
-                  "4449444c0000", "4449444c0001710848656c6c6f212121");
+  // Verify that a Deserialization traps if the number of arguments is wrong
+  // '(true, true)' goes in, but it only expects one '(true)'
+  mockIC.run_trap_test("trap_wrong_number_of_args", trap_wrong_number_of_args,
+                       "4449444c00027e7e0101", silent_on_trap);
 
-  // '()' -> '("{\"happy\":true,\"pi\":3.141}")'
-  mockIC.run_test(
-      "canister_sends_json_as_text", canister_sends_json_as_text,
-      "4449444c0000",
-      "4449444c000171197b226861707079223a747275652c227069223a332e3134317d");
+  // TODO: move each trap test into a mockIC.run_trap_test, calling a canister method
 
+  // Verify that a Record traps on hash collission
+  try {
+    CandidTypeRecord r;
+    r.append("syndactyle", CandidTypeText("some text"));
+    r.append("rectum", CandidTypeText("another text"));
+    IC_API::trap(std::string(__func__) + ": did not trap 1a");
+  } catch (const std::exception &e) {
+  }
+  //
+  // Verify wrong text representations of of Principal
+  // https://internetcomputer.org/docs/current/references/id-encoding-spec#decode
+  // {
+  //   std::string s = "w3gef-eqbaj";
+  //   CandidTypePrincipal p = CandidTypePrincipal(s);
+  // }
+  try {
+    std::string s =
+        "aaaaa-aaaaa-bbbbb-bbbbb-22222-22222-33333-33333-44444-44444-5555";
+    CandidTypePrincipal p = CandidTypePrincipal(s);
+    IC_API::trap(std::string(__func__) + ": did not trap 2a");
+  } catch (const std::exception &e) {
+  }
+  try {
+    std::string s =
+        "aaaaa-aaaaa-bbbbb-bbbbb-22222-22222-33333-33333-44444-44444-555";
+    CandidTypePrincipal p = CandidTypePrincipal(s);
+    IC_API::trap(std::string(__func__) + ": did not trap 2b");
+  } catch (const std::exception &e) {
+  }
+  try {
+    std::string s = "a2345-678";
+    CandidTypePrincipal p = CandidTypePrincipal(s);
+    IC_API::trap(std::string(__func__) + ": did not trap 2c");
+  } catch (const std::exception &e) {
+  }
+  try {
+    std::string s = "2ibo7-dib";
+    CandidTypePrincipal p = CandidTypePrincipal(s);
+    IC_API::trap(std::string(__func__) + ": did not trap 2d");
+  } catch (const std::exception &e) {
+  }
+  try {
+    std::string s = "2ibo7dia";
+    CandidTypePrincipal p = CandidTypePrincipal(s);
+    IC_API::trap(std::string(__func__) + ": did not trap 2e");
+  } catch (const std::exception &e) {
+  }
+  try {
+    std::string s = "2ibo-7dia";
+    CandidTypePrincipal p = CandidTypePrincipal(s);
+    IC_API::trap(std::string(__func__) + ": did not trap 2f");
+  } catch (const std::exception &e) {
+  }
+  try {
+    std::string s = "2ibo7--dia";
+    CandidTypePrincipal p = CandidTypePrincipal(s);
+    IC_API::trap(std::string(__func__) + ": did not trap 2g");
+  } catch (const std::exception &e) {
+  }
   // returns 1 if any tests failed
   return mockIC.test_summary();
 }

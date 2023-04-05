@@ -1,4 +1,4 @@
-// The class for the Primitive Candid Type: Record
+// The class for the Candid Type: Record
 
 #include "candid.h"
 #include "candid_opcode.h"
@@ -145,17 +145,32 @@ bool CandidTypeRecord::decode_T(VecBytes B, __uint128_t &offset,
     m_field_datatypes.push_back(int(datatype));
 
     // Create a CandidType instance for the field
-    // (-) Decode type table using the CandidType variant's decode_T method.
-    // (-) Store the CandidType in m_fields vector
     CandidType c;
-    CandidOpcode().candid_type_from_opcode(c, datatype);
-    parse_error = "";
-    if (std::visit([&](auto &&c) { return c.decode_T(B, offset, parse_error); },
-                   c)) {
-      std::string to_be_parsed = "Type table: record field";
-      CandidDeserialize::trap_with_parse_error(offset_start, offset,
-                                               to_be_parsed, parse_error);
+    if (int(datatype) == CandidOpcode().Vec) {
+      // for a Vec, the typetable is simple the datatype of it's content
+      offset_start = offset;
+      parse_error = "";
+      __int128_t content_opcode;
+      if (B.parse_sleb128(offset, content_opcode, numbytes, parse_error)) {
+        std::string to_be_parsed =
+            "Type table: a record field of type Vec -> the Vec's content type";
+        CandidDeserialize::trap_with_parse_error(offset_start, offset,
+                                                 to_be_parsed, parse_error);
+      }
+      CandidOpcode().candid_type_vec_from_opcode(c, content_opcode);
+    } else {
+      // Decode type table using the CandidType variant's decode_T method.
+      CandidOpcode().candid_type_from_opcode(c, datatype);
+      parse_error = "";
+      if (std::visit(
+              [&](auto &&c) { return c.decode_T(B, offset, parse_error); },
+              c)) {
+        std::string to_be_parsed = "Type table: record field";
+        CandidDeserialize::trap_with_parse_error(offset_start, offset,
+                                                 to_be_parsed, parse_error);
+      }
     }
+    // Store the CandidType in m_fields vector
     m_fields.push_back(c);
   }
   return false;
@@ -185,46 +200,17 @@ void CandidTypeRecord::encode_M() {
 
 // Decode the values, starting at & updating offset
 bool CandidTypeRecord::decode_M(VecBytes B, __uint128_t &offset,
-                                std::string &parse_error,
-                                CandidTypeRecord *p_expected) {
+                                std::string &parse_error) {
   __uint128_t len = B.size() - offset;
 
   for (size_t i = 0; i < m_fields.size(); ++i) {
-    // id or hash of the record field
-    uint32_t id = m_field_ids[i];
-    uint32_t id_expected = p_expected->m_field_ids[i];
-    if (id != id_expected) {
-      std::string msg;
-      msg.append("ERROR: the id (hash) for Record field at index " +
-                 std::to_string(i) + " is wrong on the wire.\n");
-      msg.append("       expected id (hash): " +
-                 VecBytes::my_uint128_to_string(__uint128_t(id_expected)) +
-                 "\n");
-      msg.append("       id (hash) on wire  : " +
-                 VecBytes::my_uint128_to_string(__uint128_t(id)) + "\n");
-      IC_API::trap(msg);
-    }
-
     int datatype = m_field_datatypes[i];
-    int datatype_expected = p_expected->m_field_datatypes[i];
-    if (datatype != datatype_expected) {
-      std::string msg;
-      msg.append("ERROR: the type for a Record field at index " +
-                 std::to_string(i) + " is wrong on the wire.\n");
-      msg.append("       expected type: " + std::to_string(datatype_expected) +
-                 "\n");
-      msg.append("       type on wire : " + std::to_string(datatype) + "\n");
-      IC_API::trap(msg);
-    }
-
     if (CandidOpcode().is_primtype(datatype)) {
       parse_error = "";
       __uint128_t offset_start = offset;
       if (std::visit(
-              [&](auto &&c) {
-                return c.decode_M(B, offset, parse_error, nullptr);
-              },
-              p_expected->m_fields[i])) {
+              [&](auto &&c) { return c.decode_M(B, offset, parse_error); },
+              m_fields[i])) {
         std::string to_be_parsed = "Value for a Record field";
         CandidDeserialize::trap_with_parse_error(offset_start, offset,
                                                  to_be_parsed, parse_error);
@@ -237,4 +223,36 @@ bool CandidTypeRecord::decode_M(VecBytes B, __uint128_t &offset,
   }
 
   return false;
+}
+
+// Traps if the type table does not match the type table on the wire
+void CandidTypeRecord::check_type_table(const CandidTypeRecord *p_from_wire) {
+  for (size_t i = 0; i < m_fields.size(); ++i) {
+    // id or hash of the record field
+    uint32_t id = m_field_ids[i];
+    uint32_t id_wire = p_from_wire->m_field_ids[i];
+    if (id != id_wire) {
+      std::string msg;
+      msg.append("ERROR: the hashed id for the Record field at index " +
+                 std::to_string(i) + " is wrong on the wire.\n");
+      msg.append("       expected value of the hashed id: " +
+                 VecBytes::my_uint128_to_string(__uint128_t(id)) + "\n");
+      msg.append("       found on wire  : " +
+                 VecBytes::my_uint128_to_string(__uint128_t(id_wire)) + "\n");
+      IC_API::trap(msg);
+    }
+
+    int datatype = m_field_datatypes[i];
+    int datatype_wire = p_from_wire->m_field_datatypes[i];
+    if (datatype != datatype_wire) {
+      std::string msg;
+      msg.append("ERROR: the datatype for the Record field at index " +
+                 std::to_string(i) + " is wrong on the wire.\n");
+      msg.append("       expected datatype: " + std::to_string(datatype) +
+                 "\n");
+      msg.append("       type on wire : " + std::to_string(datatype_wire) +
+                 "\n");
+      IC_API::trap(msg);
+    }
+  }
 }

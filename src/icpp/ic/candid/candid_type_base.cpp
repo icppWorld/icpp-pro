@@ -23,20 +23,25 @@ void CandidTypeBase::trap_if_wrong_type_on_wire(
   };
 }
 
-// Virtual method to be implemented by the <comptype> CandidTypes to support deserialization
+// Virtual method to be implemented by the <comptype> CandidTypes
 // Non <comptype> should not call this method.
 bool CandidTypeBase::decode_T(const VecBytes B, __uint128_t &offset,
                               std::string &parse_error) {
   IC_API::trap("ERROR: decode_T not implemented...");
   return true;
 }
+void CandidTypeBase::set_content_type() {
+  IC_API::trap("ERROR: set_content_type not implemented...");
+}
 
 // Virtual method to be implemented by all CandidTypes to support deserialization
 bool CandidTypeBase::decode_M(const VecBytes B, __uint128_t &offset,
-                              std::string &parse_error,
-                              CandidTypeBase *p_expected) {
+                              std::string &parse_error) {
   IC_API::trap("ERROR: decode_M not implemented...");
   return true;
+}
+void CandidTypeBase::encode_M() {
+  IC_API::trap("ERROR: encode_M not implemented...");
 }
 
 // https://github.com/dfinity/candid/blob/master/spec/Candid.md#records

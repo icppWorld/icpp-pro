@@ -12,8 +12,7 @@ public:
   // Destructor
   ~CandidTypeEmpty();
 
-  bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error,
-                CandidTypeBase *p_expected = nullptr);
+  bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error);
 
 protected:
   void set_datatype();

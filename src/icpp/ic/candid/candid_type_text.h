@@ -18,13 +18,8 @@ public:
   // Destructor
   ~CandidTypeText();
 
-  bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error,
-                CandidTypeBase *p_expected = nullptr);
-
-  void set_v(const std::string &v) {
-    m_v = v;
-    *m_pv = v;
-  }
+  bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error);
+  std::string get_v() { return m_v; }
 
 protected:
   void set_pv(std::string *v);

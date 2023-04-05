@@ -16,25 +16,28 @@ public:
   // Destructor
   ~MockIC();
 
-  std::vector<std::byte> vec_in() { return m_B_in.vec(); };
-  std::vector<std::byte> vec_out() { return m_B_out.vec(); };
+  std::vector<std::byte> vec_in() { return m_B_in.vec(); }
+  std::vector<std::byte> vec_out() { return m_B_out.vec(); }
 
-  VecBytes get_msg_in() { return m_B_in; };
-  VecBytes get_msg_out() { return m_B_out; };
+  VecBytes get_msg_in() { return m_B_in; }
+  VecBytes get_msg_out() { return m_B_out; }
 
   void msg_reply_data_append(uintptr_t src, uint32_t size);
 
   int assert_candid_out(const std::string &candid_out_expected);
 
-  // template <typename Function>
-  // int run_test(const std::string &test_name, Function api,
-  //              const std::string &candid_in, const std::string &candid_out_expected);
-
   int run_test(const std::string &test_name, void (*api_callback)(),
                const std::string &candid_in,
-               const std::string &candid_out_expected);
+               const std::string &candid_out_expected,
+               const bool silent_on_trap = false);
+
+  int run_trap_test(const std::string &test_name, void (*api_callback)(),
+                    const std::string &candid_in,
+                    const bool silent_on_trap = true);
 
   int test_summary();
+
+  bool get_silent_on_trap() { return m_silent_on_trap; }
 
 private:
   VecBytes m_B_in;
@@ -42,4 +45,5 @@ private:
   int m_tests_total;
   int m_tests_failed;
   bool m_exit_on_fail;
+  bool m_silent_on_trap;
 };

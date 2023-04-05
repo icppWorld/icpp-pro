@@ -1,4 +1,4 @@
-// The class for the Primitive Candid Type: text
+// The class for the Candid Type: record
 
 #pragma once
 
@@ -19,8 +19,9 @@ public:
   void append(CandidType field);
 
   bool decode_T(VecBytes B, __uint128_t &offset, std::string &parse_error);
-  bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error,
-                CandidTypeRecord *p_expected);
+  bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error);
+
+  void check_type_table(const CandidTypeRecord *p_from_wire);
 
 protected:
   void _append(uint32_t field_id, std::string field_name, CandidType field);

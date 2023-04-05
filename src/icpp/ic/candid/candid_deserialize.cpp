@@ -80,6 +80,7 @@ void CandidDeserialize::deserialize() {
   // -------------------------------------------------------------------------------------
   // I*(<datatype>*)                      types of the argument list
   //                                      - Opcode for <primtype>
+  //                                      or
   //                                      - TypeTable index for <comptype>
 
   m_args_datatypes.clear();
@@ -96,6 +97,16 @@ void CandidDeserialize::deserialize() {
       trap_with_parse_error(B_offset_start, B_offset, to_be_parsed,
                             parse_error);
     }
+  }
+
+  if (num_args != m_A.size()) {
+    std::string msg;
+    msg.append("ERROR: wrong number of arguments on wire.\n");
+    msg.append("       Expected number of arguments:" +
+               std::to_string(m_A.size()) + "\n");
+    msg.append("       Number of arguments on wire :" +
+               VecBytes::my_uint128_to_string(num_args));
+    IC_API::trap(msg);
   }
 
   for (size_t i = 0; i < num_args; ++i) {
@@ -120,6 +131,82 @@ void CandidDeserialize::deserialize() {
   //
   //             https://github.com/dfinity/candid/blob/master/spec/Candid.md#upgrading-and-subtyping
   //
+  for (size_t i = 0; i < num_args; ++i) {
+    __uint128_t B_offset_start = B_offset;
+    std::string parse_error;
+    __uint128_t numbytes;
+    if (m_args_datatypes[i] >= 0) {
+      // <comptype>
+
+      // the datatype is an index into the typetable of the byte stream
+      size_t type_table_index = m_args_datatypes[i];
+      CandidTypeTable type_table = m_typetables[type_table_index];
+
+      // Verify that the type_table found on the wire is the same as the expected type_table
+      int opcode_found = type_table.get_opcode();
+
+      int opcode_expected =
+          std::visit([](auto &&c) { return c.get_datatype_opcode(); }, m_A[i]);
+
+      if (opcode_found != opcode_expected) {
+        std::string msg;
+        msg.append("ERROR: wrong opcode found on wire.\n");
+        msg.append("       Expecting opcode:" +
+                   std::to_string(opcode_expected) + "\n");
+        msg.append("       Found opcode    :" + std::to_string(opcode_found));
+        IC_API::trap(msg);
+      }
+      if (opcode_found == CandidOpcode().Record) {
+        CandidTypeRecord *p_wire =
+            get_if<CandidTypeRecord>(type_table.get_candidType_ptr());
+        CandidTypeRecord *p_expected = get_if<CandidTypeRecord>(&m_A[i]);
+
+        // Trap if type table does not match the wire
+        p_expected->check_type_table(p_wire);
+      } else if (opcode_found == CandidOpcode().Vec) {
+
+        int content_opcode_found =
+            std::visit([](auto &&c) { return c.get_content_type_opcode(); },
+                       *type_table.get_candidType_ptr());
+        int content_opcode_expected = std::visit(
+            [](auto &&c) { return c.get_content_type_opcode(); }, m_A[i]);
+
+        if (content_opcode_found != content_opcode_expected) {
+          std::string msg;
+          msg.append(
+              "ERROR: Vector with wrong content opcode found on wire.\n");
+          msg.append("       Expecting content opcode:" +
+                     std::to_string(content_opcode_expected) + "\n");
+          msg.append("       Found content opcode    :" +
+                     std::to_string(content_opcode_found));
+          IC_API::trap(msg);
+        }
+
+      } else {
+        IC_API::trap(
+            "ERROR: Deserialization not yet implemented for this constype");
+      }
+
+    } else {
+      // <primptype>
+
+      // There is no type-table. The datatype is an Opcode
+      int opcode_found = m_args_datatypes[i];
+      int opcode_expected =
+          std::visit([](auto &&c) { return c.get_datatype_opcode(); }, m_A[i]);
+
+      if (opcode_found != opcode_expected) {
+        // TODO:  IMPLEMENT CHECK ON COVARIANCE/CONTRAVARIANCE
+        std::string msg;
+        msg.append("ERROR: wrong opcode found on wire.\n");
+        msg.append("       Expecting opcode:" +
+                   std::to_string(opcode_expected) + "\n");
+        msg.append("       Found opcode    :" + std::to_string(opcode_found));
+        IC_API::trap(msg);
+      }
+    }
+  }
+
   // (4) using the inverse of the M function, indexed by (<t>,*), to decode the values (<v>,*)
   //
   // (5) use the coercion function C[(<t>,*) <: (<t'>,*)]((<v>,*)) to understand the decoded values at the expected type.
@@ -127,119 +214,22 @@ void CandidDeserialize::deserialize() {
 
   for (size_t i = 0; i < num_args; ++i) {
     __uint128_t B_offset_start = B_offset;
-    std::string parse_error;
+    std::string parse_error = "";
     __uint128_t numbytes;
-    if (m_args_datatypes[i] >= 0) {
-      // <comptype>
-      if (deserialize_values_comptype(B_offset, i, numbytes, parse_error)) {
-        std::string to_be_parsed = "Values of argument " + std::to_string(i) +
-                                   ", M(kv* : <datatype>*) )";
-        trap_with_parse_error(B_offset_start, B_offset, to_be_parsed,
-                              parse_error);
-      }
 
-    } else {
-      // <primptype>
-      if (deserialize_values_primtype(B_offset, i, numbytes, parse_error)) {
-        std::string to_be_parsed = "Values of argument " + std::to_string(i) +
-                                   ", M(kv* : <datatype>*) )";
-        trap_with_parse_error(B_offset_start, B_offset, to_be_parsed,
-                              parse_error);
-      }
+    if (std::visit(
+            [&](auto &&c) { return c.decode_M(m_B, B_offset, parse_error); },
+            m_A[i])) {
+      std::string to_be_parsed =
+          "Values (decoding M) for argument at index " + std::to_string(i);
+      CandidDeserialize::trap_with_parse_error(B_offset_start, B_offset,
+                                               to_be_parsed, parse_error);
     }
   }
 
   // Append R
   // Was never implemented int Candid, although it is still in the spec
   // https://www.joachim-breitner.de/blog/786-A_Candid_explainer__Quirks
-}
-
-bool CandidDeserialize::deserialize_values_comptype(__uint128_t &B_offset,
-                                                    const size_t index,
-                                                    __uint128_t &numbytes,
-                                                    std::string &parse_error) {
-  // the datatype is an index into the typetable of the byte stream
-  size_t type_table_index = m_args_datatypes[index];
-  CandidTypeTable type_table = m_typetables[type_table_index];
-  int opcode_found = type_table.get_opcode();
-
-  int opcode_expected =
-      std::visit([](auto &&c) { return c.get_datatype_opcode(); }, m_A[index]);
-
-  if (opcode_found != opcode_expected) {
-    std::string msg;
-    msg.append("ERROR: wrong opcode found on wire.\n");
-    msg.append("       Expecting opcode:" + std::to_string(opcode_expected) +
-               "\n");
-    msg.append("       Found opcode    :" + std::to_string(opcode_found));
-    IC_API::trap(msg);
-  }
-
-  // Deserialize the values using the decoder of the datatype
-  if (opcode_found == CandidOpcode().Record) {
-    CandidTypeRecord *p_cRec =
-        get_if<CandidTypeRecord>(type_table.get_candidType_ptr());
-    // To fill the  C++ data values provided by caller
-    CandidTypeRecord *p_expected = get_if<CandidTypeRecord>(&m_A[index]);
-
-    if (const auto p_expected(get_if<CandidTypeRecord>(&m_A[index]));
-        p_expected) {
-      parse_error = "";
-      __uint128_t B_offset_start = B_offset;
-      if (p_cRec->decode_M(m_B, B_offset, parse_error, p_expected)) {
-        std::string to_be_parsed = "Values";
-        CandidDeserialize::trap_with_parse_error(B_offset_start, B_offset,
-                                                 to_be_parsed, parse_error);
-      }
-    } else {
-      IC_API::trap("All is NOT OK\n" + std::string(__func__));
-    }
-
-  } else {
-    std::string msg;
-    msg.append(
-        "ERROR: NOT YET IMPLEMENTED TO PARSE VALUES FOR THIS COMPTYPE.\n");
-    msg.append("       datatype = " + std::to_string(opcode_found) + "\n");
-    msg.append("      " + std::string(__func__));
-    IC_API::trap(msg);
-  }
-
-  return false;
-}
-
-bool CandidDeserialize::deserialize_values_primtype(__uint128_t &B_offset,
-                                                    const size_t index,
-                                                    __uint128_t &numbytes,
-                                                    std::string &parse_error) {
-  // The datatype is an Opcode
-  int opcode_found = m_args_datatypes[index];
-  int opcode_expected =
-      std::visit([](auto &&c) { return c.get_datatype_opcode(); }, m_A[index]);
-
-  if (opcode_found != opcode_expected) {
-    // TODO:  IMPLEMENT CHECK ON COVARIANCE/CONTRAVARIANCE
-    std::string msg;
-    msg.append("ERROR: wrong opcode found on wire.\n");
-    msg.append("       Expecting opcode:" + std::to_string(opcode_expected) +
-               "\n");
-    msg.append("       Found opcode    :" + std::to_string(opcode_found));
-    IC_API::trap(msg);
-  }
-
-  // Deserialize the values using the decoder of the primtype
-  parse_error = "";
-  __uint128_t offset_start = B_offset;
-  if (std::visit(
-          [&](auto &&c) {
-            return c.decode_M(m_B, B_offset, parse_error, nullptr);
-          },
-          m_A[index])) {
-    std::string to_be_parsed = "Value for a primtype";
-    CandidDeserialize::trap_with_parse_error(offset_start, B_offset,
-                                             to_be_parsed, parse_error);
-  }
-
-  return false;
 }
 
 // Assert candid VecBytes against a string in "hex" format (didc encode)

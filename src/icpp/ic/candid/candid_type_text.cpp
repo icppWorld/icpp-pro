@@ -66,8 +66,7 @@ void CandidTypeText::encode_M() {
 
 // Decode the values, starting at & updating offset
 bool CandidTypeText::decode_M(VecBytes B, __uint128_t &offset,
-                              std::string &parse_error,
-                              CandidTypeBase *p_expected) {
+                              std::string &parse_error) {
 
   // get size of text - leb128(|utf8(t)|)
   __uint128_t offset_start = offset;

@@ -37,7 +37,8 @@ MockIC::MockIC(const bool &exit_on_fail) {
 
 int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
                      const std::string &candid_in,
-                     const std::string &candid_out_expected) {
+                     const std::string &candid_out_expected,
+                     const bool silent_on_trap) {
   ++m_tests_total;
   std::cout << "\n----------\n";
   std::cout << "MockIC run_test: " << test_name << ": \n";
@@ -46,6 +47,7 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
   m_B_out.clear();
   m_B_in.store_hex_string(candid_in);
 
+  m_silent_on_trap = silent_on_trap;
   try {
     // Now call the API we're testing. It will trap if something fails.
     api_callback();
@@ -72,6 +74,37 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
       exit(1);
     }
     return 1;
+  }
+}
+
+int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
+                          const std::string &candid_in,
+                          const bool silent_on_trap) {
+  ++m_tests_total;
+  std::cout << "\n----------\n";
+  std::cout << "MockIC run_trap_test: " << test_name << ": \n";
+
+  m_B_in.clear();
+  m_B_out.clear();
+  m_B_in.store_hex_string(candid_in);
+
+  m_silent_on_trap = silent_on_trap;
+  try {
+    // Now call the API we're testing. It must trap.
+    api_callback();
+
+    // If it did not trap, give an error message
+    ++m_tests_failed;
+    std::cout << "\nTest: '" << test_name << "' Failed\n";
+    if (m_exit_on_fail) {
+      test_summary();
+      exit(1);
+    }
+    return 1;
+
+  } catch (const std::exception &e) {
+    std::cout << "Test: " << test_name << ": Passed\n";
+    return 0;
   }
 }
 

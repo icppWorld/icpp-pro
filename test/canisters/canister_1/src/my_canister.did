@@ -39,14 +39,14 @@ service: {
     "roundtrip_float32_neg" : (float32) -> (float32) query;
     "roundtrip_float64" : (float64) -> (float64) query;
     "roundtrip_float64_neg" : (float64) -> (float64) query;
+    "roundtrip_principal" : (principal) -> (principal) query;
+    "roundtrip_vec_nat16" : (vec nat16) -> (vec nat16) query;
+    "roundtrip_vec_all" : (vec bool, vec nat, vec nat8, vec nat16, vec nat32, vec nat64, vec int, vec int8, vec int16, vec int32, vec int64, vec float32, vec float64, vec text, vec principal) -> 
+                          (vec bool, vec nat, vec nat8, vec nat16, vec nat32, vec nat64, vec int, vec int8, vec int16, vec int32, vec int64, vec float32, vec float64, vec text, vec principal) 
+                          query;
     "roundtrip_record" : (record { name: text; "secret float64": float64; "secret int": int })  -> 
                          (record { greeting: text; message: text; "secret float64": float64; "secret int": int }) 
                          query;
-    "roundtrip_principal" : (principal) -> (principal) query;
-    "canister_sends_record" : () -> 
-                              (record { greeting: text; message: text; month: text; year: int }) 
-                              query;
-    "canister_sends_int_as_int" : () -> (int) query;
-    "canister_sends_char_as_text" : () -> (text) query;
-    "canister_sends_json_as_text" : () -> (text) query;
+
+    "trap_wrong_number_of_args" : (bool) -> (bool) query;
 }

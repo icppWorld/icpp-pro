@@ -82,20 +82,16 @@ void roundtrip_float64()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_float64");
 void roundtrip_float64_neg()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_float64_neg");
-void roundtrip_record() WASM_SYMBOL_EXPORTED("canister_query roundtrip_record");
 void roundtrip_principal()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_principal");
+void roundtrip_vec_nat16()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_vec_nat16");
+void roundtrip_vec_all()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_vec_all");
+void roundtrip_record() WASM_SYMBOL_EXPORTED("canister_query roundtrip_record");
 
-void canister_sends_record()
-    WASM_SYMBOL_EXPORTED("canister_query canister_sends_record");
-
-void canister_sends_int_as_int()
-    WASM_SYMBOL_EXPORTED("canister_query canister_sends_int_as_int");
-void canister_sends_char_as_text()
-    WASM_SYMBOL_EXPORTED("canister_query canister_sends_char_as_text");
-
-void canister_sends_json_as_text()
-    WASM_SYMBOL_EXPORTED("canister_query canister_sends_json_as_text");
+void trap_wrong_number_of_args()
+    WASM_SYMBOL_EXPORTED("canister_query trap_wrong_number_of_args");
 
 // from:https://stackoverflow.com/a/41405501/5480536
 //implements relative method - do not use for comparing with zero

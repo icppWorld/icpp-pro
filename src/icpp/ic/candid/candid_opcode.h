@@ -18,6 +18,7 @@ public:
   bool is_constype(const int &t);
   bool is_reftype(const int &t);
   void candid_type_from_opcode(CandidType &c, int opcode);
+  void candid_type_vec_from_opcode(CandidType &c, int opcode);
 
   // Primitive Types
   // T : <primtype> -> i8*

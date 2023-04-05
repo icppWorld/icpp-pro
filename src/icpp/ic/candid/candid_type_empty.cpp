@@ -33,8 +33,7 @@ void CandidTypeEmpty::encode_M() {
 
 // Decode the values, starting at & updating offset
 bool CandidTypeEmpty::decode_M(VecBytes B, __uint128_t &offset,
-                               std::string &parse_error,
-                               CandidTypeBase *p_expected) {
+                               std::string &parse_error) {
   IC_API::trap("ERROR - CandidTypeEmpty cannot have a value to decode.");
   return false;
 }

@@ -544,18 +544,6 @@ def test__roundtrip_float64_neg(network: str) -> None:
     assert response == expected_response
 
 
-def test__roundtrip_record(network: str) -> None:
-    response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
-        canister_name=CANISTER_NAME,
-        canister_method="roundtrip_record",
-        canister_argument='(record {"name" = "C++ Developer"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})',
-        network=network,
-    )
-    expected_response = '(record { secret float64 = 0.01 : float64; greeting = "Hello C++ Developer!"; secret int = 11 : int; message = "Your secret numbers are:";})'
-    assert response == expected_response
-
-
 def test__roundtrip_principal(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
@@ -570,35 +558,58 @@ def test__roundtrip_principal(network: str) -> None:
     assert response == expected_response
 
 
-# Older tests for sending only
-def test__canister_sends_int_as_int(network: str) -> None:
+def test__roundtrip_vec_nat16(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
-        canister_method="canister_sends_int_as_int",
+        canister_method="roundtrip_vec_nat16",
+        canister_argument="(vec { 101 : nat16; 102 : nat16; 103 : nat16 })",
         network=network,
     )
-    expected_response = "(101 : int)"
+    expected_response = "(vec { 101 : nat16; 102 : nat16; 103 : nat16;})"
     assert response == expected_response
 
 
-def test__canister_sends_char_as_text(network: str) -> None:
+def test__roundtrip_vec_all(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
-        canister_method="canister_sends_char_as_text",
+        canister_method="roundtrip_vec_all",
+        canister_argument="4449444c0f6d7e6d7d6d7b6d7a6d796d786d7c6d776d766d756d746d736d726d716d680f000102030405060708090a0b0c0d0e0201000365666703656667036500660067000365000000660000006700000003650000000000000066000000000000006700000000000000039b7f9a7f997f039b9a99039bff9aff99ff039bffffff9affffff99ffffff039bffffffffffffff9affffffffffffff99ffffffffffffff03ae4781bf5c8f82bf0ad783bf03295c8fc2f528f0bf52b81e85eb51f0bf7b14ae47e17af0bf030948656c6c6f203130310948656c6c6f203130320948656c6c6f203130330301010001020102011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d602",
+        canister_input="raw",
+        canister_output="raw",
         network=network,
     )
-    expected_response = '("Hello!!!")'
+    expected_response = "4449444c0f6d7e6d7d6d7b6d7a6d796d786d7c6d776d766d756d746d736d726d716d680f000102030405060708090a0b0c0d0e0201000365666703656667036500660067000365000000660000006700000003650000000000000066000000000000006700000000000000039b7f9a7f997f039b9a99039bff9aff99ff039bffffff9affffff99ffffff039bffffffffffffff9affffffffffffff99ffffffffffffff03ae4781bf5c8f82bf0ad783bf03295c8fc2f528f0bf52b81e85eb51f0bf7b14ae47e17af0bf030948656c6c6f203130310948656c6c6f203130320948656c6c6f203130330301010001020102011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d602"
     assert response == expected_response
 
 
-def test__canister_sends_json_as_text(network: str) -> None:
+def test__roundtrip_record(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
-        canister_method="canister_sends_json_as_text",
+        canister_method="roundtrip_record",
+        canister_argument='(record {"name" = "C++ Developer"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})',
         network=network,
     )
-    expected_response = '("{\\"happy\\":true,\\"pi\\":3.141}")'
+    expected_response = '(record { secret float64 = 0.01 : float64; greeting = "Hello C++ Developer!"; secret int = 11 : int; message = "Your secret numbers are:";})'
     assert response == expected_response
+
+
+# ----------------------------------------------------------------------------------
+# Trap testing
+#
+# Verify that a Deserialization traps if the number of arguments is wrong
+def test__trap_wrong_number_of_args(network: str) -> None:
+    """Verify that api traps when it receives a wrong message"""
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="trap_wrong_number_of_args",
+        canister_argument="4449444c00027e7e0101",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert "Failed call to api" in response
+    assert "ERROR: wrong number of arguments on wire." in response

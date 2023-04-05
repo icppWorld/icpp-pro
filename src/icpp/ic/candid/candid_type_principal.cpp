@@ -106,8 +106,7 @@ void CandidTypePrincipal::encode_M() {
 
 // Decode the values, starting at & updating offset
 bool CandidTypePrincipal::decode_M(VecBytes B, __uint128_t &offset,
-                                   std::string &parse_error,
-                                   CandidTypeBase *p_expected) {
+                                   std::string &parse_error) {
 
   // Get the unused opaque reference: i8(0)
   // Verify that the value is 1. This is the convention

@@ -14,13 +14,8 @@ public:
   // Destructor
   ~CandidTypeFloat64();
 
-  bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error,
-                CandidTypeBase *p_expected = nullptr);
-
-  void set_v(const double &v) {
-    m_v = v;
-    *m_pv = v;
-  }
+  bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error);
+  double get_v() { return m_v; }
 
 protected:
   void set_pv(double *v);

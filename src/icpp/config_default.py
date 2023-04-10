@@ -27,6 +27,9 @@ def get_wasi_sdk_os_name() -> str:
     if OS_SYSTEM == "Darwin":
         return "macos"
 
+    if OS_SYSTEM == "Windows":
+        return "mingw"
+
     return "unknown"
 
 

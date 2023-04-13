@@ -7,6 +7,10 @@ paths.txt
 .DS_Store
 icpp-venv
 
+# Windows
+.vs
+CppProperties.json
+
 # Internet Computer
 .dfx
 

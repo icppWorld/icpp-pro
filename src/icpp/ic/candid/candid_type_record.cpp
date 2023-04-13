@@ -8,8 +8,6 @@
 #include <cassert>
 #include <utility>
 
-#include "ZipIterator.hpp"
-
 CandidTypeRecord::CandidTypeRecord() : CandidTypeBase() {
   set_datatype();
   encode_T();
@@ -80,9 +78,28 @@ void CandidTypeRecord::_append(uint32_t field_id, std::string field_name,
   m_field_datatypes.push_back(datatype);
   m_fields.push_back(field);
 
-  // sort field vectors by increasing field_id (hash)
-  auto zip = Zip(m_field_ids, m_field_names, m_fields, m_field_datatypes);
-  std::sort(zip.begin(), zip.end());
+  // Sort by field_id (hash)
+  for (std::size_t i = 0; i < m_field_ids.size(); ++i) {
+    for (std::size_t j = i + 1; j < m_field_ids.size(); ++j) {
+      if (m_field_ids[i] > m_field_ids[j]) {
+        auto temp_field_id = std::move(m_field_ids[i]);
+        m_field_ids[i] = std::move(m_field_ids[j]);
+        m_field_ids[j] = std::move(temp_field_id);
+
+        auto temp_field_name = std::move(m_field_names[i]);
+        m_field_names[i] = std::move(m_field_names[j]);
+        m_field_names[j] = std::move(temp_field_name);
+
+        auto temp_field = std::move(m_fields[i]);
+        m_fields[i] = std::move(m_fields[j]);
+        m_fields[j] = std::move(temp_field);
+
+        auto temp_field_datatype = std::move(m_field_datatypes[i]);
+        m_field_datatypes[i] = std::move(m_field_datatypes[j]);
+        m_field_datatypes[j] = std::move(temp_field_datatype);
+      }
+    }
+  }
 
   encode_T();
   encode_M();

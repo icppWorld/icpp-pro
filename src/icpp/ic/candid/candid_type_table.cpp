@@ -8,8 +8,6 @@
 #include <cassert>
 #include <utility>
 
-#include "ZipIterator.hpp"
-
 CandidTypeTable::CandidTypeTable() {}
 
 CandidTypeTable::CandidTypeTable(const VecBytes &B, __uint128_t &B_offset) {

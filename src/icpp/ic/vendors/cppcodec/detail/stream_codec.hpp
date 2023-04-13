@@ -108,13 +108,19 @@ template <size_t I> struct enc {
           encoded, state,
           CodecVariant::symbol(Codec::template index_last<SymbolIndex>(src)));
       padder<CodecVariant::generates_padding()> pad;
-#ifdef _MSC_VER
-      pad.operator()<CodecVariant>(encoded, state,
-                                   Codec::encoded_block_size() - NumSymbols);
-#else
+// This gives an error when compiling with clang++ bundled with Visual Studio 2022:
+//  error: use 'template' keyword to treat 'operator ()' as a dependent template name
+      // pad.operator()<CodecVariant>(encoded, state,
+      //     ^
+      //     template
+// 
+// #ifdef _MSC_VER
+//       pad.operator()<CodecVariant>(encoded, state,
+//                                    Codec::encoded_block_size() - NumSymbols);
+// #else
       pad.template operator()<CodecVariant>(
           encoded, state, Codec::encoded_block_size() - NumSymbols);
-#endif
+// #endif
       return;
     }
     data::put(encoded, state,

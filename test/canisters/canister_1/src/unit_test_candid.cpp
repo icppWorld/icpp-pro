@@ -31,19 +31,25 @@ int unit_test_candid() {
       opcode_prev = opcode;
     }
   }
-  { // To sort a vector of CandidType  ( std::variant (!) )
-    // For sorting a vector of std::variant, see:
-    // https://stackoverflow.com/a/54223225/5480536
-    //
+  { // To sort a vector of CandidType
     std::vector<CandidType> vec;
     vec.push_back(CandidTypeBool(true));
     vec.push_back(CandidTypeInt(42));
     vec.push_back(CandidTypeText("hello!"));
 
-    std::sort(vec.begin(), vec.end(), [](auto &lhs, auto &rhs) {
-      return std::visit([](auto &&c) { return c.get_datatype_opcode(); }, lhs) <
-             std::visit([](auto &&c) { return c.get_datatype_opcode(); }, rhs);
-    });
+    for (std::size_t i = 0; i < vec.size(); ++i) {
+      for (std::size_t j = i + 1; j < vec.size(); ++j) {
+        int opcode_i = std::visit(
+            [](auto &&c) { return c.get_datatype_opcode(); }, vec[i]);
+        int opcode_j = std::visit(
+            [](auto &&c) { return c.get_datatype_opcode(); }, vec[j]);
+        if (opcode_i > opcode_j) {
+          auto temp = std::move(vec[i]);
+          vec[i] = std::move(vec[j]);
+          vec[j] = std::move(temp);
+        }
+      }
+    }
 
     int opcode_prev =
         std::visit([](auto &&c) { return c.get_datatype_opcode(); }, vec[0]);

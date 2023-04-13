@@ -5,24 +5,9 @@
 #include <algorithm>
 #include <string>
 
-#include "ZipIterator.hpp"
 #include "cppcodec/base32_rfc4648.hpp"
 #include "hash-library/crc32.h"
 #include "ic_api.h"
-
-void test_ZipIterator() {
-  { // https://github.com/dpellegr/ZipIterator/blob/master/main.cpp
-    std::vector<int> a{3, 1, 4, 2};
-    std::vector<std::string> b{"Alice", "Bob", "Charles", "David"};
-
-    std::vector<int> a_sorted{1, 2, 3, 4};
-    std::vector<std::string> b_sorted{"Bob", "David", "Alice", "Charles"};
-
-    auto zip = Zip(a, b);
-    std::sort(zip.begin(), zip.end());
-    if (a != a_sorted || b != b_sorted) IC_API::trap("test_ZipIterator: 1");
-  }
-}
 
 void test_cppcodec() {
   { // https://github.com/tplgy/cppcodec/blob/master/README.md#base32
@@ -76,7 +61,6 @@ void test_hash_library() {
 }
 
 int unit_test_vendors() {
-  test_ZipIterator();
   test_cppcodec();
   test_hash_library();
   return 0;

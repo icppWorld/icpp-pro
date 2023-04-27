@@ -175,6 +175,18 @@ bool CandidTypeRecord::decode_T(VecBytes B, __uint128_t &offset,
                                                  to_be_parsed, parse_error);
       }
       CandidOpcode().candid_type_vec_from_opcode(c, content_opcode);
+    } else if (int(datatype) == CandidOpcode().Opt) {
+      // for an Opt, the typetable is simple the datatype of it's content
+      offset_start = offset;
+      parse_error = "";
+      __int128_t content_opcode;
+      if (B.parse_sleb128(offset, content_opcode, numbytes, parse_error)) {
+        std::string to_be_parsed =
+            "Type table: a record field of type Opt -> the Opt's content type";
+        CandidDeserialize::trap_with_parse_error(offset_start, offset,
+                                                 to_be_parsed, parse_error);
+      }
+      CandidOpcode().candid_type_opt_from_opcode(c, content_opcode);
     } else {
       // Decode type table using the CandidType variant's decode_T method.
       CandidOpcode().candid_type_from_opcode(c, datatype);
@@ -221,6 +233,10 @@ bool CandidTypeRecord::decode_M(VecBytes B, __uint128_t &offset,
   __uint128_t len = B.size() - offset;
 
   for (size_t i = 0; i < m_fields.size(); ++i) {
+    if (m_field_datatypes_wire[i] == CandidOpcode().Null) {
+      // There is no value to decode
+      continue;
+    }
     int datatype = m_field_datatypes[i];
     if (CandidOpcode().is_primtype(datatype)) {
       parse_error = "";
@@ -244,6 +260,7 @@ bool CandidTypeRecord::decode_M(VecBytes B, __uint128_t &offset,
 
 // Traps if the type table does not match the type table on the wire
 void CandidTypeRecord::check_type_table(const CandidTypeRecord *p_from_wire) {
+  m_field_datatypes_wire.clear();
   for (size_t i = 0; i < m_fields.size(); ++i) {
     // id or hash of the record field
     uint32_t id = m_field_ids[i];
@@ -261,15 +278,25 @@ void CandidTypeRecord::check_type_table(const CandidTypeRecord *p_from_wire) {
 
     int datatype = m_field_datatypes[i];
     int datatype_wire = p_from_wire->m_field_datatypes[i];
+    m_field_datatypes_wire.push_back(
+        datatype_wire); // save it for use in decode_M
+
     if (datatype != datatype_wire) {
-      std::string msg;
-      msg.append("ERROR: the datatype for the Record field at index " +
-                 std::to_string(i) + " is wrong on the wire.\n");
-      msg.append("       expected datatype: " + std::to_string(datatype) +
-                 "\n");
-      msg.append("       type on wire : " + std::to_string(datatype_wire) +
-                 "\n");
-      IC_API::trap(msg);
+      if (datatype_wire == CandidOpcode().Null &&
+          datatype == CandidOpcode().Opt) {
+        // This is ok. A null is passed for an Opt
+      } else {
+        std::string msg;
+        msg.append("ERROR: the datatype for the Record field at index " +
+                   std::to_string(i) + " is wrong on the wire.\n");
+        msg.append("       expected datatype: " + std::to_string(datatype) +
+                   " (" + CandidOpcode().name_from_opcode(datatype) + ")" +
+                   "\n");
+        msg.append("       type on wire : " + std::to_string(datatype_wire) +
+                   " (" + CandidOpcode().name_from_opcode(datatype_wire) + ")" +
+                   "\n");
+        IC_API::trap(msg);
+      }
     }
   }
 }

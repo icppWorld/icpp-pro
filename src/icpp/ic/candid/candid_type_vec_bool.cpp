@@ -67,7 +67,6 @@ bool CandidTypeVecBool::decode_M(VecBytes B, __uint128_t &offset,
   }
 
   m_v.clear();
-  bool v;
   offset_start = offset;
   parse_error = "";
   CandidTypeBool c{}; // dummy so we can use it's decode_M

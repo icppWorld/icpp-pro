@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <optional>
 #include <variant>
 
 // ------------------------------------------------------------------
@@ -16,6 +17,7 @@ class VecBytes;
 class CandidTypeBase;
 class CandidTypePrim;
 class CandidTypeVecBase;
+class CandidTypeOptBase;
 
 // The Candid Type classes
 // https://github.com/dfinity/candid/blob/master/spec/Candid.md#types
@@ -40,11 +42,6 @@ class CandidTypeText;
 class CandidTypePrincipal;
 
 // <constype>
-// class CandidTypeOpt;
-
-// class CandidTypeVecNull;
-// class CandidTypeVecEmpty;
-// class CandidTypeVecReserved;
 class CandidTypeVecBool;
 class CandidTypeVecFloat32;
 class CandidTypeVecFloat64;
@@ -60,6 +57,32 @@ class CandidTypeVecInt32;
 class CandidTypeVecInt64;
 class CandidTypeVecText;
 class CandidTypeVecPrincipal;
+// These types are not used for vecs
+// class CandidTypeVecNull;
+// class CandidTypeVecEmpty;
+// class CandidTypeVecReserved;
+
+class CandidTypeOptBool;
+class CandidTypeOptFloat32;
+class CandidTypeOptFloat64;
+class CandidTypeOptInt;
+class CandidTypeOptNat;
+class CandidTypeOptNat8;
+class CandidTypeOptNat16;
+class CandidTypeOptNat32;
+class CandidTypeOptNat64;
+class CandidTypeOptInt8;
+class CandidTypeOptInt16;
+class CandidTypeOptInt32;
+class CandidTypeOptInt64;
+class CandidTypeOptText;
+class CandidTypeOptPrincipal;
+// class CandidTypeOptVec;
+// class CandidTypeOptRecord;
+// These types are not used for opts
+// class CandidTypeOptNull;
+// class CandidTypeOptEmpty;
+// class CandidTypeOptReserved;
 
 class CandidTypeRecord;
 // class CandidTypeVariant;
@@ -83,7 +106,12 @@ using CandidType =
                  CandidTypeVecNat, CandidTypeVecNat8, CandidTypeVecNat16,
                  CandidTypeVecNat32, CandidTypeVecNat64, CandidTypeVecInt8,
                  CandidTypeVecInt16, CandidTypeVecInt32, CandidTypeVecInt64,
-                 CandidTypeVecText, CandidTypeVecPrincipal, CandidTypeRecord>;
+                 CandidTypeVecText, CandidTypeVecPrincipal, CandidTypeOptBool,
+                 CandidTypeOptFloat32, CandidTypeOptFloat64, CandidTypeOptInt,
+                 CandidTypeOptNat, CandidTypeOptNat8, CandidTypeOptNat16,
+                 CandidTypeOptNat32, CandidTypeOptNat64, CandidTypeOptInt8,
+                 CandidTypeOptInt16, CandidTypeOptInt32, CandidTypeOptInt64,
+                 CandidTypeOptText, CandidTypeOptPrincipal, CandidTypeRecord>;
 
 // https://subscription.packtpub.com/book/programming/9781787120495/8/ch08lvl1sec91/storing-different-types-with-stdvariant
 template <typename T> bool is_CandidType(const CandidType &c) {
@@ -100,6 +128,7 @@ template <typename T> bool is_CandidType(const CandidType &c) {
 
 // The Candid Type base classes
 #include "candid_type_base.h"
+#include "candid_type_opt_base.h"
 #include "candid_type_prim.h"
 #include "candid_type_vec_base.h"
 
@@ -144,6 +173,28 @@ template <typename T> bool is_CandidType(const CandidType &c) {
 // #include "candid_type_vec_empty.h"
 // #include "candid_type_vec_null.h"
 // #include "candid_type_vec_reserved.h"
+
+#include "candid_type_opt_bool.h"
+#include "candid_type_opt_float32.h"
+#include "candid_type_opt_float64.h"
+#include "candid_type_opt_int.h"
+#include "candid_type_opt_int16.h"
+#include "candid_type_opt_int32.h"
+#include "candid_type_opt_int64.h"
+#include "candid_type_opt_int8.h"
+#include "candid_type_opt_nat.h"
+#include "candid_type_opt_nat16.h"
+#include "candid_type_opt_nat32.h"
+#include "candid_type_opt_nat64.h"
+#include "candid_type_opt_nat8.h"
+#include "candid_type_opt_principal.h"
+#include "candid_type_opt_text.h"
+// #include "candid_type_opt_vec.h"
+// #include "candid_type_opt_record.h"
+// These types are not used for opts
+// #include "candid_type_opt_empty.h"
+// #include "candid_type_opt_null.h"
+// #include "candid_type_opt_reserved.h"
 
 #include "candid_type_record.h"
 

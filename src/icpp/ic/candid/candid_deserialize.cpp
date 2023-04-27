@@ -3,6 +3,7 @@
 
 #include "candid.h"
 #include "candid_assert.h"
+#include "candid_opcode.h"
 
 #include "ic_api.h"
 
@@ -84,6 +85,8 @@ void CandidDeserialize::deserialize() {
   //                                      - TypeTable index for <comptype>
 
   m_args_datatypes.clear();
+  m_args_datatypes_offset_start.clear();
+  m_args_datatypes_offset_end.clear();
 
   // Parse the number of arguments in the byte stream
   __uint128_t num_args;
@@ -120,6 +123,8 @@ void CandidDeserialize::deserialize() {
                             parse_error);
     }
     m_args_datatypes.push_back(int(datatype));
+    m_args_datatypes_offset_start.push_back(B_offset_start);
+    m_args_datatypes_offset_end.push_back(B_offset);
   }
 
   // -------------------------------------------------------------------------------------
@@ -131,6 +136,7 @@ void CandidDeserialize::deserialize() {
   //
   //             https://github.com/dfinity/candid/blob/master/spec/Candid.md#upgrading-and-subtyping
   //
+  std::vector<int> v_opcode_found;
   for (size_t i = 0; i < num_args; ++i) {
     __uint128_t B_offset_start = B_offset;
     std::string parse_error;
@@ -144,17 +150,50 @@ void CandidDeserialize::deserialize() {
 
       // Verify that the type_table found on the wire is the same as the expected type_table
       int opcode_found = type_table.get_opcode();
+      v_opcode_found.push_back(opcode_found);
 
       int opcode_expected =
           std::visit([](auto &&c) { return c.get_datatype_opcode(); }, m_A[i]);
 
       if (opcode_found != opcode_expected) {
-        std::string msg;
-        msg.append("ERROR: wrong opcode found on wire.\n");
-        msg.append("       Expecting opcode:" +
-                   std::to_string(opcode_expected) + "\n");
-        msg.append("       Found opcode    :" + std::to_string(opcode_found));
-        IC_API::trap(msg);
+        if (opcode_expected < 0) {
+          std::string msg;
+          msg.append(
+              "ERROR: expecting an Opcode, but a type table reference was found on wire instead.\n");
+          msg.append("       Argument index    : " + std::to_string(i) + "\n");
+          msg.append(
+              "       Bytes offset start: " +
+              VecBytes::my_uint128_to_string(m_args_datatypes_offset_start[i]) +
+              "\n");
+          msg.append(
+              "       Bytes offset end  : " +
+              VecBytes::my_uint128_to_string(m_args_datatypes_offset_end[i]) +
+              "\n");
+          msg.append(
+              "       Expecting opcode  :" + std::to_string(opcode_expected) +
+              " (" + CandidOpcode().name_from_opcode(opcode_expected) + ")" +
+              "\n");
+          msg.append("       Found type table    :" +
+                     std::to_string(opcode_found));
+          IC_API::trap(msg);
+        } else {
+          std::string msg;
+          msg.append("ERROR: wrong type table reference found on wire.\n");
+          msg.append("       Argument index: " + std::to_string(i) + "\n");
+          msg.append(
+              "       Bytes offset start: " +
+              VecBytes::my_uint128_to_string(m_args_datatypes_offset_start[i]) +
+              "\n");
+          msg.append(
+              "       Bytes offset end  : " +
+              VecBytes::my_uint128_to_string(m_args_datatypes_offset_end[i]) +
+              "\n");
+          msg.append("       Expecting type table:" +
+                     std::to_string(opcode_expected) + "\n");
+          msg.append("       Found type table    :" +
+                     std::to_string(opcode_found));
+          IC_API::trap(msg);
+        }
       }
       if (opcode_found == CandidOpcode().Record) {
         CandidTypeRecord *p_wire =
@@ -163,7 +202,8 @@ void CandidDeserialize::deserialize() {
 
         // Trap if type table does not match the wire
         p_expected->check_type_table(p_wire);
-      } else if (opcode_found == CandidOpcode().Vec) {
+      } else if (opcode_found == CandidOpcode().Vec ||
+                 opcode_found == CandidOpcode().Opt) {
 
         int content_opcode_found =
             std::visit([](auto &&c) { return c.get_content_type_opcode(); },
@@ -173,15 +213,35 @@ void CandidDeserialize::deserialize() {
 
         if (content_opcode_found != content_opcode_expected) {
           std::string msg;
+          if (opcode_found == CandidOpcode().Vec) {
+            msg.append(
+                "ERROR: Vector with wrong content opcode found on wire.\n");
+          } else if (opcode_found == CandidOpcode().Opt) {
+            msg.append("ERROR: Opt with wrong content opcode found on wire.\n");
+          } else {
+            msg.append(
+                "ERROR: const of unknown type with wrong content opcode found on wire.\n");
+          }
+
+          msg.append("       Argument index: " + std::to_string(i) + "\n");
           msg.append(
-              "ERROR: Vector with wrong content opcode found on wire.\n");
+              "       Bytes offset start: " +
+              VecBytes::my_uint128_to_string(m_args_datatypes_offset_start[i]) +
+              "\n");
+          msg.append(
+              "       Bytes offset end  : " +
+              VecBytes::my_uint128_to_string(m_args_datatypes_offset_end[i]) +
+              "\n");
           msg.append("       Expecting content opcode:" +
-                     std::to_string(content_opcode_expected) + "\n");
+                     std::to_string(content_opcode_expected) + " (" +
+                     CandidOpcode().name_from_opcode(content_opcode_expected) +
+                     ")" + "\n");
           msg.append("       Found content opcode    :" +
-                     std::to_string(content_opcode_found));
+                     std::to_string(content_opcode_found) + " (" +
+                     CandidOpcode().name_from_opcode(content_opcode_found) +
+                     ")" + "\n");
           IC_API::trap(msg);
         }
-
       } else {
         IC_API::trap(
             "ERROR: Deserialization not yet implemented for this constype");
@@ -192,27 +252,50 @@ void CandidDeserialize::deserialize() {
 
       // There is no type-table. The datatype is an Opcode
       int opcode_found = m_args_datatypes[i];
+      v_opcode_found.push_back(opcode_found);
+
       int opcode_expected =
           std::visit([](auto &&c) { return c.get_datatype_opcode(); }, m_A[i]);
 
       if (opcode_found != opcode_expected) {
-        // TODO:  IMPLEMENT CHECK ON COVARIANCE/CONTRAVARIANCE
-        std::string msg;
-        msg.append("ERROR: wrong opcode found on wire.\n");
-        msg.append("       Expecting opcode:" +
-                   std::to_string(opcode_expected) + "\n");
-        msg.append("       Found opcode    :" + std::to_string(opcode_found));
-        IC_API::trap(msg);
+        if (opcode_found == CandidOpcode().Null &&
+            opcode_expected == CandidOpcode().Opt) {
+          // This is ok. A null is passed for an Opt
+        } else {
+          // TODO:  IMPLEMENT CHECK ON COVARIANCE/CONTRAVARIANCE
+          std::string msg;
+          msg.append("ERROR: wrong opcode found on wire.\n");
+          msg.append("       Argument index: " + std::to_string(i) + "\n");
+          msg.append(
+              "       Bytes offset start: " +
+              VecBytes::my_uint128_to_string(m_args_datatypes_offset_start[i]) +
+              "\n");
+          msg.append(
+              "       Bytes offset end  : " +
+              VecBytes::my_uint128_to_string(m_args_datatypes_offset_end[i]) +
+              "\n");
+          msg.append(
+              "       Expecting opcode:" + std::to_string(opcode_expected) +
+              " (" + CandidOpcode().name_from_opcode(opcode_expected) + ")" +
+              "\n");
+          msg.append("       Found opcode    :" + std::to_string(opcode_found) +
+                     " (" + CandidOpcode().name_from_opcode(opcode_found) +
+                     ")");
+          IC_API::trap(msg);
+        }
       }
     }
   }
-
   // (4) using the inverse of the M function, indexed by (<t>,*), to decode the values (<v>,*)
   //
   // (5) use the coercion function C[(<t>,*) <: (<t'>,*)]((<v>,*)) to understand the decoded values at the expected type.
   // M(kv* : <datatype>*)                 values of argument list
 
   for (size_t i = 0; i < num_args; ++i) {
+    if (v_opcode_found[i] == CandidOpcode().Null) {
+      // There is no value to decode
+      continue;
+    }
     __uint128_t B_offset_start = B_offset;
     std::string parse_error = "";
     __uint128_t numbytes;

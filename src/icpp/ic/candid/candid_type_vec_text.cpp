@@ -74,7 +74,6 @@ bool CandidTypeVecText::decode_M(VecBytes B, __uint128_t &offset,
   }
 
   m_v.clear();
-  std::string v;
   offset_start = offset;
   parse_error = "";
   CandidTypeText c{""}; // dummy so we can use it's decode_M

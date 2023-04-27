@@ -520,6 +520,228 @@ void roundtrip_vec_all() {
   ic_api.to_wire(args_out);
 }
 
+void roundtrip_opt_nat() {
+  IC_API ic_api(false);
+  std::optional<__uint128_t> in;
+  ic_api.from_wire(CandidTypeOptNat{&in});
+  if (!in.has_value() || in.value() != 101)
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+
+  ic_api.to_wire(CandidTypeOptNat{in});
+}
+
+void roundtrip_opt_nat_no_value() {
+  IC_API ic_api(false);
+  std::optional<__uint128_t> in;
+  ic_api.from_wire(CandidTypeOptNat{&in});
+  if (in.has_value()) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+
+  ic_api.to_wire(CandidTypeOptNat{in});
+}
+
+void roundtrip_opt_nat16() {
+  IC_API ic_api(false);
+  std::optional<uint16_t> in;
+  ic_api.from_wire(CandidTypeOptNat16{&in});
+  if (!in.has_value() || in.value() != 101)
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+
+  ic_api.to_wire(CandidTypeOptNat16{in});
+}
+
+void roundtrip_opt_nat16_no_value() {
+  IC_API ic_api(false);
+  std::optional<uint16_t> in;
+  ic_api.from_wire(CandidTypeOptNat16{&in});
+  if (in.has_value()) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+
+  ic_api.to_wire(CandidTypeOptNat16{in});
+}
+
+void roundtrip_opt_all() {
+  IC_API ic_api(false);
+
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  std::optional<bool> in_bool_true;
+  std::optional<bool> in_bool_false;
+  std::optional<bool> in_bool_no_value;
+  std::optional<__uint128_t> in_nat;
+  std::optional<__uint128_t> in_nat_no_value;
+  std::optional<uint8_t> in_nat8;
+  std::optional<uint8_t> in_nat8_no_value;
+  std::optional<uint16_t> in_nat16;
+  std::optional<uint16_t> in_nat16_no_value;
+  std::optional<uint32_t> in_nat32;
+  std::optional<uint32_t> in_nat32_no_value;
+  std::optional<uint64_t> in_nat64;
+  std::optional<uint64_t> in_nat64_no_value;
+  std::optional<__int128_t> in_int;
+  std::optional<__int128_t> in_int_no_value;
+  std::optional<int8_t> in_int8;
+  std::optional<int8_t> in_int8_no_value;
+  std::optional<int16_t> in_int16;
+  std::optional<int16_t> in_int16_no_value;
+  std::optional<int32_t> in_int32;
+  std::optional<int32_t> in_int32_no_value;
+  std::optional<int64_t> in_int64;
+  std::optional<int64_t> in_int64_no_value;
+  std::optional<float> in_float32;
+  std::optional<float> in_float32_no_value;
+  std::optional<double> in_float64;
+  std::optional<double> in_float64_no_value;
+  std::optional<std::string> in_text;
+  std::optional<std::string> in_text_no_value;
+  std::optional<std::string> in_principal;
+  std::optional<std::string> in_principal_no_value;
+
+  std::vector<CandidType> args_in;
+  args_in.push_back(CandidTypeOptBool{&in_bool_true});
+  args_in.push_back(CandidTypeOptBool{&in_bool_false});
+  args_in.push_back(CandidTypeOptBool{&in_bool_no_value});
+  args_in.push_back(CandidTypeOptNat{&in_nat});
+  args_in.push_back(CandidTypeOptNat{&in_nat_no_value});
+  args_in.push_back(CandidTypeOptNat8{&in_nat8});
+  args_in.push_back(CandidTypeOptNat8{&in_nat8_no_value});
+  args_in.push_back(CandidTypeOptNat16{&in_nat16});
+  args_in.push_back(CandidTypeOptNat16{&in_nat16_no_value});
+  args_in.push_back(CandidTypeOptNat32{&in_nat32});
+  args_in.push_back(CandidTypeOptNat32{&in_nat32_no_value});
+  args_in.push_back(CandidTypeOptNat64{&in_nat64});
+  args_in.push_back(CandidTypeOptNat64{&in_nat64_no_value});
+  args_in.push_back(CandidTypeOptInt{&in_int});
+  args_in.push_back(CandidTypeOptInt{&in_int_no_value});
+  args_in.push_back(CandidTypeOptInt8{&in_int8});
+  args_in.push_back(CandidTypeOptInt8{&in_int8_no_value});
+  args_in.push_back(CandidTypeOptInt16{&in_int16});
+  args_in.push_back(CandidTypeOptInt16{&in_int16_no_value});
+  args_in.push_back(CandidTypeOptInt32{&in_int32});
+  args_in.push_back(CandidTypeOptInt32{&in_int32_no_value});
+  args_in.push_back(CandidTypeOptInt64{&in_int64});
+  args_in.push_back(CandidTypeOptInt64{&in_int64_no_value});
+  args_in.push_back(CandidTypeOptFloat32{&in_float32});
+  args_in.push_back(CandidTypeOptFloat32{&in_float32_no_value});
+  args_in.push_back(CandidTypeOptFloat64{&in_float64});
+  args_in.push_back(CandidTypeOptFloat64{&in_float64_no_value});
+  args_in.push_back(CandidTypeOptText{&in_text});
+  args_in.push_back(CandidTypeOptText{&in_text_no_value});
+  args_in.push_back(CandidTypeOptPrincipal{&in_principal});
+  args_in.push_back(CandidTypeOptPrincipal{&in_principal_no_value});
+  ic_api.from_wire(args_in);
+
+  // ---------------------------------------------------------------------------
+  // Verify the data
+  if (!in_bool_true.has_value() || !in_bool_true.value())
+    IC_API::trap("ASSERT ERROR - in_bool_true " + std::string(__func__));
+  if (!in_bool_false.has_value() || in_bool_false.value())
+    IC_API::trap("ASSERT ERROR - in_bool_false " + std::string(__func__));
+  if (in_bool_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_bool_no_value " + std::string(__func__));
+
+  if (!in_nat.has_value() || in_nat.value() != 101)
+    IC_API::trap("ASSERT ERROR - in_nat " + std::string(__func__));
+  if (in_nat_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_nat_no_value " + std::string(__func__));
+  if (!in_nat8.has_value() || in_nat8.value() != 102)
+    IC_API::trap("ASSERT ERROR - in_nat8 " + std::string(__func__));
+  if (in_nat8_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_nat8_no_value " + std::string(__func__));
+  if (!in_nat16.has_value() || in_nat16.value() != 103)
+    IC_API::trap("ASSERT ERROR - in_nat16 " + std::string(__func__));
+  if (in_nat16_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_nat16_no_value " + std::string(__func__));
+  if (!in_nat32.has_value() || in_nat32.value() != 104)
+    IC_API::trap("ASSERT ERROR - in_nat32 " + std::string(__func__));
+  if (in_nat32_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_nat32_no_value " + std::string(__func__));
+  if (!in_nat64.has_value() || in_nat64.value() != 105)
+    IC_API::trap("ASSERT ERROR - in_nat64 " + std::string(__func__));
+  if (in_nat64_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_nat64_no_value " + std::string(__func__));
+
+  if (!in_int.has_value() || in_int.value() != -101)
+    IC_API::trap("ASSERT ERROR - in_int " + std::string(__func__));
+  if (in_int_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_int_no_value " + std::string(__func__));
+  if (!in_int8.has_value() || in_int8.value() != -102)
+    IC_API::trap("ASSERT ERROR - in_int8 " + std::string(__func__));
+  if (in_int8_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_int8_no_value " + std::string(__func__));
+  if (!in_int16.has_value() || in_int16.value() != -103)
+    IC_API::trap("ASSERT ERROR - in_int16 " + std::string(__func__));
+  if (in_int16_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_int16_no_value " + std::string(__func__));
+  if (!in_int32.has_value() || in_int32.value() != -104)
+    IC_API::trap("ASSERT ERROR - in_int32 " + std::string(__func__));
+  if (in_int32_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_int32_no_value " + std::string(__func__));
+  if (!in_int64.has_value() || in_int64.value() != -105)
+    IC_API::trap("ASSERT ERROR - in_int64 " + std::string(__func__));
+  if (in_int64_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_int64_no_value " + std::string(__func__));
+
+  if (!in_float32.has_value() ||
+      !is_approximately_equal(in_float32.value(), (float)-1.01))
+    IC_API::trap("ASSERT ERROR - in_float32 " + std::string(__func__));
+  if (in_float32_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_float32_no_value " + std::string(__func__));
+
+  if (!in_float64.has_value() ||
+      !is_approximately_equal(in_float64.value(), (double)-1.02))
+    IC_API::trap("ASSERT ERROR - in_float64 " + std::string(__func__));
+  if (in_float64_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_float64_no_value " + std::string(__func__));
+
+  if (!in_text.has_value() || in_text.value() != "Hello 101")
+    IC_API::trap("ASSERT ERROR - in_text " + std::string(__func__));
+  if (in_text_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_text_no_value " + std::string(__func__));
+
+  if (!in_principal.has_value() ||
+      in_principal.value() !=
+          "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae")
+    IC_API::trap("ASSERT ERROR - in_principal " + std::string(__func__));
+  if (in_principal_no_value.has_value())
+    IC_API::trap("ASSERT ERROR - in_principal_no_value " +
+                 std::string(__func__));
+
+  // ---------------------------------------------------------------------------
+  // Return the date to the wire
+  std::vector<CandidType> args_out;
+  args_out.push_back(CandidTypeOptBool{in_bool_true});
+  args_out.push_back(CandidTypeOptBool{in_bool_false});
+  args_out.push_back(CandidTypeOptBool{in_bool_no_value});
+  args_out.push_back(CandidTypeOptNat{in_nat});
+  args_out.push_back(CandidTypeOptNat{in_nat_no_value});
+  args_out.push_back(CandidTypeOptNat8{in_nat8});
+  args_out.push_back(CandidTypeOptNat8{in_nat8_no_value});
+  args_out.push_back(CandidTypeOptNat16{in_nat16});
+  args_out.push_back(CandidTypeOptNat16{in_nat16_no_value});
+  args_out.push_back(CandidTypeOptNat32{in_nat32});
+  args_out.push_back(CandidTypeOptNat32{in_nat32_no_value});
+  args_out.push_back(CandidTypeOptNat64{in_nat64});
+  args_out.push_back(CandidTypeOptNat64{in_nat64_no_value});
+  args_out.push_back(CandidTypeOptInt{in_int});
+  args_out.push_back(CandidTypeOptInt{in_int_no_value});
+  args_out.push_back(CandidTypeOptInt8{in_int8});
+  args_out.push_back(CandidTypeOptInt8{in_int8_no_value});
+  args_out.push_back(CandidTypeOptInt16{in_int16});
+  args_out.push_back(CandidTypeOptInt16{in_int16_no_value});
+  args_out.push_back(CandidTypeOptInt32{in_int32});
+  args_out.push_back(CandidTypeOptInt32{in_int32_no_value});
+  args_out.push_back(CandidTypeOptInt64{in_int64});
+  args_out.push_back(CandidTypeOptInt64{in_int64_no_value});
+  args_out.push_back(CandidTypeOptFloat32{in_float32});
+  args_out.push_back(CandidTypeOptFloat32{in_float32_no_value});
+  args_out.push_back(CandidTypeOptFloat64{in_float64});
+  args_out.push_back(CandidTypeOptFloat64{in_float64_no_value});
+  args_out.push_back(CandidTypeOptText{in_text});
+  args_out.push_back(CandidTypeOptText{in_text_no_value});
+  args_out.push_back(CandidTypeOptPrincipal{in_principal});
+  args_out.push_back(CandidTypeOptPrincipal{in_principal_no_value});
+  ic_api.to_wire(args_out);
+}
+
 void roundtrip_record() {
   IC_API ic_api(false);
 

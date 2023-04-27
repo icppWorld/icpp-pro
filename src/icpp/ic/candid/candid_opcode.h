@@ -19,6 +19,8 @@ public:
   bool is_reftype(const int &t);
   void candid_type_from_opcode(CandidType &c, int opcode);
   void candid_type_vec_from_opcode(CandidType &c, int opcode);
+  void candid_type_opt_from_opcode(CandidType &c, int opcode);
+  std::string name_from_opcode(int opcode);
 
   // Primitive Types
   // T : <primtype> -> i8*

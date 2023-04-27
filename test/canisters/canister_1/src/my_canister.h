@@ -88,6 +88,16 @@ void roundtrip_vec_nat16()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_vec_nat16");
 void roundtrip_vec_all()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_vec_all");
+void roundtrip_opt_nat()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_nat");
+void roundtrip_opt_nat_no_value()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_nat_no_value");
+void roundtrip_opt_nat16()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_nat16");
+void roundtrip_opt_nat16_no_value()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_nat16_no_value");
+void roundtrip_opt_all()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_all");
 void roundtrip_record() WASM_SYMBOL_EXPORTED("canister_query roundtrip_record");
 
 void trap_wrong_number_of_args()

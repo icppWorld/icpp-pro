@@ -37,6 +37,8 @@ private:
 
   // The deserialized argument list
   std::vector<int> m_args_datatypes;
+  std::vector<__uint128_t> m_args_datatypes_offset_start;
+  std::vector<__uint128_t> m_args_datatypes_offset_end;
 
   // The byte stream to be deserialized
   std::string m_hex_string;

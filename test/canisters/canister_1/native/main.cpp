@@ -202,6 +202,41 @@ int main() {
       "4449444c0f6d7e6d7d6d7b6d7a6d796d786d7c6d776d766d756d746d736d726d716d680f000102030405060708090a0b0c0d0e0201000365666703656667036500660067000365000000660000006700000003650000000000000066000000000000006700000000000000039b7f9a7f997f039b9a99039bff9aff99ff039bffffff9affffff99ffffff039bffffffffffffff9affffffffffffff99ffffffffffffff03ae4781bf5c8f82bf0ad783bf03295c8fc2f528f0bf52b81e85eb51f0bf7b14ae47e17af0bf030948656c6c6f203130310948656c6c6f203130320948656c6c6f203130330301010001020102011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d602",
       "4449444c0f6d7e6d7d6d7b6d7a6d796d786d7c6d776d766d756d746d736d726d716d680f000102030405060708090a0b0c0d0e0201000365666703656667036500660067000365000000660000006700000003650000000000000066000000000000006700000000000000039b7f9a7f997f039b9a99039bff9aff99ff039bffffff9affffff99ffffff039bffffffffffffff9affffffffffffff99ffffffffffffff03ae4781bf5c8f82bf0ad783bf03295c8fc2f528f0bf52b81e85eb51f0bf7b14ae47e17af0bf030948656c6c6f203130310948656c6c6f203130320948656c6c6f203130330301010001020102011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d602");
 
+  // '(opt (101 : nat))' -> same
+  mockIC.run_test("roundtrip_opt_nat", roundtrip_opt_nat,
+                  "4449444c016e7d01000165", "4449444c016e7d01000165");
+
+  // '(null)' -> The raw bytes returned represent an opt : nat without a value.
+  //             There is no IDL representation for this.
+  //             didc decodes it to '(null)'
+  mockIC.run_test("roundtrip_opt_nat_no_value", roundtrip_opt_nat_no_value,
+                  "4449444c00017f", "4449444c016e7d010000");
+  mockIC.run_test("roundtrip_opt_nat_no_value", roundtrip_opt_nat_no_value,
+                  "4449444c016e7d010000", "4449444c016e7d010000");
+
+  // '(opt (101 : nat16))' -> same
+  mockIC.run_test("roundtrip_opt_nat16", roundtrip_opt_nat16,
+                  "4449444c016e7a0100016500", "4449444c016e7a0100016500");
+
+  // '(null)' -> The raw bytes returned represent an opt : nat16 without a value.
+  //             There is no IDL representation for this.
+  //             didc decodes it to '(null)'
+  mockIC.run_test("roundtrip_opt_nat16_no_value", roundtrip_opt_nat16_no_value,
+                  "4449444c00017f", "4449444c016e7a010000");
+  mockIC.run_test("roundtrip_opt_nat16_no_value", roundtrip_opt_nat16_no_value,
+                  "4449444c016e7a010000", "4449444c016e7a010000");
+
+  // '(opt (true : bool), opt (false : bool), null, opt (101 : nat), null, opt (102 : nat8), null, opt (103 : nat16), null, opt (104 : nat32), null, opt (105 : nat64), null, opt (-101 : int), null, opt (-102 : int8), null, opt (-103 : int16), null, opt (-104 : int32), null, opt (-105 : int64), null, opt (-1.01 : float32), null, opt (-1.02 : float64), null, opt ("Hello 101" : text), null, opt (principal "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae"), null)'
+  //-> raw bytes are not using null, but an opt:natXX without a value, as explained in previous
+  mockIC.run_test(
+      "roundtrip_opt_all", roundtrip_opt_all,
+      "4449444c0f6e7e6e7d6e7b6e7a6e796e786e7c6e776e766e756e746e736e726e716e681f00007f017f027f037f047f057f067f077f087f097f0a7f0b7f0c7f0d7f0e7f01010100016501660167000168000000016900000000000000019b7f019a0199ff0198ffffff0197ffffffffffffff01ae4781bf0152b81e85eb51f0bf010948656c6c6f2031303101011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d602",
+      "4449444c0f6e7e6e7d6e7b6e7a6e796e786e7c6e776e766e756e746e736e726e716e681f0000000101020203030404050506060707080809090a0a0b0b0c0c0d0d0e0e01010100000165000166000167000001680000000001690000000000000000019b7f00019a000199ff000198ffffff000197ffffffffffffff0001ae4781bf000152b81e85eb51f0bf00010948656c6c6f203130310001011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d60200");
+  mockIC.run_test(
+      "roundtrip_opt_all", roundtrip_opt_all,
+      "4449444c0f6e7e6e7d6e7b6e7a6e796e786e7c6e776e766e756e746e736e726e716e681f0000000101020203030404050506060707080809090a0a0b0b0c0c0d0d0e0e01010100000165000166000167000001680000000001690000000000000000019b7f00019a000199ff000198ffffff000197ffffffffffffff0001ae4781bf000152b81e85eb51f0bf00010948656c6c6f203130310001011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d60200",
+      "4449444c0f6e7e6e7d6e7b6e7a6e796e786e7c6e776e766e756e746e736e726e716e681f0000000101020203030404050506060707080809090a0a0b0b0c0c0d0d0e0e01010100000165000166000167000001680000000001690000000000000000019b7f00019a000199ff000198ffffff000197ffffffffffffff0001ae4781bf000152b81e85eb51f0bf00010948656c6c6f203130310001011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d60200");
+
   // from_wire:
   // '(record {"name" = "C++ Developer"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})'
   // '(record {1_224_700_491 = "C++ Developer"; 1_274_861_098 = 0.01 : float64; 2_143_348_543 = 11 : int;})'
@@ -222,8 +257,6 @@ int main() {
   // '(true, true)' goes in, but it only expects one '(true)'
   mockIC.run_trap_test("trap_wrong_number_of_args", trap_wrong_number_of_args,
                        "4449444c00027e7e0101", silent_on_trap);
-
-  // TODO: move each trap test into a mockIC.run_trap_test, calling a canister method
 
   // Verify that a Record traps on hash collission
   try {

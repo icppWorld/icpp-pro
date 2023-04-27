@@ -584,6 +584,85 @@ def test__roundtrip_vec_all(network: str) -> None:
     assert response == expected_response
 
 
+def test__roundtrip_opt_nat(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_nat",
+        canister_argument="(opt (101 : nat))",
+        network=network,
+    )
+    expected_response = "(opt (101 : nat))"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_nat_no_value(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_nat_no_value",
+        canister_argument="(null)",
+        network=network,
+    )
+    expected_response = "(null)"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_nat16(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_nat16",
+        canister_argument="(opt (101 : nat16))",
+        network=network,
+    )
+    expected_response = "(opt (101 : nat16))"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_nat16_no_value(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_nat16_no_value",
+        canister_argument="(null)",
+        network=network,
+    )
+    expected_response = "(null)"
+    assert response == expected_response
+
+
+# The raw bytes returned represent an opt : nat16 without a value.
+# There is no IDL representation for this.
+# didc decodes it to '(null)'
+def test__roundtrip_opt_nat16_no_value_raw(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_nat16_no_value",
+        canister_argument="4449444c016e7a010000",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c016e7a010000"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_all_raw(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_all",
+        canister_argument="4449444c0f6e7e6e7d6e7b6e7a6e796e786e7c6e776e766e756e746e736e726e716e681f0000000101020203030404050506060707080809090a0a0b0b0c0c0d0d0e0e01010100000165000166000167000001680000000001690000000000000000019b7f00019a000199ff000198ffffff000197ffffffffffffff0001ae4781bf000152b81e85eb51f0bf00010948656c6c6f203130310001011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d60200",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c0f6e7e6e7d6e7b6e7a6e796e786e7c6e776e766e756e746e736e726e716e681f0000000101020203030404050506060707080809090a0a0b0b0c0c0d0d0e0e01010100000165000166000167000001680000000001690000000000000000019b7f00019a000199ff000198ffffff000197ffffffffffffff0001ae4781bf000152b81e85eb51f0bf00010948656c6c6f203130310001011d779590d2cd339802981dfd935d9a3dbb085cafe6ad19b87229a016d60200"
+    assert response == expected_response
+
+
 def test__roundtrip_record(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,

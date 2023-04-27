@@ -35,4 +35,7 @@ protected:
   std::vector<std::string> m_field_names;
   std::vector<int> m_field_datatypes;
   std::vector<CandidType> m_fields;
+
+  // To help with decoding checks
+  std::vector<int> m_field_datatypes_wire;
 };

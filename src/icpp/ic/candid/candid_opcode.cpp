@@ -1,6 +1,7 @@
 // The Candid type Opcodes and helper methods
 
 #include <string>
+#include <unordered_map>
 
 #include "candid.h"
 #include "ic_api.h"
@@ -25,6 +26,27 @@ bool CandidOpcode::is_constype(const int &t) {
 bool CandidOpcode::is_reftype(const int &t) {
   if (t == -22 || t == -23) return true;
   return false;
+}
+
+std::string CandidOpcode::name_from_opcode(int opcode) {
+  // This function uses a hash map to map the opcodes to their corresponding variable names.
+  // It first checks if the given opcode exists in the map.
+  // If it does, the function returns the associated variable name; otherwise, it returns "Unknown".
+  std::unordered_map<int, std::string> names{
+      {-1, "Null"},     {-2, "Bool"},     {-3, "Nat"},      {-4, "Int"},
+      {-5, "Nat8"},     {-6, "Nat16"},    {-7, "Nat32"},    {-8, "Nat64"},
+      {-9, "Int8"},     {-10, "Int16"},   {-11, "Int32"},   {-12, "Int64"},
+      {-13, "Float32"}, {-14, "Float64"}, {-15, "Text"},    {-16, "Reserved"},
+      {-17, "Empty"},   {-18, "Opt"},     {-19, "Vec"},     {-20, "Record"},
+      {-21, "Variant"}, {-22, "Func"},    {-23, "Service"}, {-24, "Principal"}};
+
+  if (names.count(opcode)) {
+    return names[opcode];
+  } else if (opcode >= 0) {
+    return "Unknown (The value >= 0, so probably it is a type table reference)";
+  } else {
+    return "Unknown";
+  }
 }
 
 void CandidOpcode::candid_type_from_opcode(CandidType &c, int opcode) {
@@ -68,6 +90,13 @@ void CandidOpcode::candid_type_from_opcode(CandidType &c, int opcode) {
     std::string msg;
     msg.append(
         "ERROR: NOT SUPPORTED FOR VEC. (use candid_vec_type_from_opcode)");
+    msg.append("       datatype = " + std::to_string(opcode));
+    msg.append("      " + std::string(__func__));
+    IC_API::trap(msg);
+  } else if (opcode == Opt) {
+    std::string msg;
+    msg.append(
+        "ERROR: NOT SUPPORTED FOR OPT. (use candid_opt_type_from_opcode)");
     msg.append("       datatype = " + std::to_string(opcode));
     msg.append("      " + std::string(__func__));
     IC_API::trap(msg);
@@ -127,6 +156,58 @@ void CandidOpcode::candid_type_vec_from_opcode(CandidType &c, int opcode) {
   } else {
     std::string msg;
     msg.append("ERROR: NOT YET IMPLEMENTED CandidTypeVecXXX.");
+    msg.append("       for content type = " + std::to_string(opcode));
+    msg.append("      " + std::string(__func__));
+    IC_API::trap(msg);
+  }
+}
+
+void CandidOpcode::candid_type_opt_from_opcode(CandidType &c, int opcode) {
+  // if (opcode == Null) {
+  //   c = CandidTypeOptNull();
+  // } else if (opcode == Empty) {
+  //   c = CandidTypeOptEmpty();
+  // } else if (opcode == Reserved) {
+  //   c = CandidTypeOptReserved();
+  // } else
+  //
+  if (opcode == Bool) {
+    c = CandidTypeOptBool();
+  } else if (opcode == Float32) {
+    c = CandidTypeOptFloat32();
+  } else if (opcode == Float64) {
+    c = CandidTypeOptFloat64();
+  } else if (opcode == Int) {
+    c = CandidTypeOptInt();
+  } else if (opcode == Nat) {
+    c = CandidTypeOptNat();
+  } else if (opcode == Nat8) {
+    c = CandidTypeOptNat8();
+  } else if (opcode == Nat16) {
+    c = CandidTypeOptNat16();
+  } else if (opcode == Nat32) {
+    c = CandidTypeOptNat32();
+  } else if (opcode == Nat64) {
+    c = CandidTypeOptNat64();
+  } else if (opcode == Int8) {
+    c = CandidTypeOptInt8();
+  } else if (opcode == Int16) {
+    c = CandidTypeOptInt16();
+  } else if (opcode == Int32) {
+    c = CandidTypeOptInt32();
+  } else if (opcode == Int64) {
+    c = CandidTypeOptInt64();
+  } else if (opcode == Text) {
+    c = CandidTypeOptText();
+  } else if (opcode == Principal) {
+    c = CandidTypeOptPrincipal();
+    // } else if (opcode == Vec) {
+    //   c = CandidTypeOptVec();
+    // } else if (opcode == Record) {
+    //   c = CandidTypeOptRecord();
+  } else {
+    std::string msg;
+    msg.append("ERROR: NOT YET IMPLEMENTED CandidTypeOptXXX.");
     msg.append("       for content type = " + std::to_string(opcode));
     msg.append("      " + std::string(__func__));
     IC_API::trap(msg);

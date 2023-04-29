@@ -21,11 +21,28 @@ import shutil
 from typing import Any, Callable, TypeVar
 from functools import wraps
 import typer
-from icpp import config_default
+from icpp import config_default, pro
 from icpp.commands_install_wasi_sdk import is_wasi_sdk_installed, install_wasi_sdk
 
 
 F = TypeVar("F", bound=Callable[..., Any])
+
+
+def requires_pro() -> Callable[[F], F]:
+    """Decorates a command that requires icpp-pro.
+
+    Exit if not running a licensed icpp-pro.
+    """
+
+    def decorator(f: F) -> Any:
+        @wraps(f)
+        def decorated(*args: Any, **kwargs: Any) -> Any:
+            pro.exit_if_not_pro()
+            return f(*args, **kwargs)
+
+        return decorated
+
+    return decorator
 
 
 def requires_wasi_sdk() -> Callable[[F], F]:

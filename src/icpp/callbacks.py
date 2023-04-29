@@ -11,8 +11,8 @@ def version_callback(value: bool) -> None:
     When the user issues the command `icpp --version`, this callback is called.
     """
     if value:
-        typer.echo(f"icpp-pro version: {__version__}")
-        typer.echo(f"wasi-sdk version: {__version_wasi_sdk__}")
+        typer.echo(f"icpp-free version: {__version__}")
+        typer.echo(f"wasi-sdk  version: {__version_wasi_sdk__}")
         raise typer.Exit()
 
 

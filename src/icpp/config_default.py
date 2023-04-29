@@ -75,6 +75,7 @@ IC_CPP_FILES = (
             for x in list(ICPP_PATH.glob("ic/ic0/*.cpp"))
             + list(ICPP_PATH.glob("ic/candid/*.cpp"))
             + list(ICPP_PATH.glob("ic/icapi/*.cpp"))
+            + list(ICPP_PATH.glob("ic/pro/*.cpp"))
             + list(
                 ICPP_PATH.glob("ic/vendors/hash-library/crc32.cpp")
             )  # TODO: Amalgate into .hpp
@@ -91,6 +92,7 @@ IC_HEADER_FILES = (
             + list(ICPP_PATH.glob("ic/wasi_sdk_traps/*.h"))
             + list(ICPP_PATH.glob("ic/candid/*.h"))
             + list(ICPP_PATH.glob("ic/icapi/*.h"))
+            + list(ICPP_PATH.glob("ic/pro/*.h"))
             # + list(ICPP_PATH.glob("ic/vendors/*.h"))
             # + list(ICPP_PATH.glob("ic/vendors/*.hpp"))
         ]
@@ -105,8 +107,8 @@ WASM_CPP = ICPP_ROOT_COMPILER / "bin/clang++"
 WASM_CFLAGS = (
     f" --target=wasm32-wasi -O3 -flto -fno-exceptions -fvisibility=hidden "
     f" --sysroot {SYSROOT} "
-    f" -I {ICPP_DIR}/ic/candid -I {ICPP_DIR}/ic/icapi -I {ICPP_DIR}/ic/ic0  "
-    f" -I {ICPP_DIR}/ic/vendors "
+    f" -I {ICPP_DIR}/ic/candid -I {ICPP_DIR}/ic/icapi -I {ICPP_DIR}/ic/pro "
+    f" -I {ICPP_DIR}/ic/ic0 -I {ICPP_DIR}/ic/vendors "
     f" -D NDEBUG -D ICPP_VERBOSE=0 "
 )
 WASM_CPPFLAGS = WASM_CFLAGS + " -std=c++20 "
@@ -141,6 +143,7 @@ MOCKIC_CPP_FILES = (
             for x in list(ICPP_PATH.glob("ic/ic0mock/*.cpp"))
             + list(ICPP_PATH.glob("ic/candid/*.cpp"))
             + list(ICPP_PATH.glob("ic/icapi/*.cpp"))
+            + list(ICPP_PATH.glob("ic/pro/*.cpp"))
             + list(
                 ICPP_PATH.glob("ic/vendors/hash-library/crc32.cpp")
             )  # TODO: Amalgate into .hpp
@@ -156,6 +159,7 @@ MOCKIC_HEADER_FILES = (
             for x in list(ICPP_PATH.glob("ic/ic0mock/*.h"))
             + list(ICPP_PATH.glob("ic/candid/*.h"))
             + list(ICPP_PATH.glob("ic/icapi/*.h"))
+            + list(ICPP_PATH.glob("ic/pro/*.h"))
             # + list(ICPP_PATH.glob("ic/vendors/*.h"))
             # + list(ICPP_PATH.glob("ic/vendors/*.hpp"))
         ]
@@ -167,8 +171,8 @@ NATIVE_COMPILER = "Clang"
 NATIVE_C = "clang"
 NATIVE_CPP = "clang++"
 NATIVE_CFLAGS = (
-    f" -g  -I {ICPP_DIR}/ic/candid -I {ICPP_DIR}/ic/icapi -I {ICPP_DIR}/ic/ic0mock "
-    f" -I {ICPP_DIR}/ic/vendors "
+    f" -g  -I {ICPP_DIR}/ic/candid -I {ICPP_DIR}/ic/icapi -I {ICPP_DIR}/ic/pro "
+    f" -I {ICPP_DIR}/ic/ic0mock -I {ICPP_DIR}/ic/vendors "
     f" -D ICPP_VERBOSE=0 "
 )
 NATIVE_CPPFLAGS = NATIVE_CFLAGS + " -std=c++20 "

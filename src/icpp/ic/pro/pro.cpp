@@ -25,4 +25,4 @@ void Pro::exit_if_not_pro() {
 }
 
 // Returns true if running a licensed icpp-pro
-bool Pro::is_pro() { return true; }
+bool Pro::is_pro() { return false; }

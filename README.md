@@ -1,10 +1,8 @@
-[![icpp](https://github.com/icppWorld/icpp/actions/workflows/cicd.yml/badge.svg)](https://github.com/icppWorld/icpp/actions/workflows/cicd.yml)
-# icpp
+[![icpp-pro](https://github.com/icppWorld/icpp-pro/actions/workflows/cicd.yml/badge.svg)](https://github.com/icppWorld/icpp-pro/actions/workflows/cicd.yml)
+# icpp-pro
 
-Modern C++ for the [Internet Computer](https://internetcomputer.org/).
+A development platform for C++ smart contracts of the  [Internet Computer](https://internetcomputer.org/):
 
-## What is icpp
-
-icpp is a command-line application for compiling C++20 code to WebAssembly that runs in a canister of the Internet Computer.
-
-For details, see [docs.icpp.world](https://docs.icpp.world/) !
+- Develop, debug, test, deploy & smoke-test
+- Full Candid support. 
+- Linux, Mac and Windows.

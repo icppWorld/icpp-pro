@@ -1,4 +1,4 @@
-"""Handles 'icpp build-wasm' """
+"""Handles 'icpp build-native' """
 import sys
 import subprocess
 import shutil
@@ -8,11 +8,12 @@ from icpp.__main__ import app
 from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
 
-from icpp.decorators import requires_native_compiler
+from icpp.decorators import requires_native_compiler, requires_pro
 
 
 @app.command()
 @requires_native_compiler()
+@requires_pro()
 def build_native() -> None:
     """Builds a native debug executable with your systems' Clang compiler.
 

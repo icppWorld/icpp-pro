@@ -43,7 +43,7 @@ setup(
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#summary
-    description="Modern C++ for the Internet Computer.",  # Optional
+    description="A development platform for C++ smart contracts of the Internet Computer",  # Optional
     #
     # This is an optional longer description of your project that represents
     # the body of text which users will see when they visit PyPI.

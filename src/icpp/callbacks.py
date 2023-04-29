@@ -28,4 +28,4 @@ def main_callback(
         is_eager=True,
     ),
 ) -> None:
-    """Modern C++ for the Internet Computer."""
+    """A development platform for C++ smart contracts of the Internet Computer"""

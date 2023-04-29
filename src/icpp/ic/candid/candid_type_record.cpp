@@ -2,6 +2,8 @@
 
 #include "candid.h"
 #include "candid_opcode.h"
+#include "pro.h"
+
 #include "ic_api.h"
 
 #include <algorithm>
@@ -9,6 +11,7 @@
 #include <utility>
 
 CandidTypeRecord::CandidTypeRecord() : CandidTypeBase() {
+  Pro().exit_if_not_pro();
   set_datatype();
   encode_T();
   encode_I();

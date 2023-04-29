@@ -4,8 +4,10 @@
 #include "ic_api.h"
 
 #include "candid_opcode.h"
+#include "pro.h"
 
 CandidTypeReserved::CandidTypeReserved() : CandidTypePrim() {
+  Pro().exit_if_not_pro();
   set_datatype();
   encode_I();
   encode_M();

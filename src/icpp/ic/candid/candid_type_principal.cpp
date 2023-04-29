@@ -2,6 +2,7 @@
 
 #include "candid.h"
 #include "candid_opcode.h"
+#include "pro.h"
 
 #include <cassert>
 
@@ -35,11 +36,13 @@ const std::string PRINCIPAL_ERROR_INVALID_BASE32_ENCODING =
     "Principal Error: Text must be in valid Base32 encoding. Decoding/Encoding roundtrip fails.";
 
 CandidTypePrincipal::CandidTypePrincipal() : CandidTypePrim() {
+  Pro().exit_if_not_pro();
   initialize("");
 }
 
 // These constructors allows for setting the value during Deserialization
 CandidTypePrincipal::CandidTypePrincipal(std::string *p_v) : CandidTypePrim() {
+  Pro().exit_if_not_pro();
   set_pv(p_v);
 
   const std::string v = const_cast<std::string &>(*p_v);
@@ -48,11 +51,13 @@ CandidTypePrincipal::CandidTypePrincipal(std::string *p_v) : CandidTypePrim() {
 
 // These constructors are only for encoding
 CandidTypePrincipal::CandidTypePrincipal(const char *c) : CandidTypePrim() {
+  Pro().exit_if_not_pro();
   std::string v(c);
   initialize(v);
 }
 CandidTypePrincipal::CandidTypePrincipal(const std::string v)
     : CandidTypePrim() {
+  Pro().exit_if_not_pro();
   initialize(v);
 }
 

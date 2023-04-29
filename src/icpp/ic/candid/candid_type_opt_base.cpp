@@ -6,8 +6,11 @@
 #include <cassert>
 
 #include "ic_api.h"
+#include "pro.h"
 
-CandidTypeOptBase::CandidTypeOptBase() : CandidTypeBase() {}
+CandidTypeOptBase::CandidTypeOptBase() : CandidTypeBase() {
+  Pro().exit_if_not_pro();
+}
 
 CandidTypeOptBase::~CandidTypeOptBase() {}
 

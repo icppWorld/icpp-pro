@@ -1,0 +1,24 @@
+                    ICPP-FREE LICENSE
+                    Version 1, 29 April 2023
+
+    Copyright (C) 2023 icppWorld <https://docs.icpp.world/>
+
+The ICPP-FREE LICENSE allows you to use icpp-free at no cost. 
+
+The intent of this license is to allow you to try out the capabilities, 
+and hopefully you like it so much that you upgrade to the paid version, 
+icpp-pro. 
+
+Doing so will support our development team and it will benefit the 
+larger community of Internet Computer C++ Smart Contract developers.
+
+icpp-free is used to build WebAssembly canisters, and there are no
+restrictions on use of the WebAssembly modules you create, except for 
+the purpose of reverse engineering and modification of the ICPP software 
+itself.
+
+The free software version will alert you when a pro license is required,
+and you can find summary at http://docs.icpp.world.
+
+Thank you for your interest in our software, and any feedback on the
+software or on this license can be emailed to icpp@icpp.world.

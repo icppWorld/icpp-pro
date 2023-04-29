@@ -205,7 +205,7 @@ pypi-build:
 
 .PHONY: testpypi-upload
 testpypi-upload:
-	twine upload --config-file .pypirc -r testpypi dist/*
+	twine upload --config-file .pypirc -r testpypi dist/*.whl
 
 .PHONY: testpypi-install
 testpypi-install:
@@ -213,7 +213,7 @@ testpypi-install:
 
 .PHONY: pypi-upload
 pypi-upload:
-	twine upload --config-file .pypirc dist/*
+	twine upload --config-file .pypirc dist/*.whl
 
 .PHONY: pypi-install
 pypi-install:

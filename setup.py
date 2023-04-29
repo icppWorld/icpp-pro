@@ -23,14 +23,14 @@ setup(
     # package, this name will be registered for you. It will determine how
     # users can install this project, e.g.:
     #
-    # $ pip install icpp
+    # $ pip install icpp-free
     #
-    # And where it will live on PyPI: https://pypi.org/project/icpp/
+    # And where it will live on PyPI: https://pypi.org/project/icpp-free/
     #
     # There are some restrictions on what makes a valid project name
     # specification here:
     # https://packaging.python.org/specifications/core-metadata/#name
-    name="icpp",  # Required
+    name="icpp-free",  # Required
     #
     # Versions should comply with PEP 440:
     # https://www.python.org/dev/peps/pep-0440/
@@ -74,7 +74,7 @@ setup(
     url="https://docs.icpp.world/",  # Optional
     #
     # This should be your name or the name of the organization which owns the project.
-    author="icpp team",  # Optional
+    author="icppWorld",  # Optional
     #
     # This should be a valid email address corresponding to the author listed above.
     author_email="icpp@icpp.world",  # Optional
@@ -89,9 +89,9 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         # Pick your license as you wish
-        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+        "License :: Other/Proprietary License",
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate you support Python 3. These classifiers are *not*
         # checked by 'pip install'. See instead 'python_requires' below.
@@ -103,13 +103,17 @@ setup(
         "Programming Language :: Python :: 3 :: Only",
     ],
     #
+    # This field adds a description to the metatada in PKG-INFO.
+    # It is not used by PyPI
+    license="Freemium",
+    #
     # This field adds keywords for your project which will appear on the
     # project page. What does your project relate to?
     #
     # Note that this is a list of additional keywords, separated
     # by commas, to be used to assist searching for the distribution in a
     # larger catalog.
-    keywords="Internet Computer, C++",  # Optional
+    keywords="Internet Computer, C++, Smart Contracts, blockchain",  # Optional
     #
     # When your source code is in a subdirectory under the project root, e.g.
     # `src/`, it is necessary to specify the `package_dir` argument.
@@ -140,7 +144,7 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
         "typer[all]",
-        "tomli",
+        'tomli;python_version<"3.11"',
         "requests",
         "enlighten",
         "pytest",

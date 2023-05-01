@@ -116,7 +116,8 @@ def get_identity() -> str:
     pro.exit_if_not_pro()
     arg = "dfx identity whoami "
     try:
-        identity = run_shell_cmd(arg)
+        identity = run_shell_cmd(arg, capture_output=True)
+        identity = identity.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
 
@@ -136,9 +137,10 @@ def set_identity(identity: str) -> None:
 def get_principal() -> str:
     """Returns the principal of the current dfx identity."""
     pro.exit_if_not_pro()
-    arg = "dfx identity get principal "
+    arg = "dfx identity get-principal "
     try:
-        principal = run_shell_cmd(arg)
+        principal = run_shell_cmd(arg, capture_output=True)
+        principal = principal.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
 

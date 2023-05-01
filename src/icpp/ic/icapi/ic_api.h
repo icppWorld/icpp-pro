@@ -11,6 +11,7 @@
 #include <string>
 
 #include "candid.h"
+#include "candid_type_principal.h"
 #include "vec_bytes.h"
 
 class IC_API {
@@ -28,6 +29,8 @@ public:
 
   uint64_t time();
 
+  CandidTypePrincipal get_caller() { return m_caller; }
+
   // Receive things from the wire in candid format
   void from_wire(std::vector<CandidType> A);
   void from_wire(CandidType c);
@@ -40,5 +43,6 @@ private:
   bool m_debug_print;
   VecBytes m_B_in;
   VecBytes m_B_out;
+  CandidTypePrincipal m_caller;
   void msg_reply();
 };

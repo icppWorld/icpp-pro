@@ -4,6 +4,7 @@
 #include "ic0.h"
 #include "pro.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 

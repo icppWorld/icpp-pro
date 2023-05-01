@@ -3,4 +3,8 @@
 
 Developer instructions: [icpp-contributors-guide](https://github.com/icppWorld/icpp-wikis/blob/main/icpp-contributers-guide.md)
 
-Release instructions: [icpp-maintainers-guide](https://github.com/icppWorld/icpp-wikis/blob/main/icpp-maintainers-guide.md)
+Release instructions: 
+- [release-guide-for-icpp-pro](https://github.com/icppWorld/icpp-wikis/blob/main/release-guide-for-icpp-pro.md)
+- [release-guide-for-icpp-free](https://github.com/icppWorld/icpp-wikis/blob/main/release-guide-for-icpp-free.md)
+- [release-guide-for-pypi-placeholders](https://github.com/icppWorld/icpp-wikis/blob/main/release-guide-for-pypi-placeholders.md)
+- [release-guide-for-icpp-docs](https://github.com/icppWorld/icpp-wikis/blob/main/release-guide-for-icpp-docs.md)

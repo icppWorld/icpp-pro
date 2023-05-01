@@ -60,6 +60,13 @@ CandidTypePrincipal::CandidTypePrincipal(const std::string v)
   Pro().exit_if_not_pro();
   initialize(v);
 }
+// Constructor used by IC_API::from_wire to store caller
+CandidTypePrincipal::CandidTypePrincipal(const std::vector<uint8_t> &bytes)
+    : CandidTypePrim() {
+  Pro().exit_if_not_pro();
+  std::string v = string_from_bytes(bytes);
+  initialize(v);
+}
 
 CandidTypePrincipal::~CandidTypePrincipal() {}
 
@@ -200,7 +207,7 @@ void CandidTypePrincipal::bytes_from_string() {
 
 // convert bytes of principal into string representation
 std::string
-CandidTypePrincipal::string_from_bytes(std::vector<uint8_t> &data_bytes) {
+CandidTypePrincipal::string_from_bytes(const std::vector<uint8_t> &data_bytes) {
   // spec: https://internetcomputer.org/docs/current/references/id-encoding-spec
   // m_v = Encode(data) := Group(LowerCase(Base32(CRC32(data) || data)))
 

@@ -23,14 +23,20 @@ IC_API::IC_API() {}
 
 IC_API::IC_API(const bool &dbug) : m_debug_print(dbug) {
   // Fill 'm_B_in' with the bytes of msg_arg_data
-  uint32_t num_bytes = ic0_msg_arg_data_size();
-  uint8_t *bytes = (uint8_t *)(malloc(num_bytes));
-  ic0_msg_arg_data_copy((uintptr_t)(void *)(bytes), 0, (uint32_t)(num_bytes));
-  m_B_in.store(bytes, num_bytes);
-  free(bytes);
+  std::vector<uint8_t> bytes(ic0_msg_arg_data_size());
+  ic0_msg_arg_data_copy(reinterpret_cast<uintptr_t>(bytes.data()), 0,
+                        bytes.size());
+  m_B_in.store(bytes.data(), bytes.size());
+
+  // Get the principal of caller
+  std::vector<uint8_t> bytes_caller(ic0_msg_caller_size());
+  ic0_msg_caller_copy(reinterpret_cast<uintptr_t>(bytes_caller.data()), 0,
+                      bytes_caller.size());
+  m_caller = CandidTypePrincipal(bytes_caller);
 
   if (m_debug_print) {
     debug_print("\n--");
+    debug_print("IC_API caller's principal:" + m_caller.get_text());
     debug_print("IC_API received these bytes over the wire:");
     m_B_in.debug_print();
   }

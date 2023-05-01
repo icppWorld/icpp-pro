@@ -3,6 +3,8 @@
 #pragma once
 
 #include "candid.h"
+#include "candid_type_base.h"
+#include "vec_bytes.h"
 
 class CandidTypePrim : public CandidTypeBase {
 public:

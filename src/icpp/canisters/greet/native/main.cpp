@@ -23,10 +23,12 @@ int main() {
   // '()' -> '(2023)'
   mockIC.run_test("greet_1", greet_1, "4449444c0000", "4449444c00017ce70f");
 
-  // '("C++ Developer")' -> '("hello C++ Developer!")'
-  mockIC.run_test("greet_2", greet_2,
-                  "4449444c0001710d432b2b20446576656c6f706572",
-                  "4449444c0001711468656c6c6f20432b2b20446576656c6f70657221");
+  // Pretend caller has a principal "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae"
+  // '("C++ Developer")' -> '("hello C++ Developer!\nYour principal is: expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae")'
+  mockIC.run_test(
+      "greet_2", greet_2, "4449444c0001710d432b2b20446576656c6f706572",
+      "4449444c0001716768656c6c6f20432b2b20446576656c6f706572210a596f7572207072696e636970616c2069733a206578706d742d67747873772d696e66746a2d747461626a2d71687035732d6e6f7a75702d6e3362626f2d6b377a766e2d64673468652d6b6e6163332d6c6165",
+      false, "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae");
 
   // '(record { "icpp version" = 1 : int; OS = "Linux" : text })' ->
   // '(record { "icpp Release Details" = "Version = 1 & Operating System = Linux" : text; "release year" = 2023 : int })'

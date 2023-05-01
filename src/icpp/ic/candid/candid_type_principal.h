@@ -9,6 +9,8 @@
 #include <cstring>
 
 #include "candid.h"
+#include "candid_type_prim.h"
+#include "vec_bytes.h"
 
 class CandidTypePrincipal : public CandidTypePrim {
 public:
@@ -19,12 +21,15 @@ public:
 
   CandidTypePrincipal(std::string *v);
 
+  CandidTypePrincipal(const std::vector<uint8_t> &bytes);
+
   // Destructor
   ~CandidTypePrincipal();
 
   bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error);
   std::string get_v() { return m_v; }
   std::string get_text() { return m_v; }
+  const VecBytes &get_v_bytes() const { return m_v_bytes; }
 
 protected:
   void set_pv(std::string *v);
@@ -33,7 +38,7 @@ protected:
   void encode_I();
   void encode_M();
   void bytes_from_string();
-  std::string string_from_bytes(std::vector<uint8_t> &data_bytes);
+  std::string string_from_bytes(const std::vector<uint8_t> &data_bytes);
 
   void make_ascii_uppercase(std::string &s) {
     std::transform(s.begin(), s.end(), s.begin(), ::toupper);

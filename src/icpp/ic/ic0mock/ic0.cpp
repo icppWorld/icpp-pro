@@ -4,6 +4,7 @@
 #include "ic0.h"
 #include "pro.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 
@@ -35,30 +36,37 @@ void ic0_msg_arg_data_copy(uintptr_t dst, uint32_t off, uint32_t size) {
     abort();
   }
 
-  uint32_t off_now = off;
-  uint8_t *bytes = (uint8_t *)(void *)dst;
-  for (std::byte b : global_mockIC->vec_in()) {
-    // The byte contains the decimal representation. Store it in an int
-    // variable.
-    int n = (int)b;
+  uint8_t *bytes = reinterpret_cast<uint8_t *>(dst);
+  const auto &vec_in = global_mockIC->vec_in();
 
-    // The IC works with a byte stored as (uint8_t). Cast it to that.
-    *(bytes + off_now) = (uint8_t)n;
-    off_now += 1;
-  }
+  // Cast the std::byte elements to uint8_t while copying.
+  std::transform(vec_in.begin(), vec_in.end(), bytes + off,
+                 [](std::byte b) { return static_cast<uint8_t>(b); });
 };
 
 uint32_t ic0_msg_caller_size() {
   Pro().exit_if_not_pro();
-  std::cout << "ic0mock ic0::msg_caller_size" << std::endl;
-  std::cout << "...PATCH-PATCH- Returning 0..." << std::endl;
-  return 0;
+  CandidTypePrincipal caller = global_mockIC->get_caller();
+  return (uint32_t)caller.get_v_bytes().size();
 };
 
 void ic0_msg_caller_copy(uintptr_t dst, uint32_t off, uint32_t size) {
   Pro().exit_if_not_pro();
-  std::cout << "ic0mock ic0::msg_caller_copy" << std::endl;
-  std::cout << "...doing nothing..." << std::endl;
+  CandidTypePrincipal caller = global_mockIC->get_caller();
+
+  if (size != (uint32_t)caller.get_v_bytes().size()) {
+    std::cout
+        << "TEST PROGRAM ERROR: ic0_msg_caller_copy in the mockIC has wrong size"
+        << std::endl;
+    std::cout << " size argument = " << size << std::endl;
+    std::cout << " size mockIC   = " << (uint32_t)caller.get_v_bytes().size()
+              << std::endl;
+    abort();
+  }
+
+  uint8_t *bytes = reinterpret_cast<uint8_t *>(dst);
+  const std::vector<uint8_t> &caller_bytes = caller.get_v_bytes().vec_uint8_t();
+  std::copy(caller_bytes.begin(), caller_bytes.end(), bytes + off);
 };
 
 uint32_t ic0_msg_reject_code() {
@@ -209,7 +217,6 @@ uint64_t ic0_time() {
 };
 
 void ic0_debug_print(uintptr_t src, uint32_t size) {
-
   // Parameter list uses `(uintptr_t)src` instead of `(uint8_t)message`:
   // -> Either way works in IC canister, because target=wasm32 uses 32 bit
   // pointers.

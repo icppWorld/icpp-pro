@@ -21,9 +21,21 @@ void greet_1() {
 
 void greet_2() {
   IC_API ic_api(false);
+
+  // Get the principal of the caller, as cryptographically verified by the IC
+  CandidTypePrincipal caller = ic_api.get_caller();
+
+  // Get the name, passed as a Candid parameter to this method
   std::string name{""};
   ic_api.from_wire(CandidTypeText{&name});
-  ic_api.to_wire(CandidTypeText{"hello " + name + "!"});
+
+  // Create a msg, to be passed back as Candid over the wire
+  std::string msg;
+  msg.append("hello " + name + "!\n");
+  msg.append("Your principal is: " + caller.get_text());
+
+  // Send the response back
+  ic_api.to_wire(CandidTypeText{msg});
 }
 
 void greet_3() {

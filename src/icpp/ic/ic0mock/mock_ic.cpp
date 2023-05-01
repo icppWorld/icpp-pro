@@ -40,7 +40,7 @@ MockIC::MockIC(const bool &exit_on_fail) {
 int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
                      const std::string &candid_in,
                      const std::string &candid_out_expected,
-                     const bool silent_on_trap) {
+                     const bool silent_on_trap, const std::string &caller) {
   ++m_tests_total;
   std::cout << "\n----------\n";
   std::cout << "MockIC run_test: " << test_name << ": \n";
@@ -48,6 +48,7 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
   m_B_in.clear();
   m_B_out.clear();
   m_B_in.store_hex_string(candid_in);
+  m_caller = CandidTypePrincipal(caller);
 
   m_silent_on_trap = silent_on_trap;
   try {
@@ -81,7 +82,8 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
 
 int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
                           const std::string &candid_in,
-                          const bool silent_on_trap) {
+                          const bool silent_on_trap,
+                          const std::string &caller) {
   ++m_tests_total;
   std::cout << "\n----------\n";
   std::cout << "MockIC run_trap_test: " << test_name << ": \n";
@@ -89,6 +91,7 @@ int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
   m_B_in.clear();
   m_B_out.clear();
   m_B_in.store_hex_string(candid_in);
+  m_caller = CandidTypePrincipal(caller);
 
   m_silent_on_trap = silent_on_trap;
   try {

@@ -27,7 +27,6 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
                      const std::string &candid_in,
                      const std::string &candid_out_expected,
                      const bool silent_on_trap, const std::string &caller) {
-                     const bool silent_on_trap) {
   return 1;
 }
 

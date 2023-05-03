@@ -200,7 +200,7 @@ install-wabt:
 # Building and publishing the pypi package
 .PHONY: pypi-build
 pypi-build:
-	rm -r dist
+	rm -rf dist
 	python -m build
 
 .PHONY: testpypi-upload

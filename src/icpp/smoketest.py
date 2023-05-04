@@ -19,6 +19,7 @@ def call_canister_api(
     canister_input: str = "idl",
     canister_output: str = "idl",
     network: str = "local",
+    quiet: str = "-qq",  # limits dfx to errors only
 ) -> str:
     """Calls a canister method"""
     pro.exit_if_not_pro()
@@ -36,6 +37,7 @@ def call_canister_api(
         f"dfx "
         f" canister "
         f" --network {network} "
+        f" {quiet} "
         f" call "
         f" --type {canister_input} "
         f" --output {canister_output} "
@@ -116,7 +118,7 @@ def get_identity() -> str:
     pro.exit_if_not_pro()
     arg = "dfx identity whoami "
     try:
-        identity = run_shell_cmd(arg, capture_output=True)
+        identity = run_shell_cmd(arg, capture_output=True, timeout_seconds=1)
         identity = identity.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
@@ -139,7 +141,7 @@ def get_principal() -> str:
     pro.exit_if_not_pro()
     arg = "dfx identity get-principal "
     try:
-        principal = run_shell_cmd(arg, capture_output=True)
+        principal = run_shell_cmd(arg, capture_output=True, timeout_seconds=1)
         principal = principal.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")

@@ -202,6 +202,11 @@ void CandidDeserialize::deserialize() {
 
         // Trap if type table does not match the wire
         p_expected->check_type_table(p_wire);
+      } else if (opcode_found == CandidOpcode().Variant) {
+        CandidTypeVariant *p_wire =
+            get_if<CandidTypeVariant>(type_table.get_candidType_ptr());
+        CandidTypeVariant *p_expected = get_if<CandidTypeVariant>(&m_A[i]);
+        p_expected->check_type_table(p_wire);
       } else if (opcode_found == CandidOpcode().Vec ||
                  opcode_found == CandidOpcode().Opt) {
 

@@ -12,6 +12,8 @@ public:
   // Destructor
   ~CandidTypeNull();
 
+  std::string get_v() { return "NULL_VALUE"; }
+
 protected:
   void set_datatype();
   void encode_I();

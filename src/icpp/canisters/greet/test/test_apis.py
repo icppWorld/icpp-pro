@@ -9,7 +9,7 @@
 
 from pathlib import Path
 import pytest
-from icpp.smoketest import call_canister_api, get_principal
+from icpp.smoketest import call_canister_api
 
 # Path to the dfx.json file
 DFX_JSON_PATH = Path(__file__).parent / "../dfx.json"
@@ -42,7 +42,7 @@ def test__greet_1(network: str) -> None:
     assert response == expected_response
 
 
-def test__greet_2(network: str) -> None:
+def test__greet_2(network: str, principal: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
@@ -50,7 +50,6 @@ def test__greet_2(network: str) -> None:
         canister_argument='("C++ Developer")',
         network=network,
     )
-    principal = get_principal()
     expected_response = f'("hello C++ Developer!\\nYour principal is: {principal}")'
     assert response == expected_response
 

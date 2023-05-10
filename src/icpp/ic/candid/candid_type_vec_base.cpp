@@ -8,9 +8,7 @@
 
 #include "ic_api.h"
 
-CandidTypeVecBase::CandidTypeVecBase() : CandidTypeBase() {
-  Pro().exit_if_not_pro();
-}
+CandidTypeVecBase::CandidTypeVecBase() : CandidTypeBase() {}
 
 CandidTypeVecBase::~CandidTypeVecBase() {}
 

@@ -5,14 +5,11 @@
 #include "candid_opcode.h"
 #include "pro.h"
 
-CandidTypeNat32::CandidTypeNat32() : CandidTypePrim() {
-  Pro().exit_if_not_pro();
-  initialize(0);
-}
+CandidTypeNat32::CandidTypeNat32() : CandidTypePrim() { initialize(0); }
 
 // This constructor allows for setting the value during Deserialization
 CandidTypeNat32::CandidTypeNat32(uint32_t *p_v) : CandidTypePrim() {
-  Pro().exit_if_not_pro();
+
   set_pv(p_v);
 
   const uint32_t v = const_cast<uint32_t &>(*p_v);
@@ -21,7 +18,7 @@ CandidTypeNat32::CandidTypeNat32(uint32_t *p_v) : CandidTypePrim() {
 
 // This constructor is only for encoding
 CandidTypeNat32::CandidTypeNat32(const uint32_t v) : CandidTypePrim() {
-  Pro().exit_if_not_pro();
+
   initialize(v);
 }
 

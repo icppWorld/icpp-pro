@@ -10,20 +10,17 @@
 #include <cassert>
 #include <utility>
 
-CandidTypeVariant::CandidTypeVariant() : CandidTypeBase() {
-  Pro().exit_if_not_pro();
-  initialize();
-}
+CandidTypeVariant::CandidTypeVariant() : CandidTypeBase() { initialize(); }
 
 CandidTypeVariant::CandidTypeVariant(std::string *p_label) : CandidTypeBase() {
-  Pro().exit_if_not_pro();
+
   set_p_label(p_label);
   initialize();
 }
 
 CandidTypeVariant::CandidTypeVariant(const std::string label)
     : CandidTypeBase() {
-  Pro().exit_if_not_pro();
+
   m_label = label;
   initialize();
 }

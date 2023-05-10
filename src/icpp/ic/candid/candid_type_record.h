@@ -20,8 +20,7 @@ public:
 
   bool decode_T(VecBytes B, __uint128_t &offset, std::string &parse_error);
   bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error);
-  std::vector<CandidType> get_v() { return m_fields; }
-  std::vector<CandidType> get_fields() { return m_fields; }
+  std::vector<std::string> get_v() { return m_field_names; }
   std::vector<uint32_t> get_field_ids() { return m_field_ids; }
   std::vector<std::string> get_field_names() { return m_field_names; }
 

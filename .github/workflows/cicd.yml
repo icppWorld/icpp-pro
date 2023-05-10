@@ -66,4 +66,6 @@ jobs:
       - name: all-tests
         shell: bash -l {0}
         run: |
+          # restore smoke-test capabilities
+          cp src/store_pro_files_for_cicd_of_free/* src/icpp/
           make all-tests

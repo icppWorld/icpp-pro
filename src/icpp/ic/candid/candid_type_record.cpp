@@ -11,7 +11,7 @@
 #include <utility>
 
 CandidTypeRecord::CandidTypeRecord() : CandidTypeBase() {
-  Pro().exit_if_not_pro();
+
   set_datatype();
   encode_T();
   encode_I();

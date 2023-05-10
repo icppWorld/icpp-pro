@@ -102,6 +102,8 @@ void CandidOpcode::candid_type_from_opcode(CandidType &c, int opcode) {
     IC_API::trap(msg);
   } else if (opcode == Record) {
     c = CandidTypeRecord();
+  } else if (opcode == Variant) {
+    c = CandidTypeVariant();
   } else {
     std::string msg;
     msg.append("ERROR: NOT YET IMPLEMENTED FOR THIS OPCODE.");

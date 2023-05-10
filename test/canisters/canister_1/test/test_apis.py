@@ -675,6 +675,48 @@ def test__roundtrip_record(network: str) -> None:
     assert response == expected_response
 
 
+def test__roundtrip_variant_ok(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_variant_ok",
+        canister_argument="4449444c016b02bc8a017fc5fed20171010000",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c016b02bc8a017fc5fed20171010000"
+    assert response == expected_response
+
+
+def test__roundtrip_variant_err(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_variant_err",
+        canister_argument="4449444c016b02bc8a0171c5fed20171010001054572726f72",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c016b02bc8a0171c5fed20171010001054572726f72"
+    assert response == expected_response
+
+
+def test__roundtrip_variant(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_variant",
+        canister_argument="4449444c046b01bc8a017f6b01c5fed2017a6b01bc8a01716b01c5fed2017106000102010203000094010008416c6c20676f6f6400f4010008416c6c20676f6f6400054572726f72",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"
+    assert response == expected_response
+
+
 # ----------------------------------------------------------------------------------
 # Trap testing
 #
@@ -691,4 +733,25 @@ def test__trap_wrong_number_of_args(network: str) -> None:
         network=network,
     )
     assert "Failed call to api" in response
+    assert "trapped explicitly" in response
     assert "ERROR: wrong number of arguments on wire." in response
+
+
+# Verify that a record traps if one of the records's id (hash) on wire does not match expected
+def test__trap_roundtrip_record(network: str) -> None:
+    """Verify that api traps when it receives a wrong message"""
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record",
+        canister_argument="4449444c016c03e3d2a2c10172cbe4fdc70471bfce83fe077c01007b14ae47e17a843f0d432b2b20446576656c6f7065720b",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert "Failed call to api" in response
+    assert "trapped explicitly" in response
+    assert (
+        "ERROR: the hashed id for the Record field at index 0 is wrong on the wire."
+        in response
+    )

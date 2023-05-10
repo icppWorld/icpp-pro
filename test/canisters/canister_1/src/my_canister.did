@@ -1,3 +1,19 @@
+type StatusCode = nat16;
+type Result = 
+    variant {
+        Ok;
+        Err: StatusCode;
+    };
+type Result_1 = 
+    variant {
+        Ok: text;
+        Err: StatusCode;
+    };
+type Result_2 = 
+    variant {
+        Ok: text;
+        Err: text;
+    };
 service: {
     "test_ic_api" : () -> (int) query;
     "test_candid" : () -> (int) query;
@@ -54,6 +70,11 @@ service: {
     "roundtrip_record" : (record { name: text; "secret float64": float64; "secret int": int })  -> 
                          (record { greeting: text; message: text; "secret float64": float64; "secret int": int }) 
                          query;
+    "roundtrip_variant_ok" : (Result)  -> (Result) query;
+    "roundtrip_variant_err" : (Result_2)  -> (Result_2) query;
+    "roundtrip_variant" : (Result, Result, Result_1, Result_1, Result_2, Result_2)  -> 
+                          (Result, Result, Result_1, Result_1, Result_2, Result_2) 
+                          query;
 
     "trap_wrong_number_of_args" : (bool) -> (bool) query;
 }

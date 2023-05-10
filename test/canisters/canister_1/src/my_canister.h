@@ -2,6 +2,7 @@
 
 #include <limits>
 #include <math.h>
+#include <variant>
 
 #include "wasm_symbol.h"
 
@@ -99,6 +100,12 @@ void roundtrip_opt_nat16_no_value()
 void roundtrip_opt_all()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_all");
 void roundtrip_record() WASM_SYMBOL_EXPORTED("canister_query roundtrip_record");
+void roundtrip_variant_ok()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_variant_ok");
+void roundtrip_variant_err()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_variant_err");
+void roundtrip_variant()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_variant");
 
 void trap_wrong_number_of_args()
     WASM_SYMBOL_EXPORTED("canister_query trap_wrong_number_of_args");

@@ -13,6 +13,7 @@ public:
   ~CandidTypeEmpty();
 
   bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error);
+  std::string get_v() { return "EMPTY_VALUE"; }
 
 protected:
   void set_datatype();

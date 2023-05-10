@@ -21,6 +21,7 @@ def call_canister_api(
     canister_input: str = "idl",
     canister_output: str = "idl",
     network: str = "local",
+    quiet: str = "-qq",  # limits dfx to errors only
 ) -> str:
     """Calls a canister method"""
     pro.exit_if_not_pro()

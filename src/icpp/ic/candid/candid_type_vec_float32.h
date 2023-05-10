@@ -18,6 +18,7 @@ public:
   ~CandidTypeVecFloat32();
 
   bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error);
+  std::vector<float> get_v() { return m_v; }
 
 protected:
   void set_pv(std::vector<float> *v) { m_pv = v; }

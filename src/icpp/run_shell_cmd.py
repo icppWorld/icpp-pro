@@ -36,6 +36,7 @@ def run_shell_cmd(
     capture_output: bool = False,
     print_captured_output: bool = False,
     cwd: Optional[Path] = None,
+    timeout_seconds: Optional[int] = None,
 ) -> str:
     """Runs 'cmd' with following behavior, so we can
     use it in our sequential CI/CD pipeline:
@@ -80,6 +81,9 @@ def run_shell_cmd(
     if cwd is None:
         cwd = Path(".")
 
+    if timeout_seconds is None:
+        timeout_seconds = 3
+
     capture_stdout = ""
 
     if capture_output is False:
@@ -87,27 +91,43 @@ def run_shell_cmd(
     else:
         # These will block & cannot be used to start a background process from make.
         if print_captured_output is False:
-            # This will capture_output and:
-            # - return it if there is no error
-            # - includes it in a possibly raised error
-            p_1 = subprocess.run(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                shell=True,
-                check=False,
-                text=True,
-                cwd=cwd,
-            )
-            if p_1.returncode != 0:
-                # typer.echo(p_1.stdout)
-                raise subprocess.CalledProcessError(
-                    returncode=p_1.returncode,
-                    cmd=p_1.args,
-                    output=escape_ansi(p_1.stdout),
-                    stderr=escape_ansi(p_1.stderr),
+            try:
+                # This will capture_output and:
+                # - return it if there is no error
+                # - includes it in a possibly raised error
+                p_1 = subprocess.run(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    shell=True,
+                    check=False,
+                    text=True,
+                    cwd=cwd,
+                    timeout=timeout_seconds,
                 )
-            capture_stdout += p_1.stdout
+                if p_1.returncode != 0:
+                    # typer.echo(p_1.stdout)
+                    raise subprocess.CalledProcessError(
+                        returncode=p_1.returncode,
+                        cmd=p_1.args,
+                        output=escape_ansi(p_1.stdout),
+                        stderr=escape_ansi(p_1.stderr),
+                    )
+                capture_stdout += p_1.stdout
+            except subprocess.TimeoutExpired as e:
+                capture_stdout = (
+                    f"ERROR: Command '{e.cmd}' timed out after {e.timeout} seconds, "
+                    f"with stdout: "
+                )
+
+                if e.stdout is not None:
+                    lmax = 132
+                    lstdout = len(e.stdout)
+                    capture_stdout += e.stdout.decode("utf-8")[: min(lmax, lstdout)]
+                    if lstdout > lmax:
+                        capture_stdout += "..."
+
+                print(capture_output)
         else:
             # This prints output while running, and we capture it as well & return it
             # https://stackoverflow.com/a/28319191/5480536

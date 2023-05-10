@@ -15,6 +15,9 @@ int main() {
   bool exit_on_fail = true;
   MockIC mockIC(exit_on_fail);
 
+  // During trap testing
+  bool silent_on_trap = true;
+
   //----------------------------------------------------------------------------------
   // Run all unit tests for vendor libraries
 
@@ -248,10 +251,53 @@ int main() {
       "4449444c016c03cbe4fdc70471aaacf3df0472bfce83fe077c01000d432b2b20446576656c6f7065727b14ae47e17a843f0b",
       "4449444c016c04aaacf3df0472b9c3eef20571bfce83fe077cc7ebc4d0097101007b14ae47e17a843f1448656c6c6f20432b2b20446576656c6f706572210b18596f757220736563726574206e756d62657273206172653a");
 
+  // Candid's Variant has two options for the Type Table
+  // (1) only include the type table of the variant's value
+  // (2) include the type table of all the variant's cases
+
+  // '(variant { Ok })' -> same
+  mockIC.run_test("roundtrip_variant_ok (1)", roundtrip_variant_ok,
+                  "4449444c016b01bc8a017f010000",            // (1)
+                  "4449444c016b02bc8a017fc5fed20171010000"); // (2)
+  mockIC.run_test("roundtrip_variant_ok (2)", roundtrip_variant_ok,
+                  "4449444c016b02bc8a017fc5fed20171010000",
+                  "4449444c016b02bc8a017fc5fed20171010000");
+
+  // '(variant { Err = "Error" : text})' -> same
+  mockIC.run_test("roundtrip_variant_err (1)", roundtrip_variant_err,
+                  "4449444c016b01c5fed20171010000054572726f72",          // (1)
+                  "4449444c016b02bc8a0171c5fed20171010001054572726f72"); // (2)
+  mockIC.run_test("roundtrip_variant_err (2)", roundtrip_variant_err,
+                  "4449444c016b02bc8a0171c5fed20171010001054572726f72",
+                  "4449444c016b02bc8a0171c5fed20171010001054572726f72");
+
+  // See my_canister.did for the custom type definitions
+  // from_wire:
+  //   Result          Result                        Result_1                           Result_1                      Result_2                           Result_2
+  // '(variant { Ok }, variant { Err = 404 : nat16}, variant { Ok = "All good" : text}, variant { Err = 500 : nat16}, variant { Ok = "All good" : text}, variant { Err = "Error" : text})'
+  // to_wire: same
+  /* didc decode shows the hashed ids:
+  (
+    variant { 17_724 },
+    variant { 3_456_837 = 404 : nat16 },
+    variant { 17_724 = "All good" },
+    variant { 3_456_837 = 500 : nat16 },
+    variant { 17_724 = "All good" },
+    variant { 3_456_837 = "Error" },
+  )
+  */
+  mockIC.run_test(
+      "roundtrip_variant", roundtrip_variant,
+      "4449444c046b01bc8a017f6b01c5fed2017a6b01bc8a01716b01c5fed2017106000102010203000094010008416c6c20676f6f6400f4010008416c6c20676f6f6400054572726f72", // (1)
+      "4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"); // (2)
+  mockIC.run_test(
+      "roundtrip_variant", roundtrip_variant,
+      "4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72", // (1)
+      "4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"); // (2)
+
   // ----------------------------------------------------------------------------------
   // Trap testing
   //
-  bool silent_on_trap = true;
 
   // Verify that a Deserialization traps if the number of arguments is wrong
   // '(true, true)' goes in, but it only expects one '(true)'
@@ -266,6 +312,29 @@ int main() {
     IC_API::trap(std::string(__func__) + ": did not trap 1a");
   } catch (const std::exception &e) {
   }
+
+  // Verify that a record traps if one of the records's id (hash) on wire does not match expected
+  // Expecting:
+  // '(record {"name" = "C++ Developer"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})'
+  // '(record {1_224_700_491 = "C++ Developer"; 1_274_861_098 = 0.01 : float64; 2_143_348_543 = 11 : int;})'
+  // Sending
+  // '(record {"name" = "C++ Developer"; "public float64" = 0.01 : float64; "secret int" = 11 : int;})'
+  mockIC.run_trap_test(
+      "roundtrip_record (trap)", roundtrip_record,
+      "4449444c016c03e3d2a2c10172cbe4fdc70471bfce83fe077c01007b14ae47e17a843f0d432b2b20446576656c6f7065720b",
+      silent_on_trap);
+
+  // Verify that a variant traps if the variant's id (hash) on wire does not match expected
+  // '(variant { Blah = "BlahBlah" : text})' goes in, but it expects a variant option "Err"
+  mockIC.run_trap_test("roundtrip_variant_err (trap 1)", roundtrip_variant_err,
+                       "4449444c016b01d1bac9df027101000008426c6168426c6168",
+                       silent_on_trap);
+
+  // Verify that a variant traps if the variant's id (hash) on wire is ok, but type does not match
+  // '(variant { Err = 1 : nat16})' goes in, but it expects a variant option "Err" : text
+  mockIC.run_trap_test("roundtrip_variant_err  (trap 1)", roundtrip_variant_err,
+                       "4449444c016b01c5fed2017a0100000100", silent_on_trap);
+
   //
   // Verify wrong text representations of of Principal
   // https://internetcomputer.org/docs/current/references/id-encoding-spec#decode

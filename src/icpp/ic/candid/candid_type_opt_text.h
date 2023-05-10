@@ -18,6 +18,7 @@ public:
   ~CandidTypeOptText();
 
   bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error);
+  std::optional<std::string> get_v() { return m_v; }
 
 protected:
   void set_pv(std::optional<std::string> *v) { m_pv = v; }

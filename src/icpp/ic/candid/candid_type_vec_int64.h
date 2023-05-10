@@ -18,6 +18,7 @@ public:
   ~CandidTypeVecInt64();
 
   bool decode_M(VecBytes B, __uint128_t &offset, std::string &parse_error);
+  std::vector<int64_t> get_v() { return m_v; }
 
 protected:
   void set_pv(std::vector<int64_t> *v) { m_pv = v; }

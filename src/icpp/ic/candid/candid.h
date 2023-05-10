@@ -85,7 +85,7 @@ class CandidTypeOptPrincipal;
 // class CandidTypeOptReserved;
 
 class CandidTypeRecord;
-// class CandidTypeVariant;
+class CandidTypeVariant;
 
 // The Candid Type Table class
 class CandidTypeTable;
@@ -95,23 +95,22 @@ class CandidDeserialize;
 class CandidSerialize;
 
 // The std::variant alias
-using CandidType =
-    std::variant<CandidTypeNull, CandidTypeEmpty, CandidTypeReserved,
-                 CandidTypeBool, CandidTypeFloat32, CandidTypeFloat64,
-                 CandidTypeInt, CandidTypeNat, CandidTypeNat8, CandidTypeNat16,
-                 CandidTypeNat32, CandidTypeNat64, CandidTypeInt8,
-                 CandidTypeInt16, CandidTypeInt32, CandidTypeInt64,
-                 CandidTypeText, CandidTypePrincipal, CandidTypeVecBool,
-                 CandidTypeVecFloat32, CandidTypeVecFloat64, CandidTypeVecInt,
-                 CandidTypeVecNat, CandidTypeVecNat8, CandidTypeVecNat16,
-                 CandidTypeVecNat32, CandidTypeVecNat64, CandidTypeVecInt8,
-                 CandidTypeVecInt16, CandidTypeVecInt32, CandidTypeVecInt64,
-                 CandidTypeVecText, CandidTypeVecPrincipal, CandidTypeOptBool,
-                 CandidTypeOptFloat32, CandidTypeOptFloat64, CandidTypeOptInt,
-                 CandidTypeOptNat, CandidTypeOptNat8, CandidTypeOptNat16,
-                 CandidTypeOptNat32, CandidTypeOptNat64, CandidTypeOptInt8,
-                 CandidTypeOptInt16, CandidTypeOptInt32, CandidTypeOptInt64,
-                 CandidTypeOptText, CandidTypeOptPrincipal, CandidTypeRecord>;
+using CandidType = std::variant<
+    CandidTypeNull, CandidTypeEmpty, CandidTypeReserved, CandidTypeBool,
+    CandidTypeFloat32, CandidTypeFloat64, CandidTypeInt, CandidTypeNat,
+    CandidTypeNat8, CandidTypeNat16, CandidTypeNat32, CandidTypeNat64,
+    CandidTypeInt8, CandidTypeInt16, CandidTypeInt32, CandidTypeInt64,
+    CandidTypeText, CandidTypePrincipal, CandidTypeVecBool,
+    CandidTypeVecFloat32, CandidTypeVecFloat64, CandidTypeVecInt,
+    CandidTypeVecNat, CandidTypeVecNat8, CandidTypeVecNat16, CandidTypeVecNat32,
+    CandidTypeVecNat64, CandidTypeVecInt8, CandidTypeVecInt16,
+    CandidTypeVecInt32, CandidTypeVecInt64, CandidTypeVecText,
+    CandidTypeVecPrincipal, CandidTypeOptBool, CandidTypeOptFloat32,
+    CandidTypeOptFloat64, CandidTypeOptInt, CandidTypeOptNat, CandidTypeOptNat8,
+    CandidTypeOptNat16, CandidTypeOptNat32, CandidTypeOptNat64,
+    CandidTypeOptInt8, CandidTypeOptInt16, CandidTypeOptInt32,
+    CandidTypeOptInt64, CandidTypeOptText, CandidTypeOptPrincipal,
+    CandidTypeRecord, CandidTypeVariant>;
 
 // https://subscription.packtpub.com/book/programming/9781787120495/8/ch08lvl1sec91/storing-different-types-with-stdvariant
 template <typename T> bool is_CandidType(const CandidType &c) {
@@ -197,6 +196,7 @@ template <typename T> bool is_CandidType(const CandidType &c) {
 // #include "candid_type_opt_reserved.h"
 
 #include "candid_type_record.h"
+#include "candid_type_variant.h"
 
 // The Candid Type Table class
 #include "candid_type_table.h"

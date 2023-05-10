@@ -129,8 +129,6 @@ void CandidTypeRecord::encode_T() {
 // Decode the type table, starting at & updating offset
 bool CandidTypeRecord::decode_T(VecBytes B, __uint128_t &offset,
                                 std::string &parse_error) {
-  __uint128_t len = B.size() - offset;
-
   m_field_ids.clear();
   m_field_names.clear();
   m_fields.clear();
@@ -233,8 +231,6 @@ void CandidTypeRecord::encode_M() {
 // Decode the values, starting at & updating offset
 bool CandidTypeRecord::decode_M(VecBytes B, __uint128_t &offset,
                                 std::string &parse_error) {
-  __uint128_t len = B.size() - offset;
-
   for (size_t i = 0; i < m_fields.size(); ++i) {
     if (m_field_datatypes_wire[i] == CandidOpcode().Null) {
       // There is no value to decode
@@ -273,9 +269,8 @@ void CandidTypeRecord::check_type_table(const CandidTypeRecord *p_from_wire) {
       msg.append("ERROR: the hashed id for the Record field at index " +
                  std::to_string(i) + " is wrong on the wire.\n");
       msg.append("       expected value of the hashed id: " +
-                 VecBytes::my_uint128_to_string(__uint128_t(id)) + "\n");
-      msg.append("       found on wire  : " +
-                 VecBytes::my_uint128_to_string(__uint128_t(id_wire)) + "\n");
+                 std::to_string(id) + " (" + m_field_names[i] + ")" + "\n");
+      msg.append("       found on wire  : " + std::to_string(id_wire) + "\n");
       IC_API::trap(msg);
     }
 

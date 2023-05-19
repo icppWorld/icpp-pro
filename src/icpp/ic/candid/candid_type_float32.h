@@ -8,8 +8,9 @@ class CandidTypeFloat32 : public CandidTypePrim {
 public:
   // Constructors
   CandidTypeFloat32();
+  // docs start: demo_candid_type_float32
   CandidTypeFloat32(float *v);
-  CandidTypeFloat32(const float v);
+  CandidTypeFloat32(const float v); // docs end: demo_candid_type_float32
 
   // Destructor
   ~CandidTypeFloat32();

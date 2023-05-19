@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>

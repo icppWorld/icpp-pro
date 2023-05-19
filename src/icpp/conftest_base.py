@@ -16,7 +16,7 @@ from icpp import pro
 
 def pytest_addoption(parser: Any) -> None:
     """Adds options: `pytest --network=[local/ic] `"""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
 
 
 ###########################################################
@@ -27,13 +27,13 @@ def pytest_addoption(parser: Any) -> None:
 @pytest.fixture(scope="session", autouse=True)
 def network(_request: Any) -> Any:
     """A fixture that verifies the network is up & returns the name."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
 
 
 @pytest.fixture(scope="session", autouse=True)
 def identity() -> Any:
     """A fixture that returns the name of the used identity."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     identity_ = get_identity()
     if identity_.startswith("ERROR"):
         raise Exception(identity_)
@@ -43,7 +43,7 @@ def identity() -> Any:
 @pytest.fixture(scope="session", autouse=True)
 def principal() -> Any:
     """A fixture that returns the principal of the used identity."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     principal_ = get_principal()
     if principal_.startswith("ERROR"):
         if "Please enter the passphrase for your identity" in principal_:
@@ -61,19 +61,19 @@ def principal() -> Any:
 
 def handle_identity(identity_to_set: str) -> Generator[dict[str, str], None, None]:
     """A fixture that sets the dfx identity."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     yield {}
 
 
 @pytest.fixture(scope="function")
 def identity_anonymous() -> Generator[dict[str, str], None, None]:
     """A fixture that sets the dfx identity to anonymous."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     yield {}
 
 
 @pytest.fixture(scope="function")
 def identity_default() -> Generator[dict[str, str], None, None]:
     """A fixture that sets the dfx identity to default."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     yield {}

@@ -10,9 +10,11 @@ class CandidTypeOptFloat32 : public CandidTypeOptBase {
 public:
   // Constructors
   CandidTypeOptFloat32();
-  CandidTypeOptFloat32(const std::optional<float> v);
-
-  CandidTypeOptFloat32(std::optional<float> *p_v);
+  // clang-format off
+  // docs start: demo_candid_type_opt
+  CandidTypeOptFloat32(std::optional<float> *v);
+  CandidTypeOptFloat32(const std::optional<float> v); // docs end: demo_candid_type_opt
+  // clang-format on
 
   // Destructor
   ~CandidTypeOptFloat32();

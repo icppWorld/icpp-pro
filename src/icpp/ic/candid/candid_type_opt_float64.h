@@ -10,9 +10,11 @@ class CandidTypeOptFloat64 : public CandidTypeOptBase {
 public:
   // Constructors
   CandidTypeOptFloat64();
-  CandidTypeOptFloat64(const std::optional<double> v);
-
-  CandidTypeOptFloat64(std::optional<double> *p_v);
+  // clang-format off
+  // docs start: demo_candid_type_opt
+  CandidTypeOptFloat64(std::optional<double> *v);
+  CandidTypeOptFloat64(const std::optional<double> v); // docs end: demo_candid_type_opt
+  // clang-format on
 
   // Destructor
   ~CandidTypeOptFloat64();

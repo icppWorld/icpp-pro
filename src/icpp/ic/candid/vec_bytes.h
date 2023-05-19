@@ -30,7 +30,6 @@ public:
   // Static utils
   static __int128_t atoint128_t(const std::string &in);
   static __uint128_t atouint128_t(const std::string &in);
-  static std::string my_uint128_to_string(__uint128_t num);
   static std::string byte_to_hex(const std::byte b,
                                  const std::string prefix = "0x");
   static std::string byte_to_dec(const std::byte b, const int width = 8);

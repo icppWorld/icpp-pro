@@ -18,7 +18,7 @@ See: https://realpython.com/primer-on-python-decorators/
 """
 import sys
 import shutil
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, TypeVar, Optional
 from functools import wraps
 import typer
 from icpp import config_default, pro
@@ -28,7 +28,7 @@ from icpp.commands_install_wasi_sdk import is_wasi_sdk_installed, install_wasi_s
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-def requires_pro() -> Callable[[F], F]:
+def requires_pro(capability: Optional[str] = None) -> Callable[[F], F]:
     """Decorates a command that requires icpp-pro.
 
     Exit if not running a licensed icpp-pro.
@@ -37,7 +37,7 @@ def requires_pro() -> Callable[[F], F]:
     def decorator(f: F) -> Any:
         @wraps(f)
         def decorated(*args: Any, **kwargs: Any) -> Any:
-            pro.exit_if_not_pro()
+            pro.exit_if_not_pro(capability)
             return f(*args, **kwargs)
 
         return decorated

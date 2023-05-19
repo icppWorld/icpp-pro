@@ -3,17 +3,28 @@ import sys
 import subprocess
 import shutil
 import typer
+from typing_extensions import Annotated
 
 from icpp.__main__ import app
+
 from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
 
 from icpp.decorators import requires_wasi_sdk
+from icpp.options_build import to_compile_callback, option_to_compile_values_string
 
 
 @app.command()
 @requires_wasi_sdk()
-def build_wasm() -> None:
+def build_wasm(
+    to_compile: Annotated[
+        str,
+        typer.Option(
+            help=f"Files to compile {option_to_compile_values_string}.",
+            callback=to_compile_callback,
+        ),
+    ] = "all"
+) -> None:
     """Builds the wasm for a canister, using the wasi-sdk compiler.
 
     Reads icpp.toml in the current folder; Compiles & builds a wasm file.
@@ -23,19 +34,20 @@ def build_wasm() -> None:
     build_path = icpp_toml.icpp_toml_path.parent / "build"
     typer.echo(f"Build folder: {build_path.resolve()}")
 
-    if build_path.exists():
-        typer.echo("Deleting the build folder.")
-        try:
-            shutil.rmtree(build_path)
-        except OSError as e:
-            typer.echo(f"ERROR: During delete of {build_path}:\n {e.strerror}")
+    if to_compile == "all":
+        if build_path.exists():
+            typer.echo("Deleting the build folder.")
+            try:
+                shutil.rmtree(build_path)
+            except OSError as e:
+                typer.echo(f"ERROR: During delete of {build_path}:\n {e.strerror}")
 
     if not build_path.exists():
         build_path.mkdir()
 
     try:
         # ----------------------------------------------------------------------
-        # compile all C++ files, if we have any
+        # compile 'mine' C++ files, if we have any
         cpp_files = icpp_toml.build_wasm["cpp_files"]
         cpp_compile_flags_s = icpp_toml.build_wasm["cpp_compile_flags_s"]
         if len(cpp_files.strip()) > 0:
@@ -51,7 +63,7 @@ def build_wasm() -> None:
             run_shell_cmd(cmd, cwd=build_path)
 
         # ----------------------------------------------------------------------
-        # compile all C files, if we have any
+        # compile 'mine' C files, if we have any
         c_files = icpp_toml.build_wasm["c_files"]
         c_compile_flags_s = icpp_toml.build_wasm["c_compile_flags_s"]
         if len(c_files.strip()) > 0:
@@ -66,33 +78,34 @@ def build_wasm() -> None:
             typer.echo(cmd)
             run_shell_cmd(cmd, cwd=build_path)
 
-        # ----------------------------------------------------------------------
-        # compile the C++ files of the IC API, if we have any
-        if len(config_default.IC_CPP_FILES.strip()) > 0:
-            cmd = (
-                f"{config_default.WASM_CPP} "
-                f"{config_default.WASM_CPPFLAGS} "
-                f"-c {config_default.IC_CPP_FILES}"
-            )
+        if to_compile == "all":
+            # ----------------------------------------------------------------------
+            # compile the C++ files of the IC API, if we have any
+            if len(config_default.IC_CPP_FILES.strip()) > 0:
+                cmd = (
+                    f"{config_default.WASM_CPP} "
+                    f"{config_default.WASM_CPPFLAGS} "
+                    f"-c {config_default.IC_CPP_FILES}"
+                )
 
-            typer.echo("--")
-            typer.echo("Compiling C++ files of the IC_API with command:")
-            typer.echo(cmd)
-            run_shell_cmd(cmd, cwd=build_path)
+                typer.echo("--")
+                typer.echo("Compiling C++ files of the IC_API with command:")
+                typer.echo(cmd)
+                run_shell_cmd(cmd, cwd=build_path)
 
-        # ----------------------------------------------------------------------
-        # compile the C files of the IC API, if we have any
-        if len(config_default.IC_C_FILES.strip()) > 0:
-            cmd = (
-                f"{config_default.WASM_C} "
-                f"{config_default.WASM_CFLAGS} "
-                f"-c {config_default.IC_C_FILES}"
-            )
+            # ----------------------------------------------------------------------
+            # compile the C files of the IC API, if we have any
+            if len(config_default.IC_C_FILES.strip()) > 0:
+                cmd = (
+                    f"{config_default.WASM_C} "
+                    f"{config_default.WASM_CFLAGS} "
+                    f"-c {config_default.IC_C_FILES}"
+                )
 
-            typer.echo("--")
-            typer.echo("Compiling C files of the IC_API with command:")
-            typer.echo(cmd)
-            run_shell_cmd(cmd, cwd=build_path)
+                typer.echo("--")
+                typer.echo("Compiling C files of the IC_API with command:")
+                typer.echo(cmd)
+                run_shell_cmd(cmd, cwd=build_path)
 
         # ----------------------------------------------------------------------
         # link it into a wasm

@@ -24,34 +24,34 @@ def call_canister_api(
     quiet: str = "-qq",  # limits dfx to errors only
 ) -> str:
     """Calls a canister method"""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     return ""
 
 
 def dict_to_candid_text(d: dict[Any, Any]) -> str:
     """Serializes dict to Candid text to send it over the wire"""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     return ""
 
 
 def network_status(network: str) -> str:
     """Returns the network status."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     return ""
 
 
 def get_identity() -> str:
     """Returns the current dfx identity."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     return ""
 
 
 def set_identity(identity: str) -> None:
     """Sets the dfx identity."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
 
 
 def get_principal() -> str:
     """Returns the principal of the current dfx identity."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     return ""

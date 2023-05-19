@@ -10,9 +10,11 @@ class CandidTypeOptBool : public CandidTypeOptBase {
 public:
   // Constructors
   CandidTypeOptBool();
-  CandidTypeOptBool(const std::optional<bool> v);
-
-  CandidTypeOptBool(std::optional<bool> *p_v);
+  // clang-format off
+  // docs start: demo_candid_type_opt
+  CandidTypeOptBool(std::optional<bool> *v);
+  CandidTypeOptBool(const std::optional<bool> v); // docs end: demo_candid_type_opt
+  // clang-format on
 
   // Destructor
   ~CandidTypeOptBool();

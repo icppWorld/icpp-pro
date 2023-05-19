@@ -143,8 +143,8 @@ setup(
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        "typer[all]",
-        'tomli;python_version<"3.11"',
+        "typer[all]>=0.9.0",
+        "tomli",
         "requests",
         "enlighten",
         "pytest",

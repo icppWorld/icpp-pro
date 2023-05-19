@@ -10,9 +10,11 @@ class CandidTypeOptInt16 : public CandidTypeOptBase {
 public:
   // Constructors
   CandidTypeOptInt16();
-  CandidTypeOptInt16(const std::optional<int16_t> v);
-
-  CandidTypeOptInt16(std::optional<int16_t> *p_v);
+  // clang-format off
+  // docs start: demo_candid_type_opt
+  CandidTypeOptInt16(std::optional<int16_t> *v);
+  CandidTypeOptInt16(const std::optional<int16_t> v); // docs end: demo_candid_type_opt
+  // clang-format on
 
   // Destructor
   ~CandidTypeOptInt16();

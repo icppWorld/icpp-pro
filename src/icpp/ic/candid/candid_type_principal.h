@@ -17,7 +17,10 @@ public:
   // Constructors
   CandidTypePrincipal();
   CandidTypePrincipal(const char *c);
-  CandidTypePrincipal(const std::string v);
+  // clang-format off
+  // docs start: demo_candid_type_principal
+  CandidTypePrincipal(const std::string v); // docs end: demo_candid_type_principal
+  // clang-format on
 
   CandidTypePrincipal(std::string *v);
 

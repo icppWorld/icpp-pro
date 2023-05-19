@@ -7,14 +7,19 @@ Handles licensing of icpp-pro
 
 """
 import sys
+from typing import Optional
 import typer
 
 
-def exit_if_not_pro() -> None:
+def exit_if_not_pro(capability: Optional[str] = None) -> None:
     """Exit if not running a licensed icpp-pro."""
+    if capability is None:
+        msg = "this command"
+    else:
+        msg = f"'{capability}'"
     if not is_pro():
         typer.echo("--")
-        typer.echo("ERROR: this command requires icpp-pro")
+        typer.echo(f"ERROR: {msg} requires icpp-pro")
         typer.echo(" ")
         typer.echo("For licensing, contact us at icpp@icpp.world")
         sys.exit(1)

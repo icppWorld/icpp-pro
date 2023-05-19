@@ -8,8 +8,9 @@ class CandidTypeNat64 : public CandidTypePrim {
 public:
   // Constructors
   CandidTypeNat64();
+  // docs start: demo_candid_type_nat64
   CandidTypeNat64(uint64_t *v);
-  CandidTypeNat64(const uint64_t v);
+  CandidTypeNat64(const uint64_t v); // docs end: demo_candid_type_nat64
 
   // Destructor
   ~CandidTypeNat64();

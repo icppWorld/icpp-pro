@@ -59,6 +59,8 @@ void IC_API::debug_print(const char *message) {
   ic0_debug_print((uintptr_t)(void *)message, (uint32_t)strlen(message));
 }
 
+CandidTypePrincipal IC_API::get_caller() { return m_caller; }
+
 void IC_API::debug_print(const std::string &s) {
   IC_API::debug_print(s.c_str());
 }
@@ -73,6 +75,11 @@ uint64_t IC_API::time() { return ic0_time(); }
 
 // DeSerialize the byte stream received over the wire
 void IC_API::from_wire(std::vector<CandidType> A) {
+  if (m_called_from_wire) {
+    trap("ERROR: The canister is calling ic_api.from_wire() more than once.");
+  }
+  m_called_from_wire = true;
+
   CandidDeserialize(m_B_in, A);
 }
 // DeSerialize the byte stream received over the wire
@@ -80,6 +87,86 @@ void IC_API::from_wire(CandidType c) {
   std::vector<CandidType> A;
   A.push_back(c);
   from_wire(A);
+}
+// DeSerialize the byte stream received over the wire, when no arguments are expected
+void IC_API::from_wire() {
+  std::vector<CandidType> A;
+  from_wire(A);
+}
+
+std::optional<__uint128_t> IC_API::string_to_uint128_t(const std::string &str) {
+  __uint128_t result = 0;
+  for (char c : str) {
+    if (c < '0' || c > '9')
+      return std::
+          nullopt; // return an empty optional if the string contains a non-digit character
+
+    __uint128_t prev_result = result;
+    result = result * 10 + (c - '0');
+
+    // If the new result is smaller than the previous result, that means an overflow occurred,
+    // so return an empty optional
+    if (result < prev_result) return std::nullopt;
+  }
+
+  return result;
+}
+
+std::optional<__int128_t> IC_API::string_to_int128_t(const std::string &str) {
+  bool isNegative = false;
+  std::string str_copy = str;
+
+  if (str_copy[0] == '-') {
+    isNegative = true;
+    str_copy.erase(0, 1); // remove the '-' sign
+  }
+
+  // Call the string_to_128 function for __uint128_t
+  std::optional<__uint128_t> res = string_to_uint128_t(str_copy);
+
+  // If conversion was unsuccessful, return an empty optional
+  if (!res) return std::nullopt;
+
+  if (isNegative) {
+    return -static_cast<__int128_t>(
+        *res); // convert the result to negative if the original string started with '-'
+  } else {
+    return static_cast<__int128_t>(*res);
+  }
+}
+
+// to_string for __uint128_t, which is not provided by std::to_string
+std::string IC_API::to_string_128(__uint128_t v) {
+  // https://stackoverflow.com/a/55970931/5480536
+  std::string str;
+  do {
+    int digit = v % 10;
+    str = std::to_string(digit) + str;
+    v = (v - digit) / 10;
+  } while (v != 0);
+  return str;
+}
+
+// to_string for __int128_t, which is not provided by std::to_string
+std::string IC_API::to_string_128(__int128_t v) {
+  std::string str;
+  bool isNegative = false;
+  if (v < 0) {
+    isNegative = true;
+    str = to_string_128(__uint128_t(-v));
+  } else {
+    str = to_string_128(__uint128_t(v));
+  }
+  if (isNegative) {
+    str = "-" + str;
+  }
+  return str;
+}
+
+// Serialize to byte stream & send out over the wire, when no arguments are sent
+void IC_API::to_wire() {
+  std::vector<CandidType> args_out;
+  to_wire(args_out);
 }
 
 // Serialize to byte stream & send out over the wire
@@ -90,6 +177,10 @@ void IC_API::to_wire(const CandidType &arg_out) {
 }
 
 void IC_API::to_wire(const std::vector<CandidType> &args_out) {
+  if (m_called_to_wire) {
+    trap("ERROR: The canister is calling ic_api.to_wire() more than once.");
+  }
+  m_called_to_wire = true;
 
   m_B_out = CandidSerialize(args_out).get_B();
 

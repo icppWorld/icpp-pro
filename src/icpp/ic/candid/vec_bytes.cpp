@@ -209,9 +209,9 @@ bool VecBytes::parse_bytes(__uint128_t &offset, std::vector<std::byte> &v,
   if (n > len) {
     parse_error =
         "Not enough bytes left. The remaining bytes in the byte stream on wire is ";
-    parse_error.append(VecBytes::my_uint128_to_string(len));
+    parse_error.append(IC_API::to_string_128(len));
     parse_error.append(", but specified number to parse is ");
-    parse_error.append(VecBytes::my_uint128_to_string(n));
+    parse_error.append(IC_API::to_string_128(n));
     return true;
   }
 
@@ -236,9 +236,9 @@ bool VecBytes::parse_bytes(__uint128_t &offset, std::vector<uint8_t> &v,
   if (n > len) {
     parse_error =
         "Not enough bytes left. The remaining bytes in the byte stream on wire is ";
-    parse_error.append(VecBytes::my_uint128_to_string(len));
+    parse_error.append(IC_API::to_string_128(len));
     parse_error.append(", but specified number to parse is ");
-    parse_error.append(VecBytes::my_uint128_to_string(n));
+    parse_error.append(IC_API::to_string_128(n));
     return true;
   }
 
@@ -498,17 +498,6 @@ __int128_t VecBytes::decode_sleb128(const uint8_t *p, __uint128_t *n,
   if (Shift < 64 && (Byte & 0x40)) Value |= (-1ULL) << Shift;
   if (n) *n = (unsigned)(p - orig_p);
   return __int128_t(Value);
-}
-
-std::string VecBytes::my_uint128_to_string(__uint128_t num) {
-  // https://stackoverflow.com/a/55970931/5480536
-  std::string str;
-  do {
-    int digit = num % 10;
-    str = std::to_string(digit) + str;
-    num = (num - digit) / 10;
-  } while (num != 0);
-  return str;
 }
 
 // Utility function to get the size of the ULEB128-encoded value.

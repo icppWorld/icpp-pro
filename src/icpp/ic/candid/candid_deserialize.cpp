@@ -108,7 +108,7 @@ void CandidDeserialize::deserialize() {
     msg.append("       Expected number of arguments:" +
                std::to_string(m_A.size()) + "\n");
     msg.append("       Number of arguments on wire :" +
-               VecBytes::my_uint128_to_string(num_args));
+               IC_API::to_string_128(num_args));
     IC_API::trap(msg);
   }
 
@@ -161,14 +161,12 @@ void CandidDeserialize::deserialize() {
           msg.append(
               "ERROR: expecting an Opcode, but a type table reference was found on wire instead.\n");
           msg.append("       Argument index    : " + std::to_string(i) + "\n");
-          msg.append(
-              "       Bytes offset start: " +
-              VecBytes::my_uint128_to_string(m_args_datatypes_offset_start[i]) +
-              "\n");
-          msg.append(
-              "       Bytes offset end  : " +
-              VecBytes::my_uint128_to_string(m_args_datatypes_offset_end[i]) +
-              "\n");
+          msg.append("       Bytes offset start: " +
+                     IC_API::to_string_128(m_args_datatypes_offset_start[i]) +
+                     "\n");
+          msg.append("       Bytes offset end  : " +
+                     IC_API::to_string_128(m_args_datatypes_offset_end[i]) +
+                     "\n");
           msg.append(
               "       Expecting opcode  :" + std::to_string(opcode_expected) +
               " (" + CandidOpcode().name_from_opcode(opcode_expected) + ")" +
@@ -180,14 +178,12 @@ void CandidDeserialize::deserialize() {
           std::string msg;
           msg.append("ERROR: wrong type table reference found on wire.\n");
           msg.append("       Argument index: " + std::to_string(i) + "\n");
-          msg.append(
-              "       Bytes offset start: " +
-              VecBytes::my_uint128_to_string(m_args_datatypes_offset_start[i]) +
-              "\n");
-          msg.append(
-              "       Bytes offset end  : " +
-              VecBytes::my_uint128_to_string(m_args_datatypes_offset_end[i]) +
-              "\n");
+          msg.append("       Bytes offset start: " +
+                     IC_API::to_string_128(m_args_datatypes_offset_start[i]) +
+                     "\n");
+          msg.append("       Bytes offset end  : " +
+                     IC_API::to_string_128(m_args_datatypes_offset_end[i]) +
+                     "\n");
           msg.append("       Expecting type table:" +
                      std::to_string(opcode_expected) + "\n");
           msg.append("       Found type table    :" +
@@ -229,14 +225,12 @@ void CandidDeserialize::deserialize() {
           }
 
           msg.append("       Argument index: " + std::to_string(i) + "\n");
-          msg.append(
-              "       Bytes offset start: " +
-              VecBytes::my_uint128_to_string(m_args_datatypes_offset_start[i]) +
-              "\n");
-          msg.append(
-              "       Bytes offset end  : " +
-              VecBytes::my_uint128_to_string(m_args_datatypes_offset_end[i]) +
-              "\n");
+          msg.append("       Bytes offset start: " +
+                     IC_API::to_string_128(m_args_datatypes_offset_start[i]) +
+                     "\n");
+          msg.append("       Bytes offset end  : " +
+                     IC_API::to_string_128(m_args_datatypes_offset_end[i]) +
+                     "\n");
           msg.append("       Expecting content opcode:" +
                      std::to_string(content_opcode_expected) + " (" +
                      CandidOpcode().name_from_opcode(content_opcode_expected) +
@@ -271,14 +265,12 @@ void CandidDeserialize::deserialize() {
           std::string msg;
           msg.append("ERROR: wrong opcode found on wire.\n");
           msg.append("       Argument index: " + std::to_string(i) + "\n");
-          msg.append(
-              "       Bytes offset start: " +
-              VecBytes::my_uint128_to_string(m_args_datatypes_offset_start[i]) +
-              "\n");
-          msg.append(
-              "       Bytes offset end  : " +
-              VecBytes::my_uint128_to_string(m_args_datatypes_offset_end[i]) +
-              "\n");
+          msg.append("       Bytes offset start: " +
+                     IC_API::to_string_128(m_args_datatypes_offset_start[i]) +
+                     "\n");
+          msg.append("       Bytes offset end  : " +
+                     IC_API::to_string_128(m_args_datatypes_offset_end[i]) +
+                     "\n");
           msg.append(
               "       Expecting opcode:" + std::to_string(opcode_expected) +
               " (" + CandidOpcode().name_from_opcode(opcode_expected) + ")" +
@@ -335,7 +327,7 @@ void CandidDeserialize::trap_with_parse_error(const __uint128_t &B_offset_start,
   msg.append("ERROR: decoding of Candid byte stream failed.\n");
   msg.append("       trying to extract: " + to_be_parsed + "\n");
   msg.append("       parsing error:" + parse_error + "\n");
-  msg.append("       byte offset:" +
-             VecBytes::my_uint128_to_string(B_offset_start) + "\n");
+  msg.append("       byte offset:" + IC_API::to_string_128(B_offset_start) +
+             "\n");
   IC_API::trap(msg);
 }

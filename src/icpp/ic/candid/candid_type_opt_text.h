@@ -10,9 +10,11 @@ class CandidTypeOptText : public CandidTypeOptBase {
 public:
   // Constructors
   CandidTypeOptText();
-  CandidTypeOptText(const std::optional<std::string> v);
-
-  CandidTypeOptText(std::optional<std::string> *p_v);
+  // clang-format off
+  // docs start: demo_candid_type_opt
+  CandidTypeOptText(std::optional<std::string> *v);
+  CandidTypeOptText(const std::optional<std::string> v); // docs end: demo_candid_type_opt
+  // clang-format on
 
   // Destructor
   ~CandidTypeOptText();

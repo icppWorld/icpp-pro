@@ -304,6 +304,18 @@ int main() {
   mockIC.run_trap_test("trap_wrong_number_of_args", trap_wrong_number_of_args,
                        "4449444c00027e7e0101", silent_on_trap);
 
+  // Verify that a canister traps if from_wire is called more than once
+  // '(true)' -> '(true)'  (But it never returns, it traps)
+  mockIC.run_trap_test("trap_multiple_calls_from_wire",
+                       trap_multiple_calls_from_wire, "4449444c00017e01",
+                       silent_on_trap);
+
+  // Verify that a canister traps if to_wire is called more than once
+  // '(true)' -> '(true)'  (But it never returns, it traps)
+  mockIC.run_trap_test("trap_multiple_calls_to_wire",
+                       trap_multiple_calls_to_wire, "4449444c00017e01",
+                       silent_on_trap);
+
   // Verify that a Record traps on hash collission
   try {
     CandidTypeRecord r;

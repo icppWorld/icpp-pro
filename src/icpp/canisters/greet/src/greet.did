@@ -1,5 +1,3 @@
-// C++ example canister
-
 service : {
     "greet_0": () -> (text) query;
     "greet_1": () -> (int) query;

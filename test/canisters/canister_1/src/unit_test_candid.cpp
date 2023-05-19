@@ -77,13 +77,19 @@ int unit_test_candid() {
     if (VecBytes::byte_to_char(b) != "*")
       IC_API::trap(std::string(__func__) + ": 3e");
 
-    if (VecBytes::my_uint128_to_string(101) != "101")
+    if (IC_API::to_string_128(__uint128_t(101)) != "101")
+      IC_API::trap(std::string(__func__) + ": 3f");
+
+    if (IC_API::to_string_128(__int128_t(101)) != "101")
+      IC_API::trap(std::string(__func__) + ": 3f");
+
+    if (IC_API::to_string_128(__int128_t(-101)) != "-101")
       IC_API::trap(std::string(__func__) + ": 3f");
 
     {
       std::string max_uint128 = "340282366920938463463374607431768211455";
       __uint128_t i = VecBytes::atouint128_t(max_uint128);
-      if (VecBytes::my_uint128_to_string(i) != max_uint128)
+      if (IC_API::to_string_128(i) != max_uint128)
         IC_API::trap(std::string(__func__) + ": 3g");
     }
   }

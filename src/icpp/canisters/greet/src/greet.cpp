@@ -1,8 +1,3 @@
-// C++ example canister
-
-// For a full set of API examples, see our QA canister:
-// https://github.com/icppWorld/icpp/blob/main/test/canisters/canister_1/src/my_canister.cpp
-
 #include "greet.h"
 
 #include <string>

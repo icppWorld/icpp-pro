@@ -15,188 +15,6 @@
 
 #include "vendors/nlohmann/json/json.hpp"
 
-void roundtrip_variant_ok() {
-  IC_API ic_api(false);
-  // ---------------------------------------------------------------------------
-  // Get the data from the wire
-  std::string label{""};
-  std::string err{""};
-
-  CandidTypeVariant v_in{&label};
-  v_in.append("Ok", CandidTypeNull{});
-  v_in.append("Err", CandidTypeText{&err});
-  ic_api.from_wire(v_in);
-
-  // Verify the data
-  if (label != "Ok")
-    IC_API::trap("ASSERT ERROR wrong label - " + std::string(__func__));
-
-  // ---------------------------------------------------------------------------
-  // Send it back
-  CandidTypeVariant v_out{"Ok"};
-  v_out.append("Ok", CandidTypeNull{});
-  v_out.append("Err", CandidTypeText{"Error"});
-  ic_api.to_wire(v_out);
-}
-
-void roundtrip_variant_err() {
-  IC_API ic_api(false);
-  // ---------------------------------------------------------------------------
-  // Get the data from the wire
-  std::string label{""};
-  std::string ok{""};
-  std::string err{""};
-
-  CandidTypeVariant v_in{&label};
-  v_in.append("Ok", CandidTypeText{&ok});
-  v_in.append("Err", CandidTypeText{&err});
-  ic_api.from_wire(v_in);
-
-  // Verify the data
-  if (label != "Err")
-    IC_API::trap("ASSERT ERROR wrong label - " + std::string(__func__));
-  if (err != "Error")
-    IC_API::trap("ASSERT ERROR wrong value - " + std::string(__func__));
-
-  // ---------------------------------------------------------------------------
-  // Send it back
-  CandidTypeVariant v_out{"Err"};
-  v_out.append("Ok", CandidTypeText{});
-  v_out.append("Err", CandidTypeText{"Error"});
-  ic_api.to_wire(v_out);
-}
-
-void roundtrip_variant() {
-  IC_API ic_api(false);
-  // ---------------------------------------------------------------------------
-  // Get the data from the wire
-
-  //   Result
-  // '(variant { Ok })'
-  std::string label_a{""};
-  uint16_t err_a{0};
-  CandidTypeVariant v_in_a{&label_a};
-  v_in_a.append("Ok", CandidTypeNull{});
-  v_in_a.append("Err", CandidTypeNat16{&err_a});
-
-  //   Result
-  // '(variant { Err = 404 : nat16})'
-  std::string label_b{""};
-  uint16_t err_b{0};
-  CandidTypeVariant v_in_b{&label_b};
-  v_in_b.append("Ok", CandidTypeNull{});
-  v_in_b.append("Err", CandidTypeNat16{&err_b});
-
-  //   Result_1
-  // '(variant { Ok = "All good" : text})'
-  std::string label_1a{""};
-  std::string ok_1a{""};
-  uint16_t err_1a{0};
-  CandidTypeVariant v_in_1a{&label_1a};
-  v_in_1a.append("Ok", CandidTypeText{&ok_1a});
-  v_in_1a.append("Err", CandidTypeNat16{&err_1a});
-
-  //   Result_1
-  // '(variant { Err = 500 : nat16})'
-  std::string label_1b{""};
-  std::string ok_1b{""};
-  uint16_t err_1b{0};
-  CandidTypeVariant v_in_1b{&label_1b};
-  v_in_1b.append("Ok", CandidTypeText{&ok_1b});
-  v_in_1b.append("Err", CandidTypeNat16{&err_1b});
-
-  //   Result_2
-  // '(variant { Ok = "All good" : text})'
-  std::string label_2a{""};
-  std::string ok_2a{""};
-  std::string err_2a{""};
-  CandidTypeVariant v_in_2a{&label_2a};
-  v_in_2a.append("Ok", CandidTypeText{&ok_2a});
-  v_in_2a.append("Err", CandidTypeText{&err_2a});
-
-  //   Result_2
-  // '(variant { Err = "Error" : text})'
-  std::string label_2b{""};
-  std::string ok_2b{""};
-  std::string err_2b{""};
-  CandidTypeVariant v_in_2b{&label_2b};
-  v_in_2b.append("Ok", CandidTypeText{&ok_2b});
-  v_in_2b.append("Err", CandidTypeText{&err_2b});
-
-  std::vector<CandidType> args_in;
-  args_in.push_back(v_in_a);
-  args_in.push_back(v_in_b);
-  args_in.push_back(v_in_1a);
-  args_in.push_back(v_in_1b);
-  args_in.push_back(v_in_2a);
-  args_in.push_back(v_in_2b);
-  ic_api.from_wire(args_in);
-
-  // Verify the data
-  if (label_a != "Ok")
-    IC_API::trap("ASSERT ERROR wrong label_a - " + std::string(__func__));
-
-  if (label_b != "Err")
-    IC_API::trap("ASSERT ERROR wrong label_b - " + std::string(__func__));
-  if (err_b != 404)
-    IC_API::trap("ASSERT ERROR wrong value err_b - " + std::string(__func__));
-
-  if (label_1a != "Ok")
-    IC_API::trap("ASSERT ERROR wrong label_1a - " + std::string(__func__));
-  if (ok_1a != "All good")
-    IC_API::trap("ASSERT ERROR wrong value ok_1a - " + std::string(__func__));
-
-  if (label_1b != "Err")
-    IC_API::trap("ASSERT ERROR wrong label_1b - " + std::string(__func__));
-  if (err_1b != 500)
-    IC_API::trap("ASSERT ERROR wrong value err_1b - " + std::string(__func__));
-
-  if (label_2a != "Ok")
-    IC_API::trap("ASSERT ERROR wrong label_2a - " + std::string(__func__));
-  if (ok_2a != "All good")
-    IC_API::trap("ASSERT ERROR wrong value ok_2a - " + std::string(__func__));
-
-  if (label_2b != "Err")
-    IC_API::trap("ASSERT ERROR wrong label_2b - " + std::string(__func__));
-  if (err_2b != "Error")
-    IC_API::trap("ASSERT ERROR wrong value err_2b - " + std::string(__func__));
-
-  // ---------------------------------------------------------------------------
-  // Send it back
-  CandidTypeVariant v_out_a{label_a};
-  v_out_a.append("Ok", CandidTypeNull{});
-  v_out_a.append("Err", CandidTypeNat16{err_a});
-
-  CandidTypeVariant v_out_b{label_b};
-  v_out_b.append("Ok", CandidTypeNull{});
-  v_out_b.append("Err", CandidTypeNat16{err_b});
-
-  CandidTypeVariant v_out_1a{label_1a};
-  v_out_1a.append("Ok", CandidTypeText{ok_1a});
-  v_out_1a.append("Err", CandidTypeNat16{err_1a});
-
-  CandidTypeVariant v_out_1b{label_1b};
-  v_out_1b.append("Ok", CandidTypeText{ok_1b});
-  v_out_1b.append("Err", CandidTypeNat16{err_1b});
-
-  CandidTypeVariant v_out_2a{label_2a};
-  v_out_2a.append("Ok", CandidTypeText{ok_2a});
-  v_out_2a.append("Err", CandidTypeText{err_2a});
-
-  CandidTypeVariant v_out_2b{label_2b};
-  v_out_2b.append("Ok", CandidTypeText{ok_2b});
-  v_out_2b.append("Err", CandidTypeText{err_2b});
-
-  std::vector<CandidType> args_out;
-  args_out.push_back(v_out_a);
-  args_out.push_back(v_out_b);
-  args_out.push_back(v_out_1a);
-  args_out.push_back(v_out_1b);
-  args_out.push_back(v_out_2a);
-  args_out.push_back(v_out_2b);
-  ic_api.to_wire(args_out);
-}
-
 //----------------------------------------------------------------------------------
 // Run all unit tests for vendor libraries
 void test_vendors() {
@@ -227,6 +45,12 @@ void test_ic_api() {
 
 //----------------------------------------------------------------------------------
 // Run all roundtrip tests
+void roundtrip_no_arguments() {
+  IC_API ic_api(false);
+  ic_api.from_wire();
+  ic_api.to_wire();
+}
+
 void roundtrip_bool_true() {
   IC_API ic_api(false);
   bool in{false};
@@ -241,6 +65,42 @@ void roundtrip_bool_false() {
   ic_api.from_wire(CandidTypeBool{&in});
   if (in) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
   ic_api.to_wire(CandidTypeBool{in});
+}
+
+void roundtrip_float32() {
+  IC_API ic_api(false);
+  float in{0.0};
+  ic_api.from_wire(CandidTypeFloat32{&in});
+  if (!is_approximately_equal(in, (float)1001.1001))
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeFloat32{in});
+}
+
+void roundtrip_float32_neg() {
+  IC_API ic_api(false);
+  float in{0.0};
+  ic_api.from_wire(CandidTypeFloat32{&in});
+  if (!is_approximately_equal(in, (float)-1001.1001))
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeFloat32{in});
+}
+
+void roundtrip_float64() {
+  IC_API ic_api(false);
+  double in{0.0};
+  ic_api.from_wire(CandidTypeFloat64{&in});
+  if (!is_approximately_equal(in, (double)1001.1001))
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeFloat64{in});
+}
+
+void roundtrip_float64_neg() {
+  IC_API ic_api(false);
+  double in{0.0};
+  ic_api.from_wire(CandidTypeFloat64{&in});
+  if (!is_approximately_equal(in, (double)-1001.1001))
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  ic_api.to_wire(CandidTypeFloat64{in});
 }
 
 void roundtrip_nat_101() {
@@ -541,42 +401,6 @@ void roundtrip_reserved() {
   IC_API ic_api(false);
   ic_api.from_wire(CandidTypeReserved{});
   ic_api.to_wire(CandidTypeReserved{});
-}
-
-void roundtrip_float32() {
-  IC_API ic_api(false);
-  float in{0.0};
-  ic_api.from_wire(CandidTypeFloat32{&in});
-  if (!is_approximately_equal(in, (float)1001.1001))
-    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
-  ic_api.to_wire(CandidTypeFloat32{in});
-}
-
-void roundtrip_float32_neg() {
-  IC_API ic_api(false);
-  float in{0.0};
-  ic_api.from_wire(CandidTypeFloat32{&in});
-  if (!is_approximately_equal(in, (float)-1001.1001))
-    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
-  ic_api.to_wire(CandidTypeFloat32{in});
-}
-
-void roundtrip_float64() {
-  IC_API ic_api(false);
-  double in{0.0};
-  ic_api.from_wire(CandidTypeFloat64{&in});
-  if (!is_approximately_equal(in, (double)1001.1001))
-    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
-  ic_api.to_wire(CandidTypeFloat64{in});
-}
-
-void roundtrip_float64_neg() {
-  IC_API ic_api(false);
-  double in{0.0};
-  ic_api.from_wire(CandidTypeFloat64{&in});
-  if (!is_approximately_equal(in, (double)-1001.1001))
-    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
-  ic_api.to_wire(CandidTypeFloat64{in});
 }
 
 void roundtrip_principal() {
@@ -968,10 +792,208 @@ void roundtrip_record() {
   ic_api.to_wire(r_out);
 }
 
+void roundtrip_variant_ok() {
+  IC_API ic_api(false);
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  std::string label{""};
+  std::string err{""};
+
+  CandidTypeVariant v_in{&label};
+  v_in.append("Ok", CandidTypeNull{});
+  v_in.append("Err", CandidTypeText{&err});
+  ic_api.from_wire(v_in);
+
+  // Verify the data
+  if (label != "Ok")
+    IC_API::trap("ASSERT ERROR wrong label - " + std::string(__func__));
+
+  // ---------------------------------------------------------------------------
+  // Send it back
+  CandidTypeVariant v_out{"Ok"};
+  v_out.append("Ok", CandidTypeNull{});
+  v_out.append("Err", CandidTypeText{"Error"});
+  ic_api.to_wire(v_out);
+}
+
+void roundtrip_variant_err() {
+  IC_API ic_api(false);
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  std::string label{""};
+  std::string ok{""};
+  std::string err{""};
+
+  CandidTypeVariant v_in{&label};
+  v_in.append("Ok", CandidTypeText{&ok});
+  v_in.append("Err", CandidTypeText{&err});
+  ic_api.from_wire(v_in);
+
+  // Verify the data
+  if (label != "Err")
+    IC_API::trap("ASSERT ERROR wrong label - " + std::string(__func__));
+  if (err != "Error")
+    IC_API::trap("ASSERT ERROR wrong value - " + std::string(__func__));
+
+  // ---------------------------------------------------------------------------
+  // Send it back
+  CandidTypeVariant v_out{"Err"};
+  v_out.append("Ok", CandidTypeText{});
+  v_out.append("Err", CandidTypeText{"Error"});
+  ic_api.to_wire(v_out);
+}
+
+void roundtrip_variant() {
+  IC_API ic_api(false);
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+
+  //   Result
+  // '(variant { Ok })'
+  std::string label_a{""};
+  uint16_t err_a{0};
+  CandidTypeVariant v_in_a{&label_a};
+  v_in_a.append("Ok", CandidTypeNull{});
+  v_in_a.append("Err", CandidTypeNat16{&err_a});
+
+  //   Result
+  // '(variant { Err = 404 : nat16})'
+  std::string label_b{""};
+  uint16_t err_b{0};
+  CandidTypeVariant v_in_b{&label_b};
+  v_in_b.append("Ok", CandidTypeNull{});
+  v_in_b.append("Err", CandidTypeNat16{&err_b});
+
+  //   Result_1
+  // '(variant { Ok = "All good" : text})'
+  std::string label_1a{""};
+  std::string ok_1a{""};
+  uint16_t err_1a{0};
+  CandidTypeVariant v_in_1a{&label_1a};
+  v_in_1a.append("Ok", CandidTypeText{&ok_1a});
+  v_in_1a.append("Err", CandidTypeNat16{&err_1a});
+
+  //   Result_1
+  // '(variant { Err = 500 : nat16})'
+  std::string label_1b{""};
+  std::string ok_1b{""};
+  uint16_t err_1b{0};
+  CandidTypeVariant v_in_1b{&label_1b};
+  v_in_1b.append("Ok", CandidTypeText{&ok_1b});
+  v_in_1b.append("Err", CandidTypeNat16{&err_1b});
+
+  //   Result_2
+  // '(variant { Ok = "All good" : text})'
+  std::string label_2a{""};
+  std::string ok_2a{""};
+  std::string err_2a{""};
+  CandidTypeVariant v_in_2a{&label_2a};
+  v_in_2a.append("Ok", CandidTypeText{&ok_2a});
+  v_in_2a.append("Err", CandidTypeText{&err_2a});
+
+  //   Result_2
+  // '(variant { Err = "Error" : text})'
+  std::string label_2b{""};
+  std::string ok_2b{""};
+  std::string err_2b{""};
+  CandidTypeVariant v_in_2b{&label_2b};
+  v_in_2b.append("Ok", CandidTypeText{&ok_2b});
+  v_in_2b.append("Err", CandidTypeText{&err_2b});
+
+  std::vector<CandidType> args_in;
+  args_in.push_back(v_in_a);
+  args_in.push_back(v_in_b);
+  args_in.push_back(v_in_1a);
+  args_in.push_back(v_in_1b);
+  args_in.push_back(v_in_2a);
+  args_in.push_back(v_in_2b);
+  ic_api.from_wire(args_in);
+
+  // Verify the data
+  if (label_a != "Ok")
+    IC_API::trap("ASSERT ERROR wrong label_a - " + std::string(__func__));
+
+  if (label_b != "Err")
+    IC_API::trap("ASSERT ERROR wrong label_b - " + std::string(__func__));
+  if (err_b != 404)
+    IC_API::trap("ASSERT ERROR wrong value err_b - " + std::string(__func__));
+
+  if (label_1a != "Ok")
+    IC_API::trap("ASSERT ERROR wrong label_1a - " + std::string(__func__));
+  if (ok_1a != "All good")
+    IC_API::trap("ASSERT ERROR wrong value ok_1a - " + std::string(__func__));
+
+  if (label_1b != "Err")
+    IC_API::trap("ASSERT ERROR wrong label_1b - " + std::string(__func__));
+  if (err_1b != 500)
+    IC_API::trap("ASSERT ERROR wrong value err_1b - " + std::string(__func__));
+
+  if (label_2a != "Ok")
+    IC_API::trap("ASSERT ERROR wrong label_2a - " + std::string(__func__));
+  if (ok_2a != "All good")
+    IC_API::trap("ASSERT ERROR wrong value ok_2a - " + std::string(__func__));
+
+  if (label_2b != "Err")
+    IC_API::trap("ASSERT ERROR wrong label_2b - " + std::string(__func__));
+  if (err_2b != "Error")
+    IC_API::trap("ASSERT ERROR wrong value err_2b - " + std::string(__func__));
+
+  // ---------------------------------------------------------------------------
+  // Send it back
+  CandidTypeVariant v_out_a{label_a};
+  v_out_a.append("Ok", CandidTypeNull{});
+  v_out_a.append("Err", CandidTypeNat16{err_a});
+
+  CandidTypeVariant v_out_b{label_b};
+  v_out_b.append("Ok", CandidTypeNull{});
+  v_out_b.append("Err", CandidTypeNat16{err_b});
+
+  CandidTypeVariant v_out_1a{label_1a};
+  v_out_1a.append("Ok", CandidTypeText{ok_1a});
+  v_out_1a.append("Err", CandidTypeNat16{err_1a});
+
+  CandidTypeVariant v_out_1b{label_1b};
+  v_out_1b.append("Ok", CandidTypeText{ok_1b});
+  v_out_1b.append("Err", CandidTypeNat16{err_1b});
+
+  CandidTypeVariant v_out_2a{label_2a};
+  v_out_2a.append("Ok", CandidTypeText{ok_2a});
+  v_out_2a.append("Err", CandidTypeText{err_2a});
+
+  CandidTypeVariant v_out_2b{label_2b};
+  v_out_2b.append("Ok", CandidTypeText{ok_2b});
+  v_out_2b.append("Err", CandidTypeText{err_2b});
+
+  std::vector<CandidType> args_out;
+  args_out.push_back(v_out_a);
+  args_out.push_back(v_out_b);
+  args_out.push_back(v_out_1a);
+  args_out.push_back(v_out_1b);
+  args_out.push_back(v_out_2a);
+  args_out.push_back(v_out_2b);
+  ic_api.to_wire(args_out);
+}
+
 //----------------------------------------------------------------------------------
 // Trap tests  (The calling method will verify that these indeed trap)
 void trap_wrong_number_of_args() {
   IC_API ic_api(false);
   bool in{false};
   ic_api.from_wire(CandidTypeBool{&in}); // this must trap
+}
+
+void trap_multiple_calls_from_wire() {
+  IC_API ic_api(false);
+  bool in{false};
+  ic_api.from_wire(CandidTypeBool{&in});
+  ic_api.from_wire(CandidTypeBool{&in}); // this must trap
+}
+
+void trap_multiple_calls_to_wire() {
+  IC_API ic_api(false);
+  bool in{false};
+  ic_api.from_wire(CandidTypeBool{&in});
+
+  ic_api.to_wire(CandidTypeBool{in});
+  ic_api.to_wire(CandidTypeBool{in}); // this must trap
 }

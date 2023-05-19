@@ -10,9 +10,11 @@ class CandidTypeOptPrincipal : public CandidTypeOptBase {
 public:
   // Constructors
   CandidTypeOptPrincipal();
-  CandidTypeOptPrincipal(const std::optional<std::string> v);
-
+  // clang-format off
+  // docs start: demo_candid_type_opt
   CandidTypeOptPrincipal(std::optional<std::string> *p_v);
+  CandidTypeOptPrincipal(const std::optional<std::string> v); // docs end: demo_candid_type_opt
+  // clang-format on
 
   // Destructor
   ~CandidTypeOptPrincipal();

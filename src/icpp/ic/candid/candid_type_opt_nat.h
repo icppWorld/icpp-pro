@@ -10,9 +10,11 @@ class CandidTypeOptNat : public CandidTypeOptBase {
 public:
   // Constructors
   CandidTypeOptNat();
-  CandidTypeOptNat(const std::optional<__uint128_t> v);
-
-  CandidTypeOptNat(std::optional<__uint128_t> *p_v);
+  // clang-format off
+  // docs start: demo_candid_type_opt
+  CandidTypeOptNat(std::optional<__uint128_t> *v);
+  CandidTypeOptNat(const std::optional<__uint128_t> v); // docs end: demo_candid_type_opt
+  // clang-format on
 
   // Destructor
   ~CandidTypeOptNat();

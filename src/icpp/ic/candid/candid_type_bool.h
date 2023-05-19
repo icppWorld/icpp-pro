@@ -8,8 +8,9 @@ class CandidTypeBool : public CandidTypePrim {
 public:
   // Constructors
   CandidTypeBool();
+  // docs start: demo_candid_type_bool
   CandidTypeBool(bool *v);
-  CandidTypeBool(const bool v);
+  CandidTypeBool(const bool v); // docs end: demo_candid_type_bool
 
   // Destructor
   ~CandidTypeBool();

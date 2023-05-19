@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
@@ -211,9 +212,11 @@ void ic0_stable_read(uintptr_t dst, uint32_t off, uint32_t size) {
 
 uint64_t ic0_time() {
   Pro().exit_if_not_pro();
-  std::cout << "ic0mock ic0::time" << std::endl;
-  std::cout << "...PATCH-PATCH- Returning 0..." << std::endl;
-  return 0;
+  uint64_t time_in_ns =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::high_resolution_clock::now().time_since_epoch())
+          .count();
+  return time_in_ns;
 };
 
 void ic0_debug_print(uintptr_t src, uint32_t size) {

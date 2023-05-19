@@ -55,6 +55,10 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
     // Now call the API we're testing. It will trap if something fails.
     api_callback();
 
+    if (candid_out_expected == "") {
+      std::cout << "Test: " << test_name << ": Passed\n";
+      return 0;
+    }
     // Assert the candid_out_expected, which is a string in "hex" format
     if (assert_candid_out(candid_out_expected)) {
       ++m_tests_failed;

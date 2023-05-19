@@ -65,6 +65,18 @@ def test__test_ic_api(network: str) -> None:
 
 # ----------------------------------------------------------------------------------
 # Run all roundtrip tests
+def test__roundtrip_no_arguments(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_no_arguments",
+        canister_argument="()",
+        network=network,
+    )
+    expected_response = ""
+    assert response == expected_response
+
+
 def test__roundtrip_bool_true(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
@@ -722,7 +734,7 @@ def test__roundtrip_variant(network: str) -> None:
 #
 # Verify that a Deserialization traps if the number of arguments is wrong
 def test__trap_wrong_number_of_args(network: str) -> None:
-    """Verify that api traps when it receives a wrong message"""
+    """Verify that a Deserialization traps if the number of arguments is wrong"""
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
@@ -737,9 +749,45 @@ def test__trap_wrong_number_of_args(network: str) -> None:
     assert "ERROR: wrong number of arguments on wire." in response
 
 
+# Verify that a canister traps if from_wire is called more than once
+def test__trap_multiple_calls_from_wire(network: str) -> None:
+    """Verify that api traps if from_wire is called more than once"""
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="trap_multiple_calls_from_wire",
+        canister_argument="4449444c00017e01",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert "Failed call to api" in response
+    assert "trapped explicitly" in response
+    assert (
+        "ERROR: The canister is calling ic_api.from_wire() more than once." in response
+    )
+
+
+# Verify that a canister traps if to_wire is called more than once
+def test__trap_multiple_calls_to_wire(network: str) -> None:
+    """Verify that api traps if to_wire is called more than once"""
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="trap_multiple_calls_to_wire",
+        canister_argument="4449444c00017e01",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert "Failed call to api" in response
+    assert "trapped explicitly" in response
+    assert "ERROR: The canister is calling ic_api.to_wire() more than once." in response
+
+
 # Verify that a record traps if one of the records's id (hash) on wire does not match expected
 def test__trap_roundtrip_record(network: str) -> None:
-    """Verify that api traps when it receives a wrong message"""
+    """Verify that a record traps if one of the records's id (hash) on wire does not match expected"""
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,

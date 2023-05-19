@@ -10,6 +10,8 @@ void test_ic_api() WASM_SYMBOL_EXPORTED("canister_query test_ic_api");
 void test_candid() WASM_SYMBOL_EXPORTED("canister_query test_candid");
 void test_vendors() WASM_SYMBOL_EXPORTED("canister_query test_vendors");
 
+void roundtrip_no_arguments()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_no_arguments");
 void roundtrip_bool_true()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_bool_true");
 void roundtrip_bool_false()
@@ -109,6 +111,10 @@ void roundtrip_variant()
 
 void trap_wrong_number_of_args()
     WASM_SYMBOL_EXPORTED("canister_query trap_wrong_number_of_args");
+void trap_multiple_calls_from_wire()
+    WASM_SYMBOL_EXPORTED("canister_query trap_multiple_calls_from_wire");
+void trap_multiple_calls_to_wire()
+    WASM_SYMBOL_EXPORTED("canister_query trap_multiple_calls_to_wire");
 
 // from:https://stackoverflow.com/a/41405501/5480536
 //implements relative method - do not use for comparing with zero

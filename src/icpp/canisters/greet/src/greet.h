@@ -1,5 +1,3 @@
-// C++ example canister
-
 #pragma once
 
 #include "wasm_symbol.h"

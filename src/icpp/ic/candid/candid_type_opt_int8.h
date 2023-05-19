@@ -10,9 +10,11 @@ class CandidTypeOptInt8 : public CandidTypeOptBase {
 public:
   // Constructors
   CandidTypeOptInt8();
-  CandidTypeOptInt8(const std::optional<int8_t> v);
-
-  CandidTypeOptInt8(std::optional<int8_t> *p_v);
+  // clang-format off
+  // docs start: demo_candid_type_opt
+  CandidTypeOptInt8(std::optional<int8_t> *v);
+  CandidTypeOptInt8(const std::optional<int8_t> v); // docs end: demo_candid_type_opt
+  // clang-format on
 
   // Destructor
   ~CandidTypeOptInt8();

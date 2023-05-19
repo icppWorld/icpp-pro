@@ -27,8 +27,8 @@ void CandidTypeEmpty::encode_I() {
 
 void CandidTypeEmpty::encode_M() {
   // https://github.com/dfinity/candid/blob/master/spec/Candid.md#memory
-  // NB: M(_ : empty) will never be called
-  IC_API::trap("ERROR - CandidTypeEmpty cannot have a value to encode.");
+  // NB: M(_ : empty) just ignore
+  // IC_API::trap("ERROR - CandidTypeEmpty cannot have a value to encode.");
 }
 
 // Decode the values, starting at & updating offset

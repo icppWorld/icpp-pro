@@ -15,6 +15,7 @@ type Result_2 =
         Err: text;
     };
 service: {
+    "roundtrip_no_arguments" : () -> () query;
     "test_ic_api" : () -> (int) query;
     "test_candid" : () -> (int) query;
     "test_vendors" : () -> (int) query;
@@ -77,4 +78,6 @@ service: {
                           query;
 
     "trap_wrong_number_of_args" : (bool) -> (bool) query;
+    "trap_multiple_calls_from_wire" : (bool) -> (bool) query;
+    "trap_multiple_calls_to_wire" : (bool) -> (bool) query;
 }

@@ -22,7 +22,7 @@ def call_canister_api(
     quiet: str = "-qq",  # limits dfx to errors only
 ) -> str:
     """Calls a canister method"""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
 
     # verify that canister_name is part of dfx.json
     with open(dfx_json_path, "rb") as f:
@@ -79,14 +79,14 @@ def call_canister_api(
 
 def dict_to_candid_text(d: dict[Any, Any]) -> str:
     """Serializes dict to Candid text to send it over the wire"""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     # pull it through twice, so all " are escaped into \"
     return json.dumps(json.dumps(d))
 
 
 def network_status(network: str) -> str:
     """Returns the network status."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     arg = f"dfx ping {network}"
     try:
         response = run_shell_cmd(arg, capture_output=False)
@@ -115,7 +115,7 @@ def network_status(network: str) -> str:
 
 def get_identity() -> str:
     """Returns the current dfx identity."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     arg = "dfx identity whoami "
     try:
         identity = run_shell_cmd(arg, capture_output=True, timeout_seconds=1)
@@ -128,7 +128,7 @@ def get_identity() -> str:
 
 def set_identity(identity: str) -> None:
     """Sets the dfx identity."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     arg = f"dfx identity use {identity}"
     try:
         run_shell_cmd(arg)
@@ -138,7 +138,7 @@ def set_identity(identity: str) -> None:
 
 def get_principal() -> str:
     """Returns the principal of the current dfx identity."""
-    pro.exit_if_not_pro()
+    pro.exit_if_not_pro("smoketesting with pytest")
     arg = "dfx identity get-principal "
     try:
         principal = run_shell_cmd(arg, capture_output=True, timeout_seconds=1)

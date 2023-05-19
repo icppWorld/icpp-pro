@@ -10,9 +10,11 @@ class CandidTypeOptInt64 : public CandidTypeOptBase {
 public:
   // Constructors
   CandidTypeOptInt64();
-  CandidTypeOptInt64(const std::optional<int64_t> v);
-
-  CandidTypeOptInt64(std::optional<int64_t> *p_v);
+  // clang-format off
+  // docs start: demo_candid_type_opt
+  CandidTypeOptInt64(std::optional<int64_t> *v);
+  CandidTypeOptInt64(const std::optional<int64_t> v); // docs end: demo_candid_type_opt
+  // clang-format on
 
   // Destructor
   ~CandidTypeOptInt64();

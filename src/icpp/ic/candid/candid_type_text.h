@@ -11,9 +11,9 @@ public:
   // Constructors
   CandidTypeText();
   CandidTypeText(const char *c);
-  CandidTypeText(const std::string v);
-
+  // docs start: demo_candid_type_text
   CandidTypeText(std::string *v);
+  CandidTypeText(const std::string v); // docs end: demo_candid_type_text
 
   // Destructor
   ~CandidTypeText();

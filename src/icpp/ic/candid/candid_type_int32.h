@@ -8,8 +8,9 @@ class CandidTypeInt32 : public CandidTypePrim {
 public:
   // Constructors
   CandidTypeInt32();
+  // docs start: demo_candid_type_int32
   CandidTypeInt32(int32_t *v);
-  CandidTypeInt32(const int32_t v);
+  CandidTypeInt32(const int32_t v); // docs end: demo_candid_type_int32
 
   // Destructor
   ~CandidTypeInt32();

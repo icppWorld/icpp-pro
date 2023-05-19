@@ -80,7 +80,7 @@ bool CandidTypeOptInt8::decode_M(VecBytes B, __uint128_t &offset,
     m_v = v;
 
   } else if (tag != 0) {
-    IC_API::trap("ERROR: tag in Opt coming from wire is not 0 or 1");
+    IC_API::trap("ERROR: tag in opt int8 coming from wire is not 0 or 1");
   }
 
   // Fill the user's data placeholder, if a pointer was provided

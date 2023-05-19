@@ -18,7 +18,7 @@ app = typer.Typer()
 
 # do some stuff with app
 # pylint: disable = wrong-import-position unused-import
-from icpp import callbacks
+from icpp import options_main
 from icpp import commands_get
 from icpp import commands_init
 from icpp import commands_build_wasm

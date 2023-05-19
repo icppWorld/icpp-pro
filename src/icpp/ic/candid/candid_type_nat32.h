@@ -8,8 +8,9 @@ class CandidTypeNat32 : public CandidTypePrim {
 public:
   // Constructors
   CandidTypeNat32();
+  // docs start: demo_candid_type_nat32
   CandidTypeNat32(uint32_t *v);
-  CandidTypeNat32(const uint32_t v);
+  CandidTypeNat32(const uint32_t v); // docs end: demo_candid_type_nat32
 
   // Destructor
   ~CandidTypeNat32();

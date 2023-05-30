@@ -189,6 +189,7 @@ setup(
             "canisters/greet/dfx.json",
             "canisters/greet/icpp.toml",
             "canisters/greet/README.md",
+            "canisters/greet/demo.sh",
             "ic/*/*.c",
             "ic/*/*.cpp",
             "ic/*/*.h",

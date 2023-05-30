@@ -11,29 +11,30 @@
 
 #include "ic_api.h"
 
+// DON'T DO THIS. IT BREAKS ALL UPDATE CALLS
 //                                                               data_bytes
-const std::string PRINCIPAL_ID_ANONYMOUS = "2vxsx-fae";          // 1 byte: x04
-const std::string PRINCIPAL_ID_MANAGEMENT_CANISTER = "aaaaa-aa"; // no bytes
+// const std::string PRINCIPAL_ID_ANONYMOUS = "2vxsx-fae";          // 1 byte: x04
+// const std::string PRINCIPAL_ID_MANAGEMENT_CANISTER = "aaaaa-aa"; // no bytes
 
-const uint32_t MAX_LENGTH_IN_BYTES = 29;
-const uint32_t CRC_LENGTH_IN_BYTES = 4;
+// const uint32_t MAX_LENGTH_IN_BYTES = 29;
+// const uint32_t CRC_LENGTH_IN_BYTES = 4;
 
-const std::string PRINCIPAL_OPAQUE_REFERENCE_NOT_SUPPORTED =
-    "Principal Error: Found a value different that 1 for the reference. Opaque reference not supported.";
-const std::string PRINCIPAL_ERROR_BYTES_TOO_LONG =
-    "Principal Error: Bytes is longer than 29 bytes.";
-const std::string PRINCIPAL_ERROR_INVALID_BASE32 =
-    "Principal Error: Text must be in valid Base32 encoding.";
-const std::string PRINCIPAL_ERROR_TEXT_TOO_SHORT =
-    "Principal Error: Text is too short.";
-const std::string PRINCIPAL_ERROR_TEXT_TOO_LONG =
-    "Principal Error: Text is too long.";
-const std::string PRINCIPAL_ERROR_CHECK_SEQUENCE_NOT_MATCH =
-    "Principal Error: CRC32 checksum doesn't match.";
-const std::string PRINCIPAL_ERROR_ABNORMAL_GROUPED =
-    "Principal Error: Text should be separated by - (dash) every 5 characters";
-const std::string PRINCIPAL_ERROR_INVALID_BASE32_ENCODING =
-    "Principal Error: Text must be in valid Base32 encoding. Decoding/Encoding roundtrip fails.";
+// const std::string PRINCIPAL_OPAQUE_REFERENCE_NOT_SUPPORTED =
+//     "Principal Error: Found a value different that 1 for the reference. Opaque reference not supported.";
+// const std::string PRINCIPAL_ERROR_BYTES_TOO_LONG =
+//     "Principal Error: Bytes is longer than 29 bytes.";
+// const std::string PRINCIPAL_ERROR_INVALID_BASE32 =
+//     "Principal Error: Text must be in valid Base32 encoding.";
+// const std::string PRINCIPAL_ERROR_TEXT_TOO_SHORT =
+//     "Principal Error: Text is too short.";
+// const std::string PRINCIPAL_ERROR_TEXT_TOO_LONG =
+//     "Principal Error: Text is too long.";
+// const std::string PRINCIPAL_ERROR_CHECK_SEQUENCE_NOT_MATCH =
+//     "Principal Error: CRC32 checksum doesn't match.";
+// const std::string PRINCIPAL_ERROR_ABNORMAL_GROUPED =
+//     "Principal Error: Text should be separated by - (dash) every 5 characters";
+// const std::string PRINCIPAL_ERROR_INVALID_BASE32_ENCODING =
+//     "Principal Error: Text must be in valid Base32 encoding. Decoding/Encoding roundtrip fails.";
 
 CandidTypePrincipal::CandidTypePrincipal() : CandidTypePrim() {
   initialize("");
@@ -68,7 +69,7 @@ CandidTypePrincipal::~CandidTypePrincipal() {}
 // Initialize things
 void CandidTypePrincipal::initialize(const std::string &v) {
   if (v == "") {
-    m_v = PRINCIPAL_ID_ANONYMOUS;
+    m_v = "2vxsx-fae";
     // Fill the user's data placeholder, if a pointer was provided
     if (m_pv) *m_pv = m_v;
   } else m_v = v;
@@ -126,7 +127,8 @@ bool CandidTypePrincipal::decode_M(VecBytes B, __uint128_t &offset,
                                              parse_error);
   }
   if (ref_r != 1) {
-    IC_API::trap(PRINCIPAL_OPAQUE_REFERENCE_NOT_SUPPORTED);
+    IC_API::trap(
+        "Principal Error: Found a value different that 1 for the reference. Opaque reference not supported.");
   }
 
   // Get the length
@@ -166,24 +168,22 @@ void CandidTypePrincipal::bytes_from_string() {
   make_ascii_uppercase(s);
   std::vector<uint8_t> bytes = base32_decode(s);
 
-  if (bytes.size() < CRC_LENGTH_IN_BYTES) {
-    IC_API::trap(PRINCIPAL_ERROR_TEXT_TOO_SHORT);
+  if (bytes.size() < 4) {
+    IC_API::trap("Principal Error: Text is too short.");
   }
 
   // First 4 bytes are a CRC32 checksum of the data that follows. The data bytes are the principal ID
-  std::vector<uint8_t> crc_bytes(bytes.begin(),
-                                 bytes.begin() + CRC_LENGTH_IN_BYTES);
-  std::vector<uint8_t> data_bytes(bytes.begin() + CRC_LENGTH_IN_BYTES,
-                                  bytes.end());
+  std::vector<uint8_t> crc_bytes(bytes.begin(), bytes.begin() + 4);
+  std::vector<uint8_t> data_bytes(bytes.begin() + 4, bytes.end());
 
-  if (data_bytes.size() > MAX_LENGTH_IN_BYTES) {
-    IC_API::trap(PRINCIPAL_ERROR_TEXT_TOO_LONG);
+  if (data_bytes.size() > 29) {
+    IC_API::trap("Principal Error: Text is too long.");
   }
 
   // Verify the CRC32 checksum of the data bytes
   std::array<uint8_t, 4> crc_data = crc32(data_bytes);
   if (!std::equal(crc_bytes.begin(), crc_bytes.end(), crc_data.begin())) {
-    IC_API::trap(PRINCIPAL_ERROR_CHECK_SEQUENCE_NOT_MATCH);
+    IC_API::trap("Principal Error: CRC32 checksum doesn't match.");
   }
 
   // from https://internetcomputer.org/docs/current/references/id-encoding-spec
@@ -193,7 +193,8 @@ void CandidTypePrincipal::bytes_from_string() {
   // Verify that roundtrip back to string gives same result
   std::string s_roundtrip = string_from_bytes(data_bytes);
   if (s_roundtrip != m_v) {
-    IC_API::trap(PRINCIPAL_ERROR_INVALID_BASE32_ENCODING);
+    IC_API::trap(
+        "Principal Error: Text must be in valid Base32 encoding. Decoding/Encoding roundtrip fails.");
   }
 
   // All is OK, store the bytes of the Principal ID
@@ -206,8 +207,8 @@ CandidTypePrincipal::string_from_bytes(const std::vector<uint8_t> &data_bytes) {
   // spec: https://internetcomputer.org/docs/current/references/id-encoding-spec
   // m_v = Encode(data) := Group(LowerCase(Base32(CRC32(data) || data)))
 
-  if (data_bytes.size() > MAX_LENGTH_IN_BYTES) {
-    IC_API::trap(PRINCIPAL_ERROR_TEXT_TOO_LONG);
+  if (data_bytes.size() > 29) {
+    IC_API::trap("Principal Error: Text is too long.");
   }
 
   // CRC32(data) - checksum of the data bytes
@@ -228,7 +229,8 @@ CandidTypePrincipal::string_from_bytes(const std::vector<uint8_t> &data_bytes) {
 void CandidTypePrincipal::ungroup(std::string &s) {
   for (size_t i = 5; i < s.size(); i += 6) {
     if (s[i] != '-') {
-      IC_API::trap(PRINCIPAL_ERROR_ABNORMAL_GROUPED);
+      IC_API::trap(
+          "Principal Error: Text should be separated by - (dash) every 5 characters");
     }
   }
   s.erase(std::remove(s.begin(), s.end(), '-'), s.end());

@@ -42,7 +42,15 @@ IC_API::IC_API(const bool &dbug) : m_debug_print(dbug) {
   }
 }
 
-IC_API::~IC_API() {}
+IC_API::~IC_API() {
+  // If the method did not yet call to_wire, do it automatic without content
+  if (!m_called_to_wire) {
+    to_wire();
+  }
+
+  // Send the out over the wire
+  msg_reply();
+}
 
 void IC_API::debug_print(const char *message) {
 
@@ -191,8 +199,7 @@ void IC_API::to_wire(const std::vector<CandidType> &args_out) {
     m_B_out.debug_print();
   }
 
-  // Send it out over the wire
-  msg_reply();
+  // Do NOT yet send it out yet via msg_reply. We do this in the desctructor
 }
 
 // Appends the content of m_B_out, replies over the wire, re-sets the didl vectors
@@ -202,9 +209,10 @@ void IC_API::msg_reply() {
 
   ic0_msg_reply_data_append((uintptr_t)(void *)m_B_out.vec().data(),
                             (uint32_t)m_B_out.size());
-  ic0_msg_reply();
-
   // clear the didl vectors
   m_B_in.clear();
   m_B_out.clear();
+
+  // send it
+  ic0_msg_reply();
 }

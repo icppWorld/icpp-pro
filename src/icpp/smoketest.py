@@ -20,6 +20,7 @@ def call_canister_api(
     canister_output: str = "idl",
     network: str = "local",
     quiet: str = "-qq",  # limits dfx to errors only
+    timeout_seconds: Optional[int] = None,
 ) -> str:
     """Calls a canister method"""
     pro.exit_if_not_pro("smoketesting with pytest")
@@ -49,10 +50,14 @@ def call_canister_api(
         arg += " '()' "
     else:
         arg += f" '{canister_argument}' "
+
     try:
         # response = run_shell_cmd(arg, cwd=Path(dfx_json_path).parent)
         response = run_shell_cmd(
-            arg, capture_output=True, cwd=Path(dfx_json_path).parent
+            arg,
+            capture_output=True,
+            cwd=Path(dfx_json_path).parent,
+            timeout_seconds=timeout_seconds,
         )
         response = response.rstrip("\n")
     except subprocess.CalledProcessError as e:

@@ -22,6 +22,7 @@ def call_canister_api(
     canister_output: str = "idl",
     network: str = "local",
     quiet: str = "-qq",  # limits dfx to errors only
+    timeout_seconds: Optional[int] = None,
 ) -> str:
     """Calls a canister method"""
     pro.exit_if_not_pro("smoketesting with pytest")

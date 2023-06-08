@@ -56,7 +56,8 @@ def principal() -> Any:
     return principal_
 
 
-###########################################################
+####################################################################
+# Fixtures to run a function with the anonymous or default identity
 
 
 def handle_identity(identity_to_set: str) -> Generator[dict[str, str], None, None]:

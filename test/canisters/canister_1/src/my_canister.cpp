@@ -412,6 +412,13 @@ void roundtrip_principal() {
   ic_api.to_wire(CandidTypePrincipal{in});
 }
 
+void caller_is_anonymous() {
+  IC_API ic_api(false);
+  CandidTypePrincipal caller = ic_api.get_caller();
+  bool is_anonymous = caller.is_anonymous();
+  ic_api.to_wire(CandidTypeBool{is_anonymous});
+}
+
 void roundtrip_vec_nat16() {
   IC_API ic_api(false);
   std::vector<uint16_t> in;
@@ -810,10 +817,11 @@ void roundtrip_variant_ok() {
 
   // ---------------------------------------------------------------------------
   // Send it back
-  CandidTypeVariant v_out{"Ok"};
-  v_out.append("Ok", CandidTypeNull{});
-  v_out.append("Err", CandidTypeText{"Error"});
-  ic_api.to_wire(v_out);
+  // CandidTypeVariant v_out{"Ok"};
+  // v_out.append("Ok", CandidTypeNull{});
+  // v_out.append("Err", CandidTypeText{"Error"});
+  // ic_api.to_wire(v_out);
+  ic_api.to_wire(CandidTypeVariant{"Ok"});
 }
 
 void roundtrip_variant_err() {
@@ -837,10 +845,11 @@ void roundtrip_variant_err() {
 
   // ---------------------------------------------------------------------------
   // Send it back
-  CandidTypeVariant v_out{"Err"};
-  v_out.append("Ok", CandidTypeText{});
-  v_out.append("Err", CandidTypeText{"Error"});
-  ic_api.to_wire(v_out);
+  // CandidTypeVariant v_out{"Err"};
+  // v_out.append("Ok", CandidTypeText{});
+  // v_out.append("Err", CandidTypeText{"Error"});
+  // ic_api.to_wire(v_out);
+  ic_api.to_wire(CandidTypeVariant{"Err", CandidTypeText{"Error"}});
 }
 
 void roundtrip_variant() {

@@ -11,7 +11,7 @@
 
 #include "ic_api.h"
 
-// DON'T DO THIS. IT BREAKS ALL UPDATE CALLS
+// DON'T PUT DATA IN GLOBAL/STATIC MEMORY. IT BREAKS ALL UPDATE CALLS
 //                                                               data_bytes
 // const std::string PRINCIPAL_ID_ANONYMOUS = "2vxsx-fae";          // 1 byte: x04
 // const std::string PRINCIPAL_ID_MANAGEMENT_CANISTER = "aaaaa-aa"; // no bytes
@@ -283,3 +283,5 @@ CandidTypePrincipal::crc32(std::vector<uint8_t> data_bytes) {
   crc32.getHash(crc_data.data());
   return crc_data;
 }
+
+bool CandidTypePrincipal::is_anonymous() { return m_v == "2vxsx-fae"; }

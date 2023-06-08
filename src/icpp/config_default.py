@@ -137,9 +137,7 @@ IC_CPP_FILES = (
             # + list(ICPP_PATH.glob("ic/candid/candid_type_principal.cpp"))  # nok
             + list(ICPP_PATH.glob("ic/icapi/*.cpp"))
             + list(ICPP_PATH.glob("ic/pro/*.cpp"))
-            + list(
-                ICPP_PATH.glob("ic/vendors/hash-library/crc32.cpp")
-            )  # TODO: Amalgate into .hpp
+            + list(ICPP_PATH.glob("ic/vendors/hash-library/*.cpp"))
             # + list(ICPP_PATH.glob("ic/vendors/*.cpp"))
         ]
     )
@@ -205,9 +203,7 @@ MOCKIC_CPP_FILES = (
             + list(ICPP_PATH.glob("ic/candid/*.cpp"))
             + list(ICPP_PATH.glob("ic/icapi/*.cpp"))
             + list(ICPP_PATH.glob("ic/pro/*.cpp"))
-            + list(
-                ICPP_PATH.glob("ic/vendors/hash-library/crc32.cpp")
-            )  # TODO: Amalgate into .hpp
+            + list(ICPP_PATH.glob("ic/vendors/hash-library/*.cpp"))
             # + list(ICPP_PATH.glob("ic/vendors/*.cpp"))
         ]
     )

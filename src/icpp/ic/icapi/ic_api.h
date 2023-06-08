@@ -14,6 +14,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -39,7 +40,7 @@ public:
   static void trap(const std::string &msg); // docs end: demo_trap
 
   // docs start: demo_time
-  uint64_t time(); // docs end: demo_time
+  static uint64_t time(); // docs end: demo_time
 
   // docs start: get_caller
   CandidTypePrincipal get_caller(); // docs end: get_caller
@@ -71,56 +72,55 @@ public:
   template <typename T>
   void store_vector_orthogonal(const std::vector<T> &vec, T **p_data,
                                __uint128_t *len) {
-    persist_container(vec, p_data, len);
+    persist_container_sequence(vec, p_data, len, typeid(vec).name());
   }
 
   template <typename T>
   void store_list_orthogonal(const std::list<T> &lst, T **p_data,
                              __uint128_t *len) {
-    persist_container(lst, p_data, len);
+    persist_container_sequence(lst, p_data, len, typeid(lst).name());
   }
 
   template <typename T>
   void store_deque_orthogonal(const std::deque<T> &dq, T **p_data,
                               __uint128_t *len) {
-    persist_container(dq, p_data, len);
+    persist_container_sequence(dq, p_data, len, typeid(dq).name());
   }
 
   template <typename T, size_t N>
   void store_array_orthogonal(const std::array<T, N> &arr, T **p_data,
                               __uint128_t *len) {
-    persist_container(arr, p_data, len);
+    persist_container_sequence(arr, p_data, len, typeid(arr).name());
   }
 
   template <typename Key, typename T>
   void store_map_orthogonal(const std::map<Key, T> &mp,
-                            std::pair<const Key, T> **p_data,
-                            __uint128_t *len) {
-    persist_container(mp, p_data, len);
+                            std::pair<Key, T> **p_data, __uint128_t *len) {
+    persist_container_associative(mp, p_data, len, typeid(mp).name());
   }
 
   template <typename Key, typename T>
   void store_unordered_map_orthogonal(const std::unordered_map<Key, T> &ump,
-                                      std::pair<const Key, T> **p_data,
+                                      std::pair<Key, T> **p_data,
                                       __uint128_t *len) {
-    persist_container(ump, p_data, len);
+    persist_container_associative(ump, p_data, len, typeid(ump).name());
   }
 
   template <typename T>
   void store_set_orthogonal(const std::set<T> &st, T **p_data,
                             __uint128_t *len) {
-    persist_container(st, p_data, len);
+    persist_container_sequence(st, p_data, len, typeid(st).name());
   }
 
   template <typename T>
   void store_unordered_set_orthogonal(const std::unordered_set<T> &ust,
                                       T **p_data, __uint128_t *len) {
-    persist_container(ust, p_data, len);
+    persist_container_sequence(ust, p_data, len, typeid(ust).name());
   }
 
   void store_string_orthogonal(const std::string &str, char **p_data,
                                __uint128_t *len) {
-    persist_container(str, p_data, len);
+    persist_container_sequence(str, p_data, len, typeid(str).name());
   }
 
   template <typename T>
@@ -147,17 +147,24 @@ public:
   }
 
   template <typename Key, typename T>
-  std::map<Key, T>
-  retrieve_map_orthogonal(const std::pair<const Key, T> *p_data,
-                          __uint128_t len) {
-    return std::map<Key, T>(p_data, p_data + len);
+  std::map<Key, T> retrieve_map_orthogonal(const std::pair<Key, T> *p_data,
+                                           __uint128_t len) {
+    std::map<Key, T> result;
+    for (__uint128_t i = 0; i < len; ++i) {
+      result.insert({p_data[i].first, p_data[i].second});
+    }
+    return result;
   }
 
   template <typename Key, typename T>
   std::unordered_map<Key, T>
-  retrieve_unordered_map_orthogonal(const std::pair<const Key, T> *p_data,
+  retrieve_unordered_map_orthogonal(const std::pair<Key, T> *p_data,
                                     __uint128_t len) {
-    return std::unordered_map<Key, T>(p_data, p_data + len);
+    std::unordered_map<Key, T> result;
+    for (__uint128_t i = 0; i < len; ++i) {
+      result.insert({p_data[i].first, p_data[i].second});
+    }
+    return result;
   }
 
   template <typename T>
@@ -185,18 +192,43 @@ private:
   bool m_called_from_wire{false};
   bool m_called_to_wire{false};
 
+  // For sequence containers (array, list, vec, string)
   template <typename Container>
-  void persist_container(const Container &container,
-                         typename Container::value_type **p_data,
-                         __uint128_t *len) {
+  void persist_container_sequence(const Container &container,
+                                  typename Container::value_type **p_data,
+                                  __uint128_t *len,
+                                  const std::string container_type) {
     if (*p_data) {
       delete[] * p_data;
     }
     *len = container.size();
     *p_data = new typename Container::value_type[*len];
     if (*p_data == nullptr) {
-      IC_API::trap("persist_container: Out of memory!");
+      IC_API::trap("persist_container_sequence: Out of memory when storing " +
+                   container_type);
     }
     std::copy(container.begin(), container.end(), *p_data);
+  }
+
+  // For associative containers whose data is stored using an a key (map, unordered_map)
+  template <typename Container, typename NonConstValueType>
+  void persist_container_associative(const Container &container,
+                                     NonConstValueType **p_data,
+                                     __uint128_t *len,
+                                     const std::string container_type) {
+    if (*p_data) {
+      delete[] * p_data;
+    }
+    *len = container.size();
+    *p_data = new NonConstValueType[*len];
+    if (*p_data == nullptr) {
+      IC_API::trap(
+          "persist_container_associative: Out of memory when storing " +
+          container_type);
+    }
+    auto it = container.begin();
+    for (uint64_t i = 0; i < *len; ++i, ++it) {
+      (*p_data)[i] = {it->first, it->second};
+    }
   }
 };

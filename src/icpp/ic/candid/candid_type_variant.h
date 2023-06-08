@@ -12,6 +12,7 @@ public:
   CandidTypeVariant();
   CandidTypeVariant(std::string *p_label);
   CandidTypeVariant(const std::string label);
+  CandidTypeVariant(const std::string label, const CandidType field);
 
   // Destructor
   ~CandidTypeVariant();
@@ -45,6 +46,7 @@ protected:
   // Label & id (hash) of the field that contains the Variant's data
   std::string m_label{""};
   __uint128_t m_variant_index{0};
+  bool m_label_value_set{false};
 
   // Pointer to the label passed in by caller during deserialization
   std::string *m_p_label{nullptr};

@@ -3,9 +3,9 @@
   "canisters": {
     "my_canister": {
       "type": "custom",
-      "candid": "build/my_canister.did",
+      "candid": "src/my_canister.did",
       "wasm": "build/my_canister.wasm",
-      "build": "icpp build-wasm"
+      "build": "icpp build-wasm --to-compile all"
     }
   },
   "defaults": {

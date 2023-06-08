@@ -7,9 +7,9 @@
 #include "crc32.h"
 
 // big endian architectures need #define __BYTE_ORDER __BIG_ENDIAN
-// #ifndef _MSC_VER
-// #include <endian.h>
-// #endif
+//ICPP-PATCH #ifndef _MSC_VER
+//ICPP-PATCH #include <endian.h>
+//ICPP-PATCH #endif
 #include <bit> // For std::endian
 
 /// same as reset()
@@ -415,7 +415,7 @@ void CRC32::add(const void *data, size_t numBytes) {
 
   // process eight bytes at once
   while (numBytes >= 8) {
-    // #if defined(__BYTE_ORDER) && (__BYTE_ORDER != 0) && (__BYTE_ORDER == __BIG_ENDIAN)
+    //ICPP-PATCH #if defined(__BYTE_ORDER) && (__BYTE_ORDER != 0) && (__BYTE_ORDER == __BIG_ENDIAN)
     if constexpr (std::endian::native == std::endian::big) {
       uint32_t one = *current++ ^ swap(crc);
       uint32_t two = *current++;
@@ -424,7 +424,7 @@ void CRC32::add(const void *data, size_t numBytes) {
             crc32Lookup[3][two >> 24] ^ crc32Lookup[2][(two >> 16) & 0xFF] ^
             crc32Lookup[1][(two >> 8) & 0xFF] ^ crc32Lookup[0][two & 0xFF];
     }
-    // #else
+    //ICPP-PATCH #else
     else {
       uint32_t one = *current++ ^ crc;
       uint32_t two = *current++;
@@ -433,7 +433,7 @@ void CRC32::add(const void *data, size_t numBytes) {
             crc32Lookup[3][two & 0xFF] ^ crc32Lookup[2][(two >> 8) & 0xFF] ^
             crc32Lookup[1][(two >> 16) & 0xFF] ^ crc32Lookup[0][two >> 24];
     }
-    // #endif
+    //ICPP-PATCH #endif
     numBytes -= 8;
   }
 

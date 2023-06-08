@@ -33,6 +33,7 @@ public:
   std::string get_v() { return m_v; }
   std::string get_text() { return m_v; }
   const VecBytes &get_v_bytes() const { return m_v_bytes; }
+  bool is_anonymous();
 
 protected:
   void set_pv(std::string *v);

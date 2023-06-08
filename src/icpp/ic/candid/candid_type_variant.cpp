@@ -23,6 +23,18 @@ CandidTypeVariant::CandidTypeVariant(const std::string label)
 
   m_label = label;
   initialize();
+  append(label, CandidTypeNull{});
+  // We only inserted a default, and we must allow the value to be overwritten
+  m_label_value_set = false;
+}
+
+CandidTypeVariant::CandidTypeVariant(const std::string label,
+                                     const CandidType field)
+    : CandidTypeBase() {
+
+  m_label = label;
+  initialize();
+  append(label, field);
 }
 
 CandidTypeVariant::~CandidTypeVariant() {}
@@ -75,8 +87,21 @@ void CandidTypeVariant::append(CandidType field) {
 
 void CandidTypeVariant::_append(uint32_t field_id, std::string field_name,
                                 CandidType field) {
-  // Check if field with identical hash already exists
+
   auto iter = std::find(begin(m_field_ids), end(m_field_ids), field_id);
+
+  if (iter != end(m_field_ids) && field_name == m_label && !m_label_value_set) {
+    // Erase the entry of the label, because it was not yet set by user
+    auto i = std::distance(begin(m_field_ids), iter);
+    m_field_ids.erase(m_field_ids.begin() + i);
+    m_field_names.erase(m_field_names.begin() + i);
+    m_field_datatypes.erase(m_field_datatypes.begin() + i);
+    m_fields.erase(m_fields.begin() + i);
+
+    // Check again
+    iter = std::find(begin(m_field_ids), end(m_field_ids), field_id);
+  }
+
   if (iter != end(m_field_ids)) {
     auto i = std::distance(begin(m_field_ids), iter);
     std::string msg;
@@ -86,7 +111,6 @@ void CandidTypeVariant::_append(uint32_t field_id, std::string field_name,
     msg.append("       field name 2   : " + field_name + "\n");
     IC_API::trap(msg);
   }
-
   // Add the field
   m_field_ids.push_back(field_id);
   m_field_names.push_back(field_name);
@@ -94,6 +118,10 @@ void CandidTypeVariant::_append(uint32_t field_id, std::string field_name,
       std::visit([](auto &&c) { return c.get_datatype_opcode(); }, field);
   m_field_datatypes.push_back(datatype);
   m_fields.push_back(field);
+
+  if (field_name == m_label) {
+    m_label_value_set = true;
+  }
 
   encode_T();
   encode_M();

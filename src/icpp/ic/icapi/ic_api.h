@@ -21,13 +21,19 @@
 
 #include "candid.h"
 #include "candid_type_principal.h"
+#include "canister.h"
 #include "vec_bytes.h"
 
 class IC_API {
 public:
   IC_API();
-  // docs start: ac_api
-  IC_API(const bool &debug_print); // docs end: ac_api
+
+  [[deprecated("Replace with: IC_API ic_api(CanisterQuery{std::string(__func__)}, false)")]] IC_API(
+      const bool &debug_print);
+
+  // docs start: ic_api
+  IC_API(const CanisterEntry &canister_entry,
+         const bool &debug_print); // docs end: ic_api
 
   ~IC_API();
 
@@ -69,6 +75,45 @@ public:
   void to_wire(const CandidType &arg_out);
   void to_wire(const std::vector<CandidType> &args_out); // docs end: to_wire
 
+  // Canister Entry Point we're in
+  // https://internetcomputer.org/docs/current/references/ic-interface-spec#system-api-imports
+  bool is_entry_I() {
+    return std::holds_alternative<CanisterInit>(m_canister_entry) ||
+           std::holds_alternative<CanisterPostUpgrade>(m_canister_entry);
+  }
+  bool is_entry_G() {
+    return std::holds_alternative<CanisterPreUpgrade>(m_canister_entry);
+  }
+  bool is_entry_U() {
+    return std::holds_alternative<CanisterUpdate>(m_canister_entry);
+  }
+  bool is_entry_Q() {
+    return std::holds_alternative<CanisterQuery>(m_canister_entry);
+  }
+  bool is_entry_Ry() {
+    return std::holds_alternative<CanisterReplyCallback>(m_canister_entry);
+  }
+  bool is_entry_Rt() {
+    return std::holds_alternative<CanisterRejectCallback>(m_canister_entry);
+  }
+  bool is_entry_C() {
+    return std::holds_alternative<CanisterCleanupCallback>(m_canister_entry);
+  }
+  bool is_entry_s() {
+    return std::holds_alternative<CanisterStart>(m_canister_entry);
+  }
+  bool is_entry_F() {
+    return std::holds_alternative<CanisterInspectMessage>(m_canister_entry);
+  }
+  bool is_entry_T() {
+    return std::holds_alternative<CanisterHeartbeat>(m_canister_entry) ||
+           std::holds_alternative<CanisterGlobalTimer>(m_canister_entry);
+  }
+  bool is_entry_Wildcard() {
+    return !std::holds_alternative<CanisterStart>(m_canister_entry);
+  }
+
+  // Orthogonal Persistence
   template <typename T>
   void store_vector_orthogonal(const std::vector<T> &vec, T **p_data,
                                __uint128_t *len) {
@@ -118,9 +163,13 @@ public:
     persist_container_sequence(ust, p_data, len, typeid(ust).name());
   }
 
-  void store_string_orthogonal(const std::string &str, char **p_data,
-                               __uint128_t *len) {
-    persist_container_sequence(str, p_data, len, typeid(str).name());
+  void store_string_orthogonal(const std::string &str, char **p_data) {
+    delete[] * p_data; // Delete previous memory.
+    // Allocate enough memory for the string and null terminator.
+    size_t len = str.size() + 1;
+    *p_data = new char[len];
+    std::copy(str.begin(), str.end(), *p_data);
+    (*p_data)[len] = '\0'; // Add null terminator.
   }
 
   template <typename T>
@@ -178,12 +227,16 @@ public:
     return std::unordered_set<T>(p_data, p_data + len);
   }
 
-  std::string retrieve_string_orthogonal(const char *p_data, __uint128_t len) {
-    return std::string(p_data, p_data + len);
+  std::string retrieve_string_orthogonal(const char *p_data) {
+    if (p_data == nullptr) {
+      return std::string(); // Return empty string if p_data is nullptr.
+    }
+    return std::string(p_data);
   }
 
 private:
-  bool m_debug_print;
+  CanisterEntry m_canister_entry;
+  bool m_debug_print{false};
   VecBytes m_B_in;
   VecBytes m_B_out;
   CandidTypePrincipal m_caller;

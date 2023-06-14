@@ -10,6 +10,8 @@ void test_ic_api() WASM_SYMBOL_EXPORTED("canister_query test_ic_api");
 void test_candid() WASM_SYMBOL_EXPORTED("canister_query test_candid");
 void test_vendors() WASM_SYMBOL_EXPORTED("canister_query test_vendors");
 
+void roundtrip_deprecated_ic_api_constructor() WASM_SYMBOL_EXPORTED(
+    "canister_query roundtrip_deprecated_ic_api_constructor");
 void roundtrip_no_arguments()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_no_arguments");
 void roundtrip_bool_true()

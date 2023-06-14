@@ -19,9 +19,12 @@
 
 #include "ic0.h"
 
-IC_API::IC_API() {}
+IC_API::IC_API() : IC_API(CanisterQuery("-unknown-"), false) {}
+IC_API::IC_API(const bool &debug_print)
+    : IC_API(CanisterQuery("-unknown-"), debug_print) {}
 
-IC_API::IC_API(const bool &dbug) : m_debug_print(dbug) {
+IC_API::IC_API(const CanisterEntry &canister_entry, const bool &dbug)
+    : m_canister_entry(canister_entry), m_debug_print(dbug) {
   // Fill 'm_B_in' with the bytes of msg_arg_data
   std::vector<uint8_t> bytes(ic0_msg_arg_data_size());
   ic0_msg_arg_data_copy(reinterpret_cast<uintptr_t>(bytes.data()), 0,
@@ -43,13 +46,16 @@ IC_API::IC_API(const bool &dbug) : m_debug_print(dbug) {
 }
 
 IC_API::~IC_API() {
-  // If the method did not yet call to_wire, do it automatic without content
-  if (!m_called_to_wire) {
-    to_wire();
+  // https://internetcomputer.org/docs/current/references/ic-interface-spec#system-api-imports
+  // Only can call msg_reply if entry is `U Q Ry Rt`
+  if (is_entry_U() || is_entry_Q() || is_entry_Ry() || is_entry_Rt()) {
+    // If the method did not yet call to_wire, do it automatic without content
+    if (!m_called_to_wire) {
+      to_wire();
+    }
+    // Send the out over the wire
+    msg_reply();
   }
-
-  // Send the out over the wire
-  msg_reply();
 }
 
 void IC_API::debug_print(const char *message) {

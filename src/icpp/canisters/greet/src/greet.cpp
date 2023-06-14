@@ -5,17 +5,17 @@
 #include "ic_api.h"
 
 void greet_0() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   ic_api.to_wire(CandidTypeText{"hello!"});
 }
 
 void greet_1() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   ic_api.to_wire(CandidTypeInt{2023});
 }
 
 void greet_2() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
   // Get the principal of the caller, as cryptographically verified by the IC
   CandidTypePrincipal caller = ic_api.get_caller();
@@ -34,7 +34,7 @@ void greet_2() {
 }
 
 void greet_3() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   // ---------------------------------------------------------------------------
   // Get the data from the wire
   __int128_t icpp_version{0};
@@ -52,7 +52,6 @@ void greet_3() {
                          " & ");
   release_details.append("Operating System = " + OS);
 
-  // TODO: don't trap, but use a CandidTypeVariant to return the msg, once implemented
   __int128_t release_year{0};
   if (icpp_version == 1.0) {
     release_year = 2023;
@@ -72,7 +71,7 @@ void greet_3() {
 
 // Demonstrate how to receive an argument list of two records & send an argument list of different CandidTypes
 void greet_4() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
   __int128_t r1_i1{0};
   __int128_t r1_i2{0};

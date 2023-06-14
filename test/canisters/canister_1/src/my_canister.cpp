@@ -18,7 +18,7 @@
 //----------------------------------------------------------------------------------
 // Run all unit tests for vendor libraries
 void test_vendors() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int result = 0;
   result = std::max(result, unit_test_vendors());
   ic_api.to_wire(CandidTypeInt{result});
@@ -27,7 +27,7 @@ void test_vendors() {
 //----------------------------------------------------------------------------------
 // Run all unit & compliance tests for candid
 void test_candid() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int result = 0;
   result = std::max(result, unit_test_candid());
   result = std::max(result, compliance_test_prim());
@@ -38,21 +38,27 @@ void test_candid() {
 //----------------------------------------------------------------------------------
 // Run all unit tests for ic_api
 void test_ic_api() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int result = unit_test_ic_api();
   ic_api.to_wire(CandidTypeInt{result});
 }
 
 //----------------------------------------------------------------------------------
 // Run all roundtrip tests
-void roundtrip_no_arguments() {
+void roundtrip_deprecated_ic_api_constructor() {
   IC_API ic_api(false);
   ic_api.from_wire();
   ic_api.to_wire();
 }
 
+void roundtrip_no_arguments() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  ic_api.from_wire();
+  ic_api.to_wire();
+}
+
 void roundtrip_bool_true() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   bool in{false};
   ic_api.from_wire(CandidTypeBool{&in});
   if (!in) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -60,7 +66,7 @@ void roundtrip_bool_true() {
 }
 
 void roundtrip_bool_false() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   bool in{false};
   ic_api.from_wire(CandidTypeBool{&in});
   if (in) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -68,7 +74,7 @@ void roundtrip_bool_false() {
 }
 
 void roundtrip_float32() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   float in{0.0};
   ic_api.from_wire(CandidTypeFloat32{&in});
   if (!is_approximately_equal(in, (float)1001.1001))
@@ -77,7 +83,7 @@ void roundtrip_float32() {
 }
 
 void roundtrip_float32_neg() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   float in{0.0};
   ic_api.from_wire(CandidTypeFloat32{&in});
   if (!is_approximately_equal(in, (float)-1001.1001))
@@ -86,7 +92,7 @@ void roundtrip_float32_neg() {
 }
 
 void roundtrip_float64() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   double in{0.0};
   ic_api.from_wire(CandidTypeFloat64{&in});
   if (!is_approximately_equal(in, (double)1001.1001))
@@ -95,7 +101,7 @@ void roundtrip_float64() {
 }
 
 void roundtrip_float64_neg() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   double in{0.0};
   ic_api.from_wire(CandidTypeFloat64{&in});
   if (!is_approximately_equal(in, (double)-1001.1001))
@@ -104,7 +110,7 @@ void roundtrip_float64_neg() {
 }
 
 void roundtrip_nat_101() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   __uint128_t in{0};
   ic_api.from_wire(CandidTypeNat{&in});
   if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -112,7 +118,7 @@ void roundtrip_nat_101() {
 }
 
 void roundtrip_nat_1001() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   __uint128_t in{0};
   ic_api.from_wire(CandidTypeNat{&in});
   if (in != 1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -120,7 +126,7 @@ void roundtrip_nat_1001() {
 }
 
 void roundtrip_int_101() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   __int128_t in{0};
   ic_api.from_wire(CandidTypeInt{&in});
   if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -128,7 +134,7 @@ void roundtrip_int_101() {
 }
 
 void roundtrip_int_1001() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   __int128_t in{0};
   ic_api.from_wire(CandidTypeInt{&in});
   if (in != 1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -136,7 +142,7 @@ void roundtrip_int_1001() {
 }
 
 void roundtrip_int_101_neg() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   __int128_t in{0};
   ic_api.from_wire(CandidTypeInt{&in});
   if (in != -101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -144,7 +150,7 @@ void roundtrip_int_101_neg() {
 }
 
 void roundtrip_int_1001_neg() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   __int128_t in{0};
   ic_api.from_wire(CandidTypeInt{&in});
   if (in != -1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -152,7 +158,7 @@ void roundtrip_int_1001_neg() {
 }
 
 void roundtrip_nat8_101() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   uint8_t in{0};
   ic_api.from_wire(CandidTypeNat8{&in});
   if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -160,7 +166,7 @@ void roundtrip_nat8_101() {
 }
 
 void roundtrip_nat16_101() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   uint16_t in{0};
   ic_api.from_wire(CandidTypeNat16{&in});
   if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -168,7 +174,7 @@ void roundtrip_nat16_101() {
 }
 
 void roundtrip_nat16_1001() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   uint16_t in{0};
   ic_api.from_wire(CandidTypeNat16{&in});
   if (in != 1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -176,7 +182,7 @@ void roundtrip_nat16_1001() {
 }
 
 void roundtrip_nat32_101() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   uint32_t in{0};
   ic_api.from_wire(CandidTypeNat32{&in});
   if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -184,7 +190,7 @@ void roundtrip_nat32_101() {
 }
 
 void roundtrip_nat32_1_000_000_001() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   uint32_t in{0};
   ic_api.from_wire(CandidTypeNat32{&in});
   if (in != 1000000001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -192,7 +198,7 @@ void roundtrip_nat32_1_000_000_001() {
 }
 
 void roundtrip_nat64_101() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
   uint64_t in{0};
   ic_api.from_wire(CandidTypeNat64{&in});
@@ -201,7 +207,7 @@ void roundtrip_nat64_101() {
 }
 
 void roundtrip_nat64_1_000_000_000_000_000_001() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
   uint64_t in{0};
   ic_api.from_wire(CandidTypeNat64{&in});
@@ -211,7 +217,7 @@ void roundtrip_nat64_1_000_000_000_000_000_001() {
 }
 
 void roundtrip_int8_101() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int8_t in{0};
   ic_api.from_wire(CandidTypeInt8{&in});
   if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -219,7 +225,7 @@ void roundtrip_int8_101() {
 }
 
 void roundtrip_int8_101_neg() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int8_t in{0};
   ic_api.from_wire(CandidTypeInt8{&in});
   if (in != -101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -227,7 +233,7 @@ void roundtrip_int8_101_neg() {
 }
 
 void roundtrip_int16_101() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int16_t in{0};
   ic_api.from_wire(CandidTypeInt16{&in});
   if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -235,7 +241,7 @@ void roundtrip_int16_101() {
 }
 
 void roundtrip_int16_101_neg() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int16_t in{0};
   ic_api.from_wire(CandidTypeInt16{&in});
   if (in != -101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -243,7 +249,7 @@ void roundtrip_int16_101_neg() {
 }
 
 void roundtrip_int16_1001() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int16_t in{0};
   ic_api.from_wire(CandidTypeInt16{&in});
   if (in != 1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -251,7 +257,7 @@ void roundtrip_int16_1001() {
 }
 
 void roundtrip_int16_1001_neg() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int16_t in{0};
   ic_api.from_wire(CandidTypeInt16{&in});
   if (in != -1001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -259,7 +265,7 @@ void roundtrip_int16_1001_neg() {
 }
 
 void roundtrip_int32_101() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int32_t in{0};
   ic_api.from_wire(CandidTypeInt32{&in});
   if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -267,7 +273,7 @@ void roundtrip_int32_101() {
 }
 
 void roundtrip_int32_101_neg() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int32_t in{0};
   ic_api.from_wire(CandidTypeInt32{&in});
   if (in != -101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -275,7 +281,7 @@ void roundtrip_int32_101_neg() {
 }
 
 void roundtrip_int32_1_000_000_001() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int32_t in{0};
   ic_api.from_wire(CandidTypeInt32{&in});
   if (in != 1000000001) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -283,7 +289,7 @@ void roundtrip_int32_1_000_000_001() {
 }
 
 void roundtrip_int32_1_000_000_001_neg() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int32_t in{0};
   ic_api.from_wire(CandidTypeInt32{&in});
   if (in != -1000000001)
@@ -292,7 +298,7 @@ void roundtrip_int32_1_000_000_001_neg() {
 }
 
 void roundtrip_int64_101() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int64_t in{0};
   ic_api.from_wire(CandidTypeInt64{&in});
   if (in != 101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -300,7 +306,7 @@ void roundtrip_int64_101() {
 }
 
 void roundtrip_int64_101_neg() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int64_t in{0};
   ic_api.from_wire(CandidTypeInt64{&in});
   if (in != -101) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -308,7 +314,7 @@ void roundtrip_int64_101_neg() {
 }
 
 void roundtrip_int64_1_000_000_000_000_000_001() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int64_t in{0};
   ic_api.from_wire(CandidTypeInt64{&in});
   if (in != 1000000000000000001)
@@ -317,7 +323,7 @@ void roundtrip_int64_1_000_000_000_000_000_001() {
 }
 
 void roundtrip_int64_1_000_000_000_000_000_001_neg() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int64_t in{0};
   ic_api.from_wire(CandidTypeInt64{&in});
   if (in != -1000000000000000001)
@@ -326,7 +332,7 @@ void roundtrip_int64_1_000_000_000_000_000_001_neg() {
 }
 
 void roundtrip_text() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   std::string in{""};
   ic_api.from_wire(CandidTypeText{&in});
   if (in != "Hello C++ Canister")
@@ -335,7 +341,7 @@ void roundtrip_text() {
 }
 
 void roundtrip_text_to_json_to_text() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
   // Get the Candid Text from the wire
   std::string in{""};
@@ -377,7 +383,7 @@ void roundtrip_text_to_json_to_text() {
 }
 
 void roundtrip_text_to_json_to_text_long_message() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
   // Get the Candid Text from the wire
   std::string in{""};
@@ -398,13 +404,13 @@ void roundtrip_text_to_json_to_text_long_message() {
 }
 
 void roundtrip_reserved() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   ic_api.from_wire(CandidTypeReserved{});
   ic_api.to_wire(CandidTypeReserved{});
 }
 
 void roundtrip_principal() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   std::string in{""};
   ic_api.from_wire(CandidTypePrincipal{&in});
   if (in != "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae")
@@ -413,14 +419,14 @@ void roundtrip_principal() {
 }
 
 void caller_is_anonymous() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   CandidTypePrincipal caller = ic_api.get_caller();
   bool is_anonymous = caller.is_anonymous();
   ic_api.to_wire(CandidTypeBool{is_anonymous});
 }
 
 void roundtrip_vec_nat16() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   std::vector<uint16_t> in;
   ic_api.from_wire(CandidTypeVecNat16{&in});
   if (in != std::vector<uint16_t>{101, 102, 103})
@@ -430,7 +436,7 @@ void roundtrip_vec_nat16() {
 }
 
 void roundtrip_vec_all() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
   // ---------------------------------------------------------------------------
   // Get the data from the wire
@@ -536,7 +542,7 @@ void roundtrip_vec_all() {
 }
 
 void roundtrip_opt_nat() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   std::optional<__uint128_t> in;
   ic_api.from_wire(CandidTypeOptNat{&in});
   if (!in.has_value() || in.value() != 101)
@@ -546,7 +552,7 @@ void roundtrip_opt_nat() {
 }
 
 void roundtrip_opt_nat_no_value() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   std::optional<__uint128_t> in;
   ic_api.from_wire(CandidTypeOptNat{&in});
   if (in.has_value()) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -555,7 +561,7 @@ void roundtrip_opt_nat_no_value() {
 }
 
 void roundtrip_opt_nat16() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   std::optional<uint16_t> in;
   ic_api.from_wire(CandidTypeOptNat16{&in});
   if (!in.has_value() || in.value() != 101)
@@ -565,7 +571,7 @@ void roundtrip_opt_nat16() {
 }
 
 void roundtrip_opt_nat16_no_value() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   std::optional<uint16_t> in;
   ic_api.from_wire(CandidTypeOptNat16{&in});
   if (in.has_value()) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
@@ -574,7 +580,7 @@ void roundtrip_opt_nat16_no_value() {
 }
 
 void roundtrip_opt_all() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
   // ---------------------------------------------------------------------------
   // Get the data from the wire
@@ -758,7 +764,7 @@ void roundtrip_opt_all() {
 }
 
 void roundtrip_record() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
   // ---------------------------------------------------------------------------
   // Get the data from the wire
@@ -800,7 +806,7 @@ void roundtrip_record() {
 }
 
 void roundtrip_variant_ok() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   // ---------------------------------------------------------------------------
   // Get the data from the wire
   std::string label{""};
@@ -825,7 +831,7 @@ void roundtrip_variant_ok() {
 }
 
 void roundtrip_variant_err() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   // ---------------------------------------------------------------------------
   // Get the data from the wire
   std::string label{""};
@@ -853,7 +859,7 @@ void roundtrip_variant_err() {
 }
 
 void roundtrip_variant() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   // ---------------------------------------------------------------------------
   // Get the data from the wire
 
@@ -986,20 +992,20 @@ void roundtrip_variant() {
 //----------------------------------------------------------------------------------
 // Trap tests  (The calling method will verify that these indeed trap)
 void trap_wrong_number_of_args() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   bool in{false};
   ic_api.from_wire(CandidTypeBool{&in}); // this must trap
 }
 
 void trap_multiple_calls_from_wire() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   bool in{false};
   ic_api.from_wire(CandidTypeBool{&in});
   ic_api.from_wire(CandidTypeBool{&in}); // this must trap
 }
 
 void trap_multiple_calls_to_wire() {
-  IC_API ic_api(false);
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   bool in{false};
   ic_api.from_wire(CandidTypeBool{&in});
 

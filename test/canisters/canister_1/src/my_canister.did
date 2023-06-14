@@ -15,6 +15,7 @@ type Result_2 =
         Err: text;
     };
 service: {
+    "roundtrip_deprecated_ic_api_constructor" : () -> () query;
     "roundtrip_no_arguments" : () -> () query;
     "test_ic_api" : () -> (int) query;
     "test_candid" : () -> (int) query;

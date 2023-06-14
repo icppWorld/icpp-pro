@@ -65,6 +65,18 @@ def test__test_ic_api(network: str, principal: str) -> None:
 
 # ----------------------------------------------------------------------------------
 # Run all roundtrip tests
+def test__roundtrip_deprecated_ic_api_constructor(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_deprecated_ic_api_constructor",
+        canister_argument="()",
+        network=network,
+    )
+    expected_response = ""
+    assert response == expected_response
+
+
 def test__roundtrip_no_arguments(network: str, principal: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,

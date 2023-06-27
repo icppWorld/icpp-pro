@@ -22,13 +22,14 @@ def get_wasi_sdk_os_name() -> str:
     repo, for the current OS."""
 
     if OS_SYSTEM == "Linux":
-        return "linux"
+        return "-linux"
 
     if OS_SYSTEM == "Darwin":
-        return "macos"
+        return "-macos"
 
     if OS_SYSTEM == "Windows":
-        return "mingw"
+        # Naming changed with wasi-sdk 20
+        return ".m-mingw"
 
     return "unknown"
 
@@ -37,7 +38,7 @@ WASI_SDK_OS_NAME = get_wasi_sdk_os_name()
 WASI_SDK_URL = (
     f"https://github.com/WebAssembly/wasi-sdk/releases/download/"
     f"{__version_wasi_sdk__.split('.',1)[0]}/"
-    f"{__version_wasi_sdk__}-{WASI_SDK_OS_NAME}.tar.gz"
+    f"{__version_wasi_sdk__}{WASI_SDK_OS_NAME}.tar.gz"
 )
 ICPP_ROOT = Path.home() / ".icpp"
 ICPP_ROOT_COMPILER = ICPP_ROOT / f"{__version_wasi_sdk__}"

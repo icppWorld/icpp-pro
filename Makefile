@@ -149,10 +149,17 @@ python-type:
 ###########################################################################
 # Toolchain installation for .github/workflows
 
+# Note for clang++
+# This command does not contain latest LLVM version that ships with wasi-sdk
+# sudo apt update && sudo apt install clang-$(VERSION_CLANG)
+
 .PHONY: install-clang-ubuntu
 install-clang-ubuntu:
 	@echo "Installing clang-$(VERSION_CLANG) compiler"
-	sudo apt update && sudo apt install clang-$(VERSION_CLANG)
+	wget https://apt.llvm.org/llvm.sh
+	chmod +x llvm.sh
+	echo | sudo ./llvm.sh $(VERSION_CLANG)
+	rm llvm.sh
 
 	@echo "Creating soft links for compiler executables"
 	sudo ln --force -s /usr/bin/clang-$(VERSION_CLANG) /usr/bin/clang

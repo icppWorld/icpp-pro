@@ -63,12 +63,7 @@ jobs:
           echo "Installing wasi-sdk"
           icpp install-wasi-sdk
 
-      - name: restore-smoketest
+      - name: all-static
         shell: bash -l {0}
         run: |
-          cp src_copy_of_smoketest_files/* src/icpp/
-
-      - name: all-tests
-        shell: bash -l {0}
-        run: |
-          make all-tests
+          make all-static

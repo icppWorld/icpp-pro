@@ -91,7 +91,7 @@ setup(
         #   5 - Production/Stable
         "Development Status :: 4 - Beta",
         # Pick your license as you wish
-        "License :: Other/Proprietary License",
+        "License :: OSI Approved :: MIT License",
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate you support Python 3. These classifiers are *not*
         # checked by 'pip install'. See instead 'python_requires' below.
@@ -105,7 +105,7 @@ setup(
     #
     # This field adds a description to the metatada in PKG-INFO.
     # It is not used by PyPI
-    license="Freemium",
+    license="MIT",
     #
     # This field adds keywords for your project which will appear on the
     # project page. What does your project relate to?

@@ -1,5 +1,6 @@
 """Handles 'icpp install-wasi-sdk' """
 import sys
+import shutil
 from pathlib import Path
 import math
 import tarfile
@@ -7,7 +8,7 @@ import requests
 import enlighten  # type: ignore
 import typer
 from icpp.__main__ import app
-from icpp import config_default
+from icpp import config_default, __version_wasi_sdk__
 
 
 @app.command()
@@ -32,6 +33,25 @@ def install_wasi_sdk() -> None:
         use_progress_bar = True
 
         fpath = Path(str(config_default.ICPP_ROOT_COMPILER) + ".tar.gz")
+        
+        ###############################################################################
+        typer.echo("Cleanining install folder...")
+        fpath.unlink(missing_ok=False)
+        
+        try:
+            shutil.rmtree(config_default.ICPP_ROOT_COMPILER)
+        except FileNotFoundError:
+            pass
+        except OSError as e:
+            typer.echo(f"Warning: {e.strerror}")
+            
+        try:
+            shutil.rmtree(config_default.ICPP_ROOT_UNTAR_DIR)
+        except FileNotFoundError:
+            pass
+        except OSError as e:
+            typer.echo(f"Warning: {e.strerror}")
+        ###############################################################################        
 
         with requests.Session() as s:
             r = s.get(config_default.WASI_SDK_URL, stream=use_progress_bar)
@@ -44,6 +64,7 @@ def install_wasi_sdk() -> None:
                 sys.exit(1)
 
             typer.echo(f"Downloading wasi-sdk: {config_default.WASI_SDK_URL}")
+            typer.echo(f"Saving tar ball as  : {fpath}")
 
             config_default.ICPP_ROOT.mkdir(parents=True, exist_ok=True)
             if not use_progress_bar:
@@ -69,10 +90,18 @@ def install_wasi_sdk() -> None:
 
         ################################################################################
         # Unzip the tar.gz file
-        typer.echo(f"Installing wasi-sdk in {config_default.ICPP_ROOT_COMPILER}")
+        typer.echo(f"Untarring {fpath}")
         with tarfile.open(fpath, "r") as tar:
             tar.extractall(path=config_default.ICPP_ROOT)
 
+        if config_default.ICPP_ROOT_UNTAR_DIR != config_default.ICPP_ROOT_COMPILER:
+            typer.echo(f"Renaming {config_default.ICPP_ROOT_UNTAR_DIR} to {config_default.ICPP_ROOT_COMPILER}")
+            try:
+                shutil.move(config_default.ICPP_ROOT_UNTAR_DIR,config_default.ICPP_ROOT_COMPILER)
+            except shutil.Error as e:
+                typer.echo(f"Error: {e}")
+                sys.exit(1)                
+    
         typer.echo("Cleaning up")
         fpath.unlink(missing_ok=False)
 

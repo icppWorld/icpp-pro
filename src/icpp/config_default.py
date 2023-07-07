@@ -33,6 +33,20 @@ def get_wasi_sdk_os_name() -> str:
 
     return "unknown"
 
+def get_wasi_sdk_untar_dir_name() -> str:
+    """Returns the dir name after untarring, for the current OS."""
+
+    if OS_SYSTEM == "Linux":
+        return __version_wasi_sdk__
+
+    if OS_SYSTEM == "Darwin":
+        return __version_wasi_sdk__
+
+    if OS_SYSTEM == "Windows":
+        # Naming changed with wasi-sdk 20
+        return __version_wasi_sdk__ + "+m"
+
+    return "unknown"
 
 WASI_SDK_OS_NAME = get_wasi_sdk_os_name()
 WASI_SDK_URL = (
@@ -40,7 +54,9 @@ WASI_SDK_URL = (
     f"{__version_wasi_sdk__.split('.',1)[0]}/"
     f"{__version_wasi_sdk__}{WASI_SDK_OS_NAME}.tar.gz"
 )
+
 ICPP_ROOT = Path.home() / ".icpp"
+ICPP_ROOT_UNTAR_DIR = ICPP_ROOT / f"{get_wasi_sdk_untar_dir_name()}"
 ICPP_ROOT_COMPILER = ICPP_ROOT / f"{__version_wasi_sdk__}"
 
 USER = getpass.getuser()

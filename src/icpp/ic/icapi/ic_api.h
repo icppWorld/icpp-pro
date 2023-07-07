@@ -164,7 +164,7 @@ public:
   }
 
   void store_string_orthogonal(const std::string &str, char **p_data) {
-    delete[] * p_data; // Delete previous memory.
+    delete[] *p_data; // Delete previous memory.
     // Allocate enough memory for the string and null terminator.
     size_t len = str.size() + 1;
     *p_data = new char[len];
@@ -252,7 +252,7 @@ private:
                                   __uint128_t *len,
                                   const std::string container_type) {
     if (*p_data) {
-      delete[] * p_data;
+      delete[] *p_data;
     }
     *len = container.size();
     *p_data = new typename Container::value_type[*len];
@@ -270,7 +270,7 @@ private:
                                      __uint128_t *len,
                                      const std::string container_type) {
     if (*p_data) {
-      delete[] * p_data;
+      delete[] *p_data;
     }
     *len = container.size();
     *p_data = new NonConstValueType[*len];

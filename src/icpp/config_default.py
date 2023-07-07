@@ -33,6 +33,7 @@ def get_wasi_sdk_os_name() -> str:
 
     return "unknown"
 
+
 def get_wasi_sdk_untar_dir_name() -> str:
     """Returns the dir name after untarring, for the current OS."""
 
@@ -47,6 +48,7 @@ def get_wasi_sdk_untar_dir_name() -> str:
         return __version_wasi_sdk__ + "+m"
 
     return "unknown"
+
 
 WASI_SDK_OS_NAME = get_wasi_sdk_os_name()
 WASI_SDK_URL = (

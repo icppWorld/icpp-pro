@@ -31,7 +31,7 @@ def install_wasi_sdk() -> None:
     typer.echo("Cleanining install folder...")
 
     fpath = Path(str(config_default.ICPP_ROOT_COMPILER) + ".tar.gz")
-    fpath.unlink(missing_ok=False)
+    fpath.unlink(missing_ok=True)
 
     try:
         shutil.rmtree(config_default.ICPP_ROOT_COMPILER)
@@ -109,7 +109,7 @@ def install_wasi_sdk() -> None:
                 sys.exit(1)
 
         typer.echo("Cleaning up")
-        fpath.unlink(missing_ok=False)
+        fpath.unlink(missing_ok=True)
 
         typer.echo(
             f"Successfully installed wasi-sdk in {config_default.ICPP_ROOT_COMPILER}"

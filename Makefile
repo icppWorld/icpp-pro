@@ -38,7 +38,9 @@ VERSION_CLANG := $(shell cat version_clang.txt)
 
 ###########################################################################
 # Use some clang tools that come with wasi-sdk
-ICPP_COMPILER_ROOT := $(HOME)/.icpp/wasi-sdk-16.0
+ICPP_COMPILER_VERSION := $(shell python -c "from src.icpp.version_wasi_sdk import __version__; print(__version__.split('-')[-1])")
+ICPP_COMPILER_ROOT := $(HOME)/.icpp/wasi-sdk-$(ICPP_COMPILER_VERSION)
+# ICPP_COMPILER_ROOT := $(HOME)/.icpp/wasi-sdk-16.0
 CLANG_FORMAT = $(ICPP_COMPILER_ROOT)/bin/clang-format
 CLANG_TIDY = $(ICPP_COMPILER_ROOT)/bin/clang-tidy
 

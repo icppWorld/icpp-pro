@@ -27,31 +27,31 @@ def install_wasi_sdk() -> None:
         )
         sys.exit(1)
 
+    # ----------------------------------------------------------------
+    typer.echo("Cleanining install folder...")
+
+    fpath = Path(str(config_default.ICPP_ROOT_COMPILER) + ".tar.gz")
+    fpath.unlink(missing_ok=False)
+
+    try:
+        shutil.rmtree(config_default.ICPP_ROOT_COMPILER)
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        typer.echo(f"Warning: {e.strerror}")
+
+    try:
+        shutil.rmtree(config_default.ICPP_ROOT_UNTAR_DIR)
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        typer.echo(f"Warning: {e.strerror}")
+    # ----------------------------------------------------------------
+
     try:
         ################################################################################
         # Download the tar.gz file
         use_progress_bar = True
-
-        fpath = Path(str(config_default.ICPP_ROOT_COMPILER) + ".tar.gz")
-
-        ###############################################################################
-        typer.echo("Cleanining install folder...")
-        fpath.unlink(missing_ok=False)
-
-        try:
-            shutil.rmtree(config_default.ICPP_ROOT_COMPILER)
-        except FileNotFoundError:
-            pass
-        except OSError as e:
-            typer.echo(f"Warning: {e.strerror}")
-
-        try:
-            shutil.rmtree(config_default.ICPP_ROOT_UNTAR_DIR)
-        except FileNotFoundError:
-            pass
-        except OSError as e:
-            typer.echo(f"Warning: {e.strerror}")
-        ###############################################################################
 
         with requests.Session() as s:
             r = s.get(config_default.WASI_SDK_URL, stream=use_progress_bar)

@@ -1,24 +1,21 @@
-                    ICPP-FREE LICENSE
-                    Version 1, 29 April 2023
+MIT License
 
-    Copyright (C) 2023 icppWorld <https://docs.icpp.world/>
+Copyright (c) 2023 icppWorld
 
-The ICPP-FREE LICENSE allows you to use icpp-free at no cost. 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-The intent of this license is to allow you to try out the capabilities, 
-and hopefully you like it so much that you upgrade to the paid version, 
-icpp-pro. 
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-Doing so will support our development team and it will benefit the 
-larger community of Internet Computer C++ Smart Contract developers.
-
-icpp-free is used to build WebAssembly canisters, and there are no
-restrictions on use of the WebAssembly modules you create, except for 
-the purpose of reverse engineering and modification of the ICPP software 
-itself.
-
-The free software version will alert you when a pro license is required,
-and you can find summary at http://docs.icpp.world.
-
-Thank you for your interest in our software, and any feedback on the
-software or on this license can be emailed to icpp@icpp.world.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

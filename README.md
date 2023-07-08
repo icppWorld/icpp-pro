@@ -1,11 +1,12 @@
 [![icpp-free](https://github.com/icppWorld/icpp-free/actions/workflows/cicd.yml/badge.svg)](https://github.com/icppWorld/icpp-free/actions/workflows/cicd.yml)
-# icpp-free
+# C++ Canister Development Kit
 
-A development platform for C++ smart contracts of the  [Internet Computer](https://internetcomputer.org/):
+icpp is a cdk to develop C++ smart contracts for the  [Internet Computer](https://internetcomputer.org/):
 
 ## Installation
 
 ```bash
+# For Linux, Mac or Windows
 pip install icpp-free
 
 # verify
@@ -14,4 +15,4 @@ icpp-free version: x.y.z
 wasi-sdk  version: wasi-sdk-X.Y
 ```
 
-See [docs: Installation Instructions](https://docs.icpp.world/installation.html)
+## [Documentation](https://docs.icpp.world)

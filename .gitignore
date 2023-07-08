@@ -6,6 +6,7 @@ paths.txt
 .*.swp
 .DS_Store
 icpp-venv
+llvm.sh
 
 # Windows
 .vs

@@ -79,11 +79,11 @@ public:
   template <class T> void append_uleb128(T) = delete;
 
   template <typename T>
-  requires MyFixedWidthInts<T>
+    requires MyFixedWidthInts<T>
   void append_int_fixed_width(const T &v);
 
   template <typename T>
-  requires MyFloats<T>
+    requires MyFloats<T>
   void append_float_ieee754(const T &v);
 
   // parse methods
@@ -102,12 +102,12 @@ public:
                      std::string &parse_error) = delete;
 
   template <typename T>
-  requires MyFixedWidthInts<T>
+    requires MyFixedWidthInts<T>
   bool parse_int_fixed_width(__uint128_t &offset, T &v,
                              std::string &parse_error);
 
   template <typename T>
-  requires MyFloats<T>
+    requires MyFloats<T>
   bool parse_float_ieee754(__uint128_t &offset, T &v, std::string &parse_error);
 
   bool parse_bytes(__uint128_t &offset, std::vector<std::byte> &v,
@@ -149,7 +149,7 @@ private:
 // -----------------------------------------------------------------------------
 // template definitions
 template <typename T>
-requires MyFixedWidthInts<T>
+  requires MyFixedWidthInts<T>
 void VecBytes::append_int_fixed_width(const T &v) {
   uint8_t *bytes{nullptr};
   if (is_little_endian()) bytes = (uint8_t *)&v;
@@ -162,7 +162,7 @@ void VecBytes::append_int_fixed_width(const T &v) {
 }
 
 template <typename T>
-requires MyFloats<T>
+  requires MyFloats<T>
 void VecBytes::append_float_ieee754(const T &v) {
   if (is_float_ieee754()) {
     // https://github.com/dfinity/candid/blob/master/spec/Candid.md#floating-point-numbers
@@ -181,7 +181,7 @@ void VecBytes::append_float_ieee754(const T &v) {
 }
 
 template <typename T>
-requires MyFixedWidthInts<T>
+  requires MyFixedWidthInts<T>
 bool VecBytes::parse_int_fixed_width(__uint128_t &offset, T &v,
                                      std::string &parse_error) {
   __uint128_t len = m_vec.size() - offset;
@@ -198,7 +198,7 @@ bool VecBytes::parse_int_fixed_width(__uint128_t &offset, T &v,
 }
 
 template <typename T>
-requires MyFloats<T>
+  requires MyFloats<T>
 bool VecBytes::parse_float_ieee754(__uint128_t &offset, T &v,
                                    std::string &parse_error) {
   if (is_float_ieee754()) {

@@ -313,7 +313,7 @@ int main() {
   mockIC.run_test("roundtrip_variant_ok (1)", roundtrip_variant_ok,
                   "4449444c016b01bc8a017f010000", // (1)
                   "4449444c016b01bc8a017f010000", silent_on_trap,
-                  my_principal); // (2)
+                  my_principal);                  // (2)
   mockIC.run_test("roundtrip_variant_ok (2)", roundtrip_variant_ok,
                   "4449444c016b02bc8a017fc5fed20171010000",
                   "4449444c016b01bc8a017f010000", silent_on_trap, my_principal);
@@ -322,7 +322,7 @@ int main() {
   mockIC.run_test("roundtrip_variant_err (1)", roundtrip_variant_err,
                   "4449444c016b01c5fed20171010000054572726f72", // (1)
                   "4449444c016b01c5fed20171010000054572726f72", silent_on_trap,
-                  my_principal); // (2)
+                  my_principal);                                // (2)
   mockIC.run_test("roundtrip_variant_err (2)", roundtrip_variant_err,
                   "4449444c016b02bc8a0171c5fed20171010001054572726f72",
                   "4449444c016b01c5fed20171010000054572726f72", silent_on_trap,

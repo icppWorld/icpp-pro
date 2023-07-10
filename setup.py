@@ -23,14 +23,14 @@ setup(
     # package, this name will be registered for you. It will determine how
     # users can install this project, e.g.:
     #
-    # $ pip install icpp
+    # $ pip install icpp-pro
     #
-    # And where it will live on PyPI: https://pypi.org/project/icpp/
+    # And where it will live on PyPI: https://pypi.org/project/icpp-pro/
     #
     # There are some restrictions on what makes a valid project name
     # specification here:
     # https://packaging.python.org/specifications/core-metadata/#name
-    name="icpp",  # Required
+    name="icpp-pro",  # Required
     #
     # Versions should comply with PEP 440:
     # https://www.python.org/dev/peps/pep-0440/

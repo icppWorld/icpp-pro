@@ -143,6 +143,7 @@ setup(
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
+        f"icpp-candid=={version.__version__}",
         "typer[all]>=0.9.0",
         "tomli",
         "requests",
@@ -194,11 +195,6 @@ setup(
             "ic/*/*.cpp",
             "ic/*/*.h",
             "ic/*/*.hpp",
-            "ic/vendors/cppcodec/*",
-            "ic/vendors/cppcodec/data/*",
-            "ic/vendors/cppcodec/detail/*",
-            "ic/vendors/hash-library/*",
-            "ic/vendors/hash-library/tests/*",
             "py.typed",
         ],
     },

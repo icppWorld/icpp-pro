@@ -38,11 +38,22 @@ VERSION_CLANG := $(shell cat version_clang.txt)
 
 ###########################################################################
 # Use some clang tools that come with wasi-sdk
-ICPP_COMPILER_VERSION := $(shell python -c "from src.icpp.version_wasi_sdk import __version__; print(__version__.split('-')[-1])")
-ICPP_COMPILER_ROOT := $(HOME)/.icpp/wasi-sdk-$(ICPP_COMPILER_VERSION)
-# ICPP_COMPILER_ROOT := $(HOME)/.icpp/wasi-sdk-16.0
+ICPP_COMPILER_VERSION := $(shell python -c "import sys; sys.path.append('src'); from src.icpp.version_wasi_sdk import __version__; print(__version__)")
+ICPP_COMPILER_ROOT := $(HOME)/.icpp/$(ICPP_COMPILER_VERSION)
 CLANG_FORMAT = $(ICPP_COMPILER_ROOT)/bin/clang-format
 CLANG_TIDY = $(ICPP_COMPILER_ROOT)/bin/clang-tidy
+
+.PHONY: summary
+summary:
+	@echo "-------------------------------------------------------------"
+	@echo OS=$(OS)
+	@echo VERSION_DIDC=$(VERSION_DIDC)
+	@echo VERSION_CLANG=$(VERSION_CLANG)
+	@echo ICPP_COMPILER_VERSION=$(ICPP_COMPILER_VERSION)
+	@echo ICPP_COMPILER_ROOT=$(ICPP_COMPILER_ROOT)
+	@echo CLANG_FORMAT=$(CLANG_FORMAT)
+	@echo CLANG_TIDY=$(CLANG_TIDY)
+	@echo "-------------------------------------------------------------"
 
 ###########################################################################
 # CI/CD - Phony Makefile targets
@@ -192,7 +203,8 @@ install-jp:
 .PHONY: install-python
 install-python:
 	pip install --upgrade pip
-	pip install -e .[dev]
+	cd icpp-candid && pip install -e ".[dev]"
+	pip install -e ".[dev]"
 
 .PHONY:install-rust
 install-rust:

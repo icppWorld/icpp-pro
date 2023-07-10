@@ -23,17 +23,29 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: checkout
+      # -------------------------------------------------------------------
+      # Checkout icpp-pro & icpp-candid as nested directory
+      - name: checkout icpp-pro
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
+      - name: checkout icpp-candid
+        uses: actions/checkout@v2
+        with:
+          repository: icppWorld/icpp-candid
+          path: icpp-candid
+          fetch-depth: 0
+      # -------------------------------------------------------------------
 
       - name: install
         shell: bash -l {0} # activates the default conda environment ('test')
         run: |
           echo "Installing tool chains & dependencies"
+          pwd
           sudo apt update
           sudo apt install build-essential
+          make summary
           make install-dfx
           make install-python
           make install-clang-ubuntu

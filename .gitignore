@@ -140,3 +140,5 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+icpp-candid/

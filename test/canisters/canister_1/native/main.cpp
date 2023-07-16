@@ -8,8 +8,8 @@
 #include "../src/my_canister.h"
 
 // The Mock IC
-#include "mock_ic.h"
 #include "icpp_hooks.h"
+#include "mock_ic.h"
 
 int main() {
   bool exit_on_fail = true;

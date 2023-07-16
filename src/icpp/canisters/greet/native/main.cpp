@@ -26,20 +26,20 @@ int main() {
   // -----------------------------------------------------------------------------
   // '()' -> '("hello!")'
   mockIC.run_test("greet_0", greet_0, "4449444c0000",
-                  "4449444c0001710668656c6c6f21",
-                  silent_on_trap, my_principal);
+                  "4449444c0001710668656c6c6f21", silent_on_trap, my_principal);
 
   // '()' -> '(variant { err = 401 : nat16})'
   // Unauthorized to call this API if not logged in
   mockIC.run_test("greet_0_auth err", greet_0_auth, "4449444c0000",
-                  "4449444c016b01e58eb4027a0100009101",
-                  silent_on_trap, anonymous_principal);
+                  "4449444c016b01e58eb4027a0100009101", silent_on_trap,
+                  anonymous_principal);
 
   // '()' -> '(variant { ok = "Hello expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae" : text})'
   // Responds with your principal when logged in.
-  mockIC.run_test("greet_0_auth ok", greet_0_auth, "4449444c0000",
-                  "4449444c016b019cc201710100004548656c6c6f206578706d742d67747873772d696e66746a2d747461626a2d71687035732d6e6f7a75702d6e3362626f2d6b377a766e2d64673468652d6b6e6163332d6c6165",
-                  silent_on_trap, my_principal);
+  mockIC.run_test(
+      "greet_0_auth ok", greet_0_auth, "4449444c0000",
+      "4449444c016b019cc201710100004548656c6c6f206578706d742d67747873772d696e66746a2d747461626a2d71687035732d6e6f7a75702d6e3362626f2d6b377a766e2d64673468652d6b6e6163332d6c6165",
+      silent_on_trap, my_principal);
 
   // '()' -> '(2023)'
   mockIC.run_test("greet_1", greet_1, "4449444c0000", "4449444c00017ce70f",
@@ -50,7 +50,7 @@ int main() {
   mockIC.run_test(
       "greet_2", greet_2, "4449444c0001710d432b2b20446576656c6f706572",
       "4449444c0001716768656c6c6f20432b2b20446576656c6f706572210a596f7572207072696e636970616c2069733a206578706d742d67747873772d696e66746a2d747461626a2d71687035732d6e6f7a75702d6e3362626f2d6b377a766e2d64673468652d6b6e6163332d6c6165",
-                  silent_on_trap, my_principal);
+      silent_on_trap, my_principal);
 
   // '(record { "icpp version" = 1 : int; OS = "Linux" : text })' ->
   // '(record { "icpp Release Details" = "Version = 1 & Operating System = Linux" : text; "release year" = 2023 : int })'
@@ -58,7 +58,7 @@ int main() {
       "greet_3", greet_3,
       "4449444c016c02a48a0171d2fae7d70d7c0100054c696e757801",
       "4449444c016c02e3aa95930271b685be880f7c01002656657273696f6e203d20312026204f7065726174696e672053797374656d203d204c696e7578e70f",
-                  silent_on_trap, my_principal);
+      silent_on_trap, my_principal);
 
   // '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })' ->
   // '("Hello!", "Your secret numbers are:", 42 : int, 43 : int, 44 : int, 45 : int)'

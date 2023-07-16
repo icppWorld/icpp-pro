@@ -105,7 +105,9 @@ def exit_if_native_compiler_not_installed() -> None:
             try:
                 typer.echo(f"       (✗) could not find '{config_default.NATIVE_CPP}'")
             except UnicodeEncodeError:
-                typer.echo(f"       (ERROR) could not find '{config_default.NATIVE_CPP}'")
+                typer.echo(
+                    f"       (ERROR) could not find '{config_default.NATIVE_CPP}'"
+                )
         else:
             try:
                 typer.echo(f"       (✔) found '{config_default.NATIVE_CPP}'")

@@ -8,7 +8,8 @@
 
 CanisterBase::CanisterBase() {}
 
-CanisterBase::CanisterBase(std::string calling_function, std::string entry_type) {
+CanisterBase::CanisterBase(std::string calling_function,
+                           std::string entry_type) {
   m_calling_function = calling_function;
   m_entry_type = entry_type;
 }

@@ -1,9 +1,9 @@
 // Mocked ic0 functions to mimic the IC.
 // Use in a native executable, for development, debug & testing.
 
+#include "ic0.h"
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
-#include "ic0.h"
 #include "ic_api.h"
 #include "pro.h"
 

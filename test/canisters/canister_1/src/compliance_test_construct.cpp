@@ -4,9 +4,9 @@
 
 #include <string>
 
-#include "ic_api.h"
-#include "candid_serialize.h"
 #include "candid_deserialize.h"
+#include "candid_serialize.h"
+#include "ic_api.h"
 
 void test_records() {
   IC_API::debug_print("   - " + std::string(__func__));

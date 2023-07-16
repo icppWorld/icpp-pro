@@ -5,9 +5,9 @@
 #include <algorithm>
 #include <string>
 
-#include "ic_api.h"
-#include "candid_serialize.h"
 #include "candid_deserialize.h"
+#include "candid_serialize.h"
+#include "ic_api.h"
 
 int unit_test_candid() {
   { // Verify idl hash
@@ -33,7 +33,7 @@ int unit_test_candid() {
       opcode_prev = opcode;
     }
   }
-  
+
   { // Verify the VecBytes static utils
     const std::byte b = std::byte(42);
     if (VecBytes::byte_to_hex(b) != "0x2a")

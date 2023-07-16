@@ -24,6 +24,9 @@ def main() -> int:
             typer.echo("--\nStart a clean local network")
             run_shell_cmd("dfx start --clean --background")
 
+            typer.echo("--\nBuild the wasm")
+            run_shell_cmd("icpp build-wasm --to-compile all", cwd=canister_path)
+
             typer.echo(f"--\nDeploy {canister_path.name}")
             run_shell_cmd("dfx deploy", cwd=canister_path)
 

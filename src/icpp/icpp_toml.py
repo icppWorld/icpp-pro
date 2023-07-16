@@ -86,7 +86,7 @@ def read_build_table_common(d: dict[Any, Any], d_in: dict[Any, Any]) -> None:
     d["cpp_files_list"] = [str(x) for x in d["cpp_paths"]]
 
     d["c_files_list"] = [str(x) for x in d["c_paths"]]
-    
+
     #
     # all in one compiler uses a long string of strings, not a list
     #

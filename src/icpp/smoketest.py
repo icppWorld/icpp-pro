@@ -3,7 +3,6 @@
 import subprocess
 import json
 import platform
-import typer
 from pathlib import Path
 from typing import Optional, Any
 import pytest  # pylint: disable=unused-import
@@ -12,10 +11,11 @@ from icpp.run_shell_cmd import run_shell_cmd
 from icpp import pro
 
 DFX = "dfx"
-run_in_powershell = False
+RUN_IN_POWERSHELL = False
 if platform.win32_ver()[0]:
     DFX = "wsl --% dfx"
-    run_in_powershell = True
+    RUN_IN_POWERSHELL = True
+
 
 def call_canister_api(
     *,
@@ -65,7 +65,7 @@ def call_canister_api(
             capture_output=True,
             cwd=Path(dfx_json_path).parent,
             timeout_seconds=timeout_seconds,
-            run_in_powershell=run_in_powershell
+            run_in_powershell=RUN_IN_POWERSHELL,
         )
         response = response.rstrip("\n")
     except subprocess.CalledProcessError as e:
@@ -102,7 +102,9 @@ def network_status(network: str) -> str:
     pro.exit_if_not_pro("smoketesting with pytest")
     arg = f"{DFX} ping {network}"
     try:
-        response = run_shell_cmd(arg, capture_output=False, run_in_powershell=run_in_powershell)
+        response = run_shell_cmd(
+            arg, capture_output=False, run_in_powershell=RUN_IN_POWERSHELL
+        )
     except subprocess.CalledProcessError:
         if network == "local":
             msg = (
@@ -131,7 +133,12 @@ def get_identity() -> str:
     pro.exit_if_not_pro("smoketesting with pytest")
     arg = f"{DFX} identity whoami "
     try:
-        identity = run_shell_cmd(arg, capture_output=True, timeout_seconds=1, run_in_powershell=run_in_powershell)
+        identity = run_shell_cmd(
+            arg,
+            capture_output=True,
+            timeout_seconds=1,
+            run_in_powershell=RUN_IN_POWERSHELL,
+        )
         identity = identity.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
@@ -144,7 +151,7 @@ def set_identity(identity: str) -> None:
     pro.exit_if_not_pro("smoketesting with pytest")
     arg = f"{DFX} identity use {identity}"
     try:
-        run_shell_cmd(arg, run_in_powershell=run_in_powershell)
+        run_shell_cmd(arg, run_in_powershell=RUN_IN_POWERSHELL)
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
 
@@ -154,7 +161,12 @@ def get_principal() -> str:
     pro.exit_if_not_pro("smoketesting with pytest")
     arg = f"{DFX} identity get-principal "
     try:
-        principal = run_shell_cmd(arg, capture_output=True, timeout_seconds=1, run_in_powershell=run_in_powershell)
+        principal = run_shell_cmd(
+            arg,
+            capture_output=True,
+            timeout_seconds=1,
+            run_in_powershell=RUN_IN_POWERSHELL,
+        )
         principal = principal.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")

@@ -28,7 +28,7 @@ void greet_0_auth() {
   }
 
   // Greet an authenticated user by their principal
-  ic_api.to_wire(CandidTypeVariant{"ok", CandidTypeText{"Hello "+ principal}});
+  ic_api.to_wire(CandidTypeVariant{"ok", CandidTypeText{"Hello " + principal}});
 }
 
 // Respond with an 'int' wrapped in a CandidTypeInt

@@ -6,11 +6,11 @@
 //  https://smartcontracts.org/docs/interface-spec/index.html#system-api-imports
 //  - https://github.com/dfinity/candid/blob/master/spec/Candid.md#binary-format
 
+#include "ic_api.h"
+#include "candid_deserialize.h"
+#include "candid_serialize.h"
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
-#include "ic_api.h"
-#include "candid_serialize.h"
-#include "candid_deserialize.h"
 
 #include <cassert>
 #include <cstddef>
@@ -49,7 +49,8 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
 IC_API::~IC_API() {
   // https://internetcomputer.org/docs/current/references/ic-interface-spec#system-api-imports
   // Only can call msg_reply if entry is `U Q Ry Rt`
-  if (m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Q() || m_canister_entry.is_entry_Ry() || m_canister_entry.is_entry_Rt()) {
+  if (m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Q() ||
+      m_canister_entry.is_entry_Ry() || m_canister_entry.is_entry_Rt()) {
     // If the method did not yet call to_wire, do it automatic without content
     if (!m_called_to_wire) {
       to_wire();

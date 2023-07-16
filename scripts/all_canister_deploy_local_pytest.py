@@ -39,7 +39,10 @@ def main() -> int:
             return e.returncode
 
     typer.echo("--\nCongratulations, everything passed!")
-    typer.echo("💯 🎉 🏁")
+    try:
+        typer.echo("💯 🎉 🏁")
+    except UnicodeEncodeError:
+        typer.echo(" ")
     return 0
 
 

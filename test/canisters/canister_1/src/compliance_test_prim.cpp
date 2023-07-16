@@ -6,6 +6,8 @@
 #include <string>
 
 #include "ic_api.h"
+#include "candid_serialize.h"
+#include "candid_deserialize.h"
 
 void test_wrong() {
   IC_API::debug_print("   - " + std::string(__func__));

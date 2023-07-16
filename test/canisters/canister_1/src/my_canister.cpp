@@ -456,22 +456,22 @@ void roundtrip_vec_all() {
   std::vector<std::string> in_text;
   std::vector<std::string> in_principal;
 
-  std::vector<CandidType> args_in;
-  args_in.push_back(CandidTypeVecBool{&in_bool});
-  args_in.push_back(CandidTypeVecNat{&in_nat});
-  args_in.push_back(CandidTypeVecNat8{&in_nat8});
-  args_in.push_back(CandidTypeVecNat16{&in_nat16});
-  args_in.push_back(CandidTypeVecNat32{&in_nat32});
-  args_in.push_back(CandidTypeVecNat64{&in_nat64});
-  args_in.push_back(CandidTypeVecInt{&in_int});
-  args_in.push_back(CandidTypeVecInt8{&in_int8});
-  args_in.push_back(CandidTypeVecInt16{&in_int16});
-  args_in.push_back(CandidTypeVecInt32{&in_int32});
-  args_in.push_back(CandidTypeVecInt64{&in_int64});
-  args_in.push_back(CandidTypeVecFloat32{&in_float32});
-  args_in.push_back(CandidTypeVecFloat64{&in_float64});
-  args_in.push_back(CandidTypeVecText{&in_text});
-  args_in.push_back(CandidTypeVecPrincipal{&in_principal});
+  CandidArgs args_in;
+  args_in.append(CandidTypeVecBool{&in_bool});
+  args_in.append(CandidTypeVecNat{&in_nat});
+  args_in.append(CandidTypeVecNat8{&in_nat8});
+  args_in.append(CandidTypeVecNat16{&in_nat16});
+  args_in.append(CandidTypeVecNat32{&in_nat32});
+  args_in.append(CandidTypeVecNat64{&in_nat64});
+  args_in.append(CandidTypeVecInt{&in_int});
+  args_in.append(CandidTypeVecInt8{&in_int8});
+  args_in.append(CandidTypeVecInt16{&in_int16});
+  args_in.append(CandidTypeVecInt32{&in_int32});
+  args_in.append(CandidTypeVecInt64{&in_int64});
+  args_in.append(CandidTypeVecFloat32{&in_float32});
+  args_in.append(CandidTypeVecFloat64{&in_float64});
+  args_in.append(CandidTypeVecText{&in_text});
+  args_in.append(CandidTypeVecPrincipal{&in_principal});
   ic_api.from_wire(args_in);
 
   // ---------------------------------------------------------------------------
@@ -522,22 +522,22 @@ void roundtrip_vec_all() {
 
   // ---------------------------------------------------------------------------
   // Return the date to the wire
-  std::vector<CandidType> args_out;
-  args_out.push_back(CandidTypeVecBool{in_bool});
-  args_out.push_back(CandidTypeVecNat{in_nat});
-  args_out.push_back(CandidTypeVecNat8{in_nat8});
-  args_out.push_back(CandidTypeVecNat16{in_nat16});
-  args_out.push_back(CandidTypeVecNat32{in_nat32});
-  args_out.push_back(CandidTypeVecNat64{in_nat64});
-  args_out.push_back(CandidTypeVecInt{in_int});
-  args_out.push_back(CandidTypeVecInt8{in_int8});
-  args_out.push_back(CandidTypeVecInt16{in_int16});
-  args_out.push_back(CandidTypeVecInt32{in_int32});
-  args_out.push_back(CandidTypeVecInt64{in_int64});
-  args_out.push_back(CandidTypeVecFloat32{in_float32});
-  args_out.push_back(CandidTypeVecFloat64{in_float64});
-  args_out.push_back(CandidTypeVecText{in_text});
-  args_out.push_back(CandidTypeVecPrincipal{in_principal});
+  CandidArgs args_out;
+  args_out.append(CandidTypeVecBool{in_bool});
+  args_out.append(CandidTypeVecNat{in_nat});
+  args_out.append(CandidTypeVecNat8{in_nat8});
+  args_out.append(CandidTypeVecNat16{in_nat16});
+  args_out.append(CandidTypeVecNat32{in_nat32});
+  args_out.append(CandidTypeVecNat64{in_nat64});
+  args_out.append(CandidTypeVecInt{in_int});
+  args_out.append(CandidTypeVecInt8{in_int8});
+  args_out.append(CandidTypeVecInt16{in_int16});
+  args_out.append(CandidTypeVecInt32{in_int32});
+  args_out.append(CandidTypeVecInt64{in_int64});
+  args_out.append(CandidTypeVecFloat32{in_float32});
+  args_out.append(CandidTypeVecFloat64{in_float64});
+  args_out.append(CandidTypeVecText{in_text});
+  args_out.append(CandidTypeVecPrincipal{in_principal});
   ic_api.to_wire(args_out);
 }
 
@@ -616,38 +616,38 @@ void roundtrip_opt_all() {
   std::optional<std::string> in_principal;
   std::optional<std::string> in_principal_no_value;
 
-  std::vector<CandidType> args_in;
-  args_in.push_back(CandidTypeOptBool{&in_bool_true});
-  args_in.push_back(CandidTypeOptBool{&in_bool_false});
-  args_in.push_back(CandidTypeOptBool{&in_bool_no_value});
-  args_in.push_back(CandidTypeOptNat{&in_nat});
-  args_in.push_back(CandidTypeOptNat{&in_nat_no_value});
-  args_in.push_back(CandidTypeOptNat8{&in_nat8});
-  args_in.push_back(CandidTypeOptNat8{&in_nat8_no_value});
-  args_in.push_back(CandidTypeOptNat16{&in_nat16});
-  args_in.push_back(CandidTypeOptNat16{&in_nat16_no_value});
-  args_in.push_back(CandidTypeOptNat32{&in_nat32});
-  args_in.push_back(CandidTypeOptNat32{&in_nat32_no_value});
-  args_in.push_back(CandidTypeOptNat64{&in_nat64});
-  args_in.push_back(CandidTypeOptNat64{&in_nat64_no_value});
-  args_in.push_back(CandidTypeOptInt{&in_int});
-  args_in.push_back(CandidTypeOptInt{&in_int_no_value});
-  args_in.push_back(CandidTypeOptInt8{&in_int8});
-  args_in.push_back(CandidTypeOptInt8{&in_int8_no_value});
-  args_in.push_back(CandidTypeOptInt16{&in_int16});
-  args_in.push_back(CandidTypeOptInt16{&in_int16_no_value});
-  args_in.push_back(CandidTypeOptInt32{&in_int32});
-  args_in.push_back(CandidTypeOptInt32{&in_int32_no_value});
-  args_in.push_back(CandidTypeOptInt64{&in_int64});
-  args_in.push_back(CandidTypeOptInt64{&in_int64_no_value});
-  args_in.push_back(CandidTypeOptFloat32{&in_float32});
-  args_in.push_back(CandidTypeOptFloat32{&in_float32_no_value});
-  args_in.push_back(CandidTypeOptFloat64{&in_float64});
-  args_in.push_back(CandidTypeOptFloat64{&in_float64_no_value});
-  args_in.push_back(CandidTypeOptText{&in_text});
-  args_in.push_back(CandidTypeOptText{&in_text_no_value});
-  args_in.push_back(CandidTypeOptPrincipal{&in_principal});
-  args_in.push_back(CandidTypeOptPrincipal{&in_principal_no_value});
+  CandidArgs args_in;
+  args_in.append(CandidTypeOptBool{&in_bool_true});
+  args_in.append(CandidTypeOptBool{&in_bool_false});
+  args_in.append(CandidTypeOptBool{&in_bool_no_value});
+  args_in.append(CandidTypeOptNat{&in_nat});
+  args_in.append(CandidTypeOptNat{&in_nat_no_value});
+  args_in.append(CandidTypeOptNat8{&in_nat8});
+  args_in.append(CandidTypeOptNat8{&in_nat8_no_value});
+  args_in.append(CandidTypeOptNat16{&in_nat16});
+  args_in.append(CandidTypeOptNat16{&in_nat16_no_value});
+  args_in.append(CandidTypeOptNat32{&in_nat32});
+  args_in.append(CandidTypeOptNat32{&in_nat32_no_value});
+  args_in.append(CandidTypeOptNat64{&in_nat64});
+  args_in.append(CandidTypeOptNat64{&in_nat64_no_value});
+  args_in.append(CandidTypeOptInt{&in_int});
+  args_in.append(CandidTypeOptInt{&in_int_no_value});
+  args_in.append(CandidTypeOptInt8{&in_int8});
+  args_in.append(CandidTypeOptInt8{&in_int8_no_value});
+  args_in.append(CandidTypeOptInt16{&in_int16});
+  args_in.append(CandidTypeOptInt16{&in_int16_no_value});
+  args_in.append(CandidTypeOptInt32{&in_int32});
+  args_in.append(CandidTypeOptInt32{&in_int32_no_value});
+  args_in.append(CandidTypeOptInt64{&in_int64});
+  args_in.append(CandidTypeOptInt64{&in_int64_no_value});
+  args_in.append(CandidTypeOptFloat32{&in_float32});
+  args_in.append(CandidTypeOptFloat32{&in_float32_no_value});
+  args_in.append(CandidTypeOptFloat64{&in_float64});
+  args_in.append(CandidTypeOptFloat64{&in_float64_no_value});
+  args_in.append(CandidTypeOptText{&in_text});
+  args_in.append(CandidTypeOptText{&in_text_no_value});
+  args_in.append(CandidTypeOptPrincipal{&in_principal});
+  args_in.append(CandidTypeOptPrincipal{&in_principal_no_value});
   ic_api.from_wire(args_in);
 
   // ---------------------------------------------------------------------------
@@ -728,38 +728,38 @@ void roundtrip_opt_all() {
 
   // ---------------------------------------------------------------------------
   // Return the date to the wire
-  std::vector<CandidType> args_out;
-  args_out.push_back(CandidTypeOptBool{in_bool_true});
-  args_out.push_back(CandidTypeOptBool{in_bool_false});
-  args_out.push_back(CandidTypeOptBool{in_bool_no_value});
-  args_out.push_back(CandidTypeOptNat{in_nat});
-  args_out.push_back(CandidTypeOptNat{in_nat_no_value});
-  args_out.push_back(CandidTypeOptNat8{in_nat8});
-  args_out.push_back(CandidTypeOptNat8{in_nat8_no_value});
-  args_out.push_back(CandidTypeOptNat16{in_nat16});
-  args_out.push_back(CandidTypeOptNat16{in_nat16_no_value});
-  args_out.push_back(CandidTypeOptNat32{in_nat32});
-  args_out.push_back(CandidTypeOptNat32{in_nat32_no_value});
-  args_out.push_back(CandidTypeOptNat64{in_nat64});
-  args_out.push_back(CandidTypeOptNat64{in_nat64_no_value});
-  args_out.push_back(CandidTypeOptInt{in_int});
-  args_out.push_back(CandidTypeOptInt{in_int_no_value});
-  args_out.push_back(CandidTypeOptInt8{in_int8});
-  args_out.push_back(CandidTypeOptInt8{in_int8_no_value});
-  args_out.push_back(CandidTypeOptInt16{in_int16});
-  args_out.push_back(CandidTypeOptInt16{in_int16_no_value});
-  args_out.push_back(CandidTypeOptInt32{in_int32});
-  args_out.push_back(CandidTypeOptInt32{in_int32_no_value});
-  args_out.push_back(CandidTypeOptInt64{in_int64});
-  args_out.push_back(CandidTypeOptInt64{in_int64_no_value});
-  args_out.push_back(CandidTypeOptFloat32{in_float32});
-  args_out.push_back(CandidTypeOptFloat32{in_float32_no_value});
-  args_out.push_back(CandidTypeOptFloat64{in_float64});
-  args_out.push_back(CandidTypeOptFloat64{in_float64_no_value});
-  args_out.push_back(CandidTypeOptText{in_text});
-  args_out.push_back(CandidTypeOptText{in_text_no_value});
-  args_out.push_back(CandidTypeOptPrincipal{in_principal});
-  args_out.push_back(CandidTypeOptPrincipal{in_principal_no_value});
+  CandidArgs args_out;
+  args_out.append(CandidTypeOptBool{in_bool_true});
+  args_out.append(CandidTypeOptBool{in_bool_false});
+  args_out.append(CandidTypeOptBool{in_bool_no_value});
+  args_out.append(CandidTypeOptNat{in_nat});
+  args_out.append(CandidTypeOptNat{in_nat_no_value});
+  args_out.append(CandidTypeOptNat8{in_nat8});
+  args_out.append(CandidTypeOptNat8{in_nat8_no_value});
+  args_out.append(CandidTypeOptNat16{in_nat16});
+  args_out.append(CandidTypeOptNat16{in_nat16_no_value});
+  args_out.append(CandidTypeOptNat32{in_nat32});
+  args_out.append(CandidTypeOptNat32{in_nat32_no_value});
+  args_out.append(CandidTypeOptNat64{in_nat64});
+  args_out.append(CandidTypeOptNat64{in_nat64_no_value});
+  args_out.append(CandidTypeOptInt{in_int});
+  args_out.append(CandidTypeOptInt{in_int_no_value});
+  args_out.append(CandidTypeOptInt8{in_int8});
+  args_out.append(CandidTypeOptInt8{in_int8_no_value});
+  args_out.append(CandidTypeOptInt16{in_int16});
+  args_out.append(CandidTypeOptInt16{in_int16_no_value});
+  args_out.append(CandidTypeOptInt32{in_int32});
+  args_out.append(CandidTypeOptInt32{in_int32_no_value});
+  args_out.append(CandidTypeOptInt64{in_int64});
+  args_out.append(CandidTypeOptInt64{in_int64_no_value});
+  args_out.append(CandidTypeOptFloat32{in_float32});
+  args_out.append(CandidTypeOptFloat32{in_float32_no_value});
+  args_out.append(CandidTypeOptFloat64{in_float64});
+  args_out.append(CandidTypeOptFloat64{in_float64_no_value});
+  args_out.append(CandidTypeOptText{in_text});
+  args_out.append(CandidTypeOptText{in_text_no_value});
+  args_out.append(CandidTypeOptPrincipal{in_principal});
+  args_out.append(CandidTypeOptPrincipal{in_principal_no_value});
   ic_api.to_wire(args_out);
 }
 
@@ -780,8 +780,8 @@ void roundtrip_record() {
   // r_in.append("secret int", CandidTypeText{&name});// TO TEST A TEMPORARY ERROR
   ic_api.from_wire(r_in);
   //
-  // std::vector<CandidType> args_in;
-  // args_in.push_back(r_in);
+  // CandidArgs args_in;
+  // args_in.append(r_in);
   // ic_api.from_wire(args_in);
 
   // ---------------------------------------------------------------------------
@@ -915,13 +915,13 @@ void roundtrip_variant() {
   v_in_2b.append("Ok", CandidTypeText{&ok_2b});
   v_in_2b.append("Err", CandidTypeText{&err_2b});
 
-  std::vector<CandidType> args_in;
-  args_in.push_back(v_in_a);
-  args_in.push_back(v_in_b);
-  args_in.push_back(v_in_1a);
-  args_in.push_back(v_in_1b);
-  args_in.push_back(v_in_2a);
-  args_in.push_back(v_in_2b);
+  CandidArgs args_in;
+  args_in.append(v_in_a);
+  args_in.append(v_in_b);
+  args_in.append(v_in_1a);
+  args_in.append(v_in_1b);
+  args_in.append(v_in_2a);
+  args_in.append(v_in_2b);
   ic_api.from_wire(args_in);
 
   // Verify the data
@@ -979,13 +979,13 @@ void roundtrip_variant() {
   v_out_2b.append("Ok", CandidTypeText{ok_2b});
   v_out_2b.append("Err", CandidTypeText{err_2b});
 
-  std::vector<CandidType> args_out;
-  args_out.push_back(v_out_a);
-  args_out.push_back(v_out_b);
-  args_out.push_back(v_out_1a);
-  args_out.push_back(v_out_1b);
-  args_out.push_back(v_out_2a);
-  args_out.push_back(v_out_2b);
+  CandidArgs args_out;
+  args_out.append(v_out_a);
+  args_out.append(v_out_b);
+  args_out.append(v_out_1a);
+  args_out.append(v_out_1b);
+  args_out.append(v_out_2a);
+  args_out.append(v_out_2b);
   ic_api.to_wire(args_out);
 }
 

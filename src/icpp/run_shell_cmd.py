@@ -2,7 +2,8 @@
 
 import subprocess
 import re
-from pathlib import Path
+import platform
+from pathlib import Path,  WindowsPath
 from typing import Optional
 
 
@@ -37,6 +38,7 @@ def run_shell_cmd(
     print_captured_output: bool = False,
     cwd: Optional[Path] = None,
     timeout_seconds: Optional[int] = None,
+    run_in_powershell: bool = None
 ) -> str:
     """Runs 'cmd' with following behavior, so we can
     use it in our sequential CI/CD pipeline:
@@ -78,8 +80,16 @@ def run_shell_cmd(
           - Throws a subprocess.CalledProcessError as e:
             return e.returncode
     """
+    shell = True
     if cwd is None:
         cwd = Path(".")
+        
+    if run_in_powershell is None:
+        run_in_powershell = False
+    
+    # for certain commands on Windows
+    if run_in_powershell:
+        cmd = ['powershell.exe', '-Command', cmd]
 
     if timeout_seconds is None:
         timeout_seconds = 3
@@ -99,7 +109,7 @@ def run_shell_cmd(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    shell=True,
+                    shell=shell,
                     check=False,
                     text=True,
                     cwd=cwd,
@@ -135,7 +145,7 @@ def run_shell_cmd(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                shell=True,
+                shell=shell,
                 bufsize=1,
                 universal_newlines=True,
                 cwd=cwd,

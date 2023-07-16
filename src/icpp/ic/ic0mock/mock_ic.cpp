@@ -2,7 +2,10 @@
 // develop and debug using a native executable, including
 // setting breakpoints in our IDE.
 
-#include "mock_ic.h"
+#include "candid_type.h"
+#include "candid_type_all_includes.h"
+#include "ic_api.h"
+#include "mock_ic_.h"
 #include "candid_assert.h"
 #include "global.h"
 #include "pro.h"

@@ -1,7 +1,10 @@
 // Mocked ic0 functions to mimic the IC.
 // Use in a native executable, for development, debug & testing.
 
+#include "candid_type.h"
+#include "candid_type_all_includes.h"
 #include "ic0.h"
+#include "ic_api.h"
 #include "pro.h"
 
 #include <algorithm>
@@ -13,8 +16,10 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "candid_type.h"
+#include "candid_type_all_includes.h"
 #include "global.h"
-#include "mock_ic.h"
+#include "vec_bytes.h"
 
 // See:
 // https://smartcontracts.org/docs/interface-spec/index.html#system-api-imports

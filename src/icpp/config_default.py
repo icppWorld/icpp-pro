@@ -79,37 +79,25 @@ LOCAL_INIT_PATH = Path("./greet")
 ########################################################################
 # build-wasm
 #
-IC_C_FILES = (
-    " ".join(
-        [
+IC_C_FILES_LIST = [
             str(x)
             for x in list(ICPP_PATH.glob("ic/ic0/*.c"))
             + list(ICPP_PATH.glob("ic/wasi_sdk_traps/*.c"))
             + list(ICPP_PATH.glob("ic/canister/*.c"))
             + list(ICPP_PATH.glob("ic/icapi/*.c"))
             + list(ICPP_CANDID_PATH.glob("candid/*.c"))
-            # + list(ICPP_CANDID_PATH.glob("vendors/*.c"))
         ]
-    )
-    + " "
-)
-IC_CPP_FILES = (
-    " ".join(
-        [
+IC_CPP_FILES_LIST = [
             str(x)
             for x in list(ICPP_PATH.glob("ic/ic0/*.cpp"))
             + list(ICPP_PATH.glob("ic/canister/*.cpp"))
             + list(ICPP_PATH.glob("ic/icapi/*.cpp"))
             + list(ICPP_PATH.glob("ic/pro/*.cpp"))
             + list(ICPP_CANDID_PATH.glob("candid/*.cpp"))
+            + list(ICPP_CANDID_PATH.glob("hooks/*.cpp"))
             + list(ICPP_CANDID_PATH.glob("vendors/hash-library/*.cpp"))
         ]
-    )
-    + " "
-)
-IC_HEADER_FILES = (
-    " ".join(
-        [
+IC_HEADER_FILES_LIST = [
             str(x)
             for x in list(ICPP_PATH.glob("ic/ic0/*.h"))
             + list(ICPP_PATH.glob("ic/wasi_sdk_traps/*.h"))
@@ -117,12 +105,15 @@ IC_HEADER_FILES = (
             + list(ICPP_PATH.glob("ic/icapi/*.h"))
             + list(ICPP_PATH.glob("ic/pro/*.h"))
             + list(ICPP_CANDID_PATH.glob("candid/*.h"))
-            # + list(ICPP_CANDID_PATH.glob("vendors/*.h"))
-            # + list(ICPP_CANDID_PATH.glob("vendors/*.hpp"))
+            + list(ICPP_CANDID_PATH.glob("hooks/*.h"))
+            + list(ICPP_CANDID_PATH.glob("vendors/hash-library/*.h"))
+            + list(ICPP_CANDID_PATH.glob("vendors/cppcodec/*.hpp"))
+            + list(ICPP_CANDID_PATH.glob("vendors/cppcodec/*/*.hpp"))
         ]
-    )
-    + " "
-)
+
+IC_C_FILES = " ".join(IC_C_FILES_LIST) + " "
+IC_CPP_FILES = " ".join(IC_CPP_FILES_LIST) + " "
+IC_HEADER_FILES = " ".join(IC_HEADER_FILES_LIST) + " "
 
 SYSROOT = ICPP_ROOT_COMPILER / "share/wasi-sysroot"
 
@@ -133,7 +124,7 @@ WASM_CFLAGS = (
     f" --sysroot {SYSROOT} "
     f" -I {ICPP_DIR}/ic/canister -I {ICPP_DIR}/ic/icapi "
     f" -I {ICPP_DIR}/ic/pro -I {ICPP_DIR}/ic/ic0 "
-    f" -I {ICPP_CANDID_PATH}/candid -I {ICPP_CANDID_PATH}/vendors "
+    f" -I {ICPP_CANDID_PATH}/candid -I {ICPP_CANDID_PATH}/hooks -I {ICPP_CANDID_PATH}/vendors "
     f" -D NDEBUG -D ICPP_VERBOSE=0 "
 )
 WASM_CPPFLAGS = WASM_CFLAGS + " -std=c++20 "
@@ -149,48 +140,40 @@ CLANG_TIDY = ICPP_ROOT_COMPILER / "bin/clang-tidy"
 ########################################################################
 # build-native
 #
-MOCKIC_C_FILES = (
-    " ".join(
-        [
+MOCKIC_C_FILES_LIST = [
             str(x)
             for x in list(ICPP_PATH.glob("ic/ic0mock/*.c"))
             + list(ICPP_PATH.glob("ic/canister/*.c"))
             + list(ICPP_PATH.glob("ic/icapi/*.c"))
             + list(ICPP_CANDID_PATH.glob("candid/*.c"))
-            # + list(ICPP_CANDID_PATH.glob("vendors/*.c"))
         ]
-    )
-    + " "
-)
-MOCKIC_CPP_FILES = (
-    " ".join(
-        [
+    
+MOCKIC_CPP_FILES_LIST = [
             str(x)
             for x in list(ICPP_PATH.glob("ic/ic0mock/*.cpp"))
             + list(ICPP_PATH.glob("ic/canister/*.cpp"))
             + list(ICPP_PATH.glob("ic/icapi/*.cpp"))
             + list(ICPP_PATH.glob("ic/pro/*.cpp"))
             + list(ICPP_CANDID_PATH.glob("candid/*.cpp"))
+            + list(ICPP_CANDID_PATH.glob("hooks/*.cpp"))
             + list(ICPP_CANDID_PATH.glob("vendors/hash-library/*.cpp"))
         ]
-    )
-    + " "
-)
-MOCKIC_HEADER_FILES = (
-    " ".join(
-        [
+MOCKIC_HEADER_FILES_LIST = [
             str(x)
             for x in list(ICPP_PATH.glob("ic/ic0mock/*.h"))
             + list(ICPP_PATH.glob("ic/canister/*.h"))
             + list(ICPP_PATH.glob("ic/icapi/*.h"))
             + list(ICPP_PATH.glob("ic/pro/*.h"))
             + list(ICPP_CANDID_PATH.glob("candid/*.h"))
-            # + list(ICPP_CANDID_PATH.glob("vendors/*.h"))
-            # + list(ICPP_CANDID_PATH.glob("vendors/*.hpp"))
+            + list(ICPP_CANDID_PATH.glob("hooks/*.h"))
+            + list(ICPP_CANDID_PATH.glob("vendors/hash-library/*.h"))
+            + list(ICPP_CANDID_PATH.glob("vendors/cppcodec/*.hpp"))
+            + list(ICPP_CANDID_PATH.glob("vendors/cppcodec/*/*.hpp"))
         ]
-    )
-    + " "
-)
+
+MOCKIC_C_FILES = " ".join(MOCKIC_C_FILES_LIST) + " "
+MOCKIC_CPP_FILES = " ".join(MOCKIC_CPP_FILES_LIST) + " "
+MOCKIC_HEADER_FILES = " ".join(MOCKIC_HEADER_FILES_LIST) + " "
 
 NATIVE_COMPILER = "Clang"
 NATIVE_C = "clang"
@@ -198,7 +181,7 @@ NATIVE_CPP = "clang++"
 NATIVE_CFLAGS = (
     f" -g -I {ICPP_DIR}/ic/canister -I {ICPP_DIR}/ic/icapi "
     f" -I {ICPP_DIR}/ic/pro -I {ICPP_DIR}/ic/ic0mock "
-    f" -I {ICPP_CANDID_PATH}/candid -I {ICPP_CANDID_PATH}/vendors "
+    f" -I {ICPP_CANDID_PATH}/candid -I {ICPP_CANDID_PATH}/hooks -I {ICPP_CANDID_PATH}/vendors "
     f" -D ICPP_VERBOSE=0 "
 )
 NATIVE_CPPFLAGS = NATIVE_CFLAGS + " -std=c++20 "

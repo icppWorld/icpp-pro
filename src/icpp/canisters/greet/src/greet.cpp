@@ -4,16 +4,43 @@
 
 #include "ic_api.h"
 
+/* ---------------------------------------------------------
+  Respond with a 'std::string' wrapped in a CandidTypeText
+*/
 void greet_0() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   ic_api.to_wire(CandidTypeText{"hello!"});
 }
 
+/* ---------------------------------------------------------
+  Respond only to an authenticated user
+*/
+void greet_0_auth() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  CandidTypePrincipal caller = ic_api.get_caller();
+  std::string principal = caller.get_text();
+
+  // Respond with 401 (Unauthorized code) if user is not logged in
+  if (caller.is_anonymous()) {
+    uint16_t status_code = 401;
+    ic_api.to_wire(CandidTypeVariant{"err", CandidTypeNat16{status_code}});
+    return;
+  }
+
+  // Greet an authenticated user by their principal
+  ic_api.to_wire(CandidTypeVariant{"ok", CandidTypeText{"Hello "+ principal}});
+}
+
+// Respond with an 'int' wrapped in a CandidTypeInt
 void greet_1() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   ic_api.to_wire(CandidTypeInt{2023});
 }
 
+/* ---------------------------------------------------------
+  Extract a 'std::string" from an incoming CandidTypeText
+  Respond with an 'std::string' wrapped in a CandidTypeText
+*/
 void greet_2() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
@@ -33,9 +60,13 @@ void greet_2() {
   ic_api.to_wire(CandidTypeText{msg});
 }
 
+/* ---------------------------------------------------------------------------
+  Extract an '__int128_t' & a 'std::string" from an incoming CandidTypeRecord
+  Respond with an '__int128_t' & a 'std::string" wrapped in a CandidTypeRecord
+*/
 void greet_3() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
-  // ---------------------------------------------------------------------------
+
   // Get the data from the wire
   __int128_t icpp_version{0};
   std::string OS{""};
@@ -45,7 +76,6 @@ void greet_3() {
   r_in.append("OS", CandidTypeText{&OS});
   ic_api.from_wire(r_in);
 
-  // ---------------------------------------------------------------------------
   // Do something with the input
   std::string release_details;
   release_details.append("Version = " + std::to_string(int(icpp_version)) +
@@ -61,7 +91,6 @@ void greet_3() {
                  release_details);
   }
 
-  // ---------------------------------------------------------------------------
   // Send it back
   CandidTypeRecord r_out;
   r_out.append("icpp Release Details", CandidTypeText{release_details});
@@ -69,7 +98,10 @@ void greet_3() {
   ic_api.to_wire(r_out);
 }
 
-// Demonstrate how to receive an argument list of two records & send an argument list of different CandidTypes
+/* ------------------------------------------------------------------------------------------------
+  Extract data from an incoming argument list, represented as a C++ vector of two CandidTypeRecords 
+  Respond using a C++ vector of different CandidTypeXXX objects
+*/
 void greet_4() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
@@ -85,20 +117,56 @@ void greet_4() {
   r2.append(7, CandidTypeInt{&r2_i1});
   r2.append(10, CandidTypeInt{&r2_i2});
 
-  std::vector<CandidType> args_in;
-  args_in.push_back(r1);
-  args_in.push_back(r2);
+  CandidArgs args_in;
+  args_in.append(r1);
+  args_in.append(r2);
   ic_api.from_wire(args_in);
 
   // Build the args_out vector
-  std::vector<CandidType> args_out;
-  args_out.push_back(CandidTypeText{"Hello!"});
-  args_out.push_back(CandidTypeText{"Your secret numbers are:"});
-  args_out.push_back(CandidTypeInt{r1_i1});
-  args_out.push_back(CandidTypeInt{r1_i2});
-  args_out.push_back(CandidTypeInt{r2_i1});
-  args_out.push_back(CandidTypeInt{r2_i2});
+  CandidArgs args_out;
+  args_out.append(CandidTypeText{"Hello!"});
+  args_out.append(CandidTypeText{"Your secret numbers are:"});
+  args_out.append(CandidTypeInt{r1_i1});
+  args_out.append(CandidTypeInt{r1_i2});
+  args_out.append(CandidTypeInt{r2_i1});
+  args_out.append(CandidTypeInt{r2_i2});
 
   // Send it back
   ic_api.to_wire(args_out);
 }
+// void greet_4() {
+//   // build-native on windows has a compiler limitation
+//   // - std::vector<CandidType> is currently not supported
+//   #ifndef _WIN32
+//     IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+//     __int128_t r1_i1{0};
+//     __int128_t r1_i2{0};
+//     CandidTypeRecord r1;
+//     r1.append(6, CandidTypeInt{&r1_i1});
+//     r1.append(9, CandidTypeInt{&r1_i2});
+
+//     __int128_t r2_i1{0};
+//     __int128_t r2_i2{0};
+//     CandidTypeRecord r2;
+//     r2.append(7, CandidTypeInt{&r2_i1});
+//     r2.append(10, CandidTypeInt{&r2_i2});
+
+//     std::vector<CandidType> args_in;
+//     args_in.push_back(r1);
+//     args_in.push_back(r2);
+//     ic_api.from_wire(args_in);
+
+//     // Build the args_out vector
+//     std::vector<CandidType> args_out;
+//     args_out.push_back(CandidTypeText{"Hello!"});
+//     args_out.push_back(CandidTypeText{"Your secret numbers are:"});
+//     args_out.push_back(CandidTypeInt{r1_i1});
+//     args_out.push_back(CandidTypeInt{r1_i2});
+//     args_out.push_back(CandidTypeInt{r2_i1});
+//     args_out.push_back(CandidTypeInt{r2_i2});
+
+//     // Send it back
+//     ic_api.to_wire(args_out);
+//   #endif
+// }

@@ -6,6 +6,8 @@
 #include <string>
 
 #include "ic_api.h"
+#include "candid_serialize.h"
+#include "candid_deserialize.h"
 
 int unit_test_candid() {
   { // Verify idl hash
@@ -31,35 +33,7 @@ int unit_test_candid() {
       opcode_prev = opcode;
     }
   }
-  { // To sort a vector of CandidType
-    std::vector<CandidType> vec;
-    vec.push_back(CandidTypeBool(true));
-    vec.push_back(CandidTypeInt(42));
-    vec.push_back(CandidTypeText("hello!"));
-
-    for (std::size_t i = 0; i < vec.size(); ++i) {
-      for (std::size_t j = i + 1; j < vec.size(); ++j) {
-        int opcode_i = std::visit(
-            [](auto &&c) { return c.get_datatype_opcode(); }, vec[i]);
-        int opcode_j = std::visit(
-            [](auto &&c) { return c.get_datatype_opcode(); }, vec[j]);
-        if (opcode_i > opcode_j) {
-          auto temp = std::move(vec[i]);
-          vec[i] = std::move(vec[j]);
-          vec[j] = std::move(temp);
-        }
-      }
-    }
-
-    int opcode_prev =
-        std::visit([](auto &&c) { return c.get_datatype_opcode(); }, vec[0]);
-    for (CandidType v : vec) {
-      int opcode =
-          std::visit([](auto &&c) { return c.get_datatype_opcode(); }, v);
-      if (opcode_prev > opcode) IC_API::trap(std::string(__func__) + ": 2");
-      opcode_prev = opcode;
-    }
-  }
+  
   { // Verify the VecBytes static utils
     const std::byte b = std::byte(42);
     if (VecBytes::byte_to_hex(b) != "0x2a")
@@ -105,9 +79,9 @@ int unit_test_candid() {
   r2.append(7, CandidTypeInt(44));
   r2.append(10, CandidTypeInt(45));
   //
-  std::vector<CandidType> A;
-  A.push_back(r1);
-  A.push_back(r2);
+  CandidArgs A;
+  A.append(r1);
+  A.append(r2);
   //
   if (CandidSerialize(A).assert_candid(
           "4449444c026c02067c097c6c02077c0a7c0200012a2b2c2d", true))
@@ -127,9 +101,9 @@ int unit_test_candid() {
   r2.append(7, CandidTypeInt(&r2_i1));
   r2.append(10, CandidTypeInt(&r2_i2));
   //
-  std::vector<CandidType> A;
-  A.push_back(r1);
-  A.push_back(r2);
+  CandidArgs A;
+  A.append(r1);
+  A.append(r2);
   //
   CandidDeserialize("4449444c026c02067c097c6c02077c0a7c0200012a2b2c2d", A);
   if (r1_i1 != 42 || r1_i2 != 43 || r2_i1 != 44 || r2_i2 != 45)

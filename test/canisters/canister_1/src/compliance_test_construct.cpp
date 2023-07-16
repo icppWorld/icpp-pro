@@ -5,6 +5,8 @@
 #include <string>
 
 #include "ic_api.h"
+#include "candid_serialize.h"
+#include "candid_deserialize.h"
 
 void test_records() {
   IC_API::debug_print("   - " + std::string(__func__));
@@ -27,10 +29,10 @@ void test_records() {
     CandidTypeRecord r1;
     CandidTypeRecord r2;
     CandidTypeRecord r3;
-    std::vector<CandidType> A;
-    A.push_back(r1);
-    A.push_back(r2);
-    A.push_back(r3);
+    CandidArgs A;
+    A.append(r1);
+    A.append(r2);
+    A.append(r3);
     if (CandidSerialize(A).assert_candid("4449444c016c0003000000", true))
       IC_API::trap(std::string(__func__) + ": 2");
     // TODO: roundtrip decoding check

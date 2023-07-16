@@ -29,6 +29,37 @@ def test__greet_0(network: str) -> None:
     expected_response = '("hello!")'
     assert response == expected_response
 
+# Run this test with anonymous identity
+def test__greet_0_auth_err(identity_anonymous: dict[str, str], network: str) -> None:
+    # double check the identity_anonymous fixture worked
+    assert identity_anonymous["identity"] == "anonymous"
+    assert identity_anonymous["principal"] == "2vxsx-fae"
+
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="greet_0_auth",
+        canister_argument="()",
+        network=network,
+    )
+    expected_response = '(variant { err = 401 : nat16 })'
+    assert response == expected_response
+
+# Run this test with a logged in default identity
+def test__greet_0_auth_ok(identity_default: dict[str, str], network: str) -> None:
+    # double check the identity_anonymous fixture worked
+    assert identity_default["identity"] == "default"
+
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="greet_0_auth",
+        canister_argument="()",
+        network=network,
+    )
+    principal = identity_default['principal']
+    expected_response = f'(variant {{ ok = "Hello {principal}" }})'
+    assert response == expected_response
 
 def test__greet_1(network: str) -> None:
     response = call_canister_api(

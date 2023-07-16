@@ -36,11 +36,11 @@ dfx deploy
 echo " "
 echo "--------------------------------------------------"
 echo "Running some manual tests with dfx"
-dfx canister call greet greet_0
-dfx canister call greet greet_1
-dfx canister call greet greet_2 '("C++ Developer")'
-dfx canister call greet greet_3 '(record { "icpp version" = 1 : int; OS = "Linux" : text })'
-dfx canister call greet greet_4 '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })'
+dfx canister call my_canister test_candid
+dfx canister call my_canister test_ic_api
+dfx canister call my_canister roundtrip_bool_true '(true)'
+dfx canister call my_canister roundtrip_variant_ok '(variant { Ok })'
+dfx canister call my_canister roundtrip_variant_err '(variant { Err = "Error" : text})'
 
 #######################################################################
 echo " "

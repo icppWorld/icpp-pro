@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <variant>
-
 // ------------------------------------------------------------------
 // Forward declarations
 
@@ -24,19 +22,6 @@ class CanisterReplyCallback;
 class CanisterRejectCallback;
 class CanisterCleanupCallback;
 class CanisterStart;
-
-// The std::variant alias
-using CanisterEntry =
-    std::variant<CanisterQuery, CanisterUpdate, CanisterInit,
-                 CanisterPreUpgrade, CanisterPostUpgrade,
-                 CanisterInspectMessage, CanisterHeartbeat, CanisterGlobalTimer,
-                 CanisterReplyCallback, CanisterRejectCallback,
-                 CanisterCleanupCallback, CanisterStart>;
-
-// https://subscription.packtpub.com/book/programming/9781787120495/8/ch08lvl1sec91/storing-different-types-with-stdvariant
-template <typename T> bool is_CanisterEntryPoint(const CanisterEntry &c) {
-  return holds_alternative<T>(c);
-}
 
 // ------------------------------------------------------------------
 // The include files

@@ -3,6 +3,7 @@ import sys
 import subprocess
 import shutil
 import typer
+import concurrent.futures
 from typing_extensions import Annotated
 
 from icpp.__main__ import app
@@ -12,6 +13,8 @@ from icpp.run_shell_cmd import run_shell_cmd
 from icpp.decorators import requires_native_compiler, requires_pro
 from icpp.options_build import to_compile_callback, option_to_compile_values_string
 
+# options are: "none", "multi-threading"
+CONCURRENCY = "multi-threading"
 
 @app.command()
 @requires_native_compiler()
@@ -48,69 +51,120 @@ def build_native(
     if not build_path.exists():
         build_path.mkdir()
 
+    def cpp_compile_file(file):
+        cmd = (
+            f"{config_default.NATIVE_CPP} "
+            f"{config_default.NATIVE_CPPFLAGS} {cpp_compile_flags_s} "
+            f"-c {file}"
+        )
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
+    
+    def c_compile_file(file):
+        cmd = (
+            f"{config_default.NATIVE_C} "
+            f"{config_default.NATIVE_CFLAGS} {c_compile_flags_s} "
+            f"-c {file}"
+        )
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
+        
     try:
         # ----------------------------------------------------------------------
         # compile 'mine' C++ files, if we have any
+        # string format
         cpp_files = (
             icpp_toml.build_native["cpp_files"] + icpp_toml.build_wasm["cpp_files"]
         )
+        # list format
+        cpp_files_list = (
+            icpp_toml.build_native["cpp_files_list"] + icpp_toml.build_wasm["cpp_files_list"]
+        )        
         cpp_compile_flags_s = icpp_toml.build_native["cpp_compile_flags_s"]
+        
+        
+            
         if len(cpp_files.strip()) > 0:
-            cmd = (
-                f"{config_default.NATIVE_CPP} "
-                f"{config_default.NATIVE_CPPFLAGS} {cpp_compile_flags_s} "
-                f"-c {cpp_files}"
-            )
-
-            typer.echo("--")
-            typer.echo("Compiling your C++ files with command:")
-            typer.echo(cmd)
-            run_shell_cmd(cmd, cwd=build_path)
+            if CONCURRENCY == "multi-threading":
+                typer.echo("--")
+                typer.echo("Compiling your C++ files using multi-threading:")
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    executor.map(cpp_compile_file, cpp_files_list)                          
+            else:
+                cmd = (
+                    f"{config_default.NATIVE_CPP} "
+                    f"{config_default.NATIVE_CPPFLAGS} {cpp_compile_flags_s} "
+                    f"-c {cpp_files}"
+                )
+    
+                typer.echo("--")
+                typer.echo("Compiling your C++ files with command:")           
+                typer.echo(cmd)
+                run_shell_cmd(cmd, cwd=build_path)
 
         # ----------------------------------------------------------------------
         # compile 'mine' C files, if we have any
         c_files = icpp_toml.build_native["c_files"] + icpp_toml.build_wasm["c_files"]
+        c_files_list = icpp_toml.build_native["c_files_list"] + icpp_toml.build_wasm["c_files_list"]
         c_compile_flags_s = icpp_toml.build_native["c_compile_flags_s"]
         if len(c_files.strip()) > 0:
-            cmd = (
-                f"{config_default.NATIVE_C} "
-                f"{config_default.NATIVE_CFLAGS} {c_compile_flags_s} "
-                f"-c {c_files}"
-            )
-
-            typer.echo("--")
-            typer.echo("Compiling your C files with command:")
-            typer.echo(cmd)
-            run_shell_cmd(cmd, cwd=build_path)
+            if CONCURRENCY == "multi-threading":
+                typer.echo("--")
+                typer.echo("Compiling your C files using multi-threading:")
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    executor.map(c_compile_file, c_files_list)           
+            else:            
+                cmd = (
+                    f"{config_default.NATIVE_C} "
+                    f"{config_default.NATIVE_CFLAGS} {c_compile_flags_s} "
+                    f"-c {c_files}"
+                )
+    
+                typer.echo("--")
+                typer.echo("Compiling your C files with command:")
+                typer.echo(cmd)
+                run_shell_cmd(cmd, cwd=build_path)
 
         if to_compile == "all":
             # ----------------------------------------------------------------------
             # compile the C++ files of the Mock IC, if we have any
             if len(config_default.MOCKIC_CPP_FILES.strip()) > 0:
-                cmd = (
-                    f"{config_default.NATIVE_CPP} "
-                    f"{config_default.NATIVE_CPPFLAGS} "
-                    f"-c {config_default.MOCKIC_CPP_FILES}"
-                )
-
-                typer.echo("--")
-                typer.echo("Compiling C++ files of the Mock IC with command:")
-                typer.echo(cmd)
-                run_shell_cmd(cmd, cwd=build_path)
+                if CONCURRENCY == "multi-threading":
+                    typer.echo("--")
+                    typer.echo("Compiling C++ files of the Mock IC using multi-threading:")
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        executor.map(cpp_compile_file, config_default.MOCKIC_CPP_FILES_LIST)                          
+                else:                
+                    cmd = (
+                        f"{config_default.NATIVE_CPP} "
+                        f"{config_default.NATIVE_CPPFLAGS} "
+                        f"-c {config_default.MOCKIC_CPP_FILES}"
+                    )
+    
+                    typer.echo("--")
+                    typer.echo("Compiling C++ files of the Mock IC with command:")
+                    typer.echo(cmd)
+                    run_shell_cmd(cmd, cwd=build_path)
 
             # ----------------------------------------------------------------------
             # compile the C files of the Mock IC, if we have any
             if len(config_default.MOCKIC_C_FILES.strip()) > 0:
-                cmd = (
-                    f"{config_default.NATIVE_C} "
-                    f"{config_default.NATIVE_CFLAGS} "
-                    f"-c {config_default.MOCKIC_C_FILES}"
-                )
-
-                typer.echo("--")
-                typer.echo("Compiling C files of the Mock IC with command:")
-                typer.echo(cmd)
-                run_shell_cmd(cmd, cwd=build_path)
+                if CONCURRENCY == "multi-threading":
+                    typer.echo("--")
+                    typer.echo("Compiling C++ files of the Mock IC using multi-threading:")
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        executor.map(c_compile_file, config_default.MOCKIC_C_FILES_LIST)                          
+                else:                
+                    cmd = (
+                        f"{config_default.NATIVE_C} "
+                        f"{config_default.NATIVE_CFLAGS} "
+                        f"-c {config_default.MOCKIC_C_FILES}"
+                    )
+    
+                    typer.echo("--")
+                    typer.echo("Compiling C files of the Mock IC with command:")
+                    typer.echo(cmd)
+                    run_shell_cmd(cmd, cwd=build_path)
 
         # ----------------------------------------------------------------------
         # link it into a native executable
@@ -140,6 +194,11 @@ def build_native(
     typer.echo("--")
     typer.echo("All done building the native debug executable:")
     typer.echo(f"{build_path.resolve()}/{executable}")
-    typer.echo("(✔)You can run it from the command line")
-    typer.echo("(✔)You can debug it with VS Code + CodeLLDB")
+    try:
+        typer.echo("(✔)You can run it from the command line")
+        typer.echo("(✔)You can debug it with VS Code + CodeLLDB")
+    except UnicodeEncodeError:
+        typer.echo("(-)You can run it from the command line")
+        typer.echo("(-)You can debug it with VS Code + CodeLLDB")        
     typer.echo("--")
+    

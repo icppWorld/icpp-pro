@@ -114,7 +114,10 @@ def install_wasi_sdk() -> None:
         typer.echo(
             f"Successfully installed wasi-sdk in {config_default.ICPP_ROOT_COMPILER}"
         )
-        typer.echo("💯 🎉 🏁")
+        try:
+            typer.echo("💯 🎉 🏁")
+        except UnicodeEncodeError:
+            typer.echo(" ")
         typer.echo("--")
 
     except Exception as e:  # pylint: disable=broad-except

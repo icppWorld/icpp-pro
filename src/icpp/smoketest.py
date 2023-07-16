@@ -2,6 +2,8 @@
 
 import subprocess
 import json
+import platform
+import typer
 from pathlib import Path
 from typing import Optional, Any
 import pytest  # pylint: disable=unused-import
@@ -9,6 +11,11 @@ import pytest  # pylint: disable=unused-import
 from icpp.run_shell_cmd import run_shell_cmd
 from icpp import pro
 
+DFX = "dfx"
+run_in_powershell = False
+if platform.win32_ver()[0]:
+    DFX = "wsl --% dfx"
+    run_in_powershell = True
 
 def call_canister_api(
     *,
@@ -35,7 +42,7 @@ def call_canister_api(
         )
 
     arg = (
-        f"dfx "
+        f"{DFX} "
         f" canister "
         f" --network {network} "
         f" {quiet} "
@@ -58,6 +65,7 @@ def call_canister_api(
             capture_output=True,
             cwd=Path(dfx_json_path).parent,
             timeout_seconds=timeout_seconds,
+            run_in_powershell=run_in_powershell
         )
         response = response.rstrip("\n")
     except subprocess.CalledProcessError as e:
@@ -69,7 +77,7 @@ def call_canister_api(
                 "*******************************************\n"
                 "*** Failed to determine id for canister ***\n"
                 "*** Deploy the canister first with:     ***\n"
-                "***  dfx deploy                         ***\n"
+                f"***  {DFX} deploy                       ***\n"
                 "*******************************************"
             )
             pytest.exit(msg)
@@ -92,9 +100,9 @@ def dict_to_candid_text(d: dict[Any, Any]) -> str:
 def network_status(network: str) -> str:
     """Returns the network status."""
     pro.exit_if_not_pro("smoketesting with pytest")
-    arg = f"dfx ping {network}"
+    arg = f"{DFX} ping {network}"
     try:
-        response = run_shell_cmd(arg, capture_output=False)
+        response = run_shell_cmd(arg, capture_output=False, run_in_powershell=run_in_powershell)
     except subprocess.CalledProcessError:
         if network == "local":
             msg = (
@@ -102,7 +110,7 @@ def network_status(network: str) -> str:
                 "***************************************\n"
                 "*** The local network is not up     ***\n"
                 "*** Please start it first with:     ***\n"
-                "***  dfx start --clean --background ***\n"
+                f"***  {DFX} start --clean --background ***\n"
                 "***************************************"
             )
         else:
@@ -121,9 +129,9 @@ def network_status(network: str) -> str:
 def get_identity() -> str:
     """Returns the current dfx identity."""
     pro.exit_if_not_pro("smoketesting with pytest")
-    arg = "dfx identity whoami "
+    arg = f"{DFX} identity whoami "
     try:
-        identity = run_shell_cmd(arg, capture_output=True, timeout_seconds=1)
+        identity = run_shell_cmd(arg, capture_output=True, timeout_seconds=1, run_in_powershell=run_in_powershell)
         identity = identity.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
@@ -134,9 +142,9 @@ def get_identity() -> str:
 def set_identity(identity: str) -> None:
     """Sets the dfx identity."""
     pro.exit_if_not_pro("smoketesting with pytest")
-    arg = f"dfx identity use {identity}"
+    arg = f"{DFX} identity use {identity}"
     try:
-        run_shell_cmd(arg)
+        run_shell_cmd(arg, run_in_powershell=run_in_powershell)
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
 
@@ -144,9 +152,9 @@ def set_identity(identity: str) -> None:
 def get_principal() -> str:
     """Returns the principal of the current dfx identity."""
     pro.exit_if_not_pro("smoketesting with pytest")
-    arg = "dfx identity get-principal "
+    arg = f"{DFX} identity get-principal "
     try:
-        principal = run_shell_cmd(arg, capture_output=True, timeout_seconds=1)
+        principal = run_shell_cmd(arg, capture_output=True, timeout_seconds=1, run_in_powershell=run_in_powershell)
         principal = principal.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")

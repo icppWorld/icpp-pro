@@ -92,11 +92,23 @@ def exit_if_native_compiler_not_installed() -> None:
         typer.echo("--")
         typer.echo("ERROR: The native compiler is not installed")
         if no_c:
-            typer.echo(f"       (✗) could not find '{config_default.NATIVE_C}'")
+            try:
+                typer.echo(f"       (✗) could not find '{config_default.NATIVE_C}'")
+            except UnicodeEncodeError:
+                typer.echo(f"       (ERROR) could not find '{config_default.NATIVE_C}'")
         else:
-            typer.echo(f"       (✔) found '{config_default.NATIVE_C}'")
+            try:
+                typer.echo(f"       (✔) found '{config_default.NATIVE_C}'")
+            except UnicodeEncodeError:
+                typer.echo(f"       (OK) found '{config_default.NATIVE_C}'")
         if no_cpp:
-            typer.echo(f"       (✗) could not find '{config_default.NATIVE_CPP}'")
+            try:
+                typer.echo(f"       (✗) could not find '{config_default.NATIVE_CPP}'")
+            except UnicodeEncodeError:
+                typer.echo(f"       (ERROR) could not find '{config_default.NATIVE_CPP}'")
         else:
-            typer.echo(f"       (✔) found '{config_default.NATIVE_CPP}'")
+            try:
+                typer.echo(f"       (✔) found '{config_default.NATIVE_CPP}'")
+            except UnicodeEncodeError:
+                typer.echo(f"       (OK) found '{config_default.NATIVE_CPP}'")
         sys.exit(1)

@@ -1,7 +1,6 @@
-[![icpp-free](https://github.com/icppWorld/icpp-free/actions/workflows/cicd.yml/badge.svg)](https://github.com/icppWorld/icpp-free/actions/workflows/cicd.yml)
 # C++ Canister Development Kit
 
-icpp is a cdk to develop C++ smart contracts for the  [Internet Computer](https://internetcomputer.org/):
+icpp-free is the `lite` version of icpp-pro
 
 ## Installation
 

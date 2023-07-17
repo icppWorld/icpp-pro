@@ -81,7 +81,14 @@ def read_build_table_common(d: dict[Any, Any], d_in: dict[Any, Any]) -> None:
     d["c_compile_flags"] = d_in.get("c_compile_flags", [])
 
     #
-    # compiler uses strings, not lists
+    # concurrent compiler uses a list of strings for the files to compile
+    #
+    d["cpp_files_list"] = [str(x) for x in d["cpp_paths"]]
+
+    d["c_files_list"] = [str(x) for x in d["c_paths"]]
+
+    #
+    # all in one compiler uses a long string of strings, not a list
     #
     d["cpp_files"] = " ".join([str(x) for x in d["cpp_paths"]]) + " "
     d["cpp_header_files"] = " ".join([str(x) for x in d["cpp_header_paths"]]) + " "
@@ -102,7 +109,7 @@ if not icpp_toml_path.exists():
         f"ERROR: There is no `icpp.toml` file in the current working directory: \n"
         f"        {icpp_toml_path.parent.resolve()} \n"
         f"       Maybe you're in the wrong folder, \n"
-        f"       or else can you please create one, so I know what to build? 🙂"
+        f"       or else can you please create one, so I know what to build?"
     )
     sys.exit(1)
 

@@ -3,6 +3,7 @@
 import sys
 import subprocess
 import shutil
+import concurrent.futures
 import typer
 from typing_extensions import Annotated
 
@@ -12,6 +13,9 @@ from icpp.run_shell_cmd import run_shell_cmd
 
 from icpp.decorators import requires_native_compiler, requires_pro
 from icpp.options_build import to_compile_callback, option_to_compile_values_string
+
+# options are: "none", "multi-threading"
+CONCURRENCY = "multi-threading"
 
 
 @app.command()

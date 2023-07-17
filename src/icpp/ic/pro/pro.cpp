@@ -7,6 +7,8 @@
 */
 
 #include "pro.h"
+#include "candid_type.h"
+#include "candid_type_all_includes.h"
 #include "ic_api.h"
 
 Pro::Pro() {}

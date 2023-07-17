@@ -191,6 +191,7 @@ setup(
             "canisters/greet/icpp.toml",
             "canisters/greet/README.md",
             "canisters/greet/demo.sh",
+            "canisters/greet/demo.ps1",
             "ic/*/*.c",
             "ic/*/*.cpp",
             "ic/*/*.h",

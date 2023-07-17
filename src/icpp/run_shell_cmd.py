@@ -3,7 +3,7 @@
 import subprocess
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 
 def escape_ansi(line: Optional[str]) -> Optional[str]:
@@ -37,6 +37,7 @@ def run_shell_cmd(
     print_captured_output: bool = False,
     cwd: Optional[Path] = None,
     timeout_seconds: Optional[int] = None,
+    run_in_powershell: Optional[bool] = None,
 ) -> str:
     """Runs 'cmd' with following behavior, so we can
     use it in our sequential CI/CD pipeline:
@@ -78,8 +79,17 @@ def run_shell_cmd(
           - Throws a subprocess.CalledProcessError as e:
             return e.returncode
     """
+    shell = True
     if cwd is None:
         cwd = Path(".")
+
+    if run_in_powershell is None:
+        run_in_powershell = False
+
+    # for certain commands on Windows
+    cmd_: Union[str, list[str]] = cmd
+    if run_in_powershell:
+        cmd_ = ["powershell.exe", "-Command", cmd]
 
     if timeout_seconds is None:
         timeout_seconds = 3
@@ -87,7 +97,7 @@ def run_shell_cmd(
     capture_stdout = ""
 
     if capture_output is False:
-        subprocess.run(cmd, shell=True, check=True, text=True, cwd=cwd)
+        subprocess.run(cmd_, shell=True, check=True, text=True, cwd=cwd)
     else:
         # These will block & cannot be used to start a background process from make.
         if print_captured_output is False:
@@ -96,10 +106,10 @@ def run_shell_cmd(
                 # - return it if there is no error
                 # - includes it in a possibly raised error
                 p_1 = subprocess.run(
-                    cmd,
+                    cmd_,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    shell=True,
+                    shell=shell,
                     check=False,
                     text=True,
                     cwd=cwd,
@@ -132,10 +142,10 @@ def run_shell_cmd(
             # This prints output while running, and we capture it as well & return it
             # https://stackoverflow.com/a/28319191/5480536
             with subprocess.Popen(
-                cmd,
+                cmd_,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                shell=True,
+                shell=shell,
                 bufsize=1,
                 universal_newlines=True,
                 cwd=cwd,

@@ -4,12 +4,19 @@
 
 import subprocess
 import json
+import platform
 from pathlib import Path
 from typing import Optional, Any
 import pytest  # pylint: disable=unused-import
 
 from icpp.run_shell_cmd import run_shell_cmd
 from icpp import pro
+
+DFX = "dfx"
+RUN_IN_POWERSHELL = False
+if platform.win32_ver()[0]:
+    DFX = "wsl --% dfx"
+    RUN_IN_POWERSHELL = True
 
 
 def call_canister_api(

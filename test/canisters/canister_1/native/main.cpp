@@ -8,7 +8,7 @@
 #include "../src/my_canister.h"
 
 // The Mock IC
-#include "global.h"
+#include "icpp_hooks.h"
 #include "mock_ic.h"
 
 int main() {
@@ -380,7 +380,7 @@ int main() {
     CandidTypeRecord r;
     r.append("syndactyle", CandidTypeText("some text"));
     r.append("rectum", CandidTypeText("another text"));
-    IC_API::trap(std::string(__func__) + ": did not trap 1a");
+    ICPP_HOOKS::trap(std::string(__func__) + ": did not trap 1a");
   } catch (const std::exception &e) {
   }
 
@@ -417,44 +417,44 @@ int main() {
     std::string s =
         "aaaaa-aaaaa-bbbbb-bbbbb-22222-22222-33333-33333-44444-44444-5555";
     CandidTypePrincipal p = CandidTypePrincipal(s);
-    IC_API::trap(std::string(__func__) + ": did not trap 2a");
+    ICPP_HOOKS::trap(std::string(__func__) + ": did not trap 2a");
   } catch (const std::exception &e) {
   }
   try {
     std::string s =
         "aaaaa-aaaaa-bbbbb-bbbbb-22222-22222-33333-33333-44444-44444-555";
     CandidTypePrincipal p = CandidTypePrincipal(s);
-    IC_API::trap(std::string(__func__) + ": did not trap 2b");
+    ICPP_HOOKS::trap(std::string(__func__) + ": did not trap 2b");
   } catch (const std::exception &e) {
   }
   try {
     std::string s = "a2345-678";
     CandidTypePrincipal p = CandidTypePrincipal(s);
-    IC_API::trap(std::string(__func__) + ": did not trap 2c");
+    ICPP_HOOKS::trap(std::string(__func__) + ": did not trap 2c");
   } catch (const std::exception &e) {
   }
   try {
     std::string s = "2ibo7-dib";
     CandidTypePrincipal p = CandidTypePrincipal(s);
-    IC_API::trap(std::string(__func__) + ": did not trap 2d");
+    ICPP_HOOKS::trap(std::string(__func__) + ": did not trap 2d");
   } catch (const std::exception &e) {
   }
   try {
     std::string s = "2ibo7dia";
     CandidTypePrincipal p = CandidTypePrincipal(s);
-    IC_API::trap(std::string(__func__) + ": did not trap 2e");
+    ICPP_HOOKS::trap(std::string(__func__) + ": did not trap 2e");
   } catch (const std::exception &e) {
   }
   try {
     std::string s = "2ibo-7dia";
     CandidTypePrincipal p = CandidTypePrincipal(s);
-    IC_API::trap(std::string(__func__) + ": did not trap 2f");
+    ICPP_HOOKS::trap(std::string(__func__) + ": did not trap 2f");
   } catch (const std::exception &e) {
   }
   try {
     std::string s = "2ibo7--dia";
     CandidTypePrincipal p = CandidTypePrincipal(s);
-    IC_API::trap(std::string(__func__) + ": did not trap 2g");
+    ICPP_HOOKS::trap(std::string(__func__) + ": did not trap 2g");
   } catch (const std::exception &e) {
   }
   // returns 1 if any tests failed

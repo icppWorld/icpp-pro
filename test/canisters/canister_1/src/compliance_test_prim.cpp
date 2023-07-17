@@ -5,6 +5,8 @@
 #include <cmath>
 #include <string>
 
+#include "candid_deserialize.h"
+#include "candid_serialize.h"
 #include "ic_api.h"
 
 void test_wrong() {

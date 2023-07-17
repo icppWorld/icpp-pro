@@ -203,7 +203,8 @@ install-jp:
 .PHONY: install-python
 install-python:
 	pip install --upgrade pip
-	cd icpp-candid && pip install -e ".[dev]"
+	cd icpp-candid && rm -rf src/*.egg-info && pip install -e ".[dev]"
+	rm -rf src/*.egg-info
 	pip install -e ".[dev]"
 
 .PHONY:install-rust

@@ -9,4 +9,4 @@ We do it this way, so both __init__.py and setup.py can use it.
 see:
 https://packaging.python.org/guides/single-sourcing-package-version/
 """
-__version__ = "2.9.0"
+__version__ = "3.0.0"

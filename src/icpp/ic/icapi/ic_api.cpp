@@ -7,15 +7,16 @@
 //  - https://github.com/dfinity/candid/blob/master/spec/Candid.md#binary-format
 
 #include "ic_api.h"
+#include "candid_deserialize.h"
+#include "candid_serialize.h"
+#include "candid_type.h"
+#include "candid_type_all_includes.h"
 
 #include <cassert>
 #include <cstddef>
 #include <cstring>
 #include <limits.h>
-
 #include <string>
-// #include <sstream>
-// #include <iomanip>
 
 #include "ic0.h"
 
@@ -23,7 +24,7 @@ IC_API::IC_API() : IC_API(CanisterQuery("-unknown-"), false) {}
 IC_API::IC_API(const bool &debug_print)
     : IC_API(CanisterQuery("-unknown-"), debug_print) {}
 
-IC_API::IC_API(const CanisterEntry &canister_entry, const bool &dbug)
+IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
     : m_canister_entry(canister_entry), m_debug_print(dbug) {
   // Fill 'm_B_in' with the bytes of msg_arg_data
   std::vector<uint8_t> bytes(ic0_msg_arg_data_size());
@@ -48,7 +49,8 @@ IC_API::IC_API(const CanisterEntry &canister_entry, const bool &dbug)
 IC_API::~IC_API() {
   // https://internetcomputer.org/docs/current/references/ic-interface-spec#system-api-imports
   // Only can call msg_reply if entry is `U Q Ry Rt`
-  if (is_entry_U() || is_entry_Q() || is_entry_Ry() || is_entry_Rt()) {
+  if (m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Q() ||
+      m_canister_entry.is_entry_Ry() || m_canister_entry.is_entry_Rt()) {
     // If the method did not yet call to_wire, do it automatic without content
     if (!m_called_to_wire) {
       to_wire();
@@ -88,7 +90,7 @@ void IC_API::trap(const std::string &s) { IC_API::trap(s.c_str()); }
 uint64_t IC_API::time() { return ic0_time(); }
 
 // DeSerialize the byte stream received over the wire
-void IC_API::from_wire(std::vector<CandidType> A) {
+void IC_API::from_wire(CandidArgs A) {
   if (m_called_from_wire) {
     trap("ERROR: The canister is calling ic_api.from_wire() more than once.");
   }
@@ -98,13 +100,13 @@ void IC_API::from_wire(std::vector<CandidType> A) {
 }
 // DeSerialize the byte stream received over the wire
 void IC_API::from_wire(CandidType c) {
-  std::vector<CandidType> A;
-  A.push_back(c);
+  CandidArgs A;
+  A.append(c);
   from_wire(A);
 }
 // DeSerialize the byte stream received over the wire, when no arguments are expected
 void IC_API::from_wire() {
-  std::vector<CandidType> A;
+  CandidArgs A;
   from_wire(A);
 }
 
@@ -179,18 +181,18 @@ std::string IC_API::to_string_128(__int128_t v) {
 
 // Serialize to byte stream & send out over the wire, when no arguments are sent
 void IC_API::to_wire() {
-  std::vector<CandidType> args_out;
+  CandidArgs args_out;
   to_wire(args_out);
 }
 
 // Serialize to byte stream & send out over the wire
 void IC_API::to_wire(const CandidType &arg_out) {
-  std::vector<CandidType> args_out;
-  args_out.push_back(arg_out);
+  CandidArgs args_out;
+  args_out.append(arg_out);
   to_wire(args_out);
 }
 
-void IC_API::to_wire(const std::vector<CandidType> &args_out) {
+void IC_API::to_wire(const CandidArgs &args_out) {
   if (m_called_to_wire) {
     trap("ERROR: The canister is calling ic_api.to_wire() more than once.");
   }

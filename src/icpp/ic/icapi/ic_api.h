@@ -19,8 +19,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "candid.h"
-#include "candid_type_principal.h"
+#include "candid_type.h"
+#include "candid_type_all_includes.h"
 #include "canister.h"
 #include "vec_bytes.h"
 
@@ -32,7 +32,7 @@ public:
       const bool &debug_print);
 
   // docs start: ic_api
-  IC_API(const CanisterEntry &canister_entry,
+  IC_API(const CanisterBase &canister_entry,
          const bool &debug_print); // docs end: ic_api
 
   ~IC_API();
@@ -55,7 +55,8 @@ public:
   // docs start: from_wire
   void from_wire();
   void from_wire(CandidType arg_in);
-  void from_wire(std::vector<CandidType> args_in); // docs end: from_wire
+  void from_wire(CandidArgs args_in); // docs end: from_wire
+  // void from_wire(std::vector<CandidType> args_in); // DEPRECATED
 
   // Convert string to __uint128_t & __int128_t
   // clang-format off
@@ -73,45 +74,8 @@ public:
   // docs start: to_wire
   void to_wire();
   void to_wire(const CandidType &arg_out);
-  void to_wire(const std::vector<CandidType> &args_out); // docs end: to_wire
-
-  // Canister Entry Point we're in
-  // https://internetcomputer.org/docs/current/references/ic-interface-spec#system-api-imports
-  bool is_entry_I() {
-    return std::holds_alternative<CanisterInit>(m_canister_entry) ||
-           std::holds_alternative<CanisterPostUpgrade>(m_canister_entry);
-  }
-  bool is_entry_G() {
-    return std::holds_alternative<CanisterPreUpgrade>(m_canister_entry);
-  }
-  bool is_entry_U() {
-    return std::holds_alternative<CanisterUpdate>(m_canister_entry);
-  }
-  bool is_entry_Q() {
-    return std::holds_alternative<CanisterQuery>(m_canister_entry);
-  }
-  bool is_entry_Ry() {
-    return std::holds_alternative<CanisterReplyCallback>(m_canister_entry);
-  }
-  bool is_entry_Rt() {
-    return std::holds_alternative<CanisterRejectCallback>(m_canister_entry);
-  }
-  bool is_entry_C() {
-    return std::holds_alternative<CanisterCleanupCallback>(m_canister_entry);
-  }
-  bool is_entry_s() {
-    return std::holds_alternative<CanisterStart>(m_canister_entry);
-  }
-  bool is_entry_F() {
-    return std::holds_alternative<CanisterInspectMessage>(m_canister_entry);
-  }
-  bool is_entry_T() {
-    return std::holds_alternative<CanisterHeartbeat>(m_canister_entry) ||
-           std::holds_alternative<CanisterGlobalTimer>(m_canister_entry);
-  }
-  bool is_entry_Wildcard() {
-    return !std::holds_alternative<CanisterStart>(m_canister_entry);
-  }
+  void to_wire(const CandidArgs &args_out); // docs end: to_wire
+  // void to_wire(const std::vector<CandidType> &args_out); // DEPRECATED
 
   // Orthogonal Persistence
   template <typename T>
@@ -235,7 +199,7 @@ public:
   }
 
 private:
-  CanisterEntry m_canister_entry;
+  CanisterBase m_canister_entry;
   bool m_debug_print{false};
   VecBytes m_B_in;
   VecBytes m_B_out;

@@ -20,7 +20,10 @@ void Pro::exit_if_not_pro() {
     std::string msg;
     msg.append("ERROR: this functionality requires icpp-pro\n");
     msg.append("\n");
-    msg.append("For licensing, contact us at icpp@icpp.world\n");
+    msg.append("You can just upgrade with: `pip install icpp-pro`\n");
+    msg.append("But please be a sport, and donate a little. Thank YOU!\n");
+    msg.append(
+        "For details, see: https://docs.icpp.world/index.html#donations-welcome`\n");
     msg.append("\n");
     IC_API::trap(msg);
   }

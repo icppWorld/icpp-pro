@@ -91,7 +91,7 @@ setup(
         #   5 - Production/Stable
         "Development Status :: 4 - Beta",
         # Pick your license as you wish
-        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+        "License :: OSI Approved :: MIT License",
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate you support Python 3. These classifiers are *not*
         # checked by 'pip install'. See instead 'python_requires' below.
@@ -102,6 +102,10 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3 :: Only",
     ],
+    #
+    # This field adds a description to the metatada in PKG-INFO.
+    # It is not used by PyPI
+    license="MIT",
     #
     # This field adds keywords for your project which will appear on the
     # project page. What does your project relate to?
@@ -187,6 +191,7 @@ setup(
             "canisters/greet/icpp.toml",
             "canisters/greet/README.md",
             "canisters/greet/demo.sh",
+            "canisters/greet/demo.ps1",
             "ic/*/*.c",
             "ic/*/*.cpp",
             "ic/*/*.h",

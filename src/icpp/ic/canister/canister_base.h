@@ -31,6 +31,8 @@ public:
            m_entry_type == "CanisterGlobalTimer";
   }
   bool is_entry_Wildcard() { return m_entry_type != "CanisterStart"; }
+  std::string get_calling_function() { return m_calling_function; }
+  std::string get_entry_type() { return m_entry_type; }
 
 protected:
   // The calling function

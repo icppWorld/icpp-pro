@@ -196,6 +196,15 @@ void IC_API::to_wire(const CandidArgs &args_out) {
   if (m_called_to_wire) {
     trap("ERROR: The canister is calling ic_api.to_wire() more than once.");
   }
+  if (!(m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Q() ||
+        m_canister_entry.is_entry_Ry() || m_canister_entry.is_entry_Rt())) {
+    trap(
+        "ERROR: The canister function '" +
+        m_canister_entry.get_calling_function() +
+        "' is calling ic_api.to_wire(), but it is of type '" +
+        m_canister_entry.get_entry_type() +
+        "'.\nYou can only call ic_api.to_wire() for CanisterQuery, CanisterUpdate, CanisterReplyCallback & CanisterRejectCallback functions.\nPlease update the IC_API instantiation.");
+  }
   m_called_to_wire = true;
 
   m_B_out = CandidSerialize(args_out).get_B();

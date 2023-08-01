@@ -164,11 +164,12 @@ python-type:
 
 # Note for clang++
 # This command does not contain latest LLVM version that ships with wasi-sdk
-# sudo apt update && sudo apt install clang-$(VERSION_CLANG)
+# sudo apt-get update && sudo apt-get install clang-$(VERSION_CLANG)
 
 .PHONY: install-clang-ubuntu
 install-clang-ubuntu:
 	@echo "Installing clang-$(VERSION_CLANG) compiler"
+	sudo apt-get remove python3-lldb-14
 	wget https://apt.llvm.org/llvm.sh
 	chmod +x llvm.sh
 	echo | sudo ./llvm.sh $(VERSION_CLANG)
@@ -207,6 +208,14 @@ install-python:
 	rm -rf src/*.egg-info
 	pip install -e ".[dev]"
 
+.PHONY: install-python-w-demos
+install-python-w-demos:
+	pip install --upgrade pip
+	cd icpp-candid && rm -rf src/*.egg-info && pip install -e ".[dev]"
+	rm -rf src/*.egg-info
+	pip install -e ".[dev]"
+	cd ../icpp-demos && pip install -r requirements.txt
+
 .PHONY:install-rust
 install-rust:
 	@echo "Installing rust"
@@ -216,7 +225,7 @@ install-rust:
 
 .PHONY: install-wabt
 install-wabt:
-	sudo apt update && sudo apt install wabt
+	sudo apt-get update && sudo apt-get install wabt
 
 ###########################################################################
 # Building and publishing the pypi package

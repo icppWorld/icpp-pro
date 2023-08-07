@@ -134,39 +134,3 @@ void greet_4() {
   // Send it back
   ic_api.to_wire(args_out);
 }
-// void greet_4() {
-//   // build-native on windows has a compiler limitation
-//   // - std::vector<CandidType> is currently not supported
-//   #ifndef _WIN32
-//     IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
-
-//     __int128_t r1_i1{0};
-//     __int128_t r1_i2{0};
-//     CandidTypeRecord r1;
-//     r1.append(6, CandidTypeInt{&r1_i1});
-//     r1.append(9, CandidTypeInt{&r1_i2});
-
-//     __int128_t r2_i1{0};
-//     __int128_t r2_i2{0};
-//     CandidTypeRecord r2;
-//     r2.append(7, CandidTypeInt{&r2_i1});
-//     r2.append(10, CandidTypeInt{&r2_i2});
-
-//     std::vector<CandidType> args_in;
-//     args_in.push_back(r1);
-//     args_in.push_back(r2);
-//     ic_api.from_wire(args_in);
-
-//     // Build the args_out vector
-//     std::vector<CandidType> args_out;
-//     args_out.push_back(CandidTypeText{"Hello!"});
-//     args_out.push_back(CandidTypeText{"Your secret numbers are:"});
-//     args_out.push_back(CandidTypeInt{r1_i1});
-//     args_out.push_back(CandidTypeInt{r1_i2});
-//     args_out.push_back(CandidTypeInt{r2_i1});
-//     args_out.push_back(CandidTypeInt{r2_i2});
-
-//     // Send it back
-//     ic_api.to_wire(args_out);
-//   #endif
-// }

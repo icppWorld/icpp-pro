@@ -114,6 +114,20 @@ int unit_test_candid() {
 }
 }
 
+{ // Verify serialization variant of tiny Stories example
+  // didc encode '(variant { ok = "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty.\nLily wanted to play with the ball, but it was too high up in the sky. She tried to jump and reach it, but she couldn't. Then, she had an idea. She would use a stick to knock the" : text })'
+
+  CandidArgs A;
+  std::string output =
+      "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty.\nLily wanted to play with the ball, but it was too high up in the sky. She tried to jump and reach it, but she couldn't. Then, she had an idea. She would use a stick to knock the";
+  A.append(CandidTypeVariant{"ok", CandidTypeText{output}});
+
+  std::string s = CandidSerialize(A).as_hex_string();
+  if (s !=
+      "4449444c016b019cc2017101000093034f6e63652075706f6e20612074696d652c207468657265207761732061206c6974746c65206769726c206e616d6564204c696c792e20536865206c6f76656420746f20706c6179206f75747369646520616e64206578706c6f72652074686520776f726c642061726f756e64206865722e204f6e65206461792c207768696c6520736865207761732077616c6b696e6720696e20746865207061726b2c20736865206e6f74696365642061206269672070696c65206f6620617368206f6e207468652067726f756e642e2053686520776173207665727920637572696f75732061626f757420697420616e64206465636964656420746f20696e7665737469676174652e0a41732073686520676f7420636c6f73657220746f20746865206173682c2073686520736177207468617420697420776173207665727920736f667420616e64206e69636520746f20746f7563682e20497420776173206e6f742076657279206861727368206f72206d6164652068657220736869766572207769746820666561722e2053756464656e6c792c2061")
+    IC_API::trap(std::string(__func__) + ": 4c");
+}
+
 // Verify CandidTypePrincipal (https://internetcomputer.org/docs/current/references/id-encoding-spec#decode)
 {
   std::string s = "2ibo7-dia";

@@ -46,19 +46,7 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
   }
 }
 
-IC_API::~IC_API() {
-  // https://internetcomputer.org/docs/current/references/ic-interface-spec#system-api-imports
-  // Only can call msg_reply if entry is `U Q Ry Rt`
-  if (m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Q() ||
-      m_canister_entry.is_entry_Ry() || m_canister_entry.is_entry_Rt()) {
-    // If the method did not yet call to_wire, do it automatic without content
-    if (!m_called_to_wire) {
-      to_wire();
-    }
-    // Send the out over the wire
-    msg_reply();
-  }
-}
+IC_API::~IC_API() {}
 
 void IC_API::debug_print(const char *message) {
 
@@ -216,7 +204,17 @@ void IC_API::to_wire(const CandidArgs &args_out) {
     m_B_out.debug_print();
   }
 
-  // Do NOT yet send it out yet via msg_reply. We do this in the desctructor
+  // https://internetcomputer.org/docs/current/references/ic-interface-spec#system-api-imports
+  // Only can call msg_reply if entry is `U Q Ry Rt`
+  if (m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Q() ||
+      m_canister_entry.is_entry_Ry() || m_canister_entry.is_entry_Rt()) {
+    // If the method did not yet call to_wire, do it automatic without content
+    if (!m_called_to_wire) {
+      to_wire();
+    }
+    // Send it out over the wire
+    msg_reply();
+  }
 }
 
 // Appends the content of m_B_out, replies over the wire, re-sets the didl vectors

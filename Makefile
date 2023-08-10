@@ -216,6 +216,15 @@ install-python-w-demos:
 	pip install -e ".[dev]"
 	cd ../icpp-demos && pip install -r requirements.txt
 
+
+.PHONY: install-python-w-icpp-llm
+install-python-w-icpp-llm:
+	pip install --upgrade pip
+	cd icpp-candid && rm -rf src/*.egg-info && pip install -e ".[dev]"
+	rm -rf src/*.egg-info
+	pip install -e ".[dev]"
+	cd ../icpp-llm && pip install -r requirements.txt
+
 .PHONY:install-rust
 install-rust:
 	@echo "Installing rust"

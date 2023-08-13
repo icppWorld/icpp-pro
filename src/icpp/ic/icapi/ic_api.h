@@ -56,7 +56,6 @@ public:
   void from_wire();
   void from_wire(CandidType arg_in);
   void from_wire(CandidArgs args_in); // docs end: from_wire
-  // void from_wire(std::vector<CandidType> args_in); // DEPRECATED
 
   // Convert string to __uint128_t & __int128_t
   // clang-format off
@@ -75,59 +74,64 @@ public:
   void to_wire();
   void to_wire(const CandidType &arg_out);
   void to_wire(const CandidArgs &args_out); // docs end: to_wire
-  // void to_wire(const std::vector<CandidType> &args_out); // DEPRECATED
 
   // Orthogonal Persistence
   template <typename T>
-  void store_vector_orthogonal(const std::vector<T> &vec, T **p_data,
-                               __uint128_t *len) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] void
+  store_vector_orthogonal(const std::vector<T> &vec, T **p_data,
+                          __uint128_t *len) {
     persist_container_sequence(vec, p_data, len, typeid(vec).name());
   }
 
   template <typename T>
-  void store_list_orthogonal(const std::list<T> &lst, T **p_data,
-                             __uint128_t *len) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] void
+  store_list_orthogonal(const std::list<T> &lst, T **p_data, __uint128_t *len) {
     persist_container_sequence(lst, p_data, len, typeid(lst).name());
   }
 
   template <typename T>
-  void store_deque_orthogonal(const std::deque<T> &dq, T **p_data,
-                              __uint128_t *len) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] void
+  store_deque_orthogonal(const std::deque<T> &dq, T **p_data,
+                         __uint128_t *len) {
     persist_container_sequence(dq, p_data, len, typeid(dq).name());
   }
 
   template <typename T, size_t N>
-  void store_array_orthogonal(const std::array<T, N> &arr, T **p_data,
-                              __uint128_t *len) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] void
+  store_array_orthogonal(const std::array<T, N> &arr, T **p_data,
+                         __uint128_t *len) {
     persist_container_sequence(arr, p_data, len, typeid(arr).name());
   }
 
   template <typename Key, typename T>
-  void store_map_orthogonal(const std::map<Key, T> &mp,
-                            std::pair<Key, T> **p_data, __uint128_t *len) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] void
+  store_map_orthogonal(const std::map<Key, T> &mp, std::pair<Key, T> **p_data,
+                       __uint128_t *len) {
     persist_container_associative(mp, p_data, len, typeid(mp).name());
   }
 
   template <typename Key, typename T>
-  void store_unordered_map_orthogonal(const std::unordered_map<Key, T> &ump,
-                                      std::pair<Key, T> **p_data,
-                                      __uint128_t *len) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] void
+  store_unordered_map_orthogonal(const std::unordered_map<Key, T> &ump,
+                                 std::pair<Key, T> **p_data, __uint128_t *len) {
     persist_container_associative(ump, p_data, len, typeid(ump).name());
   }
 
   template <typename T>
-  void store_set_orthogonal(const std::set<T> &st, T **p_data,
-                            __uint128_t *len) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] void
+  store_set_orthogonal(const std::set<T> &st, T **p_data, __uint128_t *len) {
     persist_container_sequence(st, p_data, len, typeid(st).name());
   }
 
   template <typename T>
-  void store_unordered_set_orthogonal(const std::unordered_set<T> &ust,
-                                      T **p_data, __uint128_t *len) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] void
+  store_unordered_set_orthogonal(const std::unordered_set<T> &ust, T **p_data,
+                                 __uint128_t *len) {
     persist_container_sequence(ust, p_data, len, typeid(ust).name());
   }
 
-  void store_string_orthogonal(const std::string &str, char **p_data) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] void
+  store_string_orthogonal(const std::string &str, char **p_data) {
     delete[] *p_data; // Delete previous memory.
     // Allocate enough memory for the string and null terminator.
     size_t len = str.size() + 1;
@@ -137,22 +141,30 @@ public:
   }
 
   template <typename T>
-  std::vector<T> retrieve_vector_orthogonal(const T *p_data, __uint128_t len) {
+  [[deprecated(
+      "See GitHub: icppWorld/icpp-demos/canisters/memory)")]] std::vector<T>
+  retrieve_vector_orthogonal(const T *p_data, __uint128_t len) {
     return std::vector<T>(p_data, p_data + len);
   }
 
   template <typename T>
-  std::list<T> retrieve_list_orthogonal(const T *p_data, __uint128_t len) {
+  [[deprecated(
+      "See GitHub: icppWorld/icpp-demos/canisters/memory)")]] std::list<T>
+  retrieve_list_orthogonal(const T *p_data, __uint128_t len) {
     return std::list<T>(p_data, p_data + len);
   }
 
   template <typename T>
-  std::deque<T> retrieve_deque_orthogonal(const T *p_data, __uint128_t len) {
+  [[deprecated(
+      "See GitHub: icppWorld/icpp-demos/canisters/memory)")]] std::deque<T>
+  retrieve_deque_orthogonal(const T *p_data, __uint128_t len) {
     return std::deque<T>(p_data, p_data + len);
   }
 
   template <typename T, size_t N>
-  std::array<T, N> retrieve_array_orthogonal(const T *p_data, __uint128_t len) {
+  [[deprecated(
+      "See GitHub: icppWorld/icpp-demos/canisters/memory)")]] std::array<T, N>
+  retrieve_array_orthogonal(const T *p_data, __uint128_t len) {
     std::array<T, N> arr;
     std::copy(p_data, p_data + std::min(len, static_cast<__uint128_t>(N)),
               arr.begin());
@@ -160,8 +172,9 @@ public:
   }
 
   template <typename Key, typename T>
-  std::map<Key, T> retrieve_map_orthogonal(const std::pair<Key, T> *p_data,
-                                           __uint128_t len) {
+  [[deprecated(
+      "See GitHub: icppWorld/icpp-demos/canisters/memory)")]] std::map<Key, T>
+  retrieve_map_orthogonal(const std::pair<Key, T> *p_data, __uint128_t len) {
     std::map<Key, T> result;
     for (__uint128_t i = 0; i < len; ++i) {
       result.insert({p_data[i].first, p_data[i].second});
@@ -170,9 +183,10 @@ public:
   }
 
   template <typename Key, typename T>
-  std::unordered_map<Key, T>
-  retrieve_unordered_map_orthogonal(const std::pair<Key, T> *p_data,
-                                    __uint128_t len) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] std::
+      unordered_map<Key, T>
+      retrieve_unordered_map_orthogonal(const std::pair<Key, T> *p_data,
+                                        __uint128_t len) {
     std::unordered_map<Key, T> result;
     for (__uint128_t i = 0; i < len; ++i) {
       result.insert({p_data[i].first, p_data[i].second});
@@ -181,17 +195,22 @@ public:
   }
 
   template <typename T>
-  std::set<T> retrieve_set_orthogonal(const T *p_data, __uint128_t len) {
+  [[deprecated(
+      "See GitHub: icppWorld/icpp-demos/canisters/memory)")]] std::set<T>
+  retrieve_set_orthogonal(const T *p_data, __uint128_t len) {
     return std::set<T>(p_data, p_data + len);
   }
 
   template <typename T>
-  std::unordered_set<T> retrieve_unordered_set_orthogonal(const T *p_data,
-                                                          __uint128_t len) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] std::
+      unordered_set<T>
+      retrieve_unordered_set_orthogonal(const T *p_data, __uint128_t len) {
     return std::unordered_set<T>(p_data, p_data + len);
   }
 
-  std::string retrieve_string_orthogonal(const char *p_data) {
+  [[deprecated(
+      "See GitHub: icppWorld/icpp-demos/canisters/memory)")]] std::string
+  retrieve_string_orthogonal(const char *p_data) {
     if (p_data == nullptr) {
       return std::string(); // Return empty string if p_data is nullptr.
     }
@@ -211,10 +230,11 @@ private:
 
   // For sequence containers (array, list, vec, string)
   template <typename Container>
-  void persist_container_sequence(const Container &container,
-                                  typename Container::value_type **p_data,
-                                  __uint128_t *len,
-                                  const std::string container_type) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] void
+  persist_container_sequence(const Container &container,
+                             typename Container::value_type **p_data,
+                             __uint128_t *len,
+                             const std::string container_type) {
     if (*p_data) {
       delete[] *p_data;
     }
@@ -229,10 +249,10 @@ private:
 
   // For associative containers whose data is stored using an a key (map, unordered_map)
   template <typename Container, typename NonConstValueType>
-  void persist_container_associative(const Container &container,
-                                     NonConstValueType **p_data,
-                                     __uint128_t *len,
-                                     const std::string container_type) {
+  [[deprecated("See GitHub: icppWorld/icpp-demos/canisters/memory)")]] void
+  persist_container_associative(const Container &container,
+                                NonConstValueType **p_data, __uint128_t *len,
+                                const std::string container_type) {
     if (*p_data) {
       delete[] *p_data;
     }

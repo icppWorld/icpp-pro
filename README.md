@@ -6,17 +6,16 @@ icpp-pro is a cdk to develop C++ smart contracts for the  [Internet Computer](ht
 
 ## Installation
 
-`icpp-pro` is available via PyPI:
-
 ```bash
-# For Linux, Mac or Windows
 pip install icpp-pro
-
-# verify
-$ icpp --version
-icpp-pro version: x.y.z
-wasi-sdk version: wasi-sdk-X.Y
 ```
 
-## [Documentation](https://docs.icpp.world)
+## Support
+
+For support, kindly create a GitHub Issue as outlined in the [Support](https://docs.icpp.world/support.html) documentation page.
+  
+
+## Documentation
+
+The docs can be found [here](https://docs.icpp.world)
 

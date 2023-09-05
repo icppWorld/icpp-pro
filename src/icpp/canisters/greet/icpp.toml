@@ -1,8 +1,8 @@
 [build-wasm]
 canister          = "greet"
 did_path          = "src/greet.did"
-cpp_paths         = ["src/greet.cpp"]
-cpp_header_paths  = ["src/greet.h"]
+cpp_paths         = ["src/*.cpp"]  # Use wildcard pattern to include all .cpp files in src/
+cpp_header_paths  = ["src/*.h"]    # Use wildcard pattern to include all .h files in src/
 cpp_compile_flags = []
 cpp_link_flags    = []
 c_paths           = []

@@ -1,9 +1,9 @@
 [build-wasm]
 canister          = "my_canister"
 did_path          = "src/my_canister.did"
-cpp_paths         = ["src/*.cpp"]
-cpp_header_paths  = ["src/*.h",
-                     "src/vendors/nlohmann/*.hpp"]
+cpp_paths         = ["src/*.cpp"]  # Use wildcard pattern to include all .cpp files in src/
+cpp_header_paths  = ["src/*.h",   # Use wildcard pattern to include all .h files in src/
+                     "src/vendors/nlohmann/*.hpp"]  # Use wildcard pattern for nested folders
 cpp_compile_flags = ["-D JSON_HAS_FILESYSTEM=0"]
 cpp_link_flags    = []
 c_paths           = []

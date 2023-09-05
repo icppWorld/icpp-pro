@@ -1,6 +1,7 @@
 """Reads the icpp.toml file"""
 
 import sys
+import glob
 from pathlib import Path
 from typing import Any
 import typer
@@ -61,23 +62,22 @@ def read_build_native_table(d_in: dict[Any, Any]) -> dict[Any, Any]:
 
 def read_build_table_common(d: dict[Any, Any], d_in: dict[Any, Any]) -> None:
     """Reads the common fields of '[build-wasm]' & '[build-native]'"""
-    d["cpp_paths"] = [
-        icpp_toml_path.parent / Path(x).resolve() for x in d_in.get("cpp_paths", [])
-    ]
-    d["cpp_header_paths"] = [
-        icpp_toml_path.parent / Path(x).resolve()
-        for x in d_in.get("cpp_header_paths", [])
-    ]
+
+    # Helper function to expand wildcards
+    def expand_paths(patterns: list[str]) -> list[Path]:
+        paths: set[Path] = set()  # Using a set to store unique paths
+        for pattern in patterns:
+            absolute_pattern = (icpp_toml_path.parent / pattern).resolve()
+            paths.update(map(Path, glob.glob(str(absolute_pattern))))
+        return list(paths)
+
+    d["cpp_paths"] = expand_paths(d_in.get("cpp_paths", []))
+    d["cpp_header_paths"] = expand_paths(d_in.get("cpp_header_paths", []))
     d["cpp_compile_flags"] = d_in.get("cpp_compile_flags", [])
     d["cpp_link_flags"] = d_in.get("cpp_link_flags", [])
 
-    d["c_paths"] = [
-        icpp_toml_path.parent / Path(x).resolve() for x in d_in.get("c_paths", [])
-    ]
-    d["c_header_paths"] = [
-        icpp_toml_path.parent / Path(x).resolve()
-        for x in d_in.get("c_header_paths", [])
-    ]
+    d["c_paths"] = expand_paths(d_in.get("c_paths", []))
+    d["c_header_paths"] = expand_paths(d_in.get("c_header_paths", []))
     d["c_compile_flags"] = d_in.get("c_compile_flags", [])
 
     #

@@ -1,19 +1,9 @@
 [build-wasm]
 canister          = "my_canister"
 did_path          = "src/my_canister.did"
-cpp_paths         = ["src/my_canister.cpp",
-                     "src/compliance_test_prim.cpp",
-                     "src/compliance_test_construct.cpp",
-                     "src/unit_test_vendors.cpp",
-                     "src/unit_test_candid.cpp",
-                     "src/unit_test_ic_api.cpp"]
-cpp_header_paths  = ["src/my_canister.h",
-                     "src/compliance_test_prim.h",
-                     "src/compliance_test_construct.h",
-                     "src/unit_test_vendors.h",
-                     "src/unit_test_candid.h",
-                     "src/unit_test_ic_api.h",
-                     "src/vendors/nlohmann/json.hpp"]
+cpp_paths         = ["src/*.cpp"]
+cpp_header_paths  = ["src/*.h",
+                     "src/vendors/nlohmann/*.hpp"]
 cpp_compile_flags = ["-D JSON_HAS_FILESYSTEM=0"]
 cpp_link_flags    = []
 c_paths           = []

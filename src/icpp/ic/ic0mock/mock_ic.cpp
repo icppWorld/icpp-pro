@@ -87,6 +87,21 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
   }
 }
 
+int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
+                     const std::string &candid_in,
+                     const std::string &candid_out_expected,
+                     const bool silent_on_trap, const std::string &caller,
+                     std::string *candid_out) {
+
+  int result = run_test(test_name, api_callback, candid_in, candid_out_expected,
+                        silent_on_trap, caller);
+  if (candid_out) {
+    *candid_out = m_B_out.as_hex_string();
+  }
+
+  return result;
+}
+
 int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
                           const std::string &candid_in,
                           const bool silent_on_trap,

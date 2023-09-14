@@ -1,6 +1,9 @@
 # Nested icpp-xxx repos
 icpp-candid
 
+# canister endpoint javascript bindings
+declarations
+
 # Misc
 x
 y

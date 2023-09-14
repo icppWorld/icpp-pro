@@ -11,9 +11,13 @@ from icpp.__main__ import app
 
 from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
+from icpp.run_dfx_cmd import run_dfx_cmd
 
 from icpp.decorators import requires_wasi_sdk
-from icpp.options_build import to_compile_callback, option_to_compile_values_string
+from icpp.options_build import (
+    to_compile_callback,
+    option_to_compile_values_string,
+)
 
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
@@ -127,7 +131,10 @@ def build_wasm(
                         "Compiling C++ files of the IC_API using multi-threading:"
                     )
                     with concurrent.futures.ThreadPoolExecutor() as executor:
-                        executor.map(cpp_compile_file, config_default.IC_CPP_FILES_LIST)
+                        executor.map(
+                            cpp_compile_file,
+                            config_default.IC_CPP_FILES_LIST,
+                        )
                 else:
                     cmd = (
                         f"{config_default.WASM_CPP} "
@@ -199,7 +206,6 @@ def build_wasm(
     shutil.copy(did_path, build_path)
 
     # ----------------------------------------------------------------------
-    # All done
     typer.echo("--")
     typer.echo("All done building the canister Wasm module:")
     typer.echo(f"{build_path.resolve()}/{icpp_toml.build_wasm['canister']}.wasm")
@@ -207,4 +213,16 @@ def build_wasm(
         typer.echo("✔️")
     except UnicodeEncodeError:
         typer.echo(" ")
+
+    # ----------------------------------------------------------------------
+    typer.echo("--")
+    typer.echo("Generating Javascript bindings from your .did file:")
+    declarations_path = icpp_toml.icpp_toml_path.parent / "src/declarations"
+    typer.echo(f"{declarations_path.resolve()}/{icpp_toml.build_wasm['canister']}")
+    run_dfx_cmd("generate")
+    try:
+        typer.echo("✔️")
+    except UnicodeEncodeError:
+        typer.echo(" ")
+
     typer.echo("--")

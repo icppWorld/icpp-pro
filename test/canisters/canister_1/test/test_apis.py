@@ -742,7 +742,7 @@ def test__roundtrip_record(network: str, principal: str) -> None:
         canister_argument='(record {"name" = "C++ Developer"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})',
         network=network,
     )
-    expected_response = '(record { secret float64 = 0.01 : float64; greeting = "Hello C++ Developer!"; secret int = 11 : int; message = "Your secret numbers are:";})'
+    expected_response = '(record { "secret float64" = 0.01 : float64; greeting = "Hello C++ Developer!"; "secret int" = 11 : int; message = "Your secret numbers are:";})'
     assert response == expected_response
 
 

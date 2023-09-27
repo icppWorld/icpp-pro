@@ -17,6 +17,8 @@ from icpp.decorators import requires_wasi_sdk
 from icpp.options_build import (
     to_compile_callback,
     option_to_compile_values_string,
+    generate_bindings_callback,
+    option_generate_bindings_values_string,
 )
 
 # options are: "none", "multi-threading"
@@ -32,7 +34,17 @@ def build_wasm(
             help=f"Files to compile {option_to_compile_values_string}.",
             callback=to_compile_callback,
         ),
-    ] = "all"
+    ] = "all",
+    generate_bindings: Annotated[
+        str,
+        typer.Option(
+            help=(
+                f"Generate Javascript bindings "
+                f"{option_generate_bindings_values_string}."
+            ),
+            callback=generate_bindings_callback,
+        ),
+    ] = "yes",
 ) -> None:
     """Builds the wasm for a canister, using the wasi-sdk compiler.
 
@@ -216,13 +228,17 @@ def build_wasm(
 
     # ----------------------------------------------------------------------
     typer.echo("--")
-    typer.echo("Generating Javascript bindings from your .did file:")
-    declarations_path = icpp_toml.icpp_toml_path.parent / "src/declarations"
-    typer.echo(f"{declarations_path.resolve()}/{icpp_toml.build_wasm['canister']}")
-    run_dfx_cmd("generate")
-    try:
-        typer.echo("✔️")
-    except UnicodeEncodeError:
-        typer.echo(" ")
+    if generate_bindings.lower() == "no":
+        typer.echo("Skipping generation of Javascript bindings from your .did file.")
+    else:
+        typer.echo("Generating Javascript bindings from your .did file:")
+        declarations_path = icpp_toml.icpp_toml_path.parent / "src/declarations"
+        typer.echo(f"{declarations_path.resolve()}/{icpp_toml.build_wasm['canister']}")
+        run_dfx_cmd("generate")
+        try:
+            typer.echo("✔️")
+        except UnicodeEncodeError:
+            typer.echo(" ")
 
+    # ----------------------------------------------------------------------
     typer.echo("--")

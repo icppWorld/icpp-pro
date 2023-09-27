@@ -1,4 +1,5 @@
 """Handles 'icpp build-native' """
+# pylint: disable=too-many-statements
 import sys
 import subprocess
 import shutil
@@ -9,9 +10,15 @@ from typing_extensions import Annotated
 from icpp.__main__ import app
 from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
+from icpp.run_dfx_cmd import run_dfx_cmd
 
 from icpp.decorators import requires_native_compiler, requires_pro
-from icpp.options_build import to_compile_callback, option_to_compile_values_string
+from icpp.options_build import (
+    to_compile_callback,
+    option_to_compile_values_string,
+    generate_bindings_callback,
+    option_generate_bindings_values_string,
+)
 
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
@@ -28,6 +35,16 @@ def build_native(
             callback=to_compile_callback,
         ),
     ] = "all",
+    generate_bindings: Annotated[
+        str,
+        typer.Option(
+            help=(
+                f"Generate Javascript bindings "
+                f"{option_generate_bindings_values_string}."
+            ),
+            callback=generate_bindings_callback,
+        ),
+    ] = "yes",
 ) -> None:
     """Builds a native debug executable with your systems' Clang compiler.
 
@@ -139,7 +156,8 @@ def build_native(
                     )
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         executor.map(
-                            cpp_compile_file, config_default.MOCKIC_CPP_FILES_LIST
+                            cpp_compile_file,
+                            config_default.MOCKIC_CPP_FILES_LIST,
                         )
                 else:
                     cmd = (
@@ -162,7 +180,10 @@ def build_native(
                         "Compiling C++ files of the Mock IC using multi-threading:"
                     )
                     with concurrent.futures.ThreadPoolExecutor() as executor:
-                        executor.map(c_compile_file, config_default.MOCKIC_C_FILES_LIST)
+                        executor.map(
+                            c_compile_file,
+                            config_default.MOCKIC_C_FILES_LIST,
+                        )
                 else:
                     cmd = (
                         f"{config_default.NATIVE_C} "
@@ -209,4 +230,20 @@ def build_native(
     except UnicodeEncodeError:
         typer.echo("(-)You can run it from the command line")
         typer.echo("(-)You can debug it with VS Code + CodeLLDB")
+
+    # ----------------------------------------------------------------------
+    typer.echo("--")
+    if generate_bindings.lower() == "no":
+        typer.echo("Skipping generation of Javascript bindings from your .did file.")
+    else:
+        typer.echo("Generating Javascript bindings from your .did file:")
+        declarations_path = icpp_toml.icpp_toml_path.parent / "src/declarations"
+        typer.echo(f"{declarations_path.resolve()}/{icpp_toml.build_wasm['canister']}")
+        run_dfx_cmd("generate")
+        try:
+            typer.echo("✔️")
+        except UnicodeEncodeError:
+            typer.echo(" ")
+
+    # ----------------------------------------------------------------------
     typer.echo("--")

@@ -96,7 +96,7 @@ def test__greet_3(network: str) -> None:
         canister_argument='(record { "icpp version" = 1 : int; OS = "Linux" : text })',
         network=network,
     )
-    expected_response = '(record { icpp Release Details = "Version = 1 & Operating System = Linux"; release year = 2_023 : int;})'
+    expected_response = '(record { "icpp Release Details" = "Version = 1 & Operating System = Linux"; "release year" = 2_023 : int;})'
     assert response == expected_response
 
 

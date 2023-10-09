@@ -58,7 +58,9 @@ def read_build_wasm_table(d_in: dict[Any, Any]) -> dict[Any, Any]:
     """Reads and processes the '[build-wasm]' table."""
     d = {}
     d["canister"] = d_in.get("canister", "default")
-    d["did_path"] = icpp_toml_path.parent / Path(d_in.get("did_path", "")).resolve()
+    d["did_path"] = (
+        icpp_toml_path.parent / Path(d_in.get("did_path", "")).resolve()
+    )
     d["did_file"] = str(d["did_path"]) + " "
 
     icpp_toml_path_dir = icpp_toml_path.parent.resolve()
@@ -72,6 +74,9 @@ def read_build_wasm_table(d_in: dict[Any, Any]) -> dict[Any, Any]:
 def read_build_native_table(d_in: dict[Any, Any]) -> dict[Any, Any]:
     """Reads and processes the '[build-native]' table."""
     d: dict[Any, Any] = {}
+    icpp_toml_path_dir = icpp_toml_path.parent.resolve()
+    d["cpp_include_dirs"] = [icpp_toml_path_dir / "native"]
+    d["c_include_dirs"] = [icpp_toml_path_dir, icpp_toml_path_dir / "native"]
     read_build_table_common(d, d_in)
     return d
 
@@ -89,7 +94,9 @@ def read_build_table_common(d: dict[Any, Any], d_in: dict[Any, Any]) -> None:
 
     d["cpp_paths"] = expand_paths(d_in.get("cpp_paths", []))
     if "cpp_include_dirs" in d.keys():
-        d["cpp_include_dirs"].extend(expand_paths(d_in.get("cpp_include_dirs", [])))
+        d["cpp_include_dirs"].extend(
+            expand_paths(d_in.get("cpp_include_dirs", []))
+        )
     else:
         d["cpp_include_dirs"] = d_in.get("cpp_include_dirs", [])
     d["cpp_header_paths"] = expand_paths(d_in.get("cpp_header_paths", []))
@@ -98,7 +105,9 @@ def read_build_table_common(d: dict[Any, Any], d_in: dict[Any, Any]) -> None:
 
     d["c_paths"] = expand_paths(d_in.get("c_paths", []))
     if "c_include_dirs" in d.keys():
-        d["c_include_dirs"].extend(expand_paths(d_in.get("c_include_dirs", [])))
+        d["c_include_dirs"].extend(
+            expand_paths(d_in.get("c_include_dirs", []))
+        )
     else:
         d["c_include_dirs"] = expand_paths(d_in.get("c_include_dirs", []))
 
@@ -119,15 +128,23 @@ def read_build_table_common(d: dict[Any, Any], d_in: dict[Any, Any]) -> None:
     d["cpp_include_flags"] = (
         " ".join(["-I " + str(path) for path in d["cpp_include_dirs"]]) + " "
     )
-    d["cpp_header_files"] = " ".join([str(x) for x in d["cpp_header_paths"]]) + " "
-    d["cpp_compile_flags_s"] = " ".join([str(x) for x in d["cpp_compile_flags"]]) + " "
+    d["cpp_header_files"] = (
+        " ".join([str(x) for x in d["cpp_header_paths"]]) + " "
+    )
+    d["cpp_compile_flags_s"] = (
+        " ".join([str(x) for x in d["cpp_compile_flags"]]) + " "
+    )
 
     d["c_files"] = " ".join([str(x) for x in d["c_paths"]]) + " "
     d["c_include_flags"] = (
         " ".join(["-I " + str(path) for path in d["c_include_dirs"]]) + " "
     )
-    d["c_header_files"] = " ".join([str(x) for x in d["c_header_paths"]]) + " "
-    d["c_compile_flags_s"] = " ".join([str(x) for x in d["c_compile_flags"]]) + " "
+    d["c_header_files"] = (
+        " ".join([str(x) for x in d["c_header_paths"]]) + " "
+    )
+    d["c_compile_flags_s"] = (
+        " ".join([str(x) for x in d["c_compile_flags"]]) + " "
+    )
 
 
 #
@@ -138,5 +155,9 @@ with open(icpp_toml_path, "rb") as f:
     data = tomllib.load(f)
 
 validate(data)
-build_wasm: dict[Any, Any] = read_build_wasm_table(data.get("build-wasm", {}))
-build_native: dict[Any, Any] = read_build_native_table(data.get("build-native", {}))
+build_wasm: dict[Any, Any] = read_build_wasm_table(
+    data.get("build-wasm", {})
+)
+build_native: dict[Any, Any] = read_build_native_table(
+    data.get("build-native", {})
+)

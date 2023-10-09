@@ -186,7 +186,7 @@ setup(
         "icpp": [
             "canisters/greet/native/*",
             "canisters/greet/src/*",
-            "canisters/greet/src/nlohmann/json/json.hpp",
+            "canisters/greet/src/vendors/nlohmann/json/json.hpp",
             "canisters/greet/test/*",
             "canisters/greet/dfx.json",
             "canisters/greet/icpp.toml",

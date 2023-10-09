@@ -13,7 +13,7 @@
 #include "unit_test_ic_api.h"
 #include "unit_test_vendors.h"
 
-#include "vendors/nlohmann/json/json.hpp"
+#include <json/json.hpp>
 
 //----------------------------------------------------------------------------------
 // Run all unit tests for vendor libraries

@@ -9,7 +9,7 @@
 
 from pathlib import Path
 import pytest
-from icpp.smoketest import call_canister_api
+from icpp.smoketest import call_canister_api, dict_to_candid_text
 
 # Path to the dfx.json file
 DFX_JSON_PATH = Path(__file__).parent / "../dfx.json"
@@ -111,4 +111,18 @@ def test__greet_4(network: str) -> None:
     expected_response = (
         '("Hello!", "Your secret numbers are:", 42 : int, 43 : int, 44 : int, 45 : int)'
     )
+    assert response == expected_response
+
+
+def test__greet_json(network: str, principal: str) -> None:
+    d = {"name": "AJB"}
+    text_in = dict_to_candid_text(d)
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="greet_json",
+        canister_argument=text_in,
+        network=network,
+    )
+    expected_response = '("{\\"greet\\":\\"Hello AJB!\\"}")'
     assert response == expected_response

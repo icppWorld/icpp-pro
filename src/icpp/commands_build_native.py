@@ -71,7 +71,7 @@ def build_native(
 
     def cpp_compile_file(file: str) -> None:
         cmd = (
-            f"{config_default.NATIVE_CPP} "
+            f"{config_default.NATIVE_CPP} {cpp_include_flags} "
             f"{config_default.NATIVE_CPPFLAGS} {cpp_compile_flags_s} "
             f"-c {file}"
         )
@@ -80,7 +80,7 @@ def build_native(
 
     def c_compile_file(file: str) -> None:
         cmd = (
-            f"{config_default.NATIVE_C} "
+            f"{config_default.NATIVE_C} {c_include_flags} "
             f"{config_default.NATIVE_CFLAGS} {c_compile_flags_s} "
             f"-c {file}"
         )
@@ -99,6 +99,10 @@ def build_native(
             icpp_toml.build_native["cpp_files_list"]
             + icpp_toml.build_wasm["cpp_files_list"]
         )
+        cpp_include_flags = (
+            icpp_toml.build_native["cpp_include_flags"]
+            + icpp_toml.build_wasm["cpp_include_flags"]
+        )
         cpp_compile_flags_s = icpp_toml.build_native["cpp_compile_flags_s"]
 
         if len(cpp_files.strip()) > 0:
@@ -109,7 +113,7 @@ def build_native(
                     executor.map(cpp_compile_file, cpp_files_list)
             else:
                 cmd = (
-                    f"{config_default.NATIVE_CPP} "
+                    f"{config_default.NATIVE_CPP} {cpp_include_flags} "
                     f"{config_default.NATIVE_CPPFLAGS} {cpp_compile_flags_s} "
                     f"-c {cpp_files}"
                 )
@@ -126,6 +130,10 @@ def build_native(
             icpp_toml.build_native["c_files_list"]
             + icpp_toml.build_wasm["c_files_list"]
         )
+        c_include_flags = (
+            icpp_toml.build_native["c_include_flags"]
+            + icpp_toml.build_wasm["c_include_flags"]
+        )
         c_compile_flags_s = icpp_toml.build_native["c_compile_flags_s"]
         if len(c_files.strip()) > 0:
             if CONCURRENCY == "multi-threading":
@@ -135,7 +143,7 @@ def build_native(
                     executor.map(c_compile_file, c_files_list)
             else:
                 cmd = (
-                    f"{config_default.NATIVE_C} "
+                    f"{config_default.NATIVE_C} {c_include_flags} "
                     f"{config_default.NATIVE_CFLAGS} {c_compile_flags_s} "
                     f"-c {c_files}"
                 )

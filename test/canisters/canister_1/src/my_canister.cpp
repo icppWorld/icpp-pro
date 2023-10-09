@@ -435,6 +435,27 @@ void roundtrip_vec_nat16() {
   ic_api.to_wire(CandidTypeVecNat16{in});
 }
 
+// void roundtrip_vec_record() {
+//   // This type used for headers in the http_request of the IC
+//   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+//   std::vector<std::string> in_name;
+//   std::vector<std::string> in_value;
+
+//   // REWRITE THIS TO USE A RECORD OF VECS...
+//   CandidTypeRecord record_in;
+//   vecs_in.append(CandidTypeVecText{&in_name});
+//   vecs_in.append(CandidTypeVecText{&in_value});
+
+//   ic_api.from_wire(CandidTypeVecRecord{&vecs_in});
+//   // if (in != std::vector<uint16_t>{101, 102, 103})
+//   //   IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+
+//   CandidArgs vecs_out;
+//   vecs_out.append(CandidTypeVecText{in_name});
+//   vecs_out.append(CandidTypeVecText{in_value});
+//   ic_api.to_wire(CandidTypeVecRecord{vecs_out});
+// }
+
 void roundtrip_vec_all() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
@@ -802,6 +823,60 @@ void roundtrip_record() {
   r_out.append("message", CandidTypeText{message});
   r_out.append("secret float64", CandidTypeFloat64{secret_x});
   r_out.append("secret int", CandidTypeInt{secret_i});
+  ic_api.to_wire(r_out);
+}
+
+// We need to support this for http_request
+// '(record { headers = vec { record {name = "H1N" : text; value = "H1V"}; record {name = "H2N" : text; value = "H2V"}; } } )'
+// We can simply flip the data storage inside out:
+//   vector for "names"
+//   vector for "values"
+void roundtrip_record_vec_record() { // TODO
+}
+
+void roundtrip_record_vec_text() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  // '(record {"names" = vec { "H1N" : text; "H2N" : text}; "values" = vec { "H1V" : text; "H2V" : text};})'
+
+  std::vector<std::string> names;
+  std::vector<std::string> values;
+
+  // CandidTypeRecord r_in;
+  // r_in.append("names", CandidTypeVecText{&names});
+  // r_in.append("values", CandidTypeVecText{&values});
+  // ic_api.from_wire(r_in);
+
+  // // ---------------------------------------------------------------------------
+  // // Verify the data
+  // if (names.size() == 0)
+  //   IC_API::trap("ASSERT ERROR no 'names' found - " + std::string(__func__));
+  // if (names.size() != values.size())
+  //   IC_API::trap(
+  //       "ASSERT ERROR different size found for 'names' & 'values' vectors - " +
+  //       std::string(__func__));
+  // if (names[0] != "H1N")
+  //   IC_API::trap("ASSERT ERROR names[0] - " + std::string(__func__));
+  // if (names[1] != "H2N")
+  //   IC_API::trap("ASSERT ERROR names[1] - " + std::string(__func__));
+  // if (values[0] != "H1V")
+  //   IC_API::trap("ASSERT ERROR values[0] - " + std::string(__func__));
+  // if (values[1] != "H2V")
+  //   IC_API::trap("ASSERT ERROR values[1] - " + std::string(__func__));
+  // // ---------------------------------------------------------------------------
+
+  // PATCH
+  names.push_back("H1N");
+  names.push_back("H2N");
+  values.push_back("H1V");
+  values.push_back("H2V");
+  // END PATCH
+
+  CandidTypeRecord r_out;
+  r_out.append("names", CandidTypeVecText{names});
+  r_out.append("values", CandidTypeVecText{values});
   ic_api.to_wire(r_out);
 }
 

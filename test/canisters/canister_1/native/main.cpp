@@ -22,6 +22,27 @@ int main() {
 
   bool silent_on_trap = true;
 
+  // PATCH START -- TO DEBUG TYPE TABLE OF VEC... DELETE WHEN DONE
+  // '(vec { 101 : nat16; 102 : nat16; 103 : nat16 })' -> '(vec { 101 : nat16; 102 : nat16; 103 : nat16 })'
+  // mockIC.run_test("roundtrip_vec_nat16", roundtrip_vec_nat16,
+  //                 "4449444c016d7a010003650066006700",
+  //                 "4449444c016d7a010003650066006700", silent_on_trap,
+  //                 my_principal);
+
+  // PATCH END -- TO DEBUG TYPE TABLE OF VEC...
+
+  // PATCH START -- MOVE TO RIGHT PLACE BELOW
+  // '(record {"names" = vec { "H1N" : text; "H2N" : text}; "values" = vec { "H1V" : text; "H2V" : text};})'
+  // '(record {835_838_106 = ...})'
+  // -> same
+  // mockIC.run_test(
+  //     "roundtrip_record_vec_text", roundtrip_record_vec_text,
+  //     "4449444c026c02e287dcfd0401c89f92b409016d710100020348315603483256020348314e0348324e",
+  //     "4449444c026c02e287dcfd0401c89f92b409016d710100020348315603483256020348314e0348324e",
+  //     silent_on_trap, my_principal);
+
+  // PATCH END
+
   //----------------------------------------------------------------------------------
   // Run all unit tests for vendor libraries
 

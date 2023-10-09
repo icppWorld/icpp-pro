@@ -3,6 +3,7 @@
 // setting breakpoints in our IDE.
 
 #include "candid_assert.h"
+#include "candid_serialize_type_table_registry.h"
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
 #include "global.h"
@@ -48,6 +49,8 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
   std::cout << "\n----------\n";
   std::cout << "MockIC run_test: " << test_name << ": \n";
 
+  // Always start with a clean type table registry in the registry singleton
+  CandidSerializeTypeTableRegistry::get_instance().clear();
   m_B_in.clear();
   m_B_out.clear();
   m_B_in.store_hex_string(candid_in);

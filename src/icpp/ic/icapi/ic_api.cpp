@@ -9,6 +9,7 @@
 #include "ic_api.h"
 #include "candid_deserialize.h"
 #include "candid_serialize.h"
+#include "candid_serialize_type_table_registry.h"
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
 
@@ -26,6 +27,8 @@ IC_API::IC_API(const bool &debug_print)
 
 IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
     : m_canister_entry(canister_entry), m_debug_print(dbug) {
+  // Always start with a clean type table registry in the registry singleton
+  CandidSerializeTypeTableRegistry::get_instance().clear();
   // Fill 'm_B_in' with the bytes of msg_arg_data
   std::vector<uint8_t> bytes(ic0_msg_arg_data_size());
   ic0_msg_arg_data_copy(reinterpret_cast<uintptr_t>(bytes.data()), 0,
@@ -85,6 +88,9 @@ void IC_API::from_wire(CandidArgs A) {
   m_called_from_wire = true;
 
   CandidDeserialize(m_B_in, A);
+
+  // Reset the type table registry singleton
+  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 // DeSerialize the byte stream received over the wire
 void IC_API::from_wire(CandidType c) {
@@ -215,6 +221,9 @@ void IC_API::to_wire(const CandidArgs &args_out) {
     // Send it out over the wire
     msg_reply();
   }
+
+  // Reset the type table registry singleton
+  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // Appends the content of m_B_out, replies over the wire, re-sets the didl vectors

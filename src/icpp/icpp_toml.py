@@ -17,6 +17,17 @@ else:
         typer.echo("ERROR: cannot find python module tomli")
         sys.exit(1)
 
+# Look for `icpp.toml`in the current folder
+icpp_toml_path = Path("icpp.toml")
+if not icpp_toml_path.exists():
+    typer.echo(
+        f"ERROR: There is no `icpp.toml` file in the current working directory: \n"
+        f"        {icpp_toml_path.parent.resolve()} \n"
+        f"       Maybe you're in the wrong folder, \n"
+        f"       or else can you please create one, so I know what to build?"
+    )
+    sys.exit(1)
+
 
 def validate(d_in: dict[Any, Any]) -> None:
     """Validates if required fields are present"""
@@ -49,7 +60,12 @@ def read_build_wasm_table(d_in: dict[Any, Any]) -> dict[Any, Any]:
     d["canister"] = d_in.get("canister", "default")
     d["did_path"] = icpp_toml_path.parent / Path(d_in.get("did_path", "")).resolve()
     d["did_file"] = str(d["did_path"]) + " "
+
+    icpp_toml_path_dir = icpp_toml_path.parent.resolve()
+    d["cpp_include_dirs"] = [icpp_toml_path_dir, icpp_toml_path_dir / "src"]
+    d["c_include_dirs"] = [icpp_toml_path_dir, icpp_toml_path_dir / "src"]
     read_build_table_common(d, d_in)
+
     return d
 
 
@@ -72,11 +88,20 @@ def read_build_table_common(d: dict[Any, Any], d_in: dict[Any, Any]) -> None:
         return list(paths)
 
     d["cpp_paths"] = expand_paths(d_in.get("cpp_paths", []))
+    if "cpp_include_dirs" in d.keys():
+        d["cpp_include_dirs"].extend(expand_paths(d_in.get("cpp_include_dirs", [])))
+    else:
+        d["cpp_include_dirs"] = d_in.get("cpp_include_dirs", [])
     d["cpp_header_paths"] = expand_paths(d_in.get("cpp_header_paths", []))
     d["cpp_compile_flags"] = d_in.get("cpp_compile_flags", [])
     d["cpp_link_flags"] = d_in.get("cpp_link_flags", [])
 
     d["c_paths"] = expand_paths(d_in.get("c_paths", []))
+    if "c_include_dirs" in d.keys():
+        d["c_include_dirs"].extend(expand_paths(d_in.get("c_include_dirs", [])))
+    else:
+        d["c_include_dirs"] = expand_paths(d_in.get("c_include_dirs", []))
+
     d["c_header_paths"] = expand_paths(d_in.get("c_header_paths", []))
     d["c_compile_flags"] = d_in.get("c_compile_flags", [])
 
@@ -91,10 +116,16 @@ def read_build_table_common(d: dict[Any, Any], d_in: dict[Any, Any]) -> None:
     # all in one compiler uses a long string of strings, not a list
     #
     d["cpp_files"] = " ".join([str(x) for x in d["cpp_paths"]]) + " "
+    d["cpp_include_flags"] = (
+        " ".join(["-I " + str(path) for path in d["cpp_include_dirs"]]) + " "
+    )
     d["cpp_header_files"] = " ".join([str(x) for x in d["cpp_header_paths"]]) + " "
     d["cpp_compile_flags_s"] = " ".join([str(x) for x in d["cpp_compile_flags"]]) + " "
 
     d["c_files"] = " ".join([str(x) for x in d["c_paths"]]) + " "
+    d["c_include_flags"] = (
+        " ".join(["-I " + str(path) for path in d["c_include_dirs"]]) + " "
+    )
     d["c_header_files"] = " ".join([str(x) for x in d["c_header_paths"]]) + " "
     d["c_compile_flags_s"] = " ".join([str(x) for x in d["c_compile_flags"]]) + " "
 
@@ -102,16 +133,6 @@ def read_build_table_common(d: dict[Any, Any], d_in: dict[Any, Any]) -> None:
 #
 # Read the top level icpp.toml
 #
-# Look for `icpp.toml`in the current folder
-icpp_toml_path = Path("icpp.toml")
-if not icpp_toml_path.exists():
-    typer.echo(
-        f"ERROR: There is no `icpp.toml` file in the current working directory: \n"
-        f"        {icpp_toml_path.parent.resolve()} \n"
-        f"       Maybe you're in the wrong folder, \n"
-        f"       or else can you please create one, so I know what to build?"
-    )
-    sys.exit(1)
 
 with open(icpp_toml_path, "rb") as f:
     data = tomllib.load(f)

@@ -72,6 +72,9 @@ def read_build_wasm_table(d_in: dict[Any, Any]) -> dict[Any, Any]:
 def read_build_native_table(d_in: dict[Any, Any]) -> dict[Any, Any]:
     """Reads and processes the '[build-native]' table."""
     d: dict[Any, Any] = {}
+    icpp_toml_path_dir = icpp_toml_path.parent.resolve()
+    d["cpp_include_dirs"] = [icpp_toml_path_dir / "native"]
+    d["c_include_dirs"] = [icpp_toml_path_dir, icpp_toml_path_dir / "native"]
     read_build_table_common(d, d_in)
     return d
 

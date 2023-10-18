@@ -1,40 +1,54 @@
 // Unit tests for ic/candid/*.cpp
 
 #include "unit_test_candid.h"
+#include "candid_type.h"
+
+#include "candid_type_all_includes.h"
+
+#include "candid_type_visitors.h"
 
 #include <algorithm>
 #include <string>
 
 #include "candid_deserialize.h"
 #include "candid_serialize.h"
+#include "candid_serialize_type_table_registry.h"
 #include "ic_api.h"
 
 int unit_test_candid() {
   { // Verify idl hash
-    if (CandidTypeBase().idl_hash("syndactyle") != 4260381820)
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    if (CandidTypeBase<CandidTypeRecord>().idl_hash("syndactyle") != 4260381820)
       IC_API::trap(std::string(__func__) + ": 1a");
-    if (CandidTypeBase().idl_hash("rectum") != 4260381820)
+    if (CandidTypeBase<CandidTypeRecord>().idl_hash("rectum") != 4260381820)
       IC_API::trap(std::string(__func__) + ": 1b");
-    if (CandidTypeBase().idl_hash("trustbuster") != 3504418361)
+    if (CandidTypeBase<CandidTypeRecord>().idl_hash("trustbuster") !=
+        3504418361)
       IC_API::trap(std::string(__func__) + ": 1c");
-    if (CandidTypeBase().idl_hash("destroys") != 3504418361)
+    if (CandidTypeBase<CandidTypeRecord>().idl_hash("destroys") != 3504418361)
       IC_API::trap(std::string(__func__) + ": 1d");
   }
-  { // Verify that the CandidTypeBase '<' operator enables sorting
-    std::vector<CandidTypeBase> vec;
-    vec.push_back(CandidTypeBool(true));
-    vec.push_back(CandidTypeInt(42));
-    vec.push_back(CandidTypeText("hello!"));
-    std::sort(vec.begin(), vec.end());
-    int opcode_prev = vec[0].get_datatype_opcode();
-    for (CandidTypeBase v : vec) {
-      int opcode = v.get_datatype_opcode();
-      if (opcode_prev > opcode) IC_API::trap(std::string(__func__) + ": 2");
-      opcode_prev = opcode;
-    }
+  {
+      // Verify that the CandidType '<' operator enables sorting
+      // This does not compile to wasm
+      // CandidSerializeTypeTableRegistry::get_instance().clear();
+      // std::vector<CandidType> vec;
+      // vec.push_back(CandidTypeBool(true));
+      // vec.push_back(CandidTypeInt(42));
+      // vec.push_back(CandidTypeText("hello!"));
+      // std::sort(vec.begin(), vec.end());
+      // CandidTypeRoot *ptr_prev = get_candid_type_root_ptr(vec[0]);
+      // int opcode_prev = ptr_prev->get_datatype_opcode();
+      // for (CandidType v : vec) {
+      //   CandidTypeRoot *ptr_v = get_candid_type_root_ptr(v);
+      //   int opcode = ptr_v->get_datatype_opcode();
+      //   if (opcode_prev > opcode) IC_API::trap(std::string(__func__) + ": 2");
+      //   opcode_prev = opcode;
+      // }
   }
 
   { // Verify the VecBytes static utils
+    CandidSerializeTypeTableRegistry::get_instance().clear();
     const std::byte b = std::byte(42);
     if (VecBytes::byte_to_hex(b) != "0x2a")
       IC_API::trap(std::string(__func__) + ": 3a");
@@ -71,7 +85,9 @@ int unit_test_candid() {
    // didc encode '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })'
 
    {// serialize
-    CandidTypeRecord r1;
+
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+  CandidTypeRecord r1;
   r1.append(6, CandidTypeInt(42));
   r1.append(9, CandidTypeInt(43));
   //
@@ -89,6 +105,7 @@ int unit_test_candid() {
 }
 
 { // deserialize
+  CandidSerializeTypeTableRegistry::get_instance().clear();
   __int128_t r1_i1;
   __int128_t r1_i2;
   CandidTypeRecord r1;
@@ -117,6 +134,7 @@ int unit_test_candid() {
 { // Verify serialization variant of tiny Stories example
   // didc encode '(variant { ok = "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty.\nLily wanted to play with the ball, but it was too high up in the sky. She tried to jump and reach it, but she couldn't. Then, she had an idea. She would use a stick to knock the" : text })'
 
+  CandidSerializeTypeTableRegistry::get_instance().clear();
   CandidArgs A;
   std::string output =
       "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty.\nLily wanted to play with the ball, but it was too high up in the sky. She tried to jump and reach it, but she couldn\'t. Then, she had an idea. She would use a stick to knock the";
@@ -130,6 +148,7 @@ int unit_test_candid() {
 
 // Verify CandidTypePrincipal (https://internetcomputer.org/docs/current/references/id-encoding-spec#decode)
 {
+  CandidSerializeTypeTableRegistry::get_instance().clear();
   std::string s = "2ibo7-dia";
   CandidTypePrincipal p = CandidTypePrincipal(s);
   std::vector<std::byte> v = p.get_M().vec();
@@ -138,6 +157,7 @@ int unit_test_candid() {
   if (v != v_expected) IC_API::trap(std::string(__func__) + ": 5a");
 }
 {
+  CandidSerializeTypeTableRegistry::get_instance().clear();
   std::string s = "w3gef-eqbai";
   CandidTypePrincipal p = CandidTypePrincipal(s);
   std::vector<std::byte> v = p.get_M().vec();

@@ -14,6 +14,15 @@ type Result_2 =
         Ok: text;
         Err: text;
     };
+
+// https://internetcomputer.org/docs/current/references/ic-interface-spec/#ic-candid
+type http_header = record { name: text; value: text };
+type http_response = record {
+  status: nat;
+  headers: vec http_header;
+  body: blob;
+};
+
 service: {
     "roundtrip_deprecated_ic_api_constructor" : () -> () query;
     "roundtrip_no_arguments" : () -> () query;
@@ -60,6 +69,19 @@ service: {
     "roundtrip_principal" : (principal) -> (principal) query;
     "caller_is_anonymous" : () -> (bool) query;
     "roundtrip_vec_nat16" : (vec nat16) -> (vec nat16) query;
+    "roundtrip_vec_record" : (vec http_header) -> (vec http_header) query;
+    "roundtrip_record_vec_record" : (record {headers: vec http_header}) -> (record {headers: vec http_header}) query;
+    //http_request : (record {
+    //                            url : text;
+    //                            max_response_bytes: opt nat64;
+    //                            method : variant { get; head; post };
+    //                            headers: vec http_header;
+    //                            body : opt blob;
+    //                            transform : opt record {
+    //                            function : func (record {response : http_response; context : blob}) -> (http_response) query;
+    //                            context : blob
+    //                            };
+    //                        }) -> (http_response);
     "roundtrip_vec_all" : (vec bool, vec nat, vec nat8, vec nat16, vec nat32, vec nat64, vec int, vec int8, vec int16, vec int32, vec int64, vec float32, vec float64, vec text, vec principal) -> 
                           (vec bool, vec nat, vec nat8, vec nat16, vec nat32, vec nat64, vec int, vec int8, vec int16, vec int32, vec int64, vec float32, vec float64, vec text, vec principal) 
                           query;
@@ -73,6 +95,10 @@ service: {
     "roundtrip_record" : (record { name: text; "secret float64": float64; "secret int": int })  -> 
                          (record { greeting: text; message: text; "secret float64": float64; "secret int": int }) 
                          query;
+    "roundtrip_record_record_record" : (record { key1: record { key2: record { key3: text } } }) -> 
+                                       (record { key1: record { key2: record { key3: text } } }) 
+                                       query;
+    "roundtrip_record_vec_text" : (record { name: vec text; })  -> (record { name: vec text; }) query;
     "roundtrip_variant_ok" : (Result)  -> (Result) query;
     "roundtrip_variant_err" : (Result_2)  -> (Result_2) query;
     "roundtrip_variant" : (Result, Result, Result_1, Result_1, Result_2, Result_2)  -> 

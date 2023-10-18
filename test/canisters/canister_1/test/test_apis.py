@@ -742,7 +742,84 @@ def test__roundtrip_record(network: str, principal: str) -> None:
         canister_argument='(record {"name" = "C++ Developer"; "secret float64" = 0.01 : float64; "secret int" = 11 : int;})',
         network=network,
     )
+    # Windows & Linux behave slightly different with quotation. Just strip it out before assert
     expected_response = '(record { "secret float64" = 0.01 : float64; greeting = "Hello C++ Developer!"; "secret int" = 11 : int; message = "Your secret numbers are:";})'
+    assert response.replace('"', "") == expected_response.replace('"', "")
+
+
+def test__roundtrip_record_record_record_1(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_record_record",
+        canister_argument="4449444c036c01b2c39bb804016c01b3c39bb804026c01b4c39bb8047101000676616c756531",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_record_record_record_2(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_record_record",
+        canister_argument="4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_record_record_record_3(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_record_record",
+        canister_argument="4449444c046c006c01b4c39bb804716c01b3c39bb804016c01b2c39bb8040201030676616c756531",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_record_vec_text_1(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_vec_text",
+        canister_argument="4449444c026c02e287dcfd0401c89f92b409016d710100020348315603483256020348314e0348324e",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c026c02e287dcfd0401c89f92b409016d710100020348315603483256020348314e0348324e"
+    assert response == expected_response
+
+
+def test__roundtrip_record_vec_text_2(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_vec_text",
+        canister_argument="4449444c036c006d716c02e287dcfd0401c89f92b409010102020348315603483256020348314e0348324e",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c026c02e287dcfd0401c89f92b409016d710100020348315603483256020348314e0348324e"
     assert response == expected_response
 
 
@@ -774,7 +851,7 @@ def test__roundtrip_variant_err(network: str, principal: str) -> None:
     assert response == expected_response
 
 
-def test__roundtrip_variant(network: str, principal: str) -> None:
+def test__roundtrip_variant_1(network: str, principal: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
@@ -784,7 +861,35 @@ def test__roundtrip_variant(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"
+    expected_response = "4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"
+    assert response == expected_response
+
+
+def test__roundtrip_variant_2(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_variant",
+        canister_argument="4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"
+    assert response == expected_response
+
+
+def test__roundtrip_variant_3(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_variant",
+        canister_argument="4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"
     assert response == expected_response
 
 

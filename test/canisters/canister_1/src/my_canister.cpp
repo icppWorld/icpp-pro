@@ -435,6 +435,61 @@ void roundtrip_vec_nat16() {
   ic_api.to_wire(CandidTypeVecNat16{in});
 }
 
+void roundtrip_vec_record() {
+  // This type used for headers in the http_request of the IC
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  // vec { record {name = "H1N" : text; value = "H1V"}; record {name = "H2N" : text; value = "H2V"}; record {name = "H3N" : text; value = "H3V"}; }
+
+  // Define vectors to store the data from the vec-of-records
+  std::vector<std::string> names;
+  std::vector<std::string> values;
+
+  // Pass in a record-of-vecs using the correct keys, and icpp will know what to do ;-)
+  CandidTypeRecord r_in;
+  r_in.append("name", CandidTypeVecText{&names});
+  r_in.append("value", CandidTypeVecText{&values});
+  ic_api.from_wire(CandidTypeVecRecord{&r_in});
+
+  // ---------------------------------------------------------------------------
+  // Verify the data
+  if (names.size() == 0)
+    IC_API::trap("ASSERT ERROR no 'names' found - " + std::string(__func__));
+  if (names.size() != values.size())
+    IC_API::trap(
+        "ASSERT ERROR different size found for 'names' & 'values' vectors - " +
+        std::string(__func__));
+  if (names[0] != "H1N")
+    IC_API::trap("ASSERT ERROR names[0] - " + std::string(__func__));
+  if (names[1] != "H2N")
+    IC_API::trap("ASSERT ERROR names[1] - " + std::string(__func__));
+  if (names[2] != "H3N")
+    IC_API::trap("ASSERT ERROR names[2] - " + std::string(__func__));
+  if (values[0] != "H1V")
+    IC_API::trap("ASSERT ERROR values[0] - " + std::string(__func__));
+  if (values[1] != "H2V")
+    IC_API::trap("ASSERT ERROR values[1] - " + std::string(__func__));
+  if (values[2] != "H3V")
+    IC_API::trap("ASSERT ERROR values[2] - " + std::string(__func__));
+  // ---------------------------------------------------------------------------
+
+  // // PATCH
+  // names.push_back("H1N");
+  // names.push_back("H2N");
+  // names.push_back("H3N");
+  // values.push_back("H1V");
+  // values.push_back("H2V");
+  // values.push_back("H3V");
+  // // END PATCH
+
+  CandidTypeRecord r_out;
+  r_out.append("name", CandidTypeVecText{names});
+  r_out.append("value", CandidTypeVecText{values});
+  ic_api.to_wire(CandidTypeVecRecord{r_out});
+}
+
 void roundtrip_vec_all() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 
@@ -802,6 +857,93 @@ void roundtrip_record() {
   r_out.append("message", CandidTypeText{message});
   r_out.append("secret float64", CandidTypeFloat64{secret_x});
   r_out.append("secret int", CandidTypeInt{secret_i});
+  ic_api.to_wire(r_out);
+}
+
+// test for nested records, resulting in nested type tables
+void roundtrip_record_record_record() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  // '(record {"key1"        = record { "key2"        = record {"key3"         = "value1" : text;}}})'
+  // '(record {1_191_633_330 = record { 1_191_633_331 = record { 1_191_633_332 = "value1" };
+
+  std::string v;
+
+  // Order matters!
+  CandidTypeRecord r_in_3;
+  r_in_3.append("key3", CandidTypeText{&v});
+
+  CandidTypeRecord r_in_2;
+  r_in_2.append("key2", r_in_3);
+
+  CandidTypeRecord r_in_1;
+  r_in_1.append("key1", r_in_2);
+
+  ic_api.from_wire(r_in_1);
+
+  // ---------------------------------------------------------------------------
+  // Verify the data
+  if (v != "value1") IC_API::trap("ASSERT ERROR v - " + std::string(__func__));
+
+  // Order matters!
+  CandidTypeRecord r_out_3;
+  r_out_3.append("key3", CandidTypeText{v});
+
+  CandidTypeRecord r_out_2;
+  r_out_2.append("key2", r_out_3);
+
+  CandidTypeRecord r_out_1;
+  r_out_1.append("key1", r_out_2);
+
+  ic_api.to_wire(r_out_1);
+}
+
+// We need to support this for http_request
+// '(record { headers = vec { record {name = "H1N" : text; value = "H1V"}; record {name = "H2N" : text; value = "H2V"}; } } )'
+// We can simply flip the data storage inside out:
+//   vector for "names"
+//   vector for "values"
+void roundtrip_record_vec_record() { // TODO
+}
+
+void roundtrip_record_vec_text() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  // '(record {"names" = vec { "H1N" : text; "H2N" : text}; "values" = vec { "H1V" : text; "H2V" : text};})'
+
+  std::vector<std::string> names;
+  std::vector<std::string> values;
+
+  CandidTypeRecord r_in;
+  r_in.append("names", CandidTypeVecText{&names});
+  r_in.append("values", CandidTypeVecText{&values});
+  ic_api.from_wire(r_in);
+
+  // ---------------------------------------------------------------------------
+  // Verify the data
+  if (names.size() == 0)
+    IC_API::trap("ASSERT ERROR no 'names' found - " + std::string(__func__));
+  if (names.size() != values.size())
+    IC_API::trap(
+        "ASSERT ERROR different size found for 'names' & 'values' vectors - " +
+        std::string(__func__));
+  if (names[0] != "H1N")
+    IC_API::trap("ASSERT ERROR names[0] - " + std::string(__func__));
+  if (names[1] != "H2N")
+    IC_API::trap("ASSERT ERROR names[1] - " + std::string(__func__));
+  if (values[0] != "H1V")
+    IC_API::trap("ASSERT ERROR values[0] - " + std::string(__func__));
+  if (values[1] != "H2V")
+    IC_API::trap("ASSERT ERROR values[1] - " + std::string(__func__));
+  // ---------------------------------------------------------------------------
+
+  CandidTypeRecord r_out;
+  r_out.append("names", CandidTypeVecText{names});
+  r_out.append("values", CandidTypeVecText{values});
   ic_api.to_wire(r_out);
 }
 

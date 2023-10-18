@@ -22,26 +22,29 @@ int main() {
 
   bool silent_on_trap = true;
 
-  // PATCH START -- TO DEBUG TYPE TABLE OF VEC... DELETE WHEN DONE
+  // PATCH START -- TO DEBUG TYPE TABLE OF EXISTING TESTS... DELETE WHEN DONE
   // '(vec { 101 : nat16; 102 : nat16; 103 : nat16 })' -> '(vec { 101 : nat16; 102 : nat16; 103 : nat16 })'
   // mockIC.run_test("roundtrip_vec_nat16", roundtrip_vec_nat16,
   //                 "4449444c016d7a010003650066006700",
   //                 "4449444c016d7a010003650066006700", silent_on_trap,
   //                 my_principal);
 
-  // PATCH END -- TO DEBUG TYPE TABLE OF VEC...
+  // PATCH END -- TO DEBUG TYPE TABLE OF EXISTING TESTS...
 
-  // PATCH START -- MOVE TO RIGHT PLACE BELOW
-  // '(record {"names" = vec { "H1N" : text; "H2N" : text}; "values" = vec { "H1V" : text; "H2V" : text};})'
-  // '(record {835_838_106 = ...})'
+  // '(vec { record {name = "H1N" : text; value = "H1V"}; record {name = "H2N" : text; value = "H2V"}; record {name = "H3N" : text; value = "H3V"}; })'
   // -> same
-  // mockIC.run_test(
-  //     "roundtrip_record_vec_text", roundtrip_record_vec_text,
-  //     "4449444c026c02e287dcfd0401c89f92b409016d710100020348315603483256020348314e0348324e",
-  //     "4449444c026c02e287dcfd0401c89f92b409016d710100020348315603483256020348314e0348324e",
-  //     silent_on_trap, my_principal);
-
-  // PATCH END
+  // Use compact type table of didc
+  mockIC.run_test(
+      "roundtrip_vec_record", roundtrip_vec_record,
+      "4449444c026d016c02f1fee18d0371cbe4fdc70471010003034831560348314e034832560348324e034833560348334e",
+      "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e",
+      silent_on_trap, my_principal);
+  // Use larger type table of icpp
+  mockIC.run_test(
+      "roundtrip_vec_record", roundtrip_vec_record,
+      "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e",
+      "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e",
+      silent_on_trap, my_principal);
 
   //----------------------------------------------------------------------------------
   // Run all unit tests for vendor libraries
@@ -326,6 +329,44 @@ int main() {
       "4449444c016c04aaacf3df0472b9c3eef20571bfce83fe077cc7ebc4d0097101007b14ae47e17a843f1448656c6c6f20432b2b20446576656c6f706572210b18596f757220736563726574206e756d62657273206172653a",
       silent_on_trap, my_principal);
 
+  // '(record {"key1"        = record { "key2"        = record {"key3"         = "value1" : text;}}})'
+  // '(record {1_191_633_330 = record { 1_191_633_331 = record { 1_191_633_332 = "value1" };
+  // -> same
+  // Candid with only used type tables, as created by didc, with type tables (record1,2,3)
+  mockIC.run_test(
+      "roundtrip_record_record_record 1", roundtrip_record_record_record,
+      "4449444c036c01b2c39bb804016c01b3c39bb804026c01b4c39bb8047101000676616c756531",
+      "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531",
+      silent_on_trap, my_principal);
+  // Candid with only used type tables, as created by icpp, with type tables flipped (record3,2,1)
+  mockIC.run_test(
+      "roundtrip_record_record_record 2", roundtrip_record_record_record,
+      "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531",
+      "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531",
+      silent_on_trap, my_principal);
+  // candid_in contains unused type tables, as created by older version of icpp. Must work too.
+  mockIC.run_test(
+      "roundtrip_record_record_record 3", roundtrip_record_record_record,
+      "4449444c046c006c01b4c39bb804716c01b3c39bb804016c01b2c39bb8040201030676616c756531",
+      "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531",
+      silent_on_trap, my_principal);
+
+  // '(record {"names" = vec { "H1N" : text; "H2N" : text}; "values" = vec { "H1V" : text; "H2V" : text};})'
+  // '(record {835_838_106 = ...})'
+  // -> same
+  // Candid with only used type tables
+  mockIC.run_test(
+      "roundtrip_record_vec_text 1", roundtrip_record_vec_text,
+      "4449444c026c02e287dcfd0401c89f92b409016d710100020348315603483256020348314e0348324e",
+      "4449444c026c02e287dcfd0401c89f92b409016d710100020348315603483256020348314e0348324e",
+      silent_on_trap, my_principal);
+  // candid_in contains unused type table. Also need to be able to decode this.
+  mockIC.run_test(
+      "roundtrip_record_vec_text 2", roundtrip_record_vec_text,
+      "4449444c036c006d716c02e287dcfd0401c89f92b409010102020348315603483256020348314e0348324e",
+      "4449444c026c02e287dcfd0401c89f92b409016d710100020348315603483256020348314e0348324e",
+      silent_on_trap, my_principal);
+
   // Candid's Variant has two options for the Type Table
   // (1) only include the type table of the variant's value
   // (2) include the type table of all the variant's cases
@@ -365,15 +406,20 @@ int main() {
   )
   */
   mockIC.run_test(
-      "roundtrip_variant", roundtrip_variant,
-      "4449444c046b01bc8a017f6b01c5fed2017a6b01bc8a01716b01c5fed2017106000102010203000094010008416c6c20676f6f6400f4010008416c6c20676f6f6400054572726f72", // (1)
-      "4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72",
-      silent_on_trap, my_principal); // (2)
+      "roundtrip_variant 1", roundtrip_variant,
+      "4449444c046b01bc8a017f6b01c5fed2017a6b01bc8a01716b01c5fed2017106000102010203000094010008416c6c20676f6f6400f4010008416c6c20676f6f6400054572726f72",
+      "4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72",
+      silent_on_trap, my_principal);
   mockIC.run_test(
-      "roundtrip_variant", roundtrip_variant,
-      "4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72", // (1)
+      "roundtrip_variant 2", roundtrip_variant,
       "4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72",
-      silent_on_trap, my_principal); // (2)
+      "4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72",
+      silent_on_trap, my_principal);
+  mockIC.run_test(
+      "roundtrip_variant 3", roundtrip_variant,
+      "4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72",
+      "4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72",
+      silent_on_trap, my_principal);
 
   // ----------------------------------------------------------------------------------
   // Trap testing

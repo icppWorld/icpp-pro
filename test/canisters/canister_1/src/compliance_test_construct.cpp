@@ -1,6 +1,7 @@
 // https://github.com/dfinity/candid/blob/master/test/construct.test.did
 
 #include "compliance_test_construct.h"
+#include "candid_type.h"
 
 #include <string>
 

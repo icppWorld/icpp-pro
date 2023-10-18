@@ -76,6 +76,7 @@ all-static: \
 	python-format python-lint python-type
 	
 CPP_AND_H_FILES = $(shell ls \
+icpp-candid/src/icpp_candid/*/*.cpp icpp-candid/src/icpp_candid/*/*.h \
 src/icpp/ic/*/*.cpp src/icpp/ic/*/*.h \
 src/icpp/canisters/*/src/*.cpp src/icpp/canisters/*/src/*.h \
 src/icpp/canisters/*/native/*.cpp src/icpp/canisters/*/native/*.h \

@@ -475,15 +475,6 @@ void roundtrip_vec_record() {
     IC_API::trap("ASSERT ERROR values[2] - " + std::string(__func__));
   // ---------------------------------------------------------------------------
 
-  // // PATCH
-  // names.push_back("H1N");
-  // names.push_back("H2N");
-  // names.push_back("H3N");
-  // values.push_back("H1V");
-  // values.push_back("H2V");
-  // values.push_back("H3V");
-  // // END PATCH
-
   CandidTypeRecord r_out;
   r_out.append("name", CandidTypeVecText{names});
   r_out.append("value", CandidTypeVecText{values});
@@ -615,6 +606,19 @@ void roundtrip_opt_nat_no_value() {
   ic_api.to_wire(CandidTypeOptNat{in});
 }
 
+void roundtrip_opt_nat_nat() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  std::optional<__uint128_t> in1;
+  __uint128_t in2;
+  CandidArgs args_in;
+  args_in.append(CandidTypeOptNat{&in1});
+  args_in.append(CandidTypeNat{&in2});
+  ic_api.from_wire(args_in);
+  if (in2 != 102) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+
+  ic_api.to_wire(CandidTypeNat{in2});
+}
+
 void roundtrip_opt_nat16() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   std::optional<uint16_t> in;
@@ -632,6 +636,55 @@ void roundtrip_opt_nat16_no_value() {
   if (in.has_value()) IC_API::trap("ASSERT ERROR - " + std::string(__func__));
 
   ic_api.to_wire(CandidTypeOptNat16{in});
+}
+
+void roundtrip_opt_record() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  std::string s;
+  uint16_t n{0};
+
+  CandidTypeRecord r_in;
+  r_in.append("field1", CandidTypeText{&s});
+  r_in.append("field2", CandidTypeNat16{&n});
+
+  bool has_value{false};
+  CandidTypeOptRecord opt_r_in{&r_in, &has_value};
+  ic_api.from_wire(opt_r_in);
+
+  // --
+  if (!has_value || s != "hello" || n != 16) {
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  }
+
+  // --
+  CandidTypeRecord r_out;
+  r_out.append("field1", CandidTypeText{s});
+  r_out.append("field2", CandidTypeNat16{n});
+  ic_api.to_wire(CandidTypeOptRecord{r_out});
+}
+
+void roundtrip_opt_record_no_value() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  std::string s;
+  uint16_t n{0};
+
+  CandidTypeRecord r_in;
+  r_in.append("field1", CandidTypeText{&s});
+  r_in.append("field2", CandidTypeNat16{&n});
+
+  bool has_value{false};
+  CandidTypeOptRecord opt_r_in{&r_in, &has_value};
+  ic_api.from_wire(opt_r_in);
+
+  // --
+  if (has_value) {
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  }
+
+  // --
+  ic_api.to_wire();
 }
 
 void roundtrip_opt_all() {
@@ -860,6 +913,65 @@ void roundtrip_record() {
   ic_api.to_wire(r_out);
 }
 
+void roundtrip_record_opt() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  uint8_t test_version{0};
+
+  // Reverse order on purpose, to test sorting of field labels
+  std::optional<std::string> field3;
+  std::optional<uint16_t> field1;
+
+  CandidTypeRecord r_in;
+  r_in.append("field3", CandidTypeOptText{&field3});
+  r_in.append("field1", CandidTypeOptNat16{&field1});
+
+  CandidArgs args_in;
+  args_in.append(CandidTypeNat8{&test_version});
+  args_in.append(r_in);
+  ic_api.from_wire(args_in);
+
+  // ---------------------------------------------------------------------------
+  // Verify the data
+  bool assert_error = false;
+  switch (test_version) {
+  case 1: // Both fields have a value
+    if ((!field1.has_value() || field1.value() != 16) ||
+        (!field3.has_value() || field3.value() != "hello"))
+      assert_error = true;
+    break;
+  case 2: // Both fields have no value
+    if (field3.has_value() || field1.has_value()) assert_error = true;
+    break;
+  case 3: // Only field 1 has a value
+    if ((!field1.has_value() || field1.value() != 16) || (field3.has_value()))
+      assert_error = true;
+    break;
+  case 4: // Only field 2 has a value
+    if ((field1.has_value()) ||
+        (!field3.has_value() || field3.value() != "hello"))
+      assert_error = true;
+    break;
+  default:
+    IC_API::trap("ASSERT ERROR - Unknown test_version = " +
+                 std::to_string(test_version) + " - " + std::string(__func__));
+    break;
+  }
+  if (assert_error) {
+    IC_API::trap("ASSERT ERROR. \n- test_version = " +
+                 std::to_string(test_version) + "\n- " + std::string(__func__));
+  }
+  // ---------------------------------------------------------------------------
+  // We always return the same
+
+  CandidTypeRecord r_out;
+  r_out.append("field3", CandidTypeOptText{"hello"});
+  r_out.append("field1", CandidTypeOptNat16{16});
+  ic_api.to_wire(r_out);
+}
+
 // test for nested records, resulting in nested type tables
 void roundtrip_record_record_record() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
@@ -898,14 +1010,6 @@ void roundtrip_record_record_record() {
   r_out_1.append("key1", r_out_2);
 
   ic_api.to_wire(r_out_1);
-}
-
-// We need to support this for http_request
-// '(record { headers = vec { record {name = "H1N" : text; value = "H1V"}; record {name = "H2N" : text; value = "H2V"}; } } )'
-// We can simply flip the data storage inside out:
-//   vector for "names"
-//   vector for "values"
-void roundtrip_record_vec_record() { // TODO
 }
 
 void roundtrip_record_vec_text() {

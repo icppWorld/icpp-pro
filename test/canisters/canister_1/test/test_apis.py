@@ -641,6 +641,34 @@ def test__roundtrip_vec_nat16(network: str, principal: str) -> None:
     assert response == expected_response
 
 
+def test__roundtrip_vec_record(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_vec_record",
+        canister_argument="4449444c026d016c02f1fee18d0371cbe4fdc70471010003034831560348314e034832560348324e034833560348334e",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e"
+    assert response == expected_response
+
+
+def test__roundtrip_vec_record_2(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_vec_record",
+        canister_argument="4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e"
+    assert response == expected_response
+
+
 def test__roundtrip_vec_all(network: str, principal: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
@@ -664,6 +692,48 @@ def test__roundtrip_opt_nat(network: str, principal: str) -> None:
         network=network,
     )
     expected_response = "(opt (101 : nat))"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_nat_nat_1(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_nat_nat",
+        canister_argument="(opt (101 : nat), 102 : nat)",
+        network=network,
+    )
+    expected_response = "(102 : nat)"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_nat_nat_2(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_nat_nat",
+        # canister_argument="(opt (null : null), 102 : nat)", # dfx complains
+        canister_argument="4449444c016e7f02007d0166",
+        canister_input="raw",
+        canister_output="idl",
+        network=network,
+    )
+    expected_response = "(102 : nat)"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_nat_nat_3(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_nat_nat",
+        # canister_argument="(102 : nat)", # dfx complains
+        canister_argument="4449444c00017d66",
+        canister_input="raw",
+        canister_output="idl",
+        network=network,
+    )
+    expected_response = "(102 : nat)"
     assert response == expected_response
 
 
@@ -717,6 +787,36 @@ def test__roundtrip_opt_nat16_no_value_raw(network: str, principal: str) -> None
         network=network,
     )
     expected_response = "4449444c016e7a010000"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_record(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_record",
+        canister_argument="4449444c026e016c02b79cba840871b89cba84087a0100010568656c6c6f1000",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c02b79cba840871b89cba84087a6c006e000102010568656c6c6f1000"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_opt_record_no_value(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_record_no_value",
+        canister_argument="4449444c0000",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c0000"
     assert response == expected_response
 
 
@@ -823,6 +923,122 @@ def test__roundtrip_record_vec_text_2(network: str, principal: str) -> None:
     assert response == expected_response
 
 
+# ------------------------------------------------------------------------
+# Record with Opt fields
+def test__roundtrip_record_opt_1(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt",
+        canister_argument="4449444c036c02b79cba840801b99cba8408026e7a6e71027b0001011000010568656c6c6f",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_2a(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt",
+        canister_argument="4449444c026c02b79cba840801b99cba8408016e7f027b00020101",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_2b(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt",
+        canister_argument="4449444c016c00027b0002",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_3a(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt",
+        canister_argument="4449444c036c02b79cba840801b99cba8408026e7a6e7f027b000301100001",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_3b(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt",
+        canister_argument="4449444c026c01b79cba8408016e7a027b0003011000",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_4a(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt",
+        canister_argument="4449444c036c02b79cba840801b99cba8408026e7f6e71027b000401010568656c6c6f",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_4b(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt",
+        canister_argument="4449444c026c01b99cba8408016e71027b0004010568656c6c6f",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f"
+    )
+    assert response == expected_response
+
+
+# ------------------------------------------------------------------------
+# Variant
 def test__roundtrip_variant_ok(network: str, principal: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
@@ -894,6 +1110,96 @@ def test__roundtrip_variant_3(network: str, principal: str) -> None:
 
 
 # ----------------------------------------------------------------------------------
+# Forward Compatibility testing  (Additional Opts)
+def test__roundtrip_bool_true_w_opt_1(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_bool_true",
+        canister_argument="4449444c016e7f03007e00010101",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c00017e01"
+    assert response == expected_response
+
+
+def test__roundtrip_bool_true_w_opt_2(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_bool_true",
+        canister_argument="4449444c026e716e7b03007e01010765787472612031010165",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c00017e01"
+    assert response == expected_response
+
+
+def test__roundtrip_bool_true_w_opt_3(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_bool_true",
+        canister_argument="4449444c036e016c02b79cba84087ab89cba8408716e7b03007e02011000026632010165",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c00017e01"
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_1_fwc_a(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt",
+        canister_argument="4449444c036c05b69cba840801b79cba840802b89cba840801b99cba840801ba9cba8408016e716e7a027b000101097374617274206f7074011000010a6d6964646c65206f7074010568656c6c6f0107656e64206f7074",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_1_fwc_b(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt",
+        canister_argument="4449444c046c05b69cba840801b79cba840802b89cba840801b99cba840803ba9cba8408016e7f6e7a6e71027b00010101100001010568656c6c6f01",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = (
+        "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f"
+    )
+    assert response == expected_response
+
+
+def test__roundtrip_vec_record_w_opts(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_vec_record",
+        canister_argument="4449444c036d016c05e1bde70202f1fee18d03718094ebdc0302cbe4fdc70471b49f92b409026e710100030109626567696e206f707403483156010a6d6964646c65206f70740348314e0107656e64206f70740109626567696e206f707403483256010a6d6964646c65206f70740348324e0107656e64206f70740109626567696e206f707403483356010a6d6964646c65206f70740348334e0107656e64206f7074",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e"
+    assert response == expected_response
+
+
+# ----------------------------------------------------------------------------------
 # Trap testing
 #
 # Verify that a Deserialization traps if the number of arguments is wrong
@@ -910,7 +1216,10 @@ def test__trap_wrong_number_of_args(network: str, principal: str) -> None:
     )
     assert "Failed call to api" in response
     assert "trapped explicitly" in response
-    assert "ERROR: wrong number of arguments on wire." in response
+    assert (
+        "ERROR: Done with all the expected args, but there is an additional non Opt arg on the wire."
+        in response
+    )
 
 
 # Verify that a canister traps if from_wire is called more than once
@@ -963,7 +1272,4 @@ def test__trap_roundtrip_record(network: str, principal: str) -> None:
     )
     assert "Failed call to api" in response
     assert "trapped explicitly" in response
-    assert (
-        "ERROR: the hashed id for the Record field at index 0 is wrong on the wire."
-        in response
-    )
+    assert "ERROR: Wrong Record field on wire" in response

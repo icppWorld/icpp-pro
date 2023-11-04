@@ -15,15 +15,66 @@ type Result_2 =
         Err: text;
     };
 
+
+// --------------------------------------------------------------------------------
+// HTTP Gateway Protocol
+// https://internetcomputer.org/docs/current/references/http-gateway-protocol-spec#canister-http-interface
+// https://internetcomputer.org/docs/current/references/http-gateway-protocol-spec
 // https://internetcomputer.org/docs/current/references/ic-interface-spec/#ic-candid
-type http_header = record { name: text; value: text };
-type http_response = record {
-  status: nat;
-  headers: vec http_header;
-  body: blob;
+
+/* TODO....
+type HeaderField = record { text; text; };
+
+type HttpRequest = record {
+    method: text;
+    url: text;
+    headers: vec HeaderField;
+    body: blob;
+    certificate_version: opt nat16;
 };
 
+type HttpUpdateRequest = record {
+    method: text;
+    url: text;
+    headers: vec HeaderField;
+    body: blob;
+};
+
+type HttpResponse = record {
+    status_code: nat16;
+    headers: vec HeaderField;
+    body: blob;
+    upgrade : opt bool;
+    streaming_strategy: opt StreamingStrategy;
+};
+
+// Each canister that uses the streaming feature gets to choose their concrete
+// type; the HTTP Gateway will treat it as an opaque value that is only fed to
+// the callback method
+
+type StreamingToken = === application-specific type ===
+
+type StreamingCallbackHttpResponse = record {
+    body: blob;
+    token: opt StreamingToken;
+};
+
+type StreamingStrategy = variant {
+    Callback: record {
+        callback: func (StreamingToken) -> (opt StreamingCallbackHttpResponse) query;
+        token: StreamingToken;
+    };
+};
+*/
+// -------------------------------------------------------------------------------
+
 service: {
+    // --------------------------------------------------------------------------------
+    // HTTP Gateway Protocol
+    //http_request: (request: HttpRequest) -> (HttpResponse) query;
+    //http_request_update: (request: HttpUpdateRequest) -> (HttpResponse);
+    // --------------------------------------------------------------------------------
+
     "roundtrip_deprecated_ic_api_constructor" : () -> () query;
     "roundtrip_no_arguments" : () -> () query;
     "test_ic_api" : () -> (int) query;
@@ -69,32 +120,26 @@ service: {
     "roundtrip_principal" : (principal) -> (principal) query;
     "caller_is_anonymous" : () -> (bool) query;
     "roundtrip_vec_nat16" : (vec nat16) -> (vec nat16) query;
-    "roundtrip_vec_record" : (vec http_header) -> (vec http_header) query;
-    "roundtrip_record_vec_record" : (record {headers: vec http_header}) -> (record {headers: vec http_header}) query;
-    //http_request : (record {
-    //                            url : text;
-    //                            max_response_bytes: opt nat64;
-    //                            method : variant { get; head; post };
-    //                            headers: vec http_header;
-    //                            body : opt blob;
-    //                            transform : opt record {
-    //                            function : func (record {response : http_response; context : blob}) -> (http_response) query;
-    //                            context : blob
-    //                            };
-    //                        }) -> (http_response);
+    "roundtrip_vec_record" : (vec record { name: text; value: text }) -> (vec record { name: text; value: text }) query;
     "roundtrip_vec_all" : (vec bool, vec nat, vec nat8, vec nat16, vec nat32, vec nat64, vec int, vec int8, vec int16, vec int32, vec int64, vec float32, vec float64, vec text, vec principal) -> 
                           (vec bool, vec nat, vec nat8, vec nat16, vec nat32, vec nat64, vec int, vec int8, vec int16, vec int32, vec int64, vec float32, vec float64, vec text, vec principal) 
                           query;
     "roundtrip_opt_nat" : (opt nat) -> (opt nat) query;
+    "roundtrip_opt_nat_nat" : (opt nat, nat) -> (nat) query;
     "roundtrip_opt_nat_no_value" : (opt nat) -> (opt nat) query;
     "roundtrip_opt_nat16" : (opt nat16) -> (opt nat16) query;
     "roundtrip_opt_nat16_no_value" : (opt nat16) -> (opt nat16) query;
+    "roundtrip_opt_record" : (opt record { field1: text; field2: nat16} ) -> (opt record { field1: text; field2: nat16} ) query;
+    "roundtrip_opt_record_no_value" : (opt record { field1: text; field2: nat16} ) -> () query;
     "roundtrip_opt_all" : (opt bool, opt bool, opt bool, opt nat, opt nat, opt nat8, opt nat8, opt nat16, opt nat16, opt nat32, opt nat32, opt nat64, opt nat64, opt int, opt int, opt int8, opt int8, opt int16, opt int16, opt int32, opt int32, opt int64, opt int64, opt float32, opt float32, opt float64, opt float64, opt text, opt text, opt principal, opt principal) -> 
                           (opt bool, opt bool, opt bool, opt nat, opt nat, opt nat8, opt nat8, opt nat16, opt nat16, opt nat32, opt nat32, opt nat64, opt nat64, opt int, opt int, opt int8, opt int8, opt int16, opt int16, opt int32, opt int32, opt int64, opt int64, opt float32, opt float32, opt float64, opt float64, opt text, opt text, opt principal, opt principal) 
                           query;
     "roundtrip_record" : (record { name: text; "secret float64": float64; "secret int": int })  -> 
                          (record { greeting: text; message: text; "secret float64": float64; "secret int": int }) 
                          query;
+    "roundtrip_record_opt" : (nat8, record { field2: opt text; field1: opt nat16; })  -> 
+                             (record { field2: opt text; field1: opt nat16; })
+                             query;
     "roundtrip_record_record_record" : (record { key1: record { key2: record { key3: text } } }) -> 
                                        (record { key1: record { key2: record { key3: text } } }) 
                                        query;

@@ -820,6 +820,108 @@ def test__roundtrip_opt_record_no_value(network: str, principal: str) -> None:
     assert response == expected_response
 
 
+def test__roundtrip_opt_variant_ok(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_variant_ok",
+        canister_argument="4449444c026e016b01bc8a017f01000100",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c036b01bc8a017f6b006e0001020100"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_variant_ok_no_value(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_variant_ok_no_value",
+        canister_argument="4449444c0000",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c0000"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_variant_err(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_variant_err",
+        canister_argument="4449444c026e016b01c5fed2017101000100054572726f72",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c036b01c5fed201716b006e0001020100054572726f72"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_variant_err_no_value(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_variant_err_no_value",
+        canister_argument="4449444c0000",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c0000"
+    assert response == expected_response
+
+
+def test__roundtrip_opt_record_variant(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_opt_record_variant",
+        canister_argument="4449444c036e016c03b79cba840871b89cba840802b99cba8408716b01fc9cba84087c0100010568656c6c6f001003627965",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c046b01fc9cba84087c6c03b79cba840871b89cba840800b99cba8408716c006e010103010568656c6c6f001003627965"
+    assert response == expected_response
+
+
+# def test__roundtrip_opt_record_variant_no_value_1(
+# network: str, principal: str
+# ) -> None:
+# response = call_canister_api(
+# dfx_json_path=DFX_JSON_PATH,
+# canister_name=CANISTER_NAME,
+# canister_method="roundtrip_opt_record_variant_no_value",
+# canister_argument="4449444c026e016c01b69cba8408710100010757726f6e674964",
+# canister_input="raw",
+# canister_output="raw",
+# network=network,
+# )
+# expected_response = "4449444c0000"
+# assert response == expected_response
+
+
+# def test__roundtrip_opt_record_variant_no_value_2(
+# network: str, principal: str
+# ) -> None:
+# response = call_canister_api(
+# dfx_json_path=DFX_JSON_PATH,
+# canister_name=CANISTER_NAME,
+# canister_method="roundtrip_opt_record_variant_no_value",
+# canister_argument="4449444c036e016c03b79cba840871b89cba840802b99cba8408716b01b4bcb8e10f7c0100010568656c6c6f001003627965",
+# canister_input="raw",
+# canister_output="raw",
+# network=network,
+# )
+# expected_response = "4449444c0000"
+# assert response == expected_response
+
+
 def test__roundtrip_opt_all_raw(network: str, principal: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,
@@ -1038,6 +1140,106 @@ def test__roundtrip_record_opt_4b(network: str, principal: str) -> None:
 
 
 # ------------------------------------------------------------------------
+# Record with Opt Variant fields
+def test__roundtrip_record_opt_variant_1(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt_variant",
+        canister_argument="4449444c056c02b79cba840801b99cba8408036e026b01bc8a017f6e046b01c5fed20171027b000101000100054572726f72",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72"
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_variant_2a(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt_variant",
+        canister_argument="4449444c026c02b79cba840801b99cba8408016e7f027b00020101",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72"
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_variant_2b(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt_variant",
+        canister_argument="4449444c016c00027b0002",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72"
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_variant_3a(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt_variant",
+        canister_argument="4449444c046c02b79cba840801b99cba8408036e026b01bc8a017f6e7f027b0003010001",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72"
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_variant_3b(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt_variant",
+        canister_argument="4449444c036c01b79cba8408016e026b01bc8a017f027b00030100",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72"
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_variant_4a(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt_variant",
+        canister_argument="4449444c046c02b79cba840801b99cba8408026e7f6e036b01c5fed20171027b0004010100054572726f72",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72"
+    assert response == expected_response
+
+
+def test__roundtrip_record_opt_variant_4b(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_opt_variant",
+        canister_argument="4449444c036c01b99cba8408016e026b01c5fed20171027b00040100054572726f72",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72"
+    assert response == expected_response
+
+
+# ------------------------------------------------------------------------
 # Variant
 def test__roundtrip_variant_ok(network: str, principal: str) -> None:
     response = call_canister_api(
@@ -1109,6 +1311,36 @@ def test__roundtrip_variant_3(network: str, principal: str) -> None:
     assert response == expected_response
 
 
+# ------------------------------------------------------------------------
+# Variant with Opt field
+def test__roundtrip_variant_opt_1(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_variant_opt",
+        canister_argument="4449444c026b01c5fed201016e71027b00010001054572726f72",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c026b01c5fed201016e7101000001054572726f72"
+    assert response == expected_response
+
+
+def test__roundtrip_variant_opt_2a(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_variant_opt",
+        canister_argument="4449444c026b01c5fed201016e7f027b00020001",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c026b01c5fed201016e7101000001054572726f72"
+    assert response == expected_response
+
+
 # ----------------------------------------------------------------------------------
 # Forward Compatibility testing  (Additional Opts)
 def test__roundtrip_bool_true_w_opt_1(network: str, principal: str) -> None:
@@ -1145,6 +1377,20 @@ def test__roundtrip_bool_true_w_opt_3(network: str, principal: str) -> None:
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
         canister_argument="4449444c036e016c02b79cba84087ab89cba8408716e7b03007e02011000026632010165",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c00017e01"
+    assert response == expected_response
+
+
+def test__roundtrip_bool_true_w_opt_4(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_bool_true",
+        canister_argument="4449444c046e016b01bc8a017f6e036b01c5fed2017103007e020100010100054572726f72",
         canister_input="raw",
         canister_output="raw",
         network=network,

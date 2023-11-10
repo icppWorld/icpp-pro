@@ -649,8 +649,7 @@ void roundtrip_opt_record() {
   r_in.append("field2", CandidTypeNat16{&n});
 
   bool has_value{false};
-  CandidTypeOptRecord opt_r_in{&r_in, &has_value};
-  ic_api.from_wire(opt_r_in);
+  ic_api.from_wire(CandidTypeOptRecord{&r_in, &has_value});
 
   // --
   if (!has_value || s != "hello" || n != 16) {
@@ -675,8 +674,165 @@ void roundtrip_opt_record_no_value() {
   r_in.append("field2", CandidTypeNat16{&n});
 
   bool has_value{false};
-  CandidTypeOptRecord opt_r_in{&r_in, &has_value};
-  ic_api.from_wire(opt_r_in);
+  ic_api.from_wire(CandidTypeOptRecord{&r_in, &has_value});
+
+  // --
+  if (has_value) {
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  }
+
+  // --
+  ic_api.to_wire();
+}
+
+void roundtrip_opt_variant_ok() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  std::string label{""};
+  std::string err{""};
+
+  CandidTypeVariant v_in{&label};
+  v_in.append("Ok", CandidTypeNull{});
+  v_in.append("Err", CandidTypeText{&err});
+
+  bool has_value{false};
+  ic_api.from_wire(CandidTypeOptVariant{&v_in, &has_value});
+
+  // --
+  if (!has_value || label != "Ok") {
+    IC_API::trap("ASSERT ERROR wrong label - " + std::string(__func__));
+  }
+
+  // --
+  ic_api.to_wire(CandidTypeOptVariant{CandidTypeVariant{"Ok"}});
+}
+
+void roundtrip_opt_variant_ok_no_value() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  std::string label{""};
+  std::string err{""};
+
+  CandidTypeVariant v_in{&label};
+  v_in.append("Ok", CandidTypeNull{});
+  v_in.append("Err", CandidTypeText{&err});
+
+  bool has_value{false};
+  ic_api.from_wire(CandidTypeOptVariant{&v_in, &has_value});
+
+  // --
+  if (has_value) {
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  }
+
+  // --
+  ic_api.to_wire();
+}
+
+void roundtrip_opt_variant_err() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  std::string label{""};
+  std::string ok{""};
+  std::string err{""};
+
+  CandidTypeVariant v_in{&label};
+  v_in.append("Ok", CandidTypeText{&ok});
+  v_in.append("Err", CandidTypeText{&err});
+
+  bool has_value{false};
+  ic_api.from_wire(CandidTypeOptVariant{&v_in, &has_value});
+
+  // --
+  if (!has_value || label != "Err") {
+    IC_API::trap("ASSERT ERROR wrong label - " + std::string(__func__));
+  }
+  if (err != "Error")
+    IC_API::trap("ASSERT ERROR wrong value - " + std::string(__func__));
+
+  // --
+  ic_api.to_wire(
+      CandidTypeOptVariant{CandidTypeVariant{"Err", CandidTypeText{"Error"}}});
+}
+
+void roundtrip_opt_variant_err_no_value() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  std::string label{""};
+  std::string ok{""};
+  std::string err{""};
+
+  CandidTypeVariant v_in{&label};
+  v_in.append("Ok", CandidTypeText{&ok});
+  v_in.append("Err", CandidTypeText{&err});
+
+  bool has_value{false};
+  ic_api.from_wire(CandidTypeOptVariant{&v_in, &has_value});
+
+  // --
+  if (has_value) {
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  }
+
+  // --
+  ic_api.to_wire();
+}
+
+void roundtrip_opt_record_variant() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  std::string s1;
+
+  __int128_t iv;
+  std::string labelv;
+  CandidTypeVariant v_in{&labelv};
+  v_in.append("fieldv", CandidTypeInt{&iv});
+
+  std::string s3;
+
+  CandidTypeRecord r_in;
+  r_in.append("field1", CandidTypeText{&s1});
+  r_in.append("field2", v_in);
+  r_in.append("field3", CandidTypeText{&s3});
+
+  bool has_value{false};
+  ic_api.from_wire(CandidTypeOptRecord{&r_in, &has_value});
+
+  // --
+  if (!has_value || s1 != "hello" || iv != 16 || s3 != "bye") {
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+  }
+
+  // --
+  CandidTypeVariant v_out{labelv};
+  v_out.append("fieldv", CandidTypeInt{iv});
+
+  CandidTypeRecord r_out;
+  r_out.append("field1", CandidTypeText{s1});
+  r_out.append("field2", v_out);
+  r_out.append("field3", CandidTypeText{s3});
+  ic_api.to_wire(CandidTypeOptRecord{r_out});
+}
+
+void roundtrip_opt_record_variant_no_value() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  std::string s1;
+
+  __int128_t iv;
+  std::string labelv;
+  CandidTypeVariant v_in{&labelv};
+  v_in.append("fieldv", CandidTypeInt{&iv});
+
+  std::string s3;
+
+  CandidTypeRecord r_in;
+  r_in.append("field1", CandidTypeText{&s1});
+  r_in.append("field2", v_in);
+  r_in.append("field3", CandidTypeText{&s3});
+
+  bool has_value{false};
+  ic_api.from_wire(CandidTypeOptRecord{&r_in, &has_value});
 
   // --
   if (has_value) {
@@ -949,7 +1105,7 @@ void roundtrip_record_opt() {
     if ((!field1.has_value() || field1.value() != 16) || (field3.has_value()))
       assert_error = true;
     break;
-  case 4: // Only field 2 has a value
+  case 4: // Only field 3 has a value
     if ((field1.has_value()) ||
         (!field3.has_value() || field3.value() != "hello"))
       assert_error = true;
@@ -969,6 +1125,76 @@ void roundtrip_record_opt() {
   CandidTypeRecord r_out;
   r_out.append("field3", CandidTypeOptText{"hello"});
   r_out.append("field1", CandidTypeOptNat16{16});
+  ic_api.to_wire(r_out);
+}
+
+void roundtrip_record_opt_variant() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  uint8_t test_version{0};
+
+  std::string label1{""};
+  std::string err1{""};
+  CandidTypeVariant field1{&label1};
+  field1.append("Ok", CandidTypeNull{});
+  field1.append("Err", CandidTypeText{&err1});
+  bool has_value1{false};
+
+  std::string label3{""};
+  std::string ok3{""};
+  std::string err3{""};
+  CandidTypeVariant field3{&label3};
+  field3.append("Ok", CandidTypeText{&ok3});
+  field3.append("Err", CandidTypeText{&err3});
+  bool has_value3{false};
+
+  // Reverse order on purpose, to test sorting of field labels
+  CandidTypeRecord r_in;
+  r_in.append("field3", CandidTypeOptVariant{&field3, &has_value3});
+  r_in.append("field1", CandidTypeOptVariant{&field1, &has_value1});
+
+  CandidArgs args_in;
+  args_in.append(CandidTypeNat8{&test_version});
+  args_in.append(r_in);
+  ic_api.from_wire(args_in);
+
+  // ---------------------------------------------------------------------------
+  // Verify the data
+  bool assert_error = false;
+  switch (test_version) {
+  case 1: // Both fields have a value
+    if ((!has_value1 || label1 != "Ok") ||
+        (!has_value3 || label3 != "Err" || err3 != "Error"))
+      assert_error = true;
+    break;
+  case 2: // Both fields have no value
+    if (has_value1 || has_value3) assert_error = true;
+    break;
+  case 3: // Only field 1 has a value
+    if ((!has_value1 || label1 != "Ok") || (has_value3)) assert_error = true;
+    break;
+  case 4: // Only field 3 has a value
+    if ((has_value1) || (!has_value3 || label3 != "Err" || err3 != "Error"))
+      assert_error = true;
+    break;
+  default:
+    IC_API::trap("ASSERT ERROR - Unknown test_version = " +
+                 std::to_string(test_version) + " - " + std::string(__func__));
+    break;
+  }
+  if (assert_error) {
+    IC_API::trap("ASSERT ERROR. \n- test_version = " +
+                 std::to_string(test_version) + "\n- " + std::string(__func__));
+  }
+  // ---------------------------------------------------------------------------
+  // We always return the same
+
+  CandidTypeRecord r_out;
+  r_out.append("field3", CandidTypeOptVariant{CandidTypeVariant{
+                             "Err", CandidTypeText{"Error"}}});
+  r_out.append("field1", CandidTypeOptVariant{CandidTypeVariant{"Ok"}});
   ic_api.to_wire(r_out);
 }
 
@@ -1233,6 +1459,53 @@ void roundtrip_variant() {
   args_out.append(v_out_2a);
   args_out.append(v_out_2b);
   ic_api.to_wire(args_out);
+}
+
+void roundtrip_variant_opt() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  uint8_t test_version{0};
+
+  // always expecting '(variant { Err = opt ("Err" : text})'
+  std::string label{""};
+  std::optional<std::string> err;
+  CandidTypeVariant v_in{&label};
+  v_in.append("Ok", CandidTypeOptNull{});
+  v_in.append("Err", CandidTypeOptText{&err});
+
+  CandidArgs args_in;
+  args_in.append(CandidTypeNat8{&test_version});
+  args_in.append(v_in);
+  ic_api.from_wire(args_in);
+
+  // ---------------------------------------------------------------------------
+  // Verify the data
+  bool assert_error = false;
+  switch (test_version) {
+  case 1: // Field is provided with a value
+    if (!err.has_value() || err.value() != "Error") assert_error = true;
+    break;
+  case 2: // Field has no value
+    if (err.has_value()) assert_error = true;
+    break;
+  default:
+    IC_API::trap("ASSERT ERROR - Unknown test_version = " +
+                 std::to_string(test_version) + " - " + std::string(__func__));
+    break;
+  }
+  if (assert_error) {
+    IC_API::trap("ASSERT ERROR. \n- test_version = " +
+                 std::to_string(test_version) + "\n- " + std::string(__func__));
+  }
+  // ---------------------------------------------------------------------------
+  // We always return the same
+
+  label = "Err";
+  CandidTypeVariant v_out{label};
+  v_out.append("Err", CandidTypeOptText{"Error"});
+  ic_api.to_wire(v_out);
 }
 
 //----------------------------------------------------------------------------------

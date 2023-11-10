@@ -131,14 +131,27 @@ service: {
     "roundtrip_opt_nat16_no_value" : (opt nat16) -> (opt nat16) query;
     "roundtrip_opt_record" : (opt record { field1: text; field2: nat16} ) -> (opt record { field1: text; field2: nat16} ) query;
     "roundtrip_opt_record_no_value" : (opt record { field1: text; field2: nat16} ) -> () query;
+    "roundtrip_opt_variant_ok" : (opt Result)  -> (opt Result) query;
+    "roundtrip_opt_variant_ok_no_value" : (opt Result)  -> () query;
+    "roundtrip_opt_variant_err" : (opt Result_2)  -> (opt Result_2) query;
+    "roundtrip_opt_variant_err_no_value" : (opt Result_2)  -> () query;
+    "roundtrip_opt_record_variant" : (opt record { field1: text; field2: variant {fieldv: int}; field3: text;} ) -> 
+                                     (opt record { field1: text; field2: variant {fieldv: int}; field3: text;} )
+                                     query;
+    "roundtrip_opt_record_variant_no_value" : (opt record { field1: text; field2: variant {fieldv: int}; field3: text;} ) -> 
+                                              ()
+                                              query;
     "roundtrip_opt_all" : (opt bool, opt bool, opt bool, opt nat, opt nat, opt nat8, opt nat8, opt nat16, opt nat16, opt nat32, opt nat32, opt nat64, opt nat64, opt int, opt int, opt int8, opt int8, opt int16, opt int16, opt int32, opt int32, opt int64, opt int64, opt float32, opt float32, opt float64, opt float64, opt text, opt text, opt principal, opt principal) -> 
                           (opt bool, opt bool, opt bool, opt nat, opt nat, opt nat8, opt nat8, opt nat16, opt nat16, opt nat32, opt nat32, opt nat64, opt nat64, opt int, opt int, opt int8, opt int8, opt int16, opt int16, opt int32, opt int32, opt int64, opt int64, opt float32, opt float32, opt float64, opt float64, opt text, opt text, opt principal, opt principal) 
                           query;
     "roundtrip_record" : (record { name: text; "secret float64": float64; "secret int": int })  -> 
                          (record { greeting: text; message: text; "secret float64": float64; "secret int": int }) 
                          query;
-    "roundtrip_record_opt" : (nat8, record { field2: opt text; field1: opt nat16; })  -> 
-                             (record { field2: opt text; field1: opt nat16; })
+    "roundtrip_record_opt" : (nat8, record { field3: opt text; field1: opt nat16; })  -> 
+                             (record { field3: opt text; field1: opt nat16; })
+                             query;
+    "roundtrip_record_opt_variant" : (nat8, record { field3: opt Result_2; field1: opt Result; })  -> 
+                             (record { field3: opt Result_2; field1: opt Result; })
                              query;
     "roundtrip_record_record_record" : (record { key1: record { key2: record { key3: text } } }) -> 
                                        (record { key1: record { key2: record { key3: text } } }) 

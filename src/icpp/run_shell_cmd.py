@@ -92,7 +92,7 @@ def run_shell_cmd(
         cmd_ = ["powershell.exe", "-Command", cmd]
 
     if timeout_seconds is None:
-        timeout_seconds = 3
+        timeout_seconds = 5
 
     capture_stdout = ""
 
@@ -133,7 +133,10 @@ def run_shell_cmd(
                 if e.stdout is not None:
                     lmax = 132
                     lstdout = len(e.stdout)
-                    capture_stdout += e.stdout.decode("utf-8")[: min(lmax, lstdout)]
+                    if isinstance(e.stdout, bytes):
+                        capture_stdout += e.stdout.decode("utf-8")[:min(lmax, lstdout)]
+                    else:
+                        capture_stdout += e.stdout[:min(lmax, lstdout)]
                     if lstdout > lmax:
                         capture_stdout += "..."
 

@@ -136,7 +136,7 @@ def get_identity() -> str:
         identity = run_shell_cmd(
             arg,
             capture_output=True,
-            timeout_seconds=1,
+            timeout_seconds=5,
             run_in_powershell=RUN_IN_POWERSHELL,
         )
         identity = identity.rstrip("\n")
@@ -164,7 +164,7 @@ def get_principal() -> str:
         principal = run_shell_cmd(
             arg,
             capture_output=True,
-            timeout_seconds=1,
+            timeout_seconds=5,
             run_in_powershell=RUN_IN_POWERSHELL,
         )
         principal = principal.rstrip("\n")

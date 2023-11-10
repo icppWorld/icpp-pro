@@ -2,7 +2,7 @@
 
    First deploy the canister, then run:
 
-   $ pytest --network=[local/ic] test__canister_1.py
+   $ pytest --network=[local/ic]
 
 """
 # pylint: disable=missing-function-docstring, unused-import, wildcard-import, unused-wildcard-import

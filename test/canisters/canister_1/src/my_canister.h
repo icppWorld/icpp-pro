@@ -111,11 +111,25 @@ void roundtrip_opt_record()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_record");
 void roundtrip_opt_record_no_value()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_record_no_value");
+void roundtrip_opt_variant_ok()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_variant_ok");
+void roundtrip_opt_variant_ok_no_value()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_variant_ok_no_value");
+void roundtrip_opt_variant_err()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_variant_err");
+void roundtrip_opt_variant_err_no_value()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_variant_err_no_value");
+void roundtrip_opt_record_variant()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_record_variant");
+void roundtrip_opt_record_variant_no_value() WASM_SYMBOL_EXPORTED(
+    "canister_query roundtrip_opt_record_variant_no_value");
 void roundtrip_opt_all()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_all");
 void roundtrip_record() WASM_SYMBOL_EXPORTED("canister_query roundtrip_record");
 void roundtrip_record_opt()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_record_opt");
+void roundtrip_record_opt_variant()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_record_opt_variant");
 void roundtrip_record_record_record()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_record_record_record");
 void roundtrip_record_vec_text()
@@ -126,6 +140,8 @@ void roundtrip_variant_err()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_variant_err");
 void roundtrip_variant()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_variant");
+void roundtrip_variant_opt()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_variant_opt");
 
 void trap_wrong_number_of_args()
     WASM_SYMBOL_EXPORTED("canister_query trap_wrong_number_of_args");

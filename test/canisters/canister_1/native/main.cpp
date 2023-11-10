@@ -39,6 +39,41 @@ int main() {
   //                   "4449444c00017e01", silent_on_trap, my_principal);
   // ------------------------------------------------------------------------
 
+  // ------------------------------------------------------------------------
+  //   // opt ( WHATEVER ) should never trap, but always decode things to null
+  //   // (See forum: https://forum.dfinity.org/t/question-about-record-variant-with-opt-fields-in-light-of-forward-compatibility/24567/2?u=icpp)
+  //   // The general rule for opt is that it becomes null if the types cannot be
+  //   // made to match otherwise. That happens at the innermost opt where this
+  //   // fallback suffices to make the whole thing match.
+  //   //
+  //   // Canister expects : '(opt ( variant { Ok } ))'
+  //   // Canister receives: '(opt ( variant { New } ))'
+  //   //                    Must be decoded to null
+  //   // -> '()'
+  //   mockIC.run_test("roundtrip_opt_variant_ok_no_value fwc",
+  //                   roundtrip_opt_variant_ok_no_value,
+  //                   "4449444c026e016b01c090ee017f01000100", "4449444c0000",
+  //                   silent_on_trap, my_principal);
+
+  //   // Expecting: '(opt ( record {field1 = "hello" : text; field2 = variant {fieldv = 16 : int}; field3 = "bye" : text; } ))'
+  //   // Receiving: '(opt ( record {field0 = "WrongId" : text} ))'
+  //   //            type does not match. Do NOT trap, but decode to null (has_value=false)
+  //   // -> '()'
+  //   mockIC.run_test("roundtrip_opt_record_variant_no_value 1",
+  //                   roundtrip_opt_record_variant_no_value,
+  //                   "4449444c026e016c01b69cba8408710100010757726f6e674964",
+  //                   "4449444c0000", silent_on_trap, my_principal);
+  //   // Expecting: '(opt ( record {field1 = "hello" : text; field2 = variant {fieldv = 16 : int}; field3 = "bye" : text; } ))'
+  //   // Receiving: '(opt ( record {field1 = "hello" : text; field2 = variant {fieldv0 = 16 : int}; field3 = "bye" : text; } ))'
+  //   //                                                                       ^wrong!
+  //   //            type does not match. Do NOT trap, but decode to null (has_value=false)
+  //   // -> '()'
+  //   mockIC.run_test(
+  //       "roundtrip_opt_record_variant_no_value 2",
+  //       roundtrip_opt_record_variant_no_value,
+  //       "4449444c036e016c03b79cba840871b89cba840802b99cba8408716b01b4bcb8e10f7c0100010568656c6c6f001003627965",
+  //       "4449444c0000", silent_on_trap, my_principal);
+
   // PATCH END
 
   //----------------------------------------------------------------------------------
@@ -360,6 +395,48 @@ int main() {
                   roundtrip_opt_record_no_value, "4449444c016e7f010001",
                   "4449444c0000", silent_on_trap, my_principal);
 
+  // '(opt ( variant { Ok } ))' -> same
+  mockIC.run_test("roundtrip_opt_variant_ok (1)", roundtrip_opt_variant_ok,
+                  "4449444c026e016b01bc8a017f01000100", // (1)
+                  "4449444c036b01bc8a017f6b006e0001020100", silent_on_trap,
+                  my_principal);
+
+  // '()' -> '()'
+  mockIC.run_test("roundtrip_opt_variant_ok_no_value 1",
+                  roundtrip_opt_variant_ok_no_value, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+
+  // '(null)' -> '()'
+  mockIC.run_test("roundtrip_opt_variant_ok_no_value 2",
+                  roundtrip_opt_variant_ok_no_value, "4449444c00017f",
+                  "4449444c0000", silent_on_trap, my_principal);
+
+  // '(opt ( null : null ))' -> ()
+  mockIC.run_test("roundtrip_opt_variant_ok_no_value 3",
+                  roundtrip_opt_variant_ok_no_value, "4449444c016e7f010001",
+                  "4449444c0000", silent_on_trap, my_principal);
+
+  // '(opt ( variant { Err = "Error" : text} ))' -> same
+  mockIC.run_test("roundtrip_opt_variant_err (1)", roundtrip_opt_variant_err,
+                  "4449444c026e016b01c5fed2017101000100054572726f72", // (1)
+                  "4449444c036b01c5fed201716b006e0001020100054572726f72",
+                  silent_on_trap, my_principal);
+
+  // '()' -> '()'
+  mockIC.run_test("roundtrip_opt_variant_err_no_value 1",
+                  roundtrip_opt_variant_err_no_value, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+
+  // '(null)' -> '()'
+  mockIC.run_test("roundtrip_opt_variant_err_no_value 2",
+                  roundtrip_opt_variant_err_no_value, "4449444c00017f",
+                  "4449444c0000", silent_on_trap, my_principal);
+
+  // '(opt ( null : null ))' -> ()
+  mockIC.run_test("roundtrip_opt_variant_err_no_value 3",
+                  roundtrip_opt_variant_err_no_value, "4449444c016e7f010001",
+                  "4449444c0000", silent_on_trap, my_principal);
+
   // '(opt (true : bool), opt (false : bool), null, opt (101 : nat), null, opt (102 : nat8), null, opt (103 : nat16), null, opt (104 : nat32), null, opt (105 : nat64), null, opt (-101 : int), null, opt (-102 : int8), null, opt (-103 : int16), null, opt (-104 : int32), null, opt (-105 : int64), null, opt (-1.01 : float32), null, opt (-1.02 : float64), null, opt ("Hello 101" : text), null, opt (principal "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae"), null)'
   //-> raw bytes are not using null, but an opt:natXX without a value, as explained in previous
   mockIC.run_test(
@@ -513,6 +590,102 @@ int main() {
       "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
+  // ------------------------------------------------------------------------
+  // Record with Opt Variant fields
+
+  //
+  // Test 1: Both fields are provided with actual values
+  // from_wire:
+  // '(1 : nat8, record {field3 = opt (variant { Err = "Error" : text}); field1 = opt (variant { Ok })})'
+  // to_wire:
+  // -> '(record {field3 = opt (variant { Err = "Error" : text}); field1 = opt (variant { Ok })})'
+  mockIC.run_test(
+      "roundtrip_record_opt_variant 1", roundtrip_record_opt_variant,
+      "4449444c056c02b79cba840801b99cba8408036e026b01bc8a017f6e046b01c5fed20171027b000101000100054572726f72",
+      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      silent_on_trap, my_principal);
+
+  // Test 2: Both fields have no value
+  //      a: Both fields are provided as 'null'
+  // from_wire:
+  // '(2 : nat8, record {field3 = opt (null : null); field1 = opt (null : null)})'
+  // to_wire:
+  // -> '(record {field3 = opt (variant { Err = "Error" : text}); field1 = opt (variant { Ok })})'
+  mockIC.run_test(
+      "roundtrip_record_opt_variant 2a", roundtrip_record_opt_variant,
+      "4449444c026c02b79cba840801b99cba8408016e7f027b00020101",
+      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      silent_on_trap, my_principal);
+
+  // Test 2: Both fields have no value
+  //      b: Both fields are omitted
+  // from_wire:
+  // '(2 : nat8, record {})'
+  // to_wire:
+  // -> '(record {field3 = opt (variant { Err = "Error" : text}); field1 = opt (variant { Ok })})'
+  mockIC.run_test(
+      "roundtrip_record_opt_variant 2 b", roundtrip_record_opt_variant,
+      "4449444c016c00027b0002",
+      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      silent_on_trap, my_principal);
+
+  // Test 3: Only field1 has a value
+  //      a: field1 is provided with actual value, field3 is provided as null
+  // from_wire:
+  // '(3 : nat8, record {field3 = opt (null : null); field1 = opt (variant { Ok }) })'
+  // to_wire:
+  // -> '(record {field3 = opt (variant { Err = "Error" : text}); field1 = opt (variant { Ok })})'
+  mockIC.run_test(
+      "roundtrip_record_opt_variant 3a", roundtrip_record_opt_variant,
+      "4449444c046c02b79cba840801b99cba8408036e026b01bc8a017f6e7f027b0003010001",
+      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      silent_on_trap, my_principal);
+
+  // Test 3: Only field1 has a value
+  //      b: field1 is provided with actual value, field3 is omitted
+  // from_wire:
+  // '(3 : nat8, record {field1 = opt (variant { Ok }) })'
+  // to_wire:
+  // -> '(record {field3 = opt (variant { Err = "Error" : text}); field1 = opt (variant { Ok })})'
+  mockIC.run_test(
+      "roundtrip_record_opt_variant 3b", roundtrip_record_opt_variant,
+      "4449444c036c01b79cba8408016e026b01bc8a017f027b00030100",
+      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      silent_on_trap, my_principal);
+
+  // Test 4: Only field3 has a value
+  //      a: field1 is provided as null, field3 is provided with actual value,
+  // from_wire:
+  // '(4 : nat8, record {field3 = opt (variant { Err = "Error" : text});field1 = opt (null : null)})'
+  // to_wire:
+  // -> '(record {field3 = opt (variant { Err = "Error" : text}); field1 = opt (variant { Ok })})'
+  mockIC.run_test(
+      "roundtrip_record_opt_variant 4a", roundtrip_record_opt_variant,
+      "4449444c046c02b79cba840801b99cba8408026e7f6e036b01c5fed20171027b0004010100054572726f72",
+      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      silent_on_trap, my_principal);
+
+  // Test 4: Only field3 has a value
+  //      b: field1 is omitted, field3 is provided with actual value
+  // from_wire:
+  // '(4 : nat8, record {field3 = opt (variant { Err = "Error" : text});})'
+  // to_wire:
+  // -> '(record {field3 = opt (variant { Err = "Error" : text}); field1 = opt (variant { Ok })})'
+  mockIC.run_test(
+      "roundtrip_record_opt_variant 4b", roundtrip_record_opt_variant,
+      "4449444c036c01b99cba8408016e026b01c5fed20171027b00040100054572726f72",
+      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      silent_on_trap, my_principal);
+
+  // ----------------------------------------------------------------------------------
+  // Opt Record Variant
+  // '(opt ( record {field1 = "hello" : text; field2 = variant {fieldv = 16 : int}; field3 = "bye" : text; } ))' -> same
+  mockIC.run_test(
+      "roundtrip_opt_record_variant", roundtrip_opt_record_variant,
+      "4449444c036e016c03b79cba840871b89cba840802b99cba8408716b01fc9cba84087c0100010568656c6c6f001003627965",
+      "4449444c046b01fc9cba84087c6c03b79cba840871b89cba840800b99cba8408716c006e010103010568656c6c6f001003627965",
+      silent_on_trap, my_principal);
+
   // ----------------------------------------------------------------------------------
   // Variant
   //
@@ -569,6 +742,31 @@ int main() {
       "4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72",
       silent_on_trap, my_principal);
 
+  // ------------------------------------------------------------------------
+  // Variant with Opt field
+
+  //
+  // Test 1: Field is provided with a value
+  // from_wire:
+  // '(1 : nat8, variant {Err = opt ("Error" : text)})'
+  // to_wire:
+  // -> '(variant { 3_456_837 = opt "Error" })'
+  mockIC.run_test("roundtrip_variant_opt 1", roundtrip_variant_opt,
+                  "4449444c026b01c5fed201016e71027b00010001054572726f72",
+                  "4449444c026b01c5fed201016e7101000001054572726f72",
+                  silent_on_trap, my_principal);
+
+  // Test 2: Field has no value
+  //      a: Field is provided as 'null'
+  // from_wire:
+  // '(2 : nat8, variant {Err = opt (null : null)})'
+  // to_wire:
+  // -> '(variant { 3_456_837 = opt "Error" })'
+  mockIC.run_test("roundtrip_variant_opt 2a", roundtrip_variant_opt,
+                  "4449444c026b01c5fed201016e7f027b00020001",
+                  "4449444c026b01c5fed201016e7101000001054572726f72",
+                  silent_on_trap, my_principal);
+
   // ---------------------------------------------------------------------------------
   // Forward Compatibility Tests
   //
@@ -598,6 +796,47 @@ int main() {
   mockIC.run_test(
       "roundtrip_bool_true with additional Opt 3", roundtrip_bool_true,
       "4449444c036e016c02b79cba84087ab89cba8408716e7b03007e02011000026632010165",
+      "4449444c00017e01", silent_on_trap, my_principal);
+
+  // '(opt ( variant { Ok } ), true, opt (variant { Err = "Error" : text}))' -> '(true)'
+  mockIC.run_test(
+      "roundtrip_bool_true with additional Opt 4", roundtrip_bool_true,
+      "4449444c046e016b01bc8a017f6e036b01c5fed2017103007e020100010100054572726f72",
+      "4449444c00017e01", silent_on_trap, my_principal);
+
+  // '(opt (variant { Err = "Error" : text}), true, opt ( variant { Ok } ))' -> '(true)'
+  mockIC.run_test(
+      "roundtrip_bool_true with additional Opt 5", roundtrip_bool_true,
+      "4449444c046e016b01c5fed201716e036b01bc8a017f03007e020100054572726f72010100",
+      "4449444c00017e01", silent_on_trap, my_principal);
+
+  // '(opt ( record {field1 = "hello" : text} ), opt (variant { Err = "Error" : text}), true, opt ( variant { Ok } ), opt ( record {field2 = "bye" : text} ))'
+  // -> '(true)'
+  mockIC.run_test(
+      "roundtrip_bool_true with additional Opt 6", roundtrip_bool_true,
+      "4449444c086e016c01b79cba8408716e036b01c5fed201716e056b01bc8a017f6e076c01b89cba8408710500027e0406010568656c6c6f0100054572726f720101000103627965",
+      "4449444c00017e01", silent_on_trap, my_principal);
+
+  // '(opt (record {opt (variant {field1 = "hello" : text})}), opt (variant { Err = "Error" : text}), true, opt ( variant { Ok } ), opt (record {opt (variant {field2 = "bye" : text})}))'
+  // -> '(true)'
+  mockIC.run_test(
+      "roundtrip_bool_true with additional Opt 7", roundtrip_bool_true,
+      "4449444c0c6e016c0100026e036b01b79cba8408716e056b01c5fed201716e076b01bc8a017f6e096c01000a6e0b6b01b89cba8408710500047e06080101000568656c6c6f0100054572726f7201010001010003627965",
+      "4449444c00017e01", silent_on_trap, my_principal);
+
+  // Test complex but valid opt variant with opt variant field
+  // '(opt (variant { Err = opt (variant { Err = "Error" : text}) }), true, opt ( variant { Ok } ), opt (variant { Err = opt (variant { Err = "Error" : text}) }))'
+  // -> '(true)'
+  mockIC.run_test(
+      "roundtrip_bool_true with additional Opt 8", roundtrip_bool_true,
+      "4449444c066e016b01c5fed201026e036b01c5fed201716e056b01bc8a017f04007e040001000100054572726f7201010001000100054572726f72",
+      "4449444c00017e01", silent_on_trap, my_principal);
+
+  // '(opt (record {opt (variant { Err = opt (variant { Err = "Error" : text}) })}), opt (variant { Err = "Error" : text}), true, opt ( variant { Ok } ), opt (record {opt (variant { Err = opt (variant { Err = "Error" : text}) })}))'
+  // -> '(true)'
+  mockIC.run_test(
+      "roundtrip_bool_true with additional Opt 9", roundtrip_bool_true,
+      "4449444c086e016c0100026e036b01c5fed201046e056b01c5fed201716e076b01bc8a017f0500047e06000101000100054572726f720100054572726f720101000101000100054572726f72",
       "4449444c00017e01", silent_on_trap, my_principal);
 
   // Test 1: Both fields are provided with actual values
@@ -655,6 +894,40 @@ int main() {
   mockIC.run_test(
       "roundtrip_vec_record w opts", roundtrip_vec_record,
       "4449444c036d016c05e1bde70202f1fee18d03718094ebdc0302cbe4fdc70471b49f92b409026e710100030109626567696e206f707403483156010a6d6964646c65206f70740348314e0107656e64206f70740109626567696e206f707403483256010a6d6964646c65206f70740348324e0107656e64206f70740109626567696e206f707403483356010a6d6964646c65206f70740348334e0107656e64206f7074",
+      "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e",
+      silent_on_trap, my_principal);
+
+  // vec record with additional Opt fields in the record
+  // '(vec { record {val = opt (variant { Okbegin }); 1000000000 = opt (variant { Okmiddle }); name_ = opt (variant { Err = "End" : text}); name = "H1N" : text; value = "H1V"}; record {val = opt (variant { Okbegin }); 1000000000 = opt (variant { Okmiddle }); name_ = opt (variant { Err = "End" : text}); name = "H2N" : text; value = "H2V"}; record {val = opt (variant { Okbegin }); 1000000000 = opt (variant { Okmiddle }); name_ = opt (variant { Err = "End" : text}); name = "H3N" : text; value = "H3V"}; })'
+  //   (
+  //     vec {
+  //         record {
+  //         5_889_761 = opt variant { 1_302_670_189 };
+  //         834_174_833 = "H1V";
+  //         1_000_000_000 = opt variant { 1_416_146_321 };
+  //         1_224_700_491 = "H1N";
+  //         2_525_269_940 = opt variant { 3_456_837 = "End" };
+  //         };
+  //         record {
+  //         5_889_761 = opt variant { 1_302_670_189 };
+  //         834_174_833 = "H2V";
+  //         1_000_000_000 = opt variant { 1_416_146_321 };
+  //         1_224_700_491 = "H2N";
+  //         2_525_269_940 = opt variant { 3_456_837 = "End" };
+  //         };
+  //         record {
+  //         5_889_761 = opt variant { 1_302_670_189 };
+  //         834_174_833 = "H3V";
+  //         1_000_000_000 = opt variant { 1_416_146_321 };
+  //         1_224_700_491 = "H3N";
+  //         2_525_269_940 = opt variant { 3_456_837 = "End" };
+  //         };
+  //     },
+  //     )
+  // -> vec with records, but without the opt fields
+  mockIC.run_test(
+      "roundtrip_vec_record w opt variant", roundtrip_vec_record,
+      "4449444c086d016c05e1bde70202f1fee18d03718094ebdc0304cbe4fdc70471b49f92b409066e036b01edd694ed047f6e056b0191dba2a3057f6e076b01c5fed2017101000301000348315601000348314e010003456e6401000348325601000348324e010003456e6401000348335601000348334e010003456e64",
       "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e",
       silent_on_trap, my_principal);
 
@@ -727,6 +1000,37 @@ int main() {
   // '(variant { Err = 1 : nat16})' goes in, but it expects a variant option "Err" : text
   mockIC.run_trap_test("roundtrip_variant_err  (trap 1)", roundtrip_variant_err,
                        "4449444c016b01c5fed2017a0100000100", silent_on_trap);
+
+  // ------------------------------------------------------------------------
+  // Trap test for variant.
+  // Field has a new label, which must trap, even if the field is defined as opt
+  // (See forum: https://forum.dfinity.org/t/question-about-record-variant-with-opt-fields-in-light-of-forward-compatibility/24567/2?u=icpp)
+
+  //  -> same
+  // from_wire:
+  // Expecting: '(variant { Ok  })'
+  // Receiving: '(variant { New })'
+  // to_wire:
+  // -> trap
+  mockIC.run_trap_test("roundtrip_variant_ok trap", roundtrip_variant_ok,
+                       "4449444c016b01c090ee017f010000", silent_on_trap,
+                       my_principal);
+  // from_wire:
+  // Expecting: '(2 : nat8, variant {Err = opt (---)})'
+  // Receiving: '(2 : nat8, variant {New = opt (null : null)})'
+  // to_wire:
+  // -> trap
+  mockIC.run_trap_test("roundtrip_variant_opt 2a trap 1", roundtrip_variant_opt,
+                       "4449444c026b01c090ee01016e7f027b00020001",
+                       silent_on_trap, my_principal);
+  // from_wire:
+  // Expecting: '(2 : nat8, variant {Err = opt (---)})'
+  // Receiving: '(2 : nat8, variant {New})'
+  // to_wire:
+  // -> trap
+  mockIC.run_trap_test("roundtrip_variant_opt 2a trap 2", roundtrip_variant_opt,
+                       "4449444c016b01c090ee017f027b000200", silent_on_trap,
+                       my_principal);
 
   //
   // Verify wrong text representations of of Principal

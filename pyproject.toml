@@ -18,5 +18,7 @@ dynamic = [
     "urls",
     "entry-points",
     "dependencies",
-    "optional-dependencies"
+    "optional-dependencies",
+    "license",
+    "scripts",
 ]

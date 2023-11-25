@@ -130,6 +130,10 @@ void roundtrip_record_opt()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_record_opt");
 void roundtrip_record_opt_variant()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_record_opt_variant");
+void roundtrip_opt_vec_nat16()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_vec_nat16");
+void roundtrip_opt_vec_record()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_opt_vec_record");
 void roundtrip_record_record_record()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_record_record_record");
 void roundtrip_record_vec_text()

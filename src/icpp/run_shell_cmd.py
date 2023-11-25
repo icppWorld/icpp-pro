@@ -134,9 +134,9 @@ def run_shell_cmd(
                     lmax = 132
                     lstdout = len(e.stdout)
                     if isinstance(e.stdout, bytes):
-                        capture_stdout += e.stdout.decode("utf-8")[:min(lmax, lstdout)]
+                        capture_stdout += e.stdout.decode("utf-8")[: min(lmax, lstdout)]
                     else:
-                        capture_stdout += e.stdout[:min(lmax, lstdout)]
+                        capture_stdout += e.stdout[: min(lmax, lstdout)]
                     if lstdout > lmax:
                         capture_stdout += "..."
 

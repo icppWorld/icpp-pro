@@ -843,6 +843,50 @@ void roundtrip_opt_record_variant_no_value() {
   ic_api.to_wire();
 }
 
+void roundtrip_opt_vec_nat16() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  std::vector<uint16_t> in;
+  CandidTypeVecNat16 v_in{&in};
+
+  bool has_value{false};
+  ic_api.from_wire(CandidTypeOptVec{&v_in, &has_value});
+
+  if (in != std::vector<uint16_t>{101, 102, 103})
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+
+  CandidTypeVecNat16 v_out{in};
+  ic_api.to_wire(CandidTypeOptVec{v_out});
+}
+
+void roundtrip_opt_vec_record() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // Define vectors to store the data from the vec-of-records
+  std::vector<std::string> field1;
+  std::vector<std::string> field2;
+
+  // Pass in a record-of-vecs using the correct keys, and icpp will know what to do ;-)
+  CandidTypeRecord r_in;
+  r_in.append("field1", CandidTypeVecText{&field1});
+  r_in.append("field2", CandidTypeVecText{&field2});
+  CandidTypeVecRecord vr_in{&r_in};
+
+  bool has_value{false};
+  ic_api.from_wire(CandidTypeOptVec{&vr_in, &has_value});
+
+  if (!has_value ||
+      field1 != std::vector<std::string>{"hello1", "hello2", "hello3"} ||
+      field2 != std::vector<std::string>{"bye1", "bye2", "bye3"})
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__));
+
+  // Pass in a record-of-vecs using the correct keys, and icpp will know what to do ;-)
+  CandidTypeRecord r_out;
+  r_out.append("field1", CandidTypeVecText{field1});
+  r_out.append("field2", CandidTypeVecText{field2});
+  CandidTypeVecRecord vr_out{r_out};
+  ic_api.to_wire(CandidTypeOptVec{vr_out});
+}
+
 void roundtrip_opt_all() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 

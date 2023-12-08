@@ -159,6 +159,8 @@ service: {
                                        (record { key1: record { key2: record { key3: text } } }) 
                                        query;
     "roundtrip_record_vec_text" : (record { name: vec text; })  -> (record { name: vec text; }) query;
+    "roundtrip_record_vec_record" : (record { headers: vec record { text; text;} })  -> 
+                                    (record { headers: vec record { text; text;} }) query;
     "roundtrip_variant_ok" : (Result)  -> (Result) query;
     "roundtrip_variant_err" : (Result_2)  -> (Result_2) query;
     "roundtrip_variant" : (Result, Result, Result_1, Result_1, Result_2, Result_2)  -> 

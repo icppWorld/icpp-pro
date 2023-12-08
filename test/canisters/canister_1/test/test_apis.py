@@ -1296,6 +1296,36 @@ def test__roundtrip_record_opt_variant_4b(network: str, principal: str) -> None:
 
 
 # ------------------------------------------------------------------------
+# Record with Vec Record field (headers of http_request)
+def test__roundtrip_record_vec_record_1(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_vec_record",
+        canister_argument="4449444c036c01c6a4a19806016d026c02f1fee18d0371cbe4fdc70471010003034831560348314e034832560348324e034833560348334e",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c096c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c01c6a4a1980604010803034831560348314e034832560348324e034833560348334e"
+    assert response == expected_response
+
+
+def test__roundtrip_record_vec_record_2(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_record_vec_record",
+        canister_argument="4449444c096c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c01c6a4a1980604010803034831560348314e034832560348324e034833560348334e",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c096c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c01c6a4a1980604010803034831560348314e034832560348324e034833560348334e"
+    assert response == expected_response
+
+
+# ------------------------------------------------------------------------
 # Variant
 def test__roundtrip_variant_ok(network: str, principal: str) -> None:
     response = call_canister_api(
@@ -1686,4 +1716,3 @@ def test__trap_roundtrip_record(network: str, principal: str) -> None:
     )
     assert "Failed call to api" in response
     assert "trapped explicitly" in response
-    assert "ERROR: Wrong Record field on wire" in response

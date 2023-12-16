@@ -10,18 +10,19 @@ on:
       - ".github/trigger.txt"
       - ".github/workflows/cicd.yml"
 
-env:
-  PYTHON_VERSION: 3.11
-
 jobs:
   all:
     name: all
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.11]
+
     steps:
       # https://github.com/marketplace/actions/setup-miniconda
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ matrix.python-version }}
 
       # -------------------------------------------------------------------
       # Checkout icpp-pro & icpp-candid as nested directory

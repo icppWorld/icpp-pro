@@ -6,5 +6,5 @@
 
 #include "wasm_symbol.h"
 
-void roundtrip_record_vec_record()
-    WASM_SYMBOL_EXPORTED("canister_query roundtrip_record_vec_record");
+void http_request() WASM_SYMBOL_EXPORTED("canister_query http_request");
+void http_request() WASM_SYMBOL_EXPORTED("canister_query http_request");

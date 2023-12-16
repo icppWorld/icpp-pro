@@ -103,6 +103,47 @@ void IC_API::from_wire() {
   CandidArgs A;
   from_wire(A);
 }
+// DeSerialize an HttpRequest byte stream received over the wire
+void IC_API::from_wire(IC_HttpRequest &request) {
+  // Define vectors to store the data for the headers (a vec-of-records)
+  std::vector<std::string> names;
+  std::vector<std::string> values;
+
+  // Pass in a record-of-vecs using the correct keys, and icpp will know what to do ;-)
+  // The record is not using a label, so we can use the shortened syntax
+  // record { text; text; }
+  // which internally results in
+  // record { 0: text; 1: text; }
+  CandidTypeRecord header_fields_in;
+  header_fields_in.append(CandidTypeVecText{&names});
+  header_fields_in.append(CandidTypeVecText{&values});
+  CandidTypeVecRecord headers_in{&header_fields_in};
+
+  // The HttpRequest
+  CandidTypeRecord http_in;
+  http_in.append("url", CandidTypeText{&request.url});
+  http_in.append("method", CandidTypeText{&request.method});
+  http_in.append("body", CandidTypeVecNat8{&request.body});
+  http_in.append("headers", headers_in);
+  http_in.append("certificate_version",
+                 CandidTypeOptNat16{&request.certificate_version});
+
+  from_wire(http_in);
+
+  // Map the header vectors `names` and `values` onto `request.headers`
+  if (names.size() != values.size()) {
+    ICPP_HOOKS::trap(
+        "ERROR: names and values vectors must be of the same size." +
+        std::string(__func__));
+  }
+
+  for (size_t i = 0; i < names.size(); ++i) {
+    IC_HeaderField headerField;
+    headerField.name = names[i];
+    headerField.value = values[i];
+    request.headers.push_back(headerField);
+  }
+}
 
 std::optional<__uint128_t> IC_API::string_to_uint128_t(const std::string &str) {
   __uint128_t result = 0;
@@ -224,6 +265,14 @@ void IC_API::to_wire(const CandidArgs &args_out) {
 
   // Reset the type table registry singleton
   CandidSerializeTypeTableRegistry::get_instance().clear();
+}
+
+// Serialize to byte stream & send out over the wire, when a HttpResponse is sent
+void IC_API::to_wire(IC_HttpResponse response) {
+  // TODO: Define the CandidType structure to send
+  CandidArgs args_out;
+  to_wire(args_out);
+  IC_API::trap("TODO: Map the data onto the request.");
 }
 
 // Appends the content of m_B_out, replies over the wire, re-sets the didl vectors

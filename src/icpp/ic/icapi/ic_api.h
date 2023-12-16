@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "ic_http.h"
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
 #include "canister.h"
@@ -55,7 +56,8 @@ public:
   // docs start: from_wire
   void from_wire();
   void from_wire(CandidType arg_in);
-  void from_wire(CandidArgs args_in); // docs end: from_wire
+  void from_wire(CandidArgs args_in);
+  void from_wire(IC_HttpRequest &request); // docs end: from_wire
 
   // Convert string to __uint128_t & __int128_t
   // clang-format off
@@ -73,7 +75,11 @@ public:
   // docs start: to_wire
   void to_wire();
   void to_wire(const CandidType &arg_out);
-  void to_wire(const CandidArgs &args_out); // docs end: to_wire
+  void to_wire(const CandidArgs &args_out);
+  void to_wire(const IC_HttpResponse response); // docs end: to_wire
+
+  VecBytes get_B_in() { return m_B_in; }
+  VecBytes get_B_out() { return m_B_out; }
 
   // Orthogonal Persistence
   template <typename T>

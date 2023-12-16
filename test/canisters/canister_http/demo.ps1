@@ -60,7 +60,7 @@ wsl --% dfx deploy
 Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Running some manual tests with dfx"
-wsl --% dfx canister call my_canister roundtrip_record_vec_record '(record { headers = vec { record {name = "H1N" : text; value = "H1V"}; record {name = "H2N" : text; value = "H2V"}; record {name = "H3N" : text; value = "H3V"}; } })'
+wsl --% dfx canister call my_canister http_request '(record { headers = vec { record {name = "H1N" : text; value = "H1V"}; record {name = "H2N" : text; value = "H2V"}; record {name = "H3N" : text; value = "H3V"}; } })'
 
 #######################################################################
 Write-Host " "

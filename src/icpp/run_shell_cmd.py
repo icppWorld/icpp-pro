@@ -3,7 +3,7 @@
 import subprocess
 import re
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 
 def escape_ansi(line: Optional[str]) -> Optional[str]:
@@ -87,7 +87,7 @@ def run_shell_cmd(
         run_in_powershell = False
 
     # for certain commands on Windows
-    cmd_: Union[str, list[str]] = cmd
+    cmd_: Union[str, List[str]] = cmd
     if run_in_powershell:
         cmd_ = ["powershell.exe", "-Command", cmd]
 

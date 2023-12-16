@@ -8,6 +8,7 @@
 # pylint: disable=missing-function-docstring, unused-import, wildcard-import, unused-wildcard-import
 
 from pathlib import Path
+from typing import Dict
 import json
 import pytest
 from icpp.smoketest import call_canister_api, dict_to_candid_text
@@ -595,7 +596,7 @@ def test__roundtrip_principal(network: str, principal: str) -> None:
 
 
 def test__caller_is_anonymous_true(
-    identity_anonymous: dict[str, str], network: str
+    identity_anonymous: Dict[str, str], network: str
 ) -> None:
     # double check the identity_anonymous fixture worked
     assert identity_anonymous["identity"] == "anonymous"
@@ -613,7 +614,7 @@ def test__caller_is_anonymous_true(
 
 
 def test__caller_is_anonymous_false(
-    identity_default: dict[str, str], network: str
+    identity_default: Dict[str, str], network: str
 ) -> None:
     # double check the identity_default fixture worked
     assert identity_default["identity"] == "default"

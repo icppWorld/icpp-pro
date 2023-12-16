@@ -3,7 +3,7 @@
 import sys
 import glob
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List
 import typer
 
 # `tomllib` was introduced in python 3.11
@@ -29,7 +29,7 @@ if not icpp_toml_path.exists():
     sys.exit(1)
 
 
-def validate(d_in: dict[Any, Any]) -> None:
+def validate(d_in: Dict[Any, Any]) -> None:
     """Validates if required fields are present"""
     if "build-wasm" not in d_in.keys():
         typer.echo(
@@ -54,7 +54,7 @@ def validate(d_in: dict[Any, Any]) -> None:
         sys.exit(1)
 
 
-def read_build_wasm_table(d_in: dict[Any, Any]) -> dict[Any, Any]:
+def read_build_wasm_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
     """Reads and processes the '[build-wasm]' table."""
     d = {}
     d["canister"] = d_in.get("canister", "default")
@@ -69,9 +69,9 @@ def read_build_wasm_table(d_in: dict[Any, Any]) -> dict[Any, Any]:
     return d
 
 
-def read_build_native_table(d_in: dict[Any, Any]) -> dict[Any, Any]:
+def read_build_native_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
     """Reads and processes the '[build-native]' table."""
-    d: dict[Any, Any] = {}
+    d: Dict[Any, Any] = {}
     icpp_toml_path_dir = icpp_toml_path.parent.resolve()
     d["cpp_include_dirs"] = [icpp_toml_path_dir / "native"]
     d["c_include_dirs"] = [icpp_toml_path_dir, icpp_toml_path_dir / "native"]
@@ -79,11 +79,11 @@ def read_build_native_table(d_in: dict[Any, Any]) -> dict[Any, Any]:
     return d
 
 
-def read_build_table_common(d: dict[Any, Any], d_in: dict[Any, Any]) -> None:
+def read_build_table_common(d: Dict[Any, Any], d_in: Dict[Any, Any]) -> None:
     """Reads the common fields of '[build-wasm]' & '[build-native]'"""
 
     # Helper function to expand wildcards
-    def expand_paths(patterns: list[str]) -> list[Path]:
+    def expand_paths(patterns: List[str]) -> List[Path]:
         paths: set[Path] = set()  # Using a set to store unique paths
         for pattern in patterns:
             absolute_pattern = (icpp_toml_path.parent / pattern).resolve()
@@ -141,5 +141,5 @@ with open(icpp_toml_path, "rb") as f:
     data = tomllib.load(f)
 
 validate(data)
-build_wasm: dict[Any, Any] = read_build_wasm_table(data.get("build-wasm", {}))
-build_native: dict[Any, Any] = read_build_native_table(data.get("build-native", {}))
+build_wasm: Dict[Any, Any] = read_build_wasm_table(data.get("build-wasm", {}))
+build_native: Dict[Any, Any] = read_build_native_table(data.get("build-native", {}))

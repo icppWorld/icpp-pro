@@ -8,6 +8,7 @@
 # pylint: disable=missing-function-docstring, unused-import, wildcard-import, unused-wildcard-import, line-too-long
 
 from pathlib import Path
+from typing import Dict
 import pytest
 from icpp.smoketest import call_canister_api, dict_to_candid_text
 
@@ -31,7 +32,7 @@ def test__greet_0(network: str) -> None:
 
 
 # Run this test with anonymous identity
-def test__greet_0_auth_err(identity_anonymous: dict[str, str], network: str) -> None:
+def test__greet_0_auth_err(identity_anonymous: Dict[str, str], network: str) -> None:
     # double check the identity_anonymous fixture worked
     assert identity_anonymous["identity"] == "anonymous"
     assert identity_anonymous["principal"] == "2vxsx-fae"
@@ -48,7 +49,7 @@ def test__greet_0_auth_err(identity_anonymous: dict[str, str], network: str) -> 
 
 
 # Run this test with a logged in default identity
-def test__greet_0_auth_ok(identity_default: dict[str, str], network: str) -> None:
+def test__greet_0_auth_ok(identity_default: Dict[str, str], network: str) -> None:
     # double check the identity_anonymous fixture worked
     assert identity_default["identity"] == "default"
 

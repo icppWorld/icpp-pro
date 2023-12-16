@@ -4,7 +4,7 @@ import subprocess
 import json
 import platform
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 import pytest  # pylint: disable=unused-import
 
 from icpp.run_shell_cmd import run_shell_cmd
@@ -90,7 +90,7 @@ def call_canister_api(
     return response
 
 
-def dict_to_candid_text(d: dict[Any, Any]) -> str:
+def dict_to_candid_text(d: Dict[Any, Any]) -> str:
     """Serializes dict to Candid text to send it over the wire"""
     pro.exit_if_not_pro("smoketesting with pytest")
     # pull it through twice, so all " are escaped into \"

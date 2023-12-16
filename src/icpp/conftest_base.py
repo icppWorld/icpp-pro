@@ -2,7 +2,7 @@
    https://docs.pytest.org/en/latest/fixture.html
 """
 
-from typing import Any, Generator
+from typing import Any, Generator, Dict
 import pytest
 
 
@@ -65,7 +65,7 @@ def principal() -> Any:
 # Fixtures to run a function with the anonymous or default identity
 
 
-def handle_identity(identity_to_set: str) -> Generator[dict[str, str], None, None]:
+def handle_identity(identity_to_set: str) -> Generator[Dict[str, str], None, None]:
     """A fixture that sets the dfx identity."""
     pro.exit_if_not_pro("smoketesting with pytest")
     identity_before_test = get_identity()
@@ -76,14 +76,14 @@ def handle_identity(identity_to_set: str) -> Generator[dict[str, str], None, Non
 
 
 @pytest.fixture(scope="function")
-def identity_anonymous() -> Generator[dict[str, str], None, None]:
+def identity_anonymous() -> Generator[Dict[str, str], None, None]:
     """A fixture that sets the dfx identity to anonymous."""
     pro.exit_if_not_pro("smoketesting with pytest")
     yield from handle_identity("anonymous")
 
 
 @pytest.fixture(scope="function")
-def identity_default() -> Generator[dict[str, str], None, None]:
+def identity_default() -> Generator[Dict[str, str], None, None]:
     """A fixture that sets the dfx identity to default."""
     pro.exit_if_not_pro("smoketesting with pytest")
     yield from handle_identity("default")

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "canisters": {
+    "my_canister": {
+      "type": "custom",
+      "candid": "src/my_canister.did",
+      "wasm": "build/my_canister.wasm"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  }
+}

@@ -1380,6 +1380,80 @@ void roundtrip_record_vec_record() {
   ic_api.to_wire(http_out);
 }
 
+void roundtrip_http_headers() {
+  // This represents the headers in the http_request of the IC
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  // '(record { headers = vec { record { "host"; "5ugrv-zqaaa-aaaag-acfna-cai.raw.icp0.io" };record { "x-real-ip"; "24.96.240.145" }; record { "x-forwarded-for"; "24.96.240.145" }; record { "x-forwarded-proto"; "https" }; record { "x-request-id"; "d9b41db4-4e97-8276-14f1-6db7d007b57d" }; record { "user-agent"; "curl/7.81.0" }; record { "accept"; "*/*" }; }; })'
+
+  // Define vectors to store the data from the vec-of-records
+  std::vector<std::string> names;
+  std::vector<std::string> values;
+
+  // Pass in a record-of-vecs using the correct keys, and icpp will know what to do ;-)
+  CandidTypeRecord header_fields_in;
+  header_fields_in.append(CandidTypeVecText{&names});
+  header_fields_in.append(CandidTypeVecText{&values});
+  CandidTypeVecRecord headers_in{&header_fields_in};
+
+  // The HttpRequest
+  CandidTypeRecord http_in;
+  http_in.append("headers", headers_in);
+
+  ic_api.from_wire(http_in);
+
+  // ---------------------------------------------------------------------------
+  // Verify the data
+  if (names.size() == 0)
+    IC_API::trap("ASSERT ERROR no 'names' found - " + std::string(__func__));
+  if (names.size() != values.size())
+    IC_API::trap(
+        "ASSERT ERROR different size found for 'names' & 'values' vectors - " +
+        std::string(__func__));
+  if (names[0] != "host")
+    IC_API::trap("ASSERT ERROR names[0] - " + std::string(__func__));
+  if (names[1] != "x-real-ip")
+    IC_API::trap("ASSERT ERROR names[1] - " + std::string(__func__));
+  if (names[2] != "x-forwarded-for")
+    IC_API::trap("ASSERT ERROR names[2] - " + std::string(__func__));
+  if (names[3] != "x-forwarded-proto")
+    IC_API::trap("ASSERT ERROR names[3] - " + std::string(__func__));
+  if (names[4] != "x-request-id")
+    IC_API::trap("ASSERT ERROR names[4] - " + std::string(__func__));
+  if (names[5] != "user-agent")
+    IC_API::trap("ASSERT ERROR names[5] - " + std::string(__func__));
+  if (names[6] != "accept")
+    IC_API::trap("ASSERT ERROR names[6] - " + std::string(__func__));
+  if (values[0] != "5ugrv-zqaaa-aaaag-acfna-cai.raw.icp0.io")
+    IC_API::trap("ASSERT ERROR values[0] - " + std::string(__func__));
+  if (values[1] != "21.98.241.245")
+    IC_API::trap("ASSERT ERROR values[1] - " + std::string(__func__));
+  if (values[2] != "21.98.241.245")
+    IC_API::trap("ASSERT ERROR values[2] - " + std::string(__func__));
+  if (values[3] != "https")
+    IC_API::trap("ASSERT ERROR values[3] - " + std::string(__func__));
+  if (values[4] != "d9b41db4-4e97-8276-14f1-6db7d007b57d")
+    IC_API::trap("ASSERT ERROR values[4] - " + std::string(__func__));
+  if (values[5] != "curl/7.81.0")
+    IC_API::trap("ASSERT ERROR values[5] - " + std::string(__func__));
+  if (values[6] != "*/*")
+    IC_API::trap("ASSERT ERROR values[6] - " + std::string(__func__));
+  // ---------------------------------------------------------------------------
+
+  CandidTypeRecord header_fields_out;
+  header_fields_out.append(CandidTypeVecText{&names});
+  header_fields_out.append(CandidTypeVecText{&values});
+  CandidTypeVecRecord headers_out{header_fields_out};
+
+  // The HttpResponse
+  CandidTypeRecord http_out;
+  http_out.append("headers", headers_out);
+
+  ic_api.to_wire(http_out);
+}
+
 void roundtrip_variant_ok() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   // ---------------------------------------------------------------------------

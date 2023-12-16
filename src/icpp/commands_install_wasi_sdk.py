@@ -100,9 +100,10 @@ def install_wasi_sdk() -> None:
                 f"{config_default.ICPP_ROOT_COMPILER}"
             )
             try:
+                # Convert Path to str, for compatibility with Python 3.8
                 shutil.move(
-                    config_default.ICPP_ROOT_UNTAR_DIR,
-                    config_default.ICPP_ROOT_COMPILER,
+                    str(config_default.ICPP_ROOT_UNTAR_DIR),
+                    str(config_default.ICPP_ROOT_COMPILER),
                 )
             except shutil.Error as e:
                 typer.echo(f"Error: {e}")

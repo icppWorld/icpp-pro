@@ -1419,13 +1419,13 @@ void roundtrip_http_headers() {
   if (names[2] != "x-forwarded-for")
     IC_API::trap("ASSERT ERROR names[2] - " + std::string(__func__));
   if (names[3] != "x-forwarded-proto")
-    IC_API::trap("ASSERT ERROR names[2] - " + std::string(__func__));
+    IC_API::trap("ASSERT ERROR names[3] - " + std::string(__func__));
   if (names[4] != "x-request-id")
-    IC_API::trap("ASSERT ERROR names[2] - " + std::string(__func__));
+    IC_API::trap("ASSERT ERROR names[4] - " + std::string(__func__));
   if (names[5] != "user-agent")
-    IC_API::trap("ASSERT ERROR names[2] - " + std::string(__func__));
+    IC_API::trap("ASSERT ERROR names[5] - " + std::string(__func__));
   if (names[6] != "accept")
-    IC_API::trap("ASSERT ERROR names[2] - " + std::string(__func__));
+    IC_API::trap("ASSERT ERROR names[6] - " + std::string(__func__));
   if (values[0] != "5ugrv-zqaaa-aaaag-acfna-cai.raw.icp0.io")
     IC_API::trap("ASSERT ERROR values[0] - " + std::string(__func__));
   if (values[1] != "21.98.241.245")
@@ -1433,13 +1433,13 @@ void roundtrip_http_headers() {
   if (values[2] != "21.98.241.245")
     IC_API::trap("ASSERT ERROR values[2] - " + std::string(__func__));
   if (values[3] != "https")
-    IC_API::trap("ASSERT ERROR values[2] - " + std::string(__func__));
+    IC_API::trap("ASSERT ERROR values[3] - " + std::string(__func__));
   if (values[4] != "d9b41db4-4e97-8276-14f1-6db7d007b57d")
-    IC_API::trap("ASSERT ERROR values[2] - " + std::string(__func__));
+    IC_API::trap("ASSERT ERROR values[4] - " + std::string(__func__));
   if (values[5] != "curl/7.81.0")
-    IC_API::trap("ASSERT ERROR values[2] - " + std::string(__func__));
+    IC_API::trap("ASSERT ERROR values[5] - " + std::string(__func__));
   if (values[6] != "*/*")
-    IC_API::trap("ASSERT ERROR values[2] - " + std::string(__func__));
+    IC_API::trap("ASSERT ERROR values[6] - " + std::string(__func__));
   // ---------------------------------------------------------------------------
 
   CandidTypeRecord header_fields_out;

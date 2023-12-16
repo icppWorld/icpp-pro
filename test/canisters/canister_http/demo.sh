@@ -35,14 +35,14 @@ dfx deploy
 #######################################################################
 echo " "
 echo "--------------------------------------------------"
-echo "Running some manual tests with dfx"
-dfx canister call my_canister http_request '(record { headers = vec { record {name = "H1N" : text; value = "H1V"}; record {name = "H2N" : text; value = "H2V"}; record {name = "H3N" : text; value = "H3V"}; } })'
+echo "Running the full smoketests with pytest"
+pytest --network=local
 
 #######################################################################
 echo " "
 echo "--------------------------------------------------"
-echo "Running the full smoketests with pytest"
-pytest --network=local
+echo "Calling the deployed canister with curl, skipping the asserts"
+curl -X GET -H "skip-asserts: yes" -H "Content-Type: application/json" -d '{"key1":"value1", "key2":"value2"}' http://localhost:$(dfx info webserver-port)/?canisterId=$(dfx canister id my_canister)
 
 #######################################################################
 echo "--------------------------------------------------"

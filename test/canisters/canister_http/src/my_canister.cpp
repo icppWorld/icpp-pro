@@ -28,19 +28,68 @@ void http_request() {
   IC_HttpRequest request;
   ic_api.from_wire(request);
 
+  bool skip_asserts{false};
+  for (IC_HeaderField headerField : request.headers) {
+    if (headerField.name == "skip-asserts") {
+      if (headerField.value == "yes") {
+        skip_asserts = true;
+      }
+      break;
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Verify the data
-  IC_API::trap("ADD ASSERTS FOR request - " + std::string(__func__));
-  if (request.headers.size() == 0)
-    IC_API::trap("ASSERT ERROR no 'headers' found - " + std::string(__func__));
-
+  if (!skip_asserts) {
+    if (request.method != "GET")
+      IC_API::trap("ASSERT ERROR request.method - " + std::string(__func__));
+    if (request.url != "/my-route")
+      IC_API::trap("ASSERT ERROR request.url - " + std::string(__func__));
+    if (request.headers.size() != 9)
+      IC_API::trap("ASSERT ERROR size of headers - " + std::string(__func__));
+    if (request.headers[0].name != "host" ||
+        request.headers[0].value != "5ugrv-zqaaa-aaaag-acfna-cai.raw.icp0.io")
+      IC_API::trap("ASSERT ERROR request.headers[0] - " +
+                   std::string(__func__));
+    if (request.headers[1].name != "x-real-ip" ||
+        request.headers[1].value != "24.96.240.145")
+      IC_API::trap("ASSERT ERROR request.headers[1] - " +
+                   std::string(__func__));
+    if (request.headers[2].name != "x-forwarded-for" ||
+        request.headers[2].value != "24.96.240.145")
+      IC_API::trap("ASSERT ERROR request.headers[2] - " +
+                   std::string(__func__));
+    if (request.headers[3].name != "x-forwarded-proto" ||
+        request.headers[3].value != "https")
+      IC_API::trap("ASSERT ERROR request.headers[3] - " +
+                   std::string(__func__));
+    if (request.headers[4].name != "x-request-id" ||
+        request.headers[4].value != "ed1fe47b-d43e-d9b1-62dd-e50d64d8c4eb")
+      IC_API::trap("ASSERT ERROR request.headers[4] - " +
+                   std::string(__func__));
+    if (request.headers[5].name != "content-length" ||
+        request.headers[5].value != "34")
+      IC_API::trap("ASSERT ERROR request.headers[5] - " +
+                   std::string(__func__));
+    if (request.headers[6].name != "user-agent" ||
+        request.headers[6].value != "curl/7.81.0")
+      IC_API::trap("ASSERT ERROR request.headers[6] - " +
+                   std::string(__func__));
+    if (request.headers[7].name != "accept" ||
+        request.headers[7].value != "*/*")
+      IC_API::trap("ASSERT ERROR request.headers[7] - " +
+                   std::string(__func__));
+    if (request.headers[8].name != "content-type" ||
+        request.headers[8].value != "application/json")
+      IC_API::trap("ASSERT ERROR request.headers[8] - " +
+                   std::string(__func__));
+  }
   // ---------------------------------------------------------------------------
 
   IC_HttpResponse response;
-  // TODO: set the values for response
-  // response.status_code = 200;
-  // response.headers = ...;
-  // response.body = ...;
-  // response.upgrade = ...;
+  response.status_code = 200;
+  response.headers = request.headers;
+  response.body = request.body;
+  response.upgrade = false;
   ic_api.to_wire(response);
 }

@@ -44,7 +44,7 @@ struct IC_HttpUpdateRequest {
 
 struct IC_HttpResponse {
   // Representing 'status_code' as uint16_t
-  uint16_t status_code;
+  uint16_t status_code = 200;
 
   // Representing 'headers' as a vector of HeaderField
   std::vector<IC_HeaderField> headers;

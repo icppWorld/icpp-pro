@@ -269,10 +269,35 @@ void IC_API::to_wire(const CandidArgs &args_out) {
 
 // Serialize to byte stream & send out over the wire, when a HttpResponse is sent
 void IC_API::to_wire(IC_HttpResponse response) {
-  // TODO: Define the CandidType structure to send
-  CandidArgs args_out;
-  to_wire(args_out);
-  IC_API::trap("TODO: Map the data onto the request.");
+  // Define vectors to store the data for the headers (a vec-of-records)
+  std::vector<std::string> names;
+  std::vector<std::string> values;
+
+  // Map the `response.headers` onto the header vectors `names` and `values`
+  for (IC_HeaderField headerField : response.headers) {
+    names.push_back(headerField.name);
+    values.push_back(headerField.value);
+  }
+
+  // Pass in a record-of-vecs using the correct keys, and icpp will know what to do ;-)
+  // The record is not using a label, so we can use the shortened syntax
+  // record { text; text; }
+  // which internally results in
+  // record { 0: text; 1: text; }
+  CandidTypeRecord header_fields_out;
+  header_fields_out.append(CandidTypeVecText{names});
+  header_fields_out.append(CandidTypeVecText{values});
+  CandidTypeVecRecord headers_out{header_fields_out};
+
+  // The HttpRequest
+  CandidTypeRecord http_out;
+  http_out.append("status_code", CandidTypeNat16{response.status_code});
+  http_out.append("headers", headers_out);
+  http_out.append("body", CandidTypeVecNat8(response.body));
+  if (response.upgrade.has_value())
+    http_out.append("upgrade", CandidTypeOptBool{response.upgrade});
+
+  to_wire(http_out);
 }
 
 // Appends the content of m_B_out, replies over the wire, re-sets the didl vectors

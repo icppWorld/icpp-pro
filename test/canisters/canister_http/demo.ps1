@@ -19,7 +19,7 @@ wsl dfx stop
 Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Starting the local network in wsl as a PowerShell background job"
-$jobName = "canister_1"
+$jobName = "canister_http"
 
 # Stop the job if it already exist
 # Get a list of all the background jobs with a specific name
@@ -59,14 +59,14 @@ wsl --% dfx deploy
 #######################################################################
 Write-Host " "
 Write-Host "--------------------------------------------------"
-Write-Host "Running some manual tests with dfx"
-wsl --% dfx canister call my_canister http_request '(record { headers = vec { record {name = "H1N" : text; value = "H1V"}; record {name = "H2N" : text; value = "H2V"}; record {name = "H3N" : text; value = "H3V"}; } })'
+Write-Host "Running the full smoketests with pytest"
+pytest --network=local
 
 #######################################################################
 Write-Host " "
 Write-Host "--------------------------------------------------"
-Write-Host "Running the full smoketests with pytest"
-pytest --network=local
+Write-Host "Calling the deployed canister with curl, skipping the asserts"
+wsl --% curl -X GET -H "skip-asserts: yes" -H "Content-Type: application/json" -d '{"key1":"value1", "key2":"value2"}' http://localhost:$(dfx info webserver-port)/?canisterId=$(dfx canister id my_canister)
 
 #######################################################################
 Write-Host " "

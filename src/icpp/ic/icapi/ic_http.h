@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <cstdint>
 
 struct IC_HeaderField {
   std::string name;

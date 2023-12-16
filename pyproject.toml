@@ -7,12 +7,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "icpp-pro"
+requires-python = ">=3.8"
 dynamic = [
     "version",
     "description",
     "authors",
     "readme",
-    "requires-python",
     "classifiers",
     "keywords",
     "urls",

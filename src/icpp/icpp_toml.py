@@ -3,7 +3,7 @@
 import sys
 import glob
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 import typer
 
 # `tomllib` was introduced in python 3.11
@@ -84,7 +84,7 @@ def read_build_table_common(d: Dict[Any, Any], d_in: Dict[Any, Any]) -> None:
 
     # Helper function to expand wildcards
     def expand_paths(patterns: List[str]) -> List[Path]:
-        paths: set[Path] = set()  # Using a set to store unique paths
+        paths: Set[Path] = set()  # Using a set to store unique paths
         for pattern in patterns:
             absolute_pattern = (icpp_toml_path.parent / pattern).resolve()
             paths.update(map(Path, glob.glob(str(absolute_pattern))))

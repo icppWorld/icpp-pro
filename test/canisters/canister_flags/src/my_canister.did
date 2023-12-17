@@ -1,0 +1,3 @@
+service : {
+    "greet_json" : (text) -> (text) query;
+}

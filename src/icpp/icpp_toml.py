@@ -108,6 +108,11 @@ def read_build_table_common(d: Dict[Any, Any], d_in: Dict[Any, Any]) -> None:
     d["c_header_paths"] = expand_paths(d_in.get("c_header_paths", []))
     d["c_compile_flags"] = d_in.get("c_compile_flags", [])
 
+    # if non-empty, these defaults will overwrite internal settings
+    d["cpp_compile_flags_defaults"] = d_in.get("cpp_compile_flags_defaults", [])
+    d["cpp_link_flags_defaults"] = d_in.get("cpp_link_flags_defaults", [])
+    d["c_compile_flags_defaults"] = d_in.get("c_compile_flags_defaults", [])
+
     #
     # concurrent compiler uses a list of strings for the files to compile
     #
@@ -131,6 +136,34 @@ def read_build_table_common(d: Dict[Any, Any], d_in: Dict[Any, Any]) -> None:
     )
     d["c_header_files"] = " ".join([str(x) for x in d["c_header_paths"]]) + " "
     d["c_compile_flags_s"] = " ".join([str(x) for x in d["c_compile_flags"]]) + " "
+
+    #
+    # linker uses a long string of strings, not a list
+    #
+    d["cpp_link_flags_s"] = " ".join([str(x) for x in d["cpp_link_flags"]]) + " "
+
+    #
+    # overwriting defaults also uses strings
+    #
+    d["cpp_compile_flags_defaults_s"] = (
+        " ".join([str(x) for x in d["cpp_compile_flags_defaults"]]) + " "
+    )
+    d["c_compile_flags_defaults_s"] = (
+        " ".join([str(x) for x in d["c_compile_flags_defaults"]]) + " "
+    )
+    d["cpp_link_flags_defaults_s"] = (
+        " ".join([str(x) for x in d["cpp_link_flags_defaults"]]) + " "
+    )
+
+    d["overwrite_default_CFLAGS"] = False
+    d["overwrite_default_CPPFLAGS"] = False
+    d["overwrite_default_LDFLAGS"] = False
+    if len(d["c_compile_flags_defaults"]) > 0:
+        d["overwrite_default_CFLAGS"] = True
+    if len(d["cpp_compile_flags_defaults"]) > 0:
+        d["overwrite_default_CPPFLAGS"] = True
+    if len(d["cpp_link_flags_defaults"]) > 0:
+        d["overwrite_default_LDFLAGS"] = True
 
 
 #

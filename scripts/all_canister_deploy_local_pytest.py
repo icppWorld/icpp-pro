@@ -27,6 +27,11 @@ def main() -> int:
             typer.echo("--\nBuild the wasm")
             run_shell_cmd("icpp build-wasm --to-compile all", cwd=canister_path)
 
+            typer.echo(
+                "--\ngzip --keep the wasm (keep original for those who deploy unzipped wasm)"
+            )
+            run_shell_cmd("gzip --keep build/*.wasm", cwd=canister_path)
+
             typer.echo(f"--\nDeploy {canister_path.name}")
             run_shell_cmd("dfx deploy", cwd=canister_path)
 

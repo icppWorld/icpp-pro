@@ -8,6 +8,34 @@ cpp_link_flags = []
 c_paths = []
 c_include_dirs = []
 c_compile_flags = []
+# if non-empty, these defaults will overwrite internal settings
+# Implemented to support investigation of this issue:
+# https://forum.dfinity.org/t/heap-out-of-bounds-error-code-some-ic0502-on-c-code-run/25289/6?u=icpp
+cpp_compile_flags_defaults = [
+    # "-O3",
+    # "-flto",
+    "-fno-exceptions", # required for IC
+    # "-fvisibility=hidden",
+    "-D NDEBUG",
+    "-D ICPP_VERBOSE=0",
+]
+cpp_link_flags_defaults = [
+    "-nostartfiles",
+    "-Wl,--no-entry",
+    # "-Wl,--lto-O3",
+    # "-Wl,--strip-all",
+    # "-Wl,--strip-debug",
+    "-Wl,--stack-first",
+    "-Wl,--export-dynamic", # required for IC
+]
+c_compile_flags_defaults = [
+    # "-O3",
+    # "-flto",
+    "-fno-exceptions", # required for IC
+    # "-fvisibility=hidden",
+    "-D NDEBUG",
+    "-D ICPP_VERBOSE=0",
+]
 [build-native]
 cpp_paths = ["native/main.cpp"]
 cpp_include_dirs = []
@@ -16,3 +44,7 @@ cpp_link_flags = []
 c_paths = []
 c_include_dirs = []
 c_compile_flags = []
+# if non-empty, these defaults will overwrite internal settings
+cpp_compile_flags_defaults = []
+cpp_link_flags_defaults = []
+c_compile_flags_defaults = []

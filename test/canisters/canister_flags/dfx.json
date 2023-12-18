@@ -4,7 +4,7 @@
     "my_canister": {
       "type": "custom",
       "candid": "src/my_canister.did",
-      "wasm": "build/my_canister.wasm"
+      "wasm": "build/my_canister.wasm.gz"
     }
   },
   "defaults": {

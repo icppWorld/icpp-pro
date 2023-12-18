@@ -69,54 +69,99 @@ def build_native(
     if not build_path.exists():
         build_path.mkdir()
 
-    def cpp_compile_file(file: str) -> None:
+    cpp_files = icpp_toml.build_native["cpp_files"] + icpp_toml.build_wasm["cpp_files"]
+    cpp_files_list = (
+        icpp_toml.build_native["cpp_files_list"]
+        + icpp_toml.build_wasm["cpp_files_list"]
+    )
+    cpp_include_flags = (
+        icpp_toml.build_native["cpp_include_flags"]
+        + icpp_toml.build_wasm["cpp_include_flags"]
+    )
+    cpp_compile_flags_s = icpp_toml.build_native["cpp_compile_flags_s"]
+
+    c_files = icpp_toml.build_native["c_files"] + icpp_toml.build_wasm["c_files"]
+    c_files_list = (
+        icpp_toml.build_native["c_files_list"] + icpp_toml.build_wasm["c_files_list"]
+    )
+    c_include_flags = (
+        icpp_toml.build_native["c_include_flags"]
+        + icpp_toml.build_wasm["c_include_flags"]
+    )
+    c_compile_flags_s = icpp_toml.build_native["c_compile_flags_s"]
+
+    cpp_compile_flags_defaults_s = config_default.NATIVE_CPPFLAGS
+    cpp_link_flags_defaults_s = config_default.NATIVE_LDFLAGS
+    c_compile_flags_defaults_s = config_default.NATIVE_CFLAGS
+
+    if icpp_toml.build_native["overwrite_default_CPPFLAGS"]:
+        cpp_compile_flags_defaults_s = icpp_toml.build_native[
+            "cpp_compile_flags_defaults_s"
+        ]
+    if icpp_toml.build_native["overwrite_default_LDFLAGS"]:
+        cpp_link_flags_defaults_s = icpp_toml.build_native["cpp_link_flags_defaults_s"]
+    if icpp_toml.build_native["overwrite_default_CFLAGS"]:
+        c_compile_flags_defaults_s = icpp_toml.build_native[
+            "c_compile_flags_defaults_s"
+        ]
+
+    def cpp_compile_cmd_default() -> str:
         cmd = (
-            f"{config_default.NATIVE_CPP} {cpp_include_flags} "
-            f"{config_default.NATIVE_CPPFLAGS} {cpp_compile_flags_s} "
-            f"-c {file}"
+            f"{config_default.NATIVE_CPP} {config_default.NATIVE_CPP_REQUIRED_FLAGS} "
+            f"{cpp_compile_flags_defaults_s} "
         )
+        return cmd
+
+    def c_compile_cmd_default() -> str:
+        cmd = (
+            f"{config_default.NATIVE_C} {config_default.NATIVE_C_REQUIRED_FLAGS} "
+            f"{c_compile_flags_defaults_s} "
+        )
+        return cmd
+
+    def cpp_compile_cmd_mine() -> str:
+        cmd = (
+            f"{cpp_compile_cmd_default()} "
+            f"{cpp_include_flags} "
+            f"{cpp_compile_flags_s} "
+        )
+        return cmd
+
+    def c_compile_cmd_mine() -> str:
+        cmd = f"{c_compile_cmd_default()} {c_include_flags} {c_compile_flags_s} "
+        return cmd
+
+    def cpp_compile_file_mine(file: str) -> None:
+        cmd = f"{cpp_compile_cmd_mine()} -c {file}"
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=build_path)
 
-    def c_compile_file(file: str) -> None:
-        cmd = (
-            f"{config_default.NATIVE_C} {c_include_flags} "
-            f"{config_default.NATIVE_CFLAGS} {c_compile_flags_s} "
-            f"-c {file}"
-        )
+    def c_compile_file_mine(file: str) -> None:
+        cmd = f"{c_compile_cmd_mine()} -c {file}"
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
+
+    def cpp_compile_file_icpp(file: str) -> None:
+        cmd = f"{cpp_compile_cmd_default()} -c {file}"
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
+
+    def c_compile_file_icpp(file: str) -> None:
+        cmd = f"{c_compile_cmd_default()} -c {file}"
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=build_path)
 
     try:
         # ----------------------------------------------------------------------
         # compile 'mine' C++ files, if we have any
-        # string format
-        cpp_files = (
-            icpp_toml.build_native["cpp_files"] + icpp_toml.build_wasm["cpp_files"]
-        )
-        # list format
-        cpp_files_list = (
-            icpp_toml.build_native["cpp_files_list"]
-            + icpp_toml.build_wasm["cpp_files_list"]
-        )
-        cpp_include_flags = (
-            icpp_toml.build_native["cpp_include_flags"]
-            + icpp_toml.build_wasm["cpp_include_flags"]
-        )
-        cpp_compile_flags_s = icpp_toml.build_native["cpp_compile_flags_s"]
-
         if len(cpp_files.strip()) > 0:
             if CONCURRENCY == "multi-threading":
                 typer.echo("--")
                 typer.echo("Compiling your C++ files using multi-threading:")
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    executor.map(cpp_compile_file, cpp_files_list)
+                    executor.map(cpp_compile_file_mine, cpp_files_list)
             else:
-                cmd = (
-                    f"{config_default.NATIVE_CPP} {cpp_include_flags} "
-                    f"{config_default.NATIVE_CPPFLAGS} {cpp_compile_flags_s} "
-                    f"-c {cpp_files}"
-                )
+                cmd = f"{cpp_compile_cmd_mine()} -c {cpp_files}"
 
                 typer.echo("--")
                 typer.echo("Compiling your C++ files with command:")
@@ -125,28 +170,14 @@ def build_native(
 
         # ----------------------------------------------------------------------
         # compile 'mine' C files, if we have any
-        c_files = icpp_toml.build_native["c_files"] + icpp_toml.build_wasm["c_files"]
-        c_files_list = (
-            icpp_toml.build_native["c_files_list"]
-            + icpp_toml.build_wasm["c_files_list"]
-        )
-        c_include_flags = (
-            icpp_toml.build_native["c_include_flags"]
-            + icpp_toml.build_wasm["c_include_flags"]
-        )
-        c_compile_flags_s = icpp_toml.build_native["c_compile_flags_s"]
         if len(c_files.strip()) > 0:
             if CONCURRENCY == "multi-threading":
                 typer.echo("--")
                 typer.echo("Compiling your C files using multi-threading:")
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    executor.map(c_compile_file, c_files_list)
+                    executor.map(c_compile_file_mine, c_files_list)
             else:
-                cmd = (
-                    f"{config_default.NATIVE_C} {c_include_flags} "
-                    f"{config_default.NATIVE_CFLAGS} {c_compile_flags_s} "
-                    f"-c {c_files}"
-                )
+                cmd = f"{c_compile_cmd_mine()} -c {c_files}"
 
                 typer.echo("--")
                 typer.echo("Compiling your C files with command:")
@@ -164,13 +195,12 @@ def build_native(
                     )
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         executor.map(
-                            cpp_compile_file,
+                            cpp_compile_file_icpp,
                             config_default.MOCKIC_CPP_FILES_LIST,
                         )
                 else:
                     cmd = (
-                        f"{config_default.NATIVE_CPP} "
-                        f"{config_default.NATIVE_CPPFLAGS} "
+                        f"{cpp_compile_cmd_default()} "
                         f"-c {config_default.MOCKIC_CPP_FILES}"
                     )
 
@@ -189,14 +219,12 @@ def build_native(
                     )
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         executor.map(
-                            c_compile_file,
+                            c_compile_file_icpp,
                             config_default.MOCKIC_C_FILES_LIST,
                         )
                 else:
                     cmd = (
-                        f"{config_default.NATIVE_C} "
-                        f"{config_default.NATIVE_CFLAGS} "
-                        f"-c {config_default.MOCKIC_C_FILES}"
+                        f"{c_compile_cmd_default()} -c {config_default.MOCKIC_C_FILES}"
                     )
 
                     typer.echo("--")
@@ -209,7 +237,8 @@ def build_native(
         executable = "mockic.exe"
         cmd = (
             f"{config_default.NATIVE_CPP} "
-            f"{config_default.NATIVE_CPPFLAGS} {config_default.NATIVE_LDFLAGS} "
+            f"{config_default.NATIVE_CPP_REQUIRED_FLAGS} "
+            f"{cpp_link_flags_defaults_s} "
             f"*.o -o {executable}"
         )
 

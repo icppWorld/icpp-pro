@@ -117,18 +117,21 @@ IC_HEADER_FILES = " ".join(IC_HEADER_FILES_LIST) + " "
 
 SYSROOT = ICPP_ROOT_COMPILER / "share/wasi-sysroot"
 
-WASM_C = ICPP_ROOT_COMPILER / "bin/clang"
-WASM_CPP = ICPP_ROOT_COMPILER / "bin/clang++"
-WASM_CFLAGS = (
-    f" --target=wasm32-wasi -O3 -flto -fno-exceptions -fvisibility=hidden "
-    f" --sysroot {SYSROOT} "
+WASM_C_REQUIRED_FLAGS = (
+    f" --target=wasm32-wasi --sysroot {SYSROOT} "
     f" -I {ICPP_DIR}/ic/canister -I {ICPP_DIR}/ic/icapi "
     f" -I {ICPP_DIR}/ic/pro -I {ICPP_DIR}/ic/ic0 "
     f" -I {ICPP_CANDID_PATH}/candid -I {ICPP_CANDID_PATH}/hooks "
     f" -I {ICPP_CANDID_PATH}/vendors "
-    f" -D NDEBUG -D ICPP_VERBOSE=0 "
 )
-WASM_CPPFLAGS = WASM_CFLAGS + " -std=c++20 "
+WASM_CPP_REQUIRED_FLAGS = WASM_C_REQUIRED_FLAGS + " -std=c++20 "
+
+WASM_C = ICPP_ROOT_COMPILER / "bin/clang"
+WASM_CPP = ICPP_ROOT_COMPILER / "bin/clang++"
+WASM_CFLAGS = (
+    " -O3 -flto -fno-exceptions -fvisibility=hidden -D NDEBUG -D ICPP_VERBOSE=0 "
+)
+WASM_CPPFLAGS = WASM_CFLAGS
 WASM_LDFLAGS = (
     " -nostartfiles -Wl,--no-entry -Wl,--lto-O3 -Wl,--strip-all "
     " -Wl,--strip-debug -Wl,--stack-first -Wl,--export-dynamic "
@@ -179,12 +182,15 @@ MOCKIC_HEADER_FILES = " ".join(MOCKIC_HEADER_FILES_LIST) + " "
 NATIVE_COMPILER = "Clang"
 NATIVE_C = "clang"
 NATIVE_CPP = "clang++"
-NATIVE_CFLAGS = (
-    f" -g -I {ICPP_DIR}/ic/canister -I {ICPP_DIR}/ic/icapi "
+
+NATIVE_C_REQUIRED_FLAGS = (
+    f" -I {ICPP_DIR}/ic/canister -I {ICPP_DIR}/ic/icapi "
     f" -I {ICPP_DIR}/ic/pro -I {ICPP_DIR}/ic/ic0mock "
     f" -I {ICPP_CANDID_PATH}/candid -I {ICPP_CANDID_PATH}/hooks "
     f" -I {ICPP_CANDID_PATH}/vendors "
-    f" -D ICPP_VERBOSE=0 "
 )
-NATIVE_CPPFLAGS = NATIVE_CFLAGS + " -std=c++20 "
+NATIVE_CPP_REQUIRED_FLAGS = NATIVE_C_REQUIRED_FLAGS + " -std=c++20 "
+
+NATIVE_CFLAGS = " -g -D ICPP_VERBOSE=0 "
+NATIVE_CPPFLAGS = NATIVE_CFLAGS
 NATIVE_LDFLAGS = " "

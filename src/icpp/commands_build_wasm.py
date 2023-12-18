@@ -66,45 +66,86 @@ def build_wasm(
     if not build_path.exists():
         build_path.mkdir()
 
-    def cpp_compile_file(file: str) -> None:
+    cpp_files = icpp_toml.build_wasm["cpp_files"]
+    cpp_files_list = icpp_toml.build_wasm["cpp_files_list"]
+    cpp_include_flags = icpp_toml.build_wasm["cpp_include_flags"]
+    cpp_compile_flags_s = icpp_toml.build_wasm["cpp_compile_flags_s"]
+
+    c_files = icpp_toml.build_wasm["c_files"]
+    c_files_list = icpp_toml.build_wasm["c_files_list"]
+    c_include_flags = icpp_toml.build_wasm["c_include_flags"]
+    c_compile_flags_s = icpp_toml.build_wasm["c_compile_flags_s"]
+
+    cpp_compile_flags_defaults_s = config_default.WASM_CPPFLAGS
+    cpp_link_flags_defaults_s = config_default.WASM_LDFLAGS
+    c_compile_flags_defaults_s = config_default.WASM_CFLAGS
+
+    if icpp_toml.build_wasm["overwrite_default_CPPFLAGS"]:
+        cpp_compile_flags_defaults_s = icpp_toml.build_wasm[
+            "cpp_compile_flags_defaults_s"
+        ]
+    if icpp_toml.build_wasm["overwrite_default_LDFLAGS"]:
+        cpp_link_flags_defaults_s = icpp_toml.build_wasm["cpp_link_flags_defaults_s"]
+    if icpp_toml.build_wasm["overwrite_default_CFLAGS"]:
+        c_compile_flags_defaults_s = icpp_toml.build_wasm["c_compile_flags_defaults_s"]
+
+    def cpp_compile_cmd_default() -> str:
         cmd = (
-            f"{config_default.WASM_CPP} {cpp_include_flags} "
-            f"{config_default.WASM_CPPFLAGS} {cpp_compile_flags_s} "
-            f"-c {file}"
+            f"{config_default.WASM_CPP} {config_default.WASM_CPP_REQUIRED_FLAGS} "
+            f"{cpp_compile_flags_defaults_s} "
         )
+        return cmd
+
+    def c_compile_cmd_default() -> str:
+        cmd = (
+            f"{config_default.WASM_C} {config_default.WASM_C_REQUIRED_FLAGS} "
+            f"{c_compile_flags_defaults_s} "
+        )
+        return cmd
+
+    def cpp_compile_cmd_mine() -> str:
+        cmd = (
+            f"{cpp_compile_cmd_default()} "
+            f"{cpp_include_flags} "
+            f"{cpp_compile_flags_s} "
+        )
+        return cmd
+
+    def c_compile_cmd_mine() -> str:
+        cmd = f"{c_compile_cmd_default()} {c_include_flags} {c_compile_flags_s} "
+        return cmd
+
+    def cpp_compile_file_mine(file: str) -> None:
+        cmd = f"{cpp_compile_cmd_mine()} -c {file}"
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=build_path)
 
-    def c_compile_file(file: str) -> None:
-        cmd = (
-            f"{config_default.WASM_C} {c_include_flags} "
-            f"{config_default.WASM_CFLAGS} {c_compile_flags_s} "
-            f"-c {file}"
-        )
+    def c_compile_file_mine(file: str) -> None:
+        cmd = f"{c_compile_cmd_mine()} -c {file}"
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
+
+    def cpp_compile_file_icpp(file: str) -> None:
+        cmd = f"{cpp_compile_cmd_default()} -c {file}"
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
+
+    def c_compile_file_icpp(file: str) -> None:
+        cmd = f"{c_compile_cmd_default()} -c {file}"
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=build_path)
 
     try:
         # ----------------------------------------------------------------------
         # compile 'mine' C++ files, if we have any
-        # string format
-        cpp_files = icpp_toml.build_wasm["cpp_files"]
-        # list format
-        cpp_files_list = icpp_toml.build_wasm["cpp_files_list"]
-        cpp_include_flags = icpp_toml.build_wasm["cpp_include_flags"]
-        cpp_compile_flags_s = icpp_toml.build_wasm["cpp_compile_flags_s"]
         if len(cpp_files.strip()) > 0:
             if CONCURRENCY == "multi-threading":
                 typer.echo("--")
                 typer.echo("Compiling your C++ files using multi-threading:")
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    executor.map(cpp_compile_file, cpp_files_list)
+                    executor.map(cpp_compile_file_mine, cpp_files_list)
             else:
-                cmd = (
-                    f"{config_default.WASM_CPP} {cpp_include_flags} "
-                    f"{config_default.WASM_CPPFLAGS} {cpp_compile_flags_s} "
-                    f"-c {cpp_files}"
-                )
+                cmd = f"{cpp_compile_cmd_mine()} -c {cpp_files}"
 
                 typer.echo("--")
                 typer.echo("Compiling your C++ files with command:")
@@ -113,22 +154,14 @@ def build_wasm(
 
         # ----------------------------------------------------------------------
         # compile 'mine' C files, if we have any
-        c_files = icpp_toml.build_wasm["c_files"]
-        c_files_list = icpp_toml.build_wasm["c_files_list"]
-        c_include_flags = icpp_toml.build_wasm["c_include_flags"]
-        c_compile_flags_s = icpp_toml.build_wasm["c_compile_flags_s"]
         if len(c_files.strip()) > 0:
             if CONCURRENCY == "multi-threading":
                 typer.echo("--")
                 typer.echo("Compiling your C files using multi-threading:")
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    executor.map(c_compile_file, c_files_list)
+                    executor.map(c_compile_file_mine, c_files_list)
             else:
-                cmd = (
-                    f"{config_default.WASM_C} {c_include_flags} "
-                    f"{config_default.WASM_CFLAGS} {c_compile_flags_s} "
-                    f"-c {c_files}"
-                )
+                cmd = f"{c_compile_cmd_mine()} -c {c_files}"
 
                 typer.echo("--")
                 typer.echo("Compiling your C files with command:")
@@ -146,13 +179,12 @@ def build_wasm(
                     )
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         executor.map(
-                            cpp_compile_file,
+                            cpp_compile_file_icpp,
                             config_default.IC_CPP_FILES_LIST,
                         )
                 else:
                     cmd = (
-                        f"{config_default.WASM_CPP} "
-                        f"{config_default.WASM_CPPFLAGS} "
+                        f"{cpp_compile_cmd_default()} "
                         f"-c {config_default.IC_CPP_FILES}"
                     )
 
@@ -170,13 +202,12 @@ def build_wasm(
                         "Compiling C++ files of the IC_API using multi-threading:"
                     )
                     with concurrent.futures.ThreadPoolExecutor() as executor:
-                        executor.map(c_compile_file, config_default.IC_C_FILES_LIST)
+                        executor.map(
+                            c_compile_file_icpp,
+                            config_default.IC_C_FILES_LIST,
+                        )
                 else:
-                    cmd = (
-                        f"{config_default.WASM_C} "
-                        f"{config_default.WASM_CFLAGS} "
-                        f"-c {config_default.IC_C_FILES}"
-                    )
+                    cmd = f"{c_compile_cmd_default()} -c {config_default.IC_C_FILES}"
 
                     typer.echo("--")
                     typer.echo("Compiling C files of the IC_API with command:")
@@ -187,7 +218,8 @@ def build_wasm(
         # link it into a wasm
         cmd = (
             f"{config_default.WASM_CPP} "
-            f"{config_default.WASM_CPPFLAGS} {config_default.WASM_LDFLAGS} "
+            f"{config_default.WASM_CPP_REQUIRED_FLAGS} "
+            f"{cpp_link_flags_defaults_s} "
             f"*.o -o {icpp_toml.build_wasm['canister']}.wasm"
         )
 

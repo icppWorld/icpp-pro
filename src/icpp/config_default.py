@@ -182,12 +182,15 @@ MOCKIC_HEADER_FILES = " ".join(MOCKIC_HEADER_FILES_LIST) + " "
 NATIVE_COMPILER = "Clang"
 NATIVE_C = "clang"
 NATIVE_CPP = "clang++"
-NATIVE_CFLAGS = (
-    f" -g -I {ICPP_DIR}/ic/canister -I {ICPP_DIR}/ic/icapi "
+
+NATIVE_C_REQUIRED_FLAGS = (
+    f" -I {ICPP_DIR}/ic/canister -I {ICPP_DIR}/ic/icapi "
     f" -I {ICPP_DIR}/ic/pro -I {ICPP_DIR}/ic/ic0mock "
     f" -I {ICPP_CANDID_PATH}/candid -I {ICPP_CANDID_PATH}/hooks "
     f" -I {ICPP_CANDID_PATH}/vendors "
-    f" -D ICPP_VERBOSE=0 "
 )
-NATIVE_CPPFLAGS = NATIVE_CFLAGS + " -std=c++20 "
+NATIVE_CPP_REQUIRED_FLAGS = NATIVE_C_REQUIRED_FLAGS + " -std=c++20 "
+
+NATIVE_CFLAGS = " -g -D ICPP_VERBOSE=0 "
+NATIVE_CPPFLAGS = NATIVE_CFLAGS
 NATIVE_LDFLAGS = " "

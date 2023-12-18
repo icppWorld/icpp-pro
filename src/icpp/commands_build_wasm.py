@@ -112,9 +112,7 @@ def build_wasm(
         return cmd
 
     def c_compile_cmd_mine() -> str:
-        cmd = (
-            f"{c_compile_cmd_default()} " f"{c_include_flags} " f"{c_compile_flags_s} "
-        )
+        cmd = f"{c_compile_cmd_default()} {c_include_flags} {c_compile_flags_s} "
         return cmd
 
     def cpp_compile_file_mine(file: str) -> None:

@@ -7,7 +7,6 @@
 
 #include "compliance_test_construct.h"
 #include "compliance_test_prim.h"
-#include "ic0.h"
 #include "ic_api.h"
 #include "unit_test_candid.h"
 #include "unit_test_ic_api.h"

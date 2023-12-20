@@ -5,7 +5,6 @@
 #include <string>
 #include <variant>
 
-#include "ic0.h"
 #include "ic_api.h"
 
 #include <json/json.hpp>

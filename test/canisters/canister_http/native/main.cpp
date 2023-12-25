@@ -26,7 +26,6 @@ int main() {
   // Run all roundtrip tests
 
   // ------------------------------------------------------------------------
-  // Record with Vec Record field (headers of http_request)
   // To call the canister with curl:
   // MAINNET
   //  curl -X GET -H "Content-Type: application/json" -d '{"key1":"value1", "key2":"value2"}' https://$(dfx canister --ic id my_canister).raw.icp0.io/my-route

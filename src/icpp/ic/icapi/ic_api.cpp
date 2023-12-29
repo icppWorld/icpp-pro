@@ -144,6 +144,18 @@ void IC_API::from_wire(IC_HttpRequest &request) {
     request.headers.push_back(headerField);
   }
 }
+void IC_API::from_wire(IC_HttpUpdateRequest &request) {
+  // The only difference between HttpRequest & HttpUpdateRequest
+  // is the optional certificate_version
+  IC_HttpRequest temp_request;
+
+  from_wire(temp_request);
+
+  request.body = temp_request.body;
+  request.headers = temp_request.headers;
+  request.method = temp_request.method;
+  request.url = temp_request.url;
+}
 
 std::optional<__uint128_t> IC_API::string_to_uint128_t(const std::string &str) {
   __uint128_t result = 0;

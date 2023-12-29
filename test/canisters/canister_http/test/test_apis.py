@@ -10,7 +10,12 @@
 from pathlib import Path
 import json
 import pytest
-from icpp.smoketest import call_canister_api, dict_to_candid_text
+import requests
+from icpp.smoketest import (
+    call_canister_api,
+    dict_to_candid_text,
+    get_canister_url,
+)
 
 # Path to the dfx.json file
 DFX_JSON_PATH = Path(__file__).parent / "../dfx.json"
@@ -23,21 +28,55 @@ CANISTER_NAME = "my_canister"
 #       pytest --network=[local/ic] ....
 #
 
-# ----------------------------------------------------------------------------------
-# Run all roundtrip tests
+# -----------------------------------------------------------------------------------
+# HTTPS INCALLS
+
+# -----------------------------------------------------------------------------------
+# HTTPS INCALL: GET /counter
 
 
-# ------------------------------------------------------------------------
-# Record with Vec Record field (headers of http_request)
-def test__http_request(network: str, principal: str) -> None:
-    response = call_canister_api(
+def test__http_request_get_counter(network: str, principal: str) -> None:
+    url = get_canister_url(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
-        canister_method="http_request",
-        canister_argument="4449444c056c05efd6e40271e1edeb4a71a2f5ed880401c6a4a1980602b0f1b99806046d7b6d036c02007101716e7a0100092f6d792d726f75746503474554227b226b657931223a2276616c756531222c20226b657932223a2276616c756532227d0904686f73742735756772762d7a716161612d61616161672d6163666e612d6361692e7261772e696370302e696f09782d7265616c2d69700d32342e39362e3234302e3134350f782d666f727761726465642d666f720d32342e39362e3234302e31343511782d666f727761726465642d70726f746f0568747470730c782d726571756573742d69642465643166653437622d643433652d643962312d363264642d6535306436346438633465620e636f6e74656e742d6c656e6774680233340a757365722d6167656e740b6375726c2f372e38312e3006616363657074032a2f2a0c636f6e74656e742d74797065106170706c69636174696f6e2f6a736f6e010200",
-        canister_input="raw",
-        canister_output="raw",
         network=network,
+        url_path="counter",
     )
-    expected_response = "4449444c116c02000101016d716c006c02007101716d036c02007101716c02007101716c02007101716c02007101716c02007101716c02007101716c02007101716c02007101716c02007101716c04a2f5ed88040fc6a4a19806049ce9c69906109aa1b2f90c7a6d7b6e7e010e227b226b657931223a2276616c756531222c20226b657932223a2276616c756532227d0904686f73742735756772762d7a716161612d61616161672d6163666e612d6361692e7261772e696370302e696f09782d7265616c2d69700d32342e39362e3234302e3134350f782d666f727761726465642d666f720d32342e39362e3234302e31343511782d666f727761726465642d70726f746f0568747470730c782d726571756573742d69642465643166653437622d643433652d643962312d363264642d6535306436346438633465620e636f6e74656e742d6c656e6774680233340a757365722d6167656e740b6375726c2f372e38312e3006616363657074032a2f2a0c636f6e74656e742d74797065106170706c69636174696f6e2f6a736f6e0100c800"
-    assert response == expected_response
+    response = requests.get(url)
+    assert response.status_code == 200
+    assert response.json() == {"counter": 0}
+
+
+def test__http_request_post_counter(network: str, principal: str) -> None:
+    # Increment the counter, using a POST request
+    url = get_canister_url(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        network=network,
+        url_path="counter",
+    )
+    response = requests.post(url)
+    assert response.status_code == 200
+    assert response.json() == {"counter": 1}
+
+    # verify, by using a GET request, that Orthogonal Persistence worked
+    url = get_canister_url(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        network=network,
+        url_path="counter",
+    )
+    response = requests.get(url)
+    assert response.status_code == 200
+    assert response.json() == {"counter": 1}
+
+
+def test__http_request_get_404_not_found(network: str, principal: str) -> None:
+    url = get_canister_url(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        network=network,
+        url_path="a-non-existing-path",
+    )
+    response = requests.get(url)
+    assert response.status_code == 404

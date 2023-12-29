@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Counter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        #counter {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Counter</h1>
+    <div id="counter">Fetching counter...</div>
+
+    <br>
+    <button id="increaseCounter">Increase Counter</button>
+    <div></div>
+    (Update call - takes ~2 seconds.)
+
+    <script>
+        async function fetchData(method = 'GET') {
+            try {
+                const IC = true;
+                const RAW_RESPONSE = false;
+                let url;
+
+                if (IC) {
+                    const canisterId = '5ugrv-zqaaa-aaaag-acfna-cai';
+                    url = `https://5ugrv-zqaaa-aaaag-acfna-cai.raw.icp0.io/counter`;
+                } else {
+                    const webserverPort = 4943;
+                    const canisterId = 'bkyz2-fmaaa-aaaaa-qaaaq-cai';
+                    url = `http://localhost:${webserverPort}/api/nft/${NFT_ID}?canisterId=${canisterId}`;
+                }
+
+                const response = await fetch(url, { method: method });
+
+                if (!RAW_RESPONSE) {
+                    const data = await response.json();
+                    console.log("Json Response:", data);
+                    document.getElementById('counter').textContent = data.counter;
+                } else {
+                    const data = await response.text();
+                    console.log("Raw response:", data);
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        fetchData();
+
+        document.getElementById('increaseCounter').addEventListener('click', function () {
+            fetchData('POST');
+        });
+    </script>
+</body>
+
+</html>

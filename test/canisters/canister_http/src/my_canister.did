@@ -50,6 +50,7 @@ type StreamingStrategy = variant {
 */
 
 service: {
+    canister_init: () -> ();
     http_request: (request: HttpRequest) -> (HttpResponse) query;
-    //http_request_update: (request: HttpUpdateRequest) -> (HttpResponse);
+    http_request_update: (request: HttpUpdateRequest) -> (HttpResponse);
 }

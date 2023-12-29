@@ -57,7 +57,8 @@ public:
   void from_wire();
   void from_wire(CandidType arg_in);
   void from_wire(CandidArgs args_in);
-  void from_wire(IC_HttpRequest &request); // docs end: from_wire
+  void from_wire(IC_HttpRequest &request);
+  void from_wire(IC_HttpUpdateRequest &request); // docs end: from_wire
 
   // Convert string to __uint128_t & __int128_t
   // clang-format off

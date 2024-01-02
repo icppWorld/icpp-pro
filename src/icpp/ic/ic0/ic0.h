@@ -59,6 +59,9 @@ void ic0_canister_self_copy(uint32_t dst, uint32_t off, uint32_t size)
 uint64_t ic0_canister_balance(uint32_t src, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "canister_balance");
 
+void ic0_canister_cycle_balance128(uint32_t dst)
+    WASM_SYMBOL_IMPORTED("ic0", "canister_cycle_balance128");
+
 void ic0_call_new(uint32_t callee_src, uint32_t callee_size, uint32_t name_src,
                   uint32_t name_size, uint32_t reply_fun, uint32_t reply_env,
                   uint32_t reject_fun, uint32_t reject_env)
@@ -86,6 +89,9 @@ void ic0_stable_read(uint32_t dst, uint32_t off, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "stable_read");
 
 uint64_t ic0_time() WASM_SYMBOL_IMPORTED("ic0", "time");
+
+uint32_t ic0_is_controller(uint32_t src, uint32_t size)
+    WASM_SYMBOL_IMPORTED("ic0", "is_controller");
 
 void ic0_debug_print(uint32_t src, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "debug_print");

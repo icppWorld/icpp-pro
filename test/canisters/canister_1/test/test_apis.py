@@ -11,7 +11,11 @@ from pathlib import Path
 from typing import Dict
 import json
 import pytest
-from icpp.smoketest import call_canister_api, dict_to_candid_text
+from icpp.smoketest import (
+    call_canister_api,
+    dict_to_candid_text,
+    get_canister_id,
+)
 
 # Path to the dfx.json file
 DFX_JSON_PATH = Path(__file__).parent / "../dfx.json"
@@ -23,6 +27,25 @@ CANISTER_NAME = "my_canister"
 # Note: network is specified on the pytest command:
 #       pytest --network=[local/ic] ....
 #
+
+
+# ----------------------------------------------------------------------------------
+# Run all tests for the canister
+def test__get_canister_info(network: str, principal: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="get_canister_info",
+        network=network,
+    )
+
+    canister_id = get_canister_id(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        network=network,
+    )
+    assert 'canister_id = "' + canister_id in response
+    assert "canister_cycle_balance" in response
 
 
 # ----------------------------------------------------------------------------------
@@ -623,6 +646,34 @@ def test__caller_is_anonymous_false(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
         canister_method="caller_is_anonymous",
+        canister_argument="()",
+        network=network,
+    )
+    expected_response = "(false)"
+    assert response == expected_response
+
+
+def test__caller_is_controller_true(
+    identity_default: Dict[str, str], network: str
+) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="caller_is_controller",
+        canister_argument="()",
+        network=network,
+    )
+    expected_response = "(true)"
+    assert response == expected_response
+
+
+def test__caller_is_controller_false(
+    identity_anonymous: Dict[str, str], network: str
+) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="caller_is_controller",
         canister_argument="()",
         network=network,
     )

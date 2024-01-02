@@ -52,6 +52,10 @@ public:
   // docs start: get_caller
   CandidTypePrincipal get_caller(); // docs end: get_caller
 
+  CandidTypePrincipal get_canister_self();
+  __uint128_t get_canister_self_cycle_balance();
+  bool is_controller(const CandidTypePrincipal &principal);
+
   // Receive things from the wire in candid format
   // docs start: from_wire
   void from_wire();
@@ -230,6 +234,7 @@ private:
   VecBytes m_B_in;
   VecBytes m_B_out;
   CandidTypePrincipal m_caller;
+  CandidTypePrincipal m_canister_self;
   void msg_reply();
 
   bool m_called_from_wire{false};

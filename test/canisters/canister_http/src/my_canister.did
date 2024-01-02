@@ -51,6 +51,11 @@ type StreamingStrategy = variant {
 
 service: {
     canister_init: () -> ();
+
+    // HTTP incalls
     http_request: (request: HttpRequest) -> (HttpResponse) query;
     http_request_update: (request: HttpUpdateRequest) -> (HttpResponse);
+
+    // HTTP outcalls (update calls, because they go through consensus)
+    get_icp_usd_exchange: () -> (text);
 }

@@ -1,4 +1,4 @@
-// Demo of http incalls, so you can call the canister as a regular Web2.0 HTTP server
+// Demo of http incalls, so you can call the canister as a regular HTTP server
 #include "canister.h"
 #include "http_incalls.h"
 

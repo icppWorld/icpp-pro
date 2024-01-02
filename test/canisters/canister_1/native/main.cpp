@@ -38,6 +38,19 @@ int main() {
   // ------------------------------------------------------------------------
 
   // ------------------------------------------------------------------------
+  //----------------------------------------------------------------------------------
+  // Run all canister tests
+
+  // '()' -> '(record {
+  //                    canister_id = "5ugrv-zqaaa-aaaag-acfna-cai" : text;
+  //                    canister_cycle_balance = 3_000_000_000_000 : nat;
+  //                  }
+  //         )'
+  mockIC.run_test(
+      "get_canister_info", get_canister_info, "4449444c0000",
+      "4449444c016c02b3c4b1f20471ebe3c4e30a7d01001b35756772762d7a716161612d61616161672d6163666e612d63616980e0bcefa757",
+      silent_on_trap, my_principal);
+
   // TODO
   //   // opt ( WHATEVER ) should never trap, but always decode things to null
   //   //                  if type within opt does not match
@@ -283,12 +296,24 @@ int main() {
       silent_on_trap, my_principal);
 
   // '()' -> '(false : bool)'
-  mockIC.run_test("caller_is_anonymous", caller_is_anonymous, "4449444c0000",
-                  "4449444c00017e00", silent_on_trap, my_principal);
+  mockIC.run_test("caller_is_anonymous false", caller_is_anonymous,
+                  "4449444c0000", "4449444c00017e00", silent_on_trap,
+                  my_principal);
 
   // '()' -> '(true : bool)'
-  mockIC.run_test("caller_is_anonymous", caller_is_anonymous, "4449444c0000",
-                  "4449444c00017e01", silent_on_trap, anonymous_principal);
+  mockIC.run_test("caller_is_anonymous true", caller_is_anonymous,
+                  "4449444c0000", "4449444c00017e01", silent_on_trap,
+                  anonymous_principal);
+
+  // '()' -> '(false : bool)'
+  mockIC.run_test("caller_is_controller true", caller_is_controller,
+                  "4449444c0000", "4449444c00017e00", silent_on_trap,
+                  anonymous_principal);
+
+  // '()' -> '(true : bool)'
+  mockIC.run_test("caller_is_controller false", caller_is_controller,
+                  "4449444c0000", "4449444c00017e01", silent_on_trap,
+                  my_principal);
 
   // '(vec { 101 : nat16; 102 : nat16; 103 : nat16 })' -> '(vec { 101 : nat16; 102 : nat16; 103 : nat16 })'
   mockIC.run_test("roundtrip_vec_nat16", roundtrip_vec_nat16,

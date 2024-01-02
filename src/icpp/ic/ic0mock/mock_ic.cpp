@@ -9,6 +9,7 @@
 #include "global.h"
 #include "ic_api.h"
 #include "mock_ic_.h"
+#include "mock_ic_constants.h"
 #include "pro.h"
 
 #include <cstddef>
@@ -55,6 +56,7 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
   m_B_out.clear();
   m_B_in.store_hex_string(candid_in);
   m_caller = CandidTypePrincipal(caller);
+  m_canister_self = CandidTypePrincipal(std::string(MOCKIC_CANISTER_SELF));
 
   m_silent_on_trap = silent_on_trap;
   try {
@@ -117,6 +119,7 @@ int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
   m_B_out.clear();
   m_B_in.store_hex_string(candid_in);
   m_caller = CandidTypePrincipal(caller);
+  m_canister_self = CandidTypePrincipal(std::string(MOCKIC_CANISTER_SELF));
 
   m_silent_on_trap = silent_on_trap;
   try {

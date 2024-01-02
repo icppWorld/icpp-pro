@@ -45,6 +45,7 @@ uint32_t ic0_canister_self_size();
 void ic0_canister_self_copy(uintptr_t dst, uint32_t off, uint32_t size);
 
 uint64_t ic0_canister_balance(uintptr_t src, uint32_t size);
+void ic0_canister_cycle_balance128(uintptr_t dst);
 
 void ic0_call_new(uintptr_t callee_src, uint32_t callee_size,
                   uintptr_t name_src, uint32_t name_size, uintptr_t reply_fun,
@@ -67,6 +68,8 @@ void ic0_stable_write(uint32_t off, uintptr_t src, uint32_t size);
 void ic0_stable_read(uintptr_t dst, uint32_t off, uint32_t size);
 
 uint64_t ic0_time();
+
+uint32_t ic0_is_controller(uintptr_t src, uint32_t size);
 
 void ic0_debug_print(uintptr_t src, uint32_t size);
 

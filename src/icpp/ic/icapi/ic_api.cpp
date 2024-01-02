@@ -41,9 +41,18 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
                       bytes_caller.size());
   m_caller = CandidTypePrincipal(bytes_caller);
 
+  // Get  canister id
+  std::vector<uint8_t> bytes_canister_self(ic0_canister_self_size());
+  ic0_canister_self_copy(
+      reinterpret_cast<uintptr_t>(bytes_canister_self.data()), 0,
+      bytes_canister_self.size());
+  m_canister_self = CandidTypePrincipal(bytes_canister_self);
+
   if (m_debug_print) {
     debug_print("\n--");
-    debug_print("IC_API caller's principal:" + m_caller.get_text());
+    debug_print("IC_API caller's principal       :" + m_caller.get_text());
+    debug_print("IC_API canister_self's principal:" +
+                m_canister_self.get_text());
     debug_print("IC_API received these bytes over the wire:");
     m_B_in.debug_print();
   }
@@ -66,7 +75,24 @@ void IC_API::debug_print(const char *message) {
   ic0_debug_print((uintptr_t)(void *)message, (uint32_t)strlen(message));
 }
 
+bool IC_API::is_controller(const CandidTypePrincipal &principal) {
+  const std::vector<uint8_t> &principal_bytes =
+      principal.get_v_bytes().vec_uint8_t();
+  uint32_t principal_size = static_cast<uint32_t>(principal_bytes.size());
+  uint32_t result = ic0_is_controller(
+      reinterpret_cast<uintptr_t>(principal_bytes.data()), principal_size);
+  return result == 1;
+}
+
 CandidTypePrincipal IC_API::get_caller() { return m_caller; }
+
+CandidTypePrincipal IC_API::get_canister_self() { return m_canister_self; }
+
+__uint128_t IC_API::get_canister_self_cycle_balance() {
+  __uint128_t cycles_balance;
+  ic0_canister_cycle_balance128(reinterpret_cast<uintptr_t>(&cycles_balance));
+  return cycles_balance;
+}
 
 void IC_API::debug_print(const std::string &s) {
   IC_API::debug_print(s.c_str());

@@ -6,6 +6,9 @@
 
 #include "wasm_symbol.h"
 
+void get_canister_info()
+    WASM_SYMBOL_EXPORTED("canister_query get_canister_info");
+
 void test_ic_api() WASM_SYMBOL_EXPORTED("canister_query test_ic_api");
 void test_candid() WASM_SYMBOL_EXPORTED("canister_query test_candid");
 void test_vendors() WASM_SYMBOL_EXPORTED("canister_query test_vendors");
@@ -91,6 +94,8 @@ void roundtrip_principal()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_principal");
 void caller_is_anonymous()
     WASM_SYMBOL_EXPORTED("canister_query caller_is_anonymous");
+void caller_is_controller()
+    WASM_SYMBOL_EXPORTED("canister_query caller_is_controller");
 void roundtrip_vec_nat16()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_vec_nat16");
 void roundtrip_vec_record()

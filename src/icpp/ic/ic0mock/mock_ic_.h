@@ -9,6 +9,8 @@
 #include <iostream>
 #include <vector>
 
+#include "mock_ic_constants.h"
+
 class MockIC {
 public:
   // Constructors
@@ -20,6 +22,8 @@ public:
   std::vector<std::byte> vec_in() { return m_B_in.vec(); }
   std::vector<std::byte> vec_out() { return m_B_out.vec(); }
   CandidTypePrincipal get_caller() { return m_caller; }
+  CandidTypePrincipal get_canister_self() { return m_canister_self; }
+  __uint128_t get_canister_self_cycle_balance() { return m_cycles_balance; }
 
   VecBytes get_msg_in() { return m_B_in; }
   VecBytes get_msg_out() { return m_B_out; }
@@ -53,6 +57,8 @@ private:
   VecBytes m_B_in;
   VecBytes m_B_out;
   CandidTypePrincipal m_caller;
+  CandidTypePrincipal m_canister_self;
+  __uint128_t m_cycles_balance{MOCKIC_INITIAL_CYCLES_BALANCE};
   int m_tests_total;
   int m_tests_failed;
   bool m_exit_on_fail;

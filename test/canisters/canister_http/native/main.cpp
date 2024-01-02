@@ -7,6 +7,7 @@
 
 #include "../src/canister.h"
 #include "../src/http_incalls.h"
+#include "../src/http_outcalls.h"
 
 // The Mock IC
 #include "icpp_hooks.h"
@@ -28,6 +29,11 @@ int main() {
   // '()' -> canister_init does not return directly, so skip validation check
   mockIC.run_test("canister_init", canister_init, "4449444c0000", "",
                   silent_on_trap, my_principal);
+
+  // -----------------------------------------------------------------------------
+  // '()' -> ...
+  mockIC.run_test("get_icp_usd_exchange", get_icp_usd_exchange, "4449444c0000",
+                  "4449444c00017104544f444f", silent_on_trap, my_principal);
 
   // ------------------------------------------------------------------------
   // You can call the canister with curl, and it returns a JSON:

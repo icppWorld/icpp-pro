@@ -42,6 +42,24 @@ void test_ic_api() {
   ic_api.to_wire(CandidTypeInt{result});
 }
 
+void get_canister_info() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  CandidTypePrincipal canister_self = ic_api.get_canister_self();
+  std::string canister_id = canister_self.get_text();
+
+  __uint128_t canister_cycle_balance = ic_api.get_canister_self_cycle_balance();
+
+  IC_API::debug_print("canister_id            = " + canister_id);
+  IC_API::debug_print("canister_cycle_balance = " +
+                      IC_API::to_string_128(canister_cycle_balance));
+
+  CandidTypeRecord r_out;
+  r_out.append("canister_id", CandidTypeText{canister_id});
+  r_out.append("canister_cycle_balance", CandidTypeNat{canister_cycle_balance});
+  ic_api.to_wire(r_out);
+}
+
 //----------------------------------------------------------------------------------
 // Run all roundtrip tests
 void roundtrip_deprecated_ic_api_constructor() {
@@ -422,6 +440,13 @@ void caller_is_anonymous() {
   CandidTypePrincipal caller = ic_api.get_caller();
   bool is_anonymous = caller.is_anonymous();
   ic_api.to_wire(CandidTypeBool{is_anonymous});
+}
+
+void caller_is_controller() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  CandidTypePrincipal caller = ic_api.get_caller();
+  bool is_controller = ic_api.is_controller(caller);
+  ic_api.to_wire(CandidTypeBool{is_controller});
 }
 
 void roundtrip_vec_nat16() {

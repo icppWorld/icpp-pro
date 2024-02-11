@@ -1,4 +1,5 @@
 """Handles 'icpp build-wasm' """
+
 # pylint: disable = too-many-statements
 import sys
 import subprocess
@@ -7,6 +8,7 @@ import concurrent.futures
 import typer
 from typing_extensions import Annotated
 
+from icpp import __version__
 from icpp.__main__ import app
 
 from icpp import config_default
@@ -65,6 +67,21 @@ def build_wasm(
 
     if not build_path.exists():
         build_path.mkdir()
+
+    # ----------------------------------------------------------------------
+    # copy did into build folder
+    did_path = icpp_toml.build_wasm["did_path"]
+    typer.echo("--")
+    if not did_path.exists():
+        typer.echo(
+            f"ERROR: Cannot find the `did_path` '{did_path}' \n"
+            f"       Please update your icpp.toml"
+        )
+        sys.exit(1)
+
+    typer.echo("Copying your Candid file to the build folder...")
+    shutil.copy(did_path, build_path)
+    # ----------------------------------------------------------------------
 
     cpp_files = icpp_toml.build_wasm["cpp_files"]
     cpp_files_list = icpp_toml.build_wasm["cpp_files_list"]
@@ -228,6 +245,41 @@ def build_wasm(
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=build_path)
 
+        # ----------------------------------------------------------------------
+        # add custom sections:
+        # https://forum.dfinity.org/t/rfc-canister-metadata-standard/16280/25?u=icpp
+
+        # icp:public candid:service ...the candid file...
+        # icp:private icpp:compiler ...version number...
+
+        typer.echo("--")
+        typer.echo("Adding custom sections to the wasm file...")
+
+        # ---
+        cmd = (
+            f"{config_default.LLVM_OBJCOPY} "
+            f"--add-section='icp:public candid:service'={str(did_path)} "
+            f"{icpp_toml.build_wasm['canister']}.wasm "
+            f"{icpp_toml.build_wasm['canister']}.wasm"
+        )
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
+
+        # ---
+        file_path = build_path / "custom_section_1.txt"
+        with open(file_path, "w") as file:
+            file.write(__version__)
+        cmd = (
+            f"{config_default.LLVM_OBJCOPY} "
+            f"--add-section='icp:private icpp:compiler'={str(file_path.resolve())} "
+            f"{icpp_toml.build_wasm['canister']}.wasm "
+            f"{icpp_toml.build_wasm['canister']}.wasm"
+        )
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
+
+        # ---
+
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
     except Exception as e:  # pylint: disable=broad-except
@@ -236,20 +288,6 @@ def build_wasm(
             f"Exception is: \n{e}"
         )
         sys.exit(1)
-
-    # ----------------------------------------------------------------------
-    # copy did into build folder
-    did_path = icpp_toml.build_wasm["did_path"]
-    typer.echo("--")
-    if not did_path.exists():
-        typer.echo(
-            f"ERROR: Cannot find the `did_path` '{did_path}' \n"
-            f"       Please update your icpp.toml"
-        )
-        sys.exit(1)
-
-    typer.echo("Copying your Candid file to the build folder...")
-    shutil.copy(did_path, build_path)
 
     # ----------------------------------------------------------------------
     typer.echo("--")

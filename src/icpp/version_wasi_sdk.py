@@ -5,4 +5,4 @@ Defines the version for the compatible wasi-sdk compiler.
 (-) do not add anything but the version number of the wasi-sdk compiler here!
 
 """
-__version__ = "wasi-sdk-20.0"
+__version__ = "wasi-sdk-21.0"

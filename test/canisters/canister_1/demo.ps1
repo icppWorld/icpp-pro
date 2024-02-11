@@ -78,18 +78,18 @@ Write-Host "--------------------------------------------------"
 Write-Host "Stopping the local network in wsl"
 wsl dfx stop
 
-# #######################################################################
-# # Since release 3.6.0, the Native build is broken on Windows.
-# # Most likely due to a compiler limitation.
-# #
-# Write-Host " "
-# Write-Host "--------------------------------------------------"
-# Write-Host "Building the Windows native debug executable with clang++"
-# icpp build-native --to-compile all
-# # icpp build-native --to-compile mine
+#######################################################################
+# Since release 3.6.0, the Native build is broken on Windows.
+# Most likely due to a compiler limitation.
+#
+Write-Host " "
+Write-Host "--------------------------------------------------"
+Write-Host "Building the Windows native debug executable with clang++"
+icpp build-native --to-compile all
+# icpp build-native --to-compile mine
 
-# #######################################################################
-# Write-Host " "
-# Write-Host "--------------------------------------------------"
-# Write-Host "Running the Windows native debug executable"
-# .\build-native\mockic.exe
+#######################################################################
+Write-Host " "
+Write-Host "--------------------------------------------------"
+Write-Host "Running the Windows native debug executable"
+.\build-native\mockic.exe

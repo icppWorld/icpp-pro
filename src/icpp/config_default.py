@@ -1,6 +1,7 @@
 """
 Set the default config variables
 """
+
 import sys
 import platform
 from pathlib import Path
@@ -140,6 +141,7 @@ WASM_LDFLAGS = (
 # Utilities we can use too
 CLANG_FORMAT = ICPP_ROOT_COMPILER / "bin/clang-format"
 CLANG_TIDY = ICPP_ROOT_COMPILER / "bin/clang-tidy"
+LLVM_OBJCOPY = ICPP_ROOT_COMPILER / "bin/llvm-objcopy"
 
 ########################################################################
 # build-native

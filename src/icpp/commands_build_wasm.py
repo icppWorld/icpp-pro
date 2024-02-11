@@ -271,7 +271,7 @@ def build_wasm(
             file.write("icpp")
         cmd = (
             f"{config_default.LLVM_OBJCOPY} "
-            f'--add-section="cdk:name"="{str(file_path.resolve())}" '
+            f'--add-section="icp:public cdk:name"="{str(file_path.resolve())}" '
             f"{icpp_toml.build_wasm['canister']}.wasm "
             f"{icpp_toml.build_wasm['canister']}.wasm"
         )
@@ -284,7 +284,7 @@ def build_wasm(
             file.write("c++")
         cmd = (
             f"{config_default.LLVM_OBJCOPY} "
-            f'--add-section="cdk:languages"="{str(file_path.resolve())}" '
+            f'--add-section="icp:public cdk:languages"="{str(file_path.resolve())}" '
             f"{icpp_toml.build_wasm['canister']}.wasm "
             f"{icpp_toml.build_wasm['canister']}.wasm"
         )

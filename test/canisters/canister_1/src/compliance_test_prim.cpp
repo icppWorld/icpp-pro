@@ -14,26 +14,31 @@ void test_wrong() {
   // fundamentally wrong
 
   {
-      // assert blob ""              !: () "empty";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 1");
-  } {
-      // assert blob "\00\00"        !: () "no magic bytes";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 2");
-  } {
-      // assert blob "DADL"          !: () "wrong magic bytes";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 3");
-  } {
-      // assert blob "DADL\00\00"    !: () "wrong magic bytes";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 4");
-  } {
-      // assert blob "DIDL\80\00\00"  : () "overlong typ table length";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 5");
-  } {
+    // assert blob ""              !: () "empty";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 1");
+  }
+  {
+    // assert blob "\00\00"        !: () "no magic bytes";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 2");
+  }
+  {
+    // assert blob "DADL"          !: () "wrong magic bytes";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 3");
+  }
+  {
+    // assert blob "DADL\00\00"    !: () "wrong magic bytes";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 4");
+  }
+  {
+    // assert blob "DIDL\80\00\00"  : () "overlong typ table length";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 5");
+  }
+  {
     // assert blob "DIDL\00\80\00"  : () "overlong arg length";
     // decoding check
     // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 6");
@@ -51,18 +56,21 @@ void test_nullary_input() {
     // TODO: roundtrip decoding check
   }
   {
-      // assert blob "DIDL\00\00\00" !: () "nullary: too long";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 2");
-  } {
-      // assert blob "DIDL\00\01\7f"  : () "Additional parameters are ignored";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 3");
-  } {
-      // assert blob "DIDL\00\01\6e" !: () "Not a primitive type";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 4");
-  } {
+    // assert blob "DIDL\00\00\00" !: () "nullary: too long";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 2");
+  }
+  {
+    // assert blob "DIDL\00\01\7f"  : () "Additional parameters are ignored";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 3");
+  }
+  {
+    // assert blob "DIDL\00\01\6e" !: () "Not a primitive type";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 4");
+  }
+  {
     // assert blob "DIDL\00\01\5e" !: () "Out of range type";
     // decoding check
     // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 5");
@@ -74,30 +82,36 @@ void test_missing_arguments() {
   // Missing arguments
 
   {
-      // assert blob "DIDL\00\00"                        !: (nat)       "missing argument: nat   fails";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 1");
-  } {
-      // assert blob "DIDL\00\00"                        !: (empty)     "missing argument: empty fails";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 2");
-  } {
-      // assert blob "DIDL\00\00"                        !: (null)      "missing argument: null  fails";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 3");
-  } {
-      // assert blob "DIDL\00\00" == "(null)"             : (opt empty) "missing argument: opt empty";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 4");
-  } {
-      // assert blob "DIDL\00\00" == "(null)"             : (opt null)  "missing argument: opt null";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 5");
-  } {
-      // assert blob "DIDL\00\00" == "(null)"             : (opt nat)   "missing argument: opt nat";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 6");
-  } {
+    // assert blob "DIDL\00\00"                        !: (nat)       "missing argument: nat   fails";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 1");
+  }
+  {
+    // assert blob "DIDL\00\00"                        !: (empty)     "missing argument: empty fails";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 2");
+  }
+  {
+    // assert blob "DIDL\00\00"                        !: (null)      "missing argument: null  fails";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 3");
+  }
+  {
+    // assert blob "DIDL\00\00" == "(null)"             : (opt empty) "missing argument: opt empty";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 4");
+  }
+  {
+    // assert blob "DIDL\00\00" == "(null)"             : (opt null)  "missing argument: opt null";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 5");
+  }
+  {
+    // assert blob "DIDL\00\00" == "(null)"             : (opt nat)   "missing argument: opt nat";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 6");
+  }
+  {
     // assert blob "DIDL\00\00" == blob "DIDL\00\01\70" : (reserved)  "missing argument: reserved";
     // decoding check
     // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 7");
@@ -116,10 +130,11 @@ void test_null() {
     // TODO: roundtrip decoding check
   }
   {
-      // assert blob "DIDL\00\01\7e"    !: (null) "wrong type";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 2");
-  } {
+    // assert blob "DIDL\00\01\7e"    !: (null) "wrong type";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 2");
+  }
+  {
     // assert blob "DIDL\00\01\7f\00" !: (null) "null: too long";
     // decoding check
     // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 3");
@@ -146,14 +161,16 @@ void test_bool() {
     // TODO: roundtrip decoding check
   }
   {
-      // assert blob "DIDL\00\01\7e"                !: (bool) "bool: missing";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 3");
-  } {
-      // assert blob "DIDL\00\01\7e\02"             !: (bool) "bool: out of range";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 4");
-  } {
+    // assert blob "DIDL\00\01\7e"                !: (bool) "bool: missing";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 3");
+  }
+  {
+    // assert blob "DIDL\00\01\7e\02"             !: (bool) "bool: out of range";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 4");
+  }
+  {
     // assert blob "DIDL\00\01\7e\ff"             !: (bool) "bool: out of range";
     // decoding check
     // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 5");
@@ -205,18 +222,21 @@ void test_nat() {
     // TODO: roundtrip decoding check
   }
   {
-      // assert blob "DIDL\00\01\7d\80"                 !: (nat) "nat: leb too short";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 6");
-  } {
-      // assert blob "DIDL\00\01\7d\80\00" == "(0)"      : (nat) "nat: leb overlong";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 7");
-  } {
-      // assert blob "DIDL\00\01\7d\ff\00" == "(127)"    : (nat) "nat: leb overlong";
-      // decoding check
-      // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 8");
-  } {
+    // assert blob "DIDL\00\01\7d\80"                 !: (nat) "nat: leb too short";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 6");
+  }
+  {
+    // assert blob "DIDL\00\01\7d\80\00" == "(0)"      : (nat) "nat: leb overlong";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 7");
+  }
+  {
+    // assert blob "DIDL\00\01\7d\ff\00" == "(127)"    : (nat) "nat: leb overlong";
+    // decoding check
+    // TODO if (CandidSerialize(c).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 8");
+  }
+  {
     // assert blob "DIDL\00\01\7d\80\80\98\f4\e9\b5\ca\6a" == "(60000000000000000)" : (nat) "nat: big number";
     // didc encode '(60000000000000000: nat)'
     CandidTypeNat c(60000000000000000);

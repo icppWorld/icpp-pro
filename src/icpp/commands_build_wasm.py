@@ -258,7 +258,7 @@ def build_wasm(
         # ---
         cmd = (
             f"{config_default.LLVM_OBJCOPY} "
-            f"--add-section='icp:public candid:service'={str(did_path)} "
+            f'--add-section="icp:public candid:service"="{str(did_path)}" '
             f"{icpp_toml.build_wasm['canister']}.wasm "
             f"{icpp_toml.build_wasm['canister']}.wasm"
         )
@@ -266,12 +266,38 @@ def build_wasm(
         run_shell_cmd(cmd, cwd=build_path)
 
         # ---
-        file_path = build_path / "custom_section_1.txt"
+        file_path = build_path / "custom_section_cdk_name.txt"
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write("icpp")
+        cmd = (
+            f"{config_default.LLVM_OBJCOPY} "
+            f'--add-section="cdk:name"="{str(file_path.resolve())}" '
+            f"{icpp_toml.build_wasm['canister']}.wasm "
+            f"{icpp_toml.build_wasm['canister']}.wasm"
+        )
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
+
+        # ---
+        file_path = build_path / "custom_section_cdk_languages.txt"
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write("c++")
+        cmd = (
+            f"{config_default.LLVM_OBJCOPY} "
+            f'--add-section="cdk:languages"="{str(file_path.resolve())}" '
+            f"{icpp_toml.build_wasm['canister']}.wasm "
+            f"{icpp_toml.build_wasm['canister']}.wasm"
+        )
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
+
+        # ---
+        file_path = build_path / "custom_section_version.txt"
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(__version__)
         cmd = (
             f"{config_default.LLVM_OBJCOPY} "
-            f"--add-section='icp:private icpp:compiler'={str(file_path.resolve())} "
+            f'--add-section="icp:private icpp:compiler"="{str(file_path.resolve())}" '
             f"{icpp_toml.build_wasm['canister']}.wasm "
             f"{icpp_toml.build_wasm['canister']}.wasm"
         )

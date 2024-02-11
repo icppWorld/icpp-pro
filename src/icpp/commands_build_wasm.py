@@ -267,7 +267,7 @@ def build_wasm(
 
         # ---
         file_path = build_path / "custom_section_1.txt"
-        with open(file_path, "w") as file:
+        with open(file_path, "w", encoding="utf-8") as file:
             file.write(__version__)
         cmd = (
             f"{config_default.LLVM_OBJCOPY} "

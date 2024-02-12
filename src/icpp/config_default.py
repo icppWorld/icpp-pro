@@ -119,7 +119,7 @@ IC_HEADER_FILES = " ".join(IC_HEADER_FILES_LIST) + " "
 SYSROOT = ICPP_ROOT_COMPILER / "share/wasi-sysroot"
 
 WASM_C_REQUIRED_FLAGS = (
-    f" --target=wasm32-wasi --sysroot {SYSROOT} "
+    f" --sysroot {SYSROOT} "
     f" -I {ICPP_DIR}/ic/canister -I {ICPP_DIR}/ic/icapi "
     f" -I {ICPP_DIR}/ic/pro -I {ICPP_DIR}/ic/ic0 "
     f" -I {ICPP_CANDID_PATH}/candid -I {ICPP_CANDID_PATH}/hooks "

@@ -1,0 +1,5 @@
+service : {
+  "greet" : () -> (text) query;
+  "greet32" : () -> (text) query;
+  "greet64" : () -> (text) query;
+};

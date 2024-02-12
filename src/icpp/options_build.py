@@ -3,6 +3,9 @@ from typing import Optional
 import typer
 from icpp import pro
 
+option_target_values = ["wasm32-wasi", "wasm64-wasi"]
+option_target_values_string = f"[{'/'.join(option_target_values)}]"
+
 option_to_compile_values = ["all", "mine"]
 option_to_compile_values_string = f"[{'/'.join(option_to_compile_values)}]"
 
@@ -10,6 +13,19 @@ option_generate_bindings_values = ["yes", "no"]
 option_generate_bindings_values_string = (
     f"[{'/'.join(option_generate_bindings_values)}]"
 )
+
+
+def target_callback(ctx: typer.Context, value: str) -> Optional[str]:
+    """--target [...]"""
+    # Handle auto complete
+    if ctx.resilient_parsing:
+        return None
+
+    if value not in option_target_values:
+        msg = f"'{value}'\nValid values are: {option_target_values_string}"
+        raise typer.BadParameter(msg)
+
+    return value
 
 
 def to_compile_callback(ctx: typer.Context, value: str) -> Optional[str]:

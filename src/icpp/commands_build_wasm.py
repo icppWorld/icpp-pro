@@ -17,6 +17,8 @@ from icpp.run_dfx_cmd import run_dfx_cmd
 
 from icpp.decorators import requires_wasi_sdk
 from icpp.options_build import (
+    target_callback,
+    option_target_values_string,
     to_compile_callback,
     option_to_compile_values_string,
     generate_bindings_callback,
@@ -30,6 +32,13 @@ CONCURRENCY = "multi-threading"
 @app.command()
 @requires_wasi_sdk()
 def build_wasm(
+    target: Annotated[
+        str,
+        typer.Option(
+            help=f"Generate 32-bit or 64-bit wasm {option_target_values_string}.",
+            callback=target_callback,
+        ),
+    ] = "wasm32-wasi",
     to_compile: Annotated[
         str,
         typer.Option(
@@ -108,14 +117,18 @@ def build_wasm(
 
     def cpp_compile_cmd_default() -> str:
         cmd = (
-            f"{config_default.WASM_CPP} {config_default.WASM_CPP_REQUIRED_FLAGS} "
+            f"{config_default.WASM_CPP} "
+            f"--target={target} "
+            f"{config_default.WASM_CPP_REQUIRED_FLAGS} "
             f"{cpp_compile_flags_defaults_s} "
         )
         return cmd
 
     def c_compile_cmd_default() -> str:
         cmd = (
-            f"{config_default.WASM_C} {config_default.WASM_C_REQUIRED_FLAGS} "
+            f"{config_default.WASM_C} "
+            f"--target={target} "
+            f"{config_default.WASM_C_REQUIRED_FLAGS} "
             f"{c_compile_flags_defaults_s} "
         )
         return cmd
@@ -235,6 +248,7 @@ def build_wasm(
         # link it into a wasm
         cmd = (
             f"{config_default.WASM_CPP} "
+            f"--target={target} "
             f"{config_default.WASM_CPP_REQUIRED_FLAGS} "
             f"{cpp_link_flags_defaults_s} "
             f"*.o -o {icpp_toml.build_wasm['canister']}.wasm"

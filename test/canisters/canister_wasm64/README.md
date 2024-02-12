@@ -50,5 +50,13 @@ dfx deploy
 ## test
 
 ```bash
+dfx canister call greet query_greet
+dfx canister call greet query_greet32
+dfx canister call greet query_greet64
+dfx canister call greet update_greet
+dfx canister call greet update_greet32
+dfx canister call greet update_greet64
+
+# Or, just run
 pytest
 ```

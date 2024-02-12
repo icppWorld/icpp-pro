@@ -36,9 +36,12 @@ dfx deploy
 echo " "
 echo "--------------------------------------------------"
 echo "Running some manual tests with dfx"
-dfx canister call greet greet
-dfx canister call greet greet32
-dfx canister call greet greet64
+dfx canister call greet query_greet
+dfx canister call greet query_greet32
+dfx canister call greet query_greet64
+dfx canister call greet update_greet
+dfx canister call greet update_greet32
+dfx canister call greet update_greet64
 
 #######################################################################
 echo " "

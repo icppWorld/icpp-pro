@@ -25,16 +25,31 @@ int main() {
 
   // -----------------------------------------------------------------------------
   // '()' -> '("hello!")'
-  mockIC.run_test("greet", greet, "4449444c0000",
+  mockIC.run_test("query_greet", query_greet, "4449444c0000",
                   "4449444c0001710668656c6c6f21", silent_on_trap, my_principal);
 
   // '()' -> '("hello 32!")'
-  mockIC.run_test("greet32", greet32, "4449444c0000",
+  mockIC.run_test("query_greet32", query_greet32, "4449444c0000",
                   "4449444c0001710968656c6c6f20333221", silent_on_trap,
                   my_principal);
 
   // '()' -> '("hello 64!")'
-  mockIC.run_test("greet64", greet64, "4449444c0000",
+  mockIC.run_test("query_greet64", query_greet64, "4449444c0000",
+                  "4449444c0001710968656c6c6f20363421", silent_on_trap,
+                  my_principal);
+
+  // -----------------------------------------------------------------------------
+  // '()' -> '("hello!")'
+  mockIC.run_test("update_greet", update_greet, "4449444c0000",
+                  "4449444c0001710668656c6c6f21", silent_on_trap, my_principal);
+
+  // '()' -> '("hello 32!")'
+  mockIC.run_test("update_greet32", update_greet32, "4449444c0000",
+                  "4449444c0001710968656c6c6f20333221", silent_on_trap,
+                  my_principal);
+
+  // '()' -> '("hello 64!")'
+  mockIC.run_test("update_greet64", update_greet64, "4449444c0000",
                   "4449444c0001710968656c6c6f20363421", silent_on_trap,
                   my_principal);
 

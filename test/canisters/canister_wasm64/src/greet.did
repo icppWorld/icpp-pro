@@ -1,5 +1,8 @@
 service : {
-  "greet" : () -> (text) query;
-  "greet32" : () -> (text) query;
-  "greet64" : () -> (text) query;
+  "query_greet" : () -> (text) query;
+  "query_greet32" : () -> (text) query;
+  "query_greet64" : () -> (text) query;
+  "update_greet" : () -> (text);
+  "update_greet32" : () -> (text);
+  "update_greet64" : () -> (text);
 };

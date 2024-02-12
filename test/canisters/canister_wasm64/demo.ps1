@@ -59,12 +59,12 @@ wsl --% dfx deploy
 Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Running some manual tests with dfx"
-wsl --% dfx canister call greet greet_0
-wsl --% dfx canister call greet greet_1
-wsl --% dfx canister call greet greet_2 '("C++ Developer")'
-wsl --% dfx canister call greet greet_3 '(record { "icpp version" = 1 : int; OS = "Linux" : text })'
-wsl --% dfx canister call greet greet_4 '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })'
-wsl --% dfx canister call greet greet_json '("{\"name\": \"AJ\"}")'
+wsl --% dfx canister call greet query_greet
+wsl --% dfx canister call greet query_greet32
+wsl --% dfx canister call greet query_greet64
+wsl --% dfx canister call greet update_greet
+wsl --% dfx canister call greet update_greet32
+wsl --% dfx canister call greet update_greet64
 
 #######################################################################
 Write-Host " "
@@ -78,7 +78,6 @@ Write-Host "--------------------------------------------------"
 Write-Host "Stopping the local network in wsl"
 wsl dfx stop
 
-Native build on Windows is temporarily broken..
 #######################################################################
 Write-Host " "
 Write-Host "--------------------------------------------------"

@@ -78,7 +78,6 @@ Write-Host "--------------------------------------------------"
 Write-Host "Stopping the local network in wsl"
 wsl dfx stop
 
-Native build on Windows is temporarily broken..
 #######################################################################
 Write-Host " "
 Write-Host "--------------------------------------------------"

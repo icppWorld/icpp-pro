@@ -54,6 +54,7 @@ def test__query_greet64(network: str) -> None:
     expected_response = '("hello 64!")'
     assert response == expected_response
 
+
 def test__update_greet(network: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,

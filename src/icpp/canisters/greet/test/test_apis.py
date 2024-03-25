@@ -5,6 +5,7 @@
    $ pytest --network=[local/ic] test_apis.py
 
 """
+
 # pylint: disable=missing-function-docstring, unused-import, wildcard-import, unused-wildcard-import, line-too-long
 
 from pathlib import Path
@@ -44,7 +45,7 @@ def test__greet_0_auth_err(identity_anonymous: Dict[str, str], network: str) -> 
         canister_argument="()",
         network=network,
     )
-    expected_response = "(variant { err = 401 : nat16 })"
+    expected_response = "(variant { Err = 401 : nat16 })"
     assert response == expected_response
 
 
@@ -61,7 +62,9 @@ def test__greet_0_auth_ok(identity_default: Dict[str, str], network: str) -> Non
         network=network,
     )
     principal = identity_default["principal"]
-    expected_response = f'(variant {{ ok = "Hello {principal}" }})'
+    expected_response = (
+        f'(variant {{ Ok = record {{ greeting = "Hello {principal}";}} }})'
+    )
     assert response == expected_response
 
 

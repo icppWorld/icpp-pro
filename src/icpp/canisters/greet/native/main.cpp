@@ -28,17 +28,18 @@ int main() {
   mockIC.run_test("greet_0", greet_0, "4449444c0000",
                   "4449444c0001710668656c6c6f21", silent_on_trap, my_principal);
 
-  // '()' -> '(variant { err = 401 : nat16})'
+  // '()' -> '(variant { Err = 401 : nat16})'
   // Unauthorized to call this API if not logged in
   mockIC.run_test("greet_0_auth err", greet_0_auth, "4449444c0000",
-                  "4449444c016b01e58eb4027a0100009101", silent_on_trap,
+                  "4449444c016b01c5fed2017a0100009101", silent_on_trap,
                   anonymous_principal);
 
-  // '()' -> '(variant { ok = "Hello expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae" : text})'
+  // '()'
+  // -> '(variant { Ok = record {greeting = "Hello expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae" : text;}})'
   // Responds with your principal when logged in.
   mockIC.run_test(
       "greet_0_auth ok", greet_0_auth, "4449444c0000",
-      "4449444c016b019cc201710100004548656c6c6f206578706d742d67747873772d696e66746a2d747461626a2d71687035732d6e6f7a75702d6e3362626f2d6b377a766e2d64673468652d6b6e6163332d6c6165",
+      "4449444c026c01b9c3eef205716b01bc8a01000101004548656c6c6f206578706d742d67747873772d696e66746a2d747461626a2d71687035732d6e6f7a75702d6e3362626f2d6b377a766e2d64673468652d6b6e6163332d6c6165",
       silent_on_trap, my_principal);
 
   // '()' -> '(2023)'

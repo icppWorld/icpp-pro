@@ -16,6 +16,8 @@ void greet_0() {
 
 /* ---------------------------------------------------------
   Respond only to an authenticated user
+  Best practice interface for forward compatibility: 
+    Return a single record wrapped in a variant
 */
 void greet_0_auth() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
@@ -25,12 +27,14 @@ void greet_0_auth() {
   // Respond with 401 (Unauthorized code) if user is not logged in
   if (caller.is_anonymous()) {
     uint16_t status_code = 401;
-    ic_api.to_wire(CandidTypeVariant{"err", CandidTypeNat16{status_code}});
+    ic_api.to_wire(CandidTypeVariant{"Err", CandidTypeNat16{status_code}});
     return;
   }
 
   // Greet an authenticated user by their principal
-  ic_api.to_wire(CandidTypeVariant{"ok", CandidTypeText{"Hello " + principal}});
+  CandidTypeRecord r_out;
+  r_out.append("greeting", CandidTypeText{"Hello " + principal});
+  ic_api.to_wire(CandidTypeVariant{"Ok", r_out});
 }
 
 // Respond with an 'int' wrapped in a CandidTypeInt

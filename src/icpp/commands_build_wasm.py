@@ -268,7 +268,7 @@ def build_wasm(
         # ---
         file_path = build_path / "custom_section_cdk_name.txt"
         with open(file_path, "w", encoding="utf-8") as file:
-            file.write("icpp")
+            file.write("icpp-pro")
         cmd = (
             f"{config_default.LLVM_OBJCOPY} "
             f'--add-section="icp:public cdk:name"="{str(file_path.resolve())}" '
@@ -305,6 +305,20 @@ def build_wasm(
         run_shell_cmd(cmd, cwd=build_path)
 
         # ---
+        # dfx.tech_stack
+        file_path = build_path / "custom_section_dfx.txt"
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(
+                '{ "tech_stack": { "language": {"c++": {} }, "cdk": {"icpp-pro": {} } } }'  # pylint: disable=line-too-long
+            )
+        cmd = (
+            f"{config_default.LLVM_OBJCOPY} "
+            f'--add-section="icp:public dfx"="{str(file_path.resolve())}" '
+            f"{icpp_toml.build_wasm['canister']}.wasm "
+            f"{icpp_toml.build_wasm['canister']}.wasm"
+        )
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
 
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)

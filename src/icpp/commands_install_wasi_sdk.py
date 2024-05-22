@@ -1,4 +1,5 @@
 """Handles 'icpp install-wasi-sdk' """
+
 import sys
 import shutil
 from pathlib import Path

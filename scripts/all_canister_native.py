@@ -1,6 +1,7 @@
 """Runs the native tests for all canisters"""
 
 import sys
+import os
 from pathlib import Path
 import subprocess
 import typer
@@ -20,7 +21,8 @@ def main() -> int:
             run_shell_cmd("icpp build-native --to-compile all", cwd=canister_path)
 
             typer.echo("--\nRun mockic.exe")
-            run_shell_cmd("./build-native/mockic.exe", cwd=canister_path)
+            executable_path = os.path.join("build-native", "mockic.exe")
+            run_shell_cmd(executable_path, cwd=canister_path)
 
         except subprocess.CalledProcessError as e:
             typer.echo("--\nSomething did not pass")

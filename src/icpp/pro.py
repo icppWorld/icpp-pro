@@ -6,6 +6,7 @@ Handles licensing of icpp-pro
 ********************************************************************************
 
 """
+
 import sys
 from typing import Optional
 import typer

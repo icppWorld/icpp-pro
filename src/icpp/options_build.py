@@ -1,4 +1,5 @@
 """Handles validation of --compile option """
+
 from typing import Optional
 import typer
 from icpp import pro

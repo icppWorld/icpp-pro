@@ -1,4 +1,5 @@
 """Handles 'icpp build-native' """
+
 # pylint: disable=too-many-statements
 import sys
 import subprocess
@@ -157,7 +158,7 @@ def build_native(
         if len(cpp_files.strip()) > 0:
             if CONCURRENCY == "multi-threading":
                 typer.echo("--")
-                typer.echo("Compiling your C++ files using multi-threading:")
+                typer.echo("Compiling your C++ files:")
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     executor.map(cpp_compile_file_mine, cpp_files_list)
             else:
@@ -173,7 +174,7 @@ def build_native(
         if len(c_files.strip()) > 0:
             if CONCURRENCY == "multi-threading":
                 typer.echo("--")
-                typer.echo("Compiling your C files using multi-threading:")
+                typer.echo("Compiling your C files:")
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     executor.map(c_compile_file_mine, c_files_list)
             else:
@@ -276,7 +277,7 @@ def build_native(
         typer.echo("Generating Javascript bindings from your .did file:")
         declarations_path = icpp_toml.icpp_toml_path.parent / "src/declarations"
         typer.echo(f"{declarations_path.resolve()}/{icpp_toml.build_wasm['canister']}")
-        run_dfx_cmd("generate")
+        run_dfx_cmd("generate", capture_output=True)
         try:
             typer.echo("✔️")
         except UnicodeEncodeError:

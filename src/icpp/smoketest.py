@@ -13,7 +13,7 @@ from icpp import pro
 DFX = "dfx"
 RUN_IN_POWERSHELL = False
 if platform.win32_ver()[0]:
-    DFX = "wsl --% dfx"
+    DFX = "wsl --% . ~/.local/share/dfx/env; dfx"
     RUN_IN_POWERSHELL = True
 
 
@@ -145,8 +145,8 @@ def get_canister_id(
         )
 
     # Get the canister id
-    arg = f"{DFX} " f" canister " f" --network {network} " f" id " f" {canister_name} "
     try:
+        arg = f"{DFX} canister --network {network} id {canister_name} "
         response = run_shell_cmd(
             arg,
             capture_output=True,
@@ -180,7 +180,7 @@ def get_local_webserver_port(
     """Returns the webserver port of the network"""
     pro.exit_if_not_pro("smoketesting with pytest")
 
-    arg = f"{DFX} " f" info webserver-port "
+    arg = f"{DFX} info webserver-port "
     try:
         response = run_shell_cmd(
             arg,
@@ -241,7 +241,7 @@ def get_identity() -> str:
         identity = run_shell_cmd(
             arg,
             capture_output=True,
-            timeout_seconds=5,
+            timeout_seconds=30,
             run_in_powershell=RUN_IN_POWERSHELL,
         )
         identity = identity.rstrip("\n")
@@ -269,7 +269,7 @@ def get_principal() -> str:
         principal = run_shell_cmd(
             arg,
             capture_output=True,
-            timeout_seconds=5,
+            timeout_seconds=30,
             run_in_powershell=RUN_IN_POWERSHELL,
         )
         principal = principal.rstrip("\n")

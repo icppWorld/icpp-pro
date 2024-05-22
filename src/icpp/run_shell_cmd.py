@@ -92,7 +92,7 @@ def run_shell_cmd(
         cmd_ = ["powershell.exe", "-Command", cmd]
 
     if timeout_seconds is None:
-        timeout_seconds = 5
+        timeout_seconds = 30
 
     capture_stdout = ""
 
@@ -140,7 +140,7 @@ def run_shell_cmd(
                     if lstdout > lmax:
                         capture_stdout += "..."
 
-                print(capture_output)
+                print(capture_stdout)
         else:
             # This prints output while running, and we capture it as well & return it
             # https://stackoverflow.com/a/28319191/5480536

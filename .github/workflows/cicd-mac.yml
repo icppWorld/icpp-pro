@@ -1,4 +1,4 @@
-name: cicd
+name: cicd-mac
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
       - "test/**"
       - "Makefile"
       - ".github/trigger.txt"
-      - ".github/workflows/cicd.yml"
+      - ".github/workflows/cicd-mac.yml"
 
 jobs:
   all:
@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.8, 3.11]
-        os: [ubuntu-latest]
+        os: [macos-latest]
 
     runs-on: ${{ matrix.os }}
     
@@ -46,13 +46,11 @@ jobs:
         run: |
           echo "Installing tool chains & dependencies"
           pwd
-          sudo apt-get update
-          sudo apt-get install build-essential
           make summary
           make install-dfx
           make install-python
-          make install-clang-ubuntu
-          make install-jp-ubuntu
+          make install-homebrew-mac
+          make install-jp-mac
 
       - name: versions
         shell: bash -l {0}

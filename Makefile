@@ -170,7 +170,7 @@ python-type:
 .PHONY: install-clang-ubuntu
 install-clang-ubuntu:
 	@echo "Installing clang-$(VERSION_CLANG) compiler"
-	sudo apt-get remove python3-lldb-14
+	# sudo apt-get remove python3-lldb-14
 	wget https://apt.llvm.org/llvm.sh
 	chmod +x llvm.sh
 	echo | sudo ./llvm.sh $(VERSION_CLANG)
@@ -198,9 +198,17 @@ install-didc:
 	@echo "Installed successfully in:"
 	@echo /usr/local/bin/didc
 
-.PHONY: install-jp
-install-jp:
+.PHONY: install-jp-ubuntu
+install-jp-ubuntu:
 	sudo apt-get update && sudo apt-get install jp
+
+.PHONY: install-jp-mac
+install-jp-mac:
+	brew install jp
+
+.PHONY: install-homebrew-mac
+install-homebrew-mac:
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 .PHONY: install-python
 install-python:

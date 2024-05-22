@@ -1,4 +1,5 @@
 """Callback functions of our icpp typer app"""
+
 from typing import Optional
 import typer
 from icpp.__main__ import app

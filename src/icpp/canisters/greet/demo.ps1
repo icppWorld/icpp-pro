@@ -13,7 +13,7 @@
 Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Stopping the local network in wsl"
-wsl dfx stop
+wsl --% . ~/.local/share/dfx/env; dfx stop
 
 Write-Host " "
 Write-Host "--------------------------------------------------"
@@ -28,15 +28,15 @@ $jobs = Get-Job -Name $jobName -ErrorAction SilentlyContinue
 $jobs | Remove-Job
 
 # Start the local network with redirecting error messages to output stream
-$job = Start-Job -ScriptBlock { wsl dfx start --clean 2>&1 } -Name $jobName
+$job = Start-Job -ScriptBlock { wsl bash -c ". ~/.local/share/dfx/env; dfx start --clean 2>&1" } -Name $jobName
 
 # Display the details of the job
 $job | Format-Table
 
-# Wait for 10 seconds
+# Wait for 30 seconds
 Write-Host " "
-Write-Host "Waiting for 10 seconds to allow the local network to start..."
-Start-Sleep -Seconds 10
+Write-Host "Waiting for 30 seconds to allow the local network to start..."
+Start-Sleep -Seconds 30
 
 # Get the output of the job
 $output = Receive-Job -Job $job
@@ -53,18 +53,18 @@ icpp build-wasm --to-compile all
 Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Deploying the wasm to a canister on the local network"
-wsl --% dfx deploy
+wsl --% . ~/.local/share/dfx/env; dfx deploy
 
 #######################################################################
 Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Running some manual tests with dfx"
-wsl --% dfx canister call greet greet_0
-wsl --% dfx canister call greet greet_1
-wsl --% dfx canister call greet greet_2 '("C++ Developer")'
-wsl --% dfx canister call greet greet_3 '(record { "icpp version" = 1 : int; OS = "Linux" : text })'
-wsl --% dfx canister call greet greet_4 '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })'
-wsl --% dfx canister call greet greet_json '("{\"name\": \"AJ\"}")'
+wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_0
+wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_1
+wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_2 '("C++ Developer")'
+wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_3 '(record { "icpp version" = 1 : int; OS = "Linux" : text })'
+wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_4 '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })'
+wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_json '("{\"name\": \"AJ\"}")'
 
 #######################################################################
 Write-Host " "
@@ -76,7 +76,7 @@ pytest --network=local
 Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Stopping the local network in wsl"
-wsl dfx stop
+wsl --% . ~/.local/share/dfx/env; dfx stop
 
 #######################################################################
 Write-Host " "

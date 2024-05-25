@@ -87,6 +87,7 @@ def build_wasm(
     cpp_files_list = icpp_toml.build_wasm["cpp_files_list"]
     cpp_include_flags = icpp_toml.build_wasm["cpp_include_flags"]
     cpp_compile_flags_s = icpp_toml.build_wasm["cpp_compile_flags_s"]
+    cpp_link_flags_s = icpp_toml.build_wasm["cpp_link_flags_s"]
 
     c_files = icpp_toml.build_wasm["c_files"]
     c_files_list = icpp_toml.build_wasm["c_files_list"]
@@ -237,6 +238,7 @@ def build_wasm(
             f"{config_default.WASM_CPP} "
             f"{config_default.WASM_CPP_REQUIRED_FLAGS} "
             f"{cpp_link_flags_defaults_s} "
+            f"{cpp_link_flags_s} "
             f"*.o -o {icpp_toml.build_wasm['canister']}.wasm"
         )
 

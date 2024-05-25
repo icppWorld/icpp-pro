@@ -134,7 +134,7 @@ WASM_CFLAGS = (
 )
 WASM_CPPFLAGS = WASM_CFLAGS
 WASM_LDFLAGS = (
-    " -nostartfiles -Wl,--no-entry -Wl,--lto-O3 -Wl,--strip-all "
+    " -nostartfiles -Wl,--no-entry -Wl,--lto-O3 "
     " -Wl,--strip-debug -Wl,--stack-first -Wl,--export-dynamic "
 )
 

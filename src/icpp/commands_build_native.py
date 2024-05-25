@@ -80,6 +80,7 @@ def build_native(
         + icpp_toml.build_wasm["cpp_include_flags"]
     )
     cpp_compile_flags_s = icpp_toml.build_native["cpp_compile_flags_s"]
+    cpp_link_flags_s = icpp_toml.build_native["cpp_link_flags_s"]
 
     c_files = icpp_toml.build_native["c_files"] + icpp_toml.build_wasm["c_files"]
     c_files_list = (
@@ -240,6 +241,7 @@ def build_native(
             f"{config_default.NATIVE_CPP} "
             f"{config_default.NATIVE_CPP_REQUIRED_FLAGS} "
             f"{cpp_link_flags_defaults_s} "
+            f"{cpp_link_flags_s} "
             f"*.o -o {executable}"
         )
 

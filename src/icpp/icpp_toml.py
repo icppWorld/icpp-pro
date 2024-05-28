@@ -69,6 +69,27 @@ def read_build_wasm_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
     return d
 
 
+def read_libraries(d_in: List[Dict[Any, Any]]) -> List[Dict[Any, Any]]:
+    """Reads and processes the '[[library]]' tables."""
+    libs = []
+    seen_lib_names = set()
+    for library_in in d_in:
+        library = {}
+
+        library["lib_name"] = library_in.get("lib_name", "")
+        if library["lib_name"] in seen_lib_names:
+            typer.echo(
+                f"ERROR: duplicate 'lib_name' found: {library['lib_name']}\n"
+                f"       {icpp_toml_path.resolve()}"
+            )
+            sys.exit(1)
+        seen_lib_names.add(library["lib_name"])
+
+        read_build_table_common(library, library_in)
+        libs.append(library)
+    return libs
+
+
 def read_build_native_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
     """Reads and processes the '[build-native]' table."""
     d: Dict[Any, Any] = {}
@@ -174,5 +195,7 @@ with open(icpp_toml_path, "rb") as f:
     data = tomllib.load(f)
 
 validate(data)
+
 build_wasm: Dict[Any, Any] = read_build_wasm_table(data.get("build-wasm", {}))
+libraries: List[Dict[Any, Any]] = read_libraries(data.get("library", []))
 build_native: Dict[Any, Any] = read_build_native_table(data.get("build-native", {}))

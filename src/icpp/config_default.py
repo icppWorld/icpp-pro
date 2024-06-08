@@ -129,6 +129,7 @@ WASM_CPP_REQUIRED_FLAGS = WASM_C_REQUIRED_FLAGS + " -std=c++20 "
 
 WASM_C = ICPP_ROOT_COMPILER / "bin/clang"
 WASM_CPP = ICPP_ROOT_COMPILER / "bin/clang++"
+WASM_AR = ICPP_ROOT_COMPILER / "bin/llvm-ar"
 WASM_CFLAGS = (
     " -O3 -flto -fno-exceptions -fvisibility=hidden -D NDEBUG -D ICPP_VERBOSE=0 "
 )
@@ -137,6 +138,8 @@ WASM_LDFLAGS = (
     " -nostartfiles -Wl,--no-entry -Wl,--lto-O3 "
     " -Wl,--strip-debug -Wl,--stack-first -Wl,--export-dynamic "
 )
+WASM_ARFLAGS = "qc"
+WASM_AR_EXT = ".a"
 
 # Utilities we can use too
 CLANG_FORMAT = ICPP_ROOT_COMPILER / "bin/clang-format"

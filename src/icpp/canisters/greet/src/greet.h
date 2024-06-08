@@ -3,6 +3,8 @@
 #include "wasm_symbol.h"
 
 void greet_0() WASM_SYMBOL_EXPORTED("canister_query greet_0");
+void greet_0_static_lib()
+    WASM_SYMBOL_EXPORTED("canister_query greet_0_static_lib");
 void greet_0_auth() WASM_SYMBOL_EXPORTED("canister_query greet_0_auth");
 void greet_1() WASM_SYMBOL_EXPORTED("canister_query greet_1");
 void greet_2() WASM_SYMBOL_EXPORTED("canister_query greet_2");

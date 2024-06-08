@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace lib_world
+namespace ns_world
 {
     std::string world();
 }

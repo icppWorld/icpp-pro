@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace lib_hello
+namespace ns_hello
 {
     std::string hello();
 }

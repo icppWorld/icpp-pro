@@ -192,9 +192,7 @@ def build_native(
             if len(config_default.MOCKIC_CPP_FILES.strip()) > 0:
                 if CONCURRENCY == "multi-threading":
                     typer.echo("--")
-                    typer.echo(
-                        "Compiling C++ files of the Mock IC using multi-threading:"
-                    )
+                    typer.echo("Compiling C++ files of the Mock IC:")
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         executor.map(
                             cpp_compile_file_icpp,
@@ -216,9 +214,7 @@ def build_native(
             if len(config_default.MOCKIC_C_FILES.strip()) > 0:
                 if CONCURRENCY == "multi-threading":
                     typer.echo("--")
-                    typer.echo(
-                        "Compiling C++ files of the Mock IC using multi-threading:"
-                    )
+                    typer.echo("Compiling C++ files of the Mock IC:")
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         executor.map(
                             c_compile_file_icpp,
@@ -286,4 +282,4 @@ def build_native(
             typer.echo(" ")
 
     # ----------------------------------------------------------------------
-    typer.echo("--")
+    typer.echo("-----")

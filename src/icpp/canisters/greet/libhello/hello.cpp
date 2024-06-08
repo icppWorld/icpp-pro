@@ -1,8 +1,8 @@
-#include "lib_hello.h"
+#include "hello.h"
 
 #include <string>
 
-namespace lib_hello
+namespace ns_hello
 {
     std::string hello()
     {

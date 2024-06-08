@@ -13,6 +13,7 @@ paths.txt
 .DS_Store
 icpp-venv
 llvm.sh
+build-library
 
 # Windows
 .vs

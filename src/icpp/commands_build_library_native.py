@@ -2,6 +2,7 @@
 
 # pylint: disable = too-many-statements
 import sys
+import copy
 import subprocess
 import shutil
 import concurrent.futures
@@ -78,7 +79,10 @@ def build_library_native(
 
     # loop over the [[build-library]], then add routines of [[build-library-native]];
     # use flags of [[build-library-native]]
-    for library in icpp_toml.libraries:
+    for lib in icpp_toml.libraries:
+        # when we apply the hack below, we do not want to overwrite reference data
+        library = copy.deepcopy(lib)
+
         if (lib_name is None) or (lib_name == library["lib_name"]):
             # Find the library-native with same name, if it was provided
             library_native = None
@@ -86,6 +90,14 @@ def build_library_native(
                 if lib_native["lib_name"] == library["lib_name"]:
                     library_native = lib_native
                     break
+
+            # hack for __ic_candid__ library. We use ONLY the native files
+            if library["lib_name"] == "__ic_candid__":
+                library["cpp_files_list"] = []
+                library["c_files_list"] = []
+                library["cpp_files"] = ""
+                library["cpp_header_files"] = ""
+                library["c_files"] = ""
 
             # create the build folder
             full_lib_name = f"{library['lib_name']}{config_default.NATIVE_AR_EXT}"

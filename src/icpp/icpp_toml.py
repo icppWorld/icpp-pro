@@ -70,7 +70,9 @@ def read_build_wasm_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
     return d
 
 
-def read_libraries(d_in: List[Dict[Any, Any]]) -> List[Dict[Any, Any]]:
+def read_libraries(
+    d_in: List[Dict[Any, Any]], native: bool = False
+) -> List[Dict[Any, Any]]:
     """Reads and processes the '[[build-library]]' tables."""
     libs = []
     seen_lib_names = set()
@@ -93,7 +95,7 @@ def read_libraries(d_in: List[Dict[Any, Any]]) -> List[Dict[Any, Any]]:
 
     # If not defined in the icpp.toml, add the library for the IC & CANDID files
     if "__ic_candid__" not in seen_lib_names:
-        library = library_ic_candid()
+        library = library_ic_candid(native)
         seen_lib_names.add(library["lib_name"])
         libs.append(library)
 
@@ -110,7 +112,7 @@ def read_build_native_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
     return d
 
 
-def library_ic_candid() -> Dict[Any, Any]:
+def library_ic_candid(native: bool = False) -> Dict[Any, Any]:
     """Creates a dict for a static library contain the IC and CANDID files"""
 
     # Keep this in sync with 'read_build_table_common'
@@ -124,19 +126,23 @@ def library_ic_candid() -> Dict[Any, Any]:
     #
     # concurrent compiler uses a list of strings for the files to compile
     #
-    d["cpp_files_list"] = config_default.IC_CPP_FILES_LIST
-
-    d["c_files_list"] = config_default.IC_C_FILES_LIST
-
+    if native:
+        d["cpp_files_list"] = config_default.MOCKIC_CPP_FILES_LIST
+        d["c_files_list"] = config_default.MOCKIC_C_FILES_LIST
+        d["cpp_files"] = config_default.MOCKIC_CPP_FILES
+        d["cpp_header_files"] = config_default.MOCKIC_HEADER_FILES
+        d["c_files"] = config_default.MOCKIC_C_FILES
+    else:
+        d["cpp_files_list"] = config_default.IC_CPP_FILES_LIST
+        d["c_files_list"] = config_default.IC_C_FILES_LIST
+        d["cpp_files"] = config_default.IC_CPP_FILES
+        d["cpp_header_files"] = config_default.IC_HEADER_FILES
+        d["c_files"] = config_default.IC_C_FILES
     #
     # all in one compiler uses a long string of strings, not a list
     #
-    d["cpp_files"] = config_default.IC_CPP_FILES
     d["cpp_include_flags"] = ""
-    d["cpp_header_files"] = config_default.IC_HEADER_FILES
     d["cpp_compile_flags_s"] = ""
-
-    d["c_files"] = config_default.IC_C_FILES
     d["c_include_flags"] = ""
     d["c_header_files"] = ""
     d["c_compile_flags_s"] = ""
@@ -252,7 +258,9 @@ validate(data)
 
 build_wasm: Dict[Any, Any] = read_build_wasm_table(data.get("build-wasm", {}))
 build_native: Dict[Any, Any] = read_build_native_table(data.get("build-native", {}))
-libraries: List[Dict[Any, Any]] = read_libraries(data.get("build-library", []))
+libraries: List[Dict[Any, Any]] = read_libraries(
+    data.get("build-library", []), native=False
+)
 libraries_native: List[Dict[Any, Any]] = read_libraries(
-    data.get("build-library-native", [])
+    data.get("build-library-native", []), native=True
 )

@@ -154,16 +154,6 @@ def build_native(
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=build_path)
 
-    def cpp_compile_file_icpp(file: str) -> None:
-        cmd = f"{cpp_compile_cmd_default()} -c {file}"
-        typer.echo(cmd)
-        run_shell_cmd(cmd, cwd=build_path)
-
-    def c_compile_file_icpp(file: str) -> None:
-        cmd = f"{c_compile_cmd_default()} -c {file}"
-        typer.echo(cmd)
-        run_shell_cmd(cmd, cwd=build_path)
-
     try:
         # ----------------------------------------------------------------------
         # compile 'mine' C++ files, if we have any
@@ -196,50 +186,6 @@ def build_native(
                 typer.echo("Compiling your C files with command:")
                 typer.echo(cmd)
                 run_shell_cmd(cmd, cwd=build_path)
-
-        if to_compile == "all":
-            # ----------------------------------------------------------------------
-            # compile the C++ files of the Mock IC, if we have any
-            if len(config_default.MOCKIC_CPP_FILES.strip()) > 0:
-                if CONCURRENCY == "multi-threading":
-                    typer.echo("--")
-                    typer.echo("Compiling C++ files of the Mock IC:")
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        executor.map(
-                            cpp_compile_file_icpp,
-                            config_default.MOCKIC_CPP_FILES_LIST,
-                        )
-                else:
-                    cmd = (
-                        f"{cpp_compile_cmd_default()} "
-                        f"-c {config_default.MOCKIC_CPP_FILES}"
-                    )
-
-                    typer.echo("--")
-                    typer.echo("Compiling C++ files of the Mock IC with command:")
-                    typer.echo(cmd)
-                    run_shell_cmd(cmd, cwd=build_path)
-
-            # ----------------------------------------------------------------------
-            # compile the C files of the Mock IC, if we have any
-            if len(config_default.MOCKIC_C_FILES.strip()) > 0:
-                if CONCURRENCY == "multi-threading":
-                    typer.echo("--")
-                    typer.echo("Compiling C++ files of the Mock IC:")
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        executor.map(
-                            c_compile_file_icpp,
-                            config_default.MOCKIC_C_FILES_LIST,
-                        )
-                else:
-                    cmd = (
-                        f"{c_compile_cmd_default()} -c {config_default.MOCKIC_C_FILES}"
-                    )
-
-                    typer.echo("--")
-                    typer.echo("Compiling C files of the Mock IC with command:")
-                    typer.echo(cmd)
-                    run_shell_cmd(cmd, cwd=build_path)
 
         # ----------------------------------------------------------------------
         # link it into a native executable

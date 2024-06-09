@@ -5,6 +5,7 @@ import glob
 from pathlib import Path
 from typing import Any, Dict, List, Set
 import typer
+from icpp import config_default
 
 # `tomllib` was introduced in python 3.11
 # for earlier versions, use `tomli` instead
@@ -73,6 +74,8 @@ def read_libraries(d_in: List[Dict[Any, Any]]) -> List[Dict[Any, Any]]:
     """Reads and processes the '[[build-library]]' tables."""
     libs = []
     seen_lib_names = set()
+
+    # First add the libraries from icpp.toml
     for library_in in d_in:
         library = {}
 
@@ -87,6 +90,13 @@ def read_libraries(d_in: List[Dict[Any, Any]]) -> List[Dict[Any, Any]]:
 
         read_build_table_common(library, library_in)
         libs.append(library)
+
+    # If not defined in the icpp.toml, add the library for the IC & CANDID files
+    if "__ic_candid__" not in seen_lib_names:
+        library = library_ic_candid()
+        seen_lib_names.add(library["lib_name"])
+        libs.append(library)
+
     return libs
 
 
@@ -97,6 +107,50 @@ def read_build_native_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
     d["cpp_include_dirs"] = [icpp_toml_path_dir / "native"]
     d["c_include_dirs"] = [icpp_toml_path_dir, icpp_toml_path_dir / "native"]
     read_build_table_common(d, d_in)
+    return d
+
+
+def library_ic_candid() -> Dict[Any, Any]:
+    """Creates a dict for a static library contain the IC and CANDID files"""
+
+    # Keep this in sync with 'read_build_table_common'
+    d: Dict[Any, Any] = {}
+    d["lib_name"] = "__ic_candid__"
+
+    # if non-empty, these defaults will overwrite internal settings
+    d["cpp_compile_flags_defaults"] = []
+    d["c_compile_flags_defaults"] = []
+
+    #
+    # concurrent compiler uses a list of strings for the files to compile
+    #
+    d["cpp_files_list"] = config_default.IC_CPP_FILES_LIST
+
+    d["c_files_list"] = config_default.IC_C_FILES_LIST
+
+    #
+    # all in one compiler uses a long string of strings, not a list
+    #
+    d["cpp_files"] = config_default.IC_CPP_FILES
+    d["cpp_include_flags"] = ""
+    d["cpp_header_files"] = config_default.IC_HEADER_FILES
+    d["cpp_compile_flags_s"] = ""
+
+    d["c_files"] = config_default.IC_C_FILES
+    d["c_include_flags"] = ""
+    d["c_header_files"] = ""
+    d["c_compile_flags_s"] = ""
+
+    #
+    # overwriting defaults also uses strings
+    #
+    d["cpp_compile_flags_defaults_s"] = ""
+    d["c_compile_flags_defaults_s"] = ""
+
+    d["overwrite_default_CFLAGS"] = False
+    d["overwrite_default_CPPFLAGS"] = False
+    d["overwrite_default_LDFLAGS"] = False
+
     return d
 
 

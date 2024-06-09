@@ -22,7 +22,7 @@ from icpp.options_build import (
     generate_bindings_callback,
     option_generate_bindings_values_string,
 )
-from icpp.commands_build_wasm_library import build_wasm_library
+from icpp.commands_build_library import build_library
 
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
@@ -58,7 +58,7 @@ def build_wasm(
     # ----------------------------------------------------------------------
     # First build the libraries
     if to_compile != "mine-no-lib":
-        build_wasm_library()
+        build_library()
 
     # ----------------------------------------------------------------------
     typer.echo("----------------------------")

@@ -70,7 +70,7 @@ def read_build_wasm_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
 
 
 def read_libraries(d_in: List[Dict[Any, Any]]) -> List[Dict[Any, Any]]:
-    """Reads and processes the '[[library]]' tables."""
+    """Reads and processes the '[[build-library]]' tables."""
     libs = []
     seen_lib_names = set()
     for library_in in d_in:
@@ -197,5 +197,8 @@ with open(icpp_toml_path, "rb") as f:
 validate(data)
 
 build_wasm: Dict[Any, Any] = read_build_wasm_table(data.get("build-wasm", {}))
-libraries: List[Dict[Any, Any]] = read_libraries(data.get("library", []))
 build_native: Dict[Any, Any] = read_build_native_table(data.get("build-native", {}))
+libraries: List[Dict[Any, Any]] = read_libraries(data.get("build-library", []))
+libraries_native: List[Dict[Any, Any]] = read_libraries(
+    data.get("build-library-native", [])
+)

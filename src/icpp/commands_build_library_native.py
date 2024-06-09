@@ -1,4 +1,4 @@
-"""Handles 'icpp build-wasm-library' """
+"""Handles 'icpp build-library-native' """
 
 # pylint: disable = too-many-statements
 import sys
@@ -16,15 +16,15 @@ from icpp.__main__ import app
 from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
 
-from icpp.decorators import requires_wasi_sdk
+from icpp.decorators import requires_native_compiler
 
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
 
 
 @app.command()
-@requires_wasi_sdk()
-def build_wasm_library(
+@requires_native_compiler()
+def build_library_native(
     lib_name: Annotated[
         Optional[str],
         typer.Argument(
@@ -32,15 +32,20 @@ def build_wasm_library(
         ),
     ] = None
 ) -> None:
-    """Builds one or more static libraries, using the wasi-sdk compiler."""
+    """Builds one or more native static libraries, with your systems' Clang compiler.
+
+    Reads 'icpp.toml' file in the current folder, and uses: \n
+    (-) C++ & C files from [[build-library-native]] AND [[build-library]]\n
+    (-) Only the compile flags of [build-library-native]
+    """
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 
     typer.echo("----------------------------")
     typer.echo("Building libraries...")
 
     # ----------------------------------------------------------------------
-    # build-library
-    build_root_path = icpp_toml.icpp_toml_path.parent / "build-library"
+    # build-library-native
+    build_root_path = icpp_toml.icpp_toml_path.parent / "build-library-native"
     # typer.echo(f"Build folder: {build_root_path.resolve()}")
 
     if lib_name is None:
@@ -57,9 +62,9 @@ def build_wasm_library(
     # ----------------------------------------------------------------------
     # build-library/lib_name
 
-    cpp_compile_flags_defaults_s = config_default.WASM_CPPFLAGS
-    # cpp_link_flags_defaults_s = config_default.WASM_LDFLAGS
-    c_compile_flags_defaults_s = config_default.WASM_CFLAGS
+    cpp_compile_flags_defaults_s = config_default.NATIVE_CPPFLAGS
+    # cpp_link_flags_defaults_s = config_default.NATIVE_LDFLAGS
+    c_compile_flags_defaults_s = config_default.NATIVE_CFLAGS
 
     def cpp_compile_file_mine(file: str, cpp_compile_cmd: str, path: Path) -> None:
         cmd = f"{cpp_compile_cmd} -c {file}"
@@ -71,13 +76,22 @@ def build_wasm_library(
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=path)
 
+    # loop over the [[build-library]], then add routines of [[build-library-native]];
+    # use flags of [[build-library-native]]
     for library in icpp_toml.libraries:
         if (lib_name is None) or (lib_name == library["lib_name"]):
-            # linker requires this naming convention 'lib<lib_name>.a'
-            full_lib_name = f"{library['lib_name']}{config_default.WASM_AR_EXT}"
+            # Find the library-native with same name, if it was provided
+            library_native = None
+            for lib_native in icpp_toml.libraries_native:
+                if lib_native["lib_name"] == library["lib_name"]:
+                    library_native = lib_native
+                    break
+
+            # create the build folder
+            full_lib_name = f"{library['lib_name']}{config_default.NATIVE_AR_EXT}"
 
             build_path = build_root_path / library["lib_name"]
-            typer.echo(f"Library build folder: {build_path.resolve()}")
+            typer.echo(f"Native library build folder: {build_path.resolve()}")
 
             if build_path.exists():
                 # typer.echo("Deleting the build folder.")
@@ -92,34 +106,58 @@ def build_wasm_library(
             # ----------------------------------------------------------------------
 
             cpp_files = library["cpp_files"]
+            if library_native:
+                cpp_files += library_native["cpp_files"]
+
             cpp_files_list = library["cpp_files_list"]
+            if library_native:
+                cpp_files_list += library_native["cpp_files_list"]
+
             cpp_include_flags = library["cpp_include_flags"]
-            cpp_compile_flags_s = library["cpp_compile_flags_s"]
-            # cpp_link_flags_s = library["cpp_link_flags_s"]
+            if library_native:
+                cpp_include_flags += library_native["cpp_include_flags"]
+
+            cpp_compile_flags_s = ""
+            if library_native:
+                cpp_compile_flags_s += library_native["cpp_compile_flags_s"]
 
             c_files = library["c_files"]
-            c_files_list = library["c_files_list"]
-            c_include_flags = library["c_include_flags"]
-            c_compile_flags_s = library["c_compile_flags_s"]
+            if library_native:
+                c_files += library_native["c_files"]
 
-            if library["overwrite_default_CPPFLAGS"]:
-                cpp_compile_flags_defaults_s = library["cpp_compile_flags_defaults_s"]
-            # if library["overwrite_default_LDFLAGS"]:
-            #     cpp_link_flags_defaults_s = library["cpp_link_flags_defaults_s"]
-            if library["overwrite_default_CFLAGS"]:
-                c_compile_flags_defaults_s = library["c_compile_flags_defaults_s"]
+            c_files_list = library["c_files_list"]
+            if library_native:
+                c_files_list += library_native["c_files_list"]
+
+            c_include_flags = library["c_include_flags"]
+            if library_native:
+                c_include_flags += library_native["c_include_flags"]
+
+            c_compile_flags_s = ""
+            if library_native:
+                c_compile_flags_s += library_native["c_compile_flags_s"]
+
+            if library_native:
+                if library_native["overwrite_default_CPPFLAGS"]:
+                    cpp_compile_flags_defaults_s = library_native[
+                        "cpp_compile_flags_defaults_s"
+                    ]
+                if library_native["overwrite_default_CFLAGS"]:
+                    c_compile_flags_defaults_s = library_native[
+                        "c_compile_flags_defaults_s"
+                    ]
 
             cpp_compile_cmd_mine = (
-                f"{config_default.WASM_CPP} "
-                f"{config_default.WASM_CPP_REQUIRED_FLAGS} "
+                f"{config_default.NATIVE_CPP} "
+                f"{config_default.NATIVE_CPP_REQUIRED_FLAGS} "
                 f"{cpp_compile_flags_defaults_s} "
                 f"{cpp_include_flags} "
                 f"{cpp_compile_flags_s} "
             )
 
             c_compile_cmd_mine = (
-                f"{config_default.WASM_C} "
-                f"{config_default.WASM_C_REQUIRED_FLAGS} "
+                f"{config_default.NATIVE_C} "
+                f"{config_default.NATIVE_C_REQUIRED_FLAGS} "
                 f"{c_compile_flags_defaults_s} "
                 f"{c_include_flags} {c_compile_flags_s} "
             )
@@ -178,8 +216,8 @@ def build_wasm_library(
                 # ----------------------------------------------------------------------
                 # create the library
                 cmd = (
-                    f"{config_default.WASM_AR} "
-                    f"{config_default.WASM_ARFLAGS} "
+                    f"{config_default.NATIVE_AR} "
+                    f"{config_default.NATIVE_ARFLAGS} "
                     f"{full_lib_name} *.o"
                 )
 
@@ -193,14 +231,14 @@ def build_wasm_library(
             except Exception as e:  # pylint: disable=broad-except
                 typer.echo(
                     f"ERROR: something went wrong in module "
-                    f"'commands_build_wasm_library.py' \n "
+                    f"'commands_build_library_native.py' \n "
                     f"Exception is: \n{e}"
                 )
                 sys.exit(1)
 
             # ----------------------------------------------------------------------
             typer.echo("--")
-            typer.echo("All done building the static library:")
+            typer.echo("All done building the native static library:")
             typer.echo(f"{build_path.resolve()}/{full_lib_name}")
             try:
                 typer.echo("✔️")

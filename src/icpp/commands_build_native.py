@@ -20,6 +20,7 @@ from icpp.options_build import (
     generate_bindings_callback,
     option_generate_bindings_values_string,
 )
+from icpp.commands_build_library_native import build_library_native
 
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
@@ -56,6 +57,16 @@ def build_native(
     """
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 
+    # ----------------------------------------------------------------------
+    # First build the libraries
+    if to_compile != "mine-no-lib":
+        build_library_native()
+
+    # ----------------------------------------------------------------------
+    typer.echo("----------------------------")
+    typer.echo("Building the native executable...")
+
+    # ----------------------------------------------------------------------
     build_path = icpp_toml.icpp_toml_path.parent / "build-native"
     typer.echo(f"Build folder: {build_path.resolve()}")
 
@@ -238,8 +249,21 @@ def build_native(
             f"{config_default.NATIVE_CPP_REQUIRED_FLAGS} "
             f"{cpp_link_flags_defaults_s} "
             f"{cpp_link_flags_s} "
-            f"*.o -o {executable}"
+            f"*.o "
         )
+
+        # statically link the libraries
+        for library in icpp_toml.libraries:
+            full_lib_name = f"{library['lib_name']}{config_default.WASM_AR_EXT}"
+            full_lib_path = (
+                icpp_toml.icpp_toml_path.parent
+                / "build-library-native"
+                / library["lib_name"]
+                / full_lib_name
+            ).resolve()
+            cmd += f"{full_lib_path} "
+
+        cmd += f"-o {executable} "
 
         typer.echo("--")
         typer.echo("Linking it into a native executable with command:")

@@ -28,6 +28,12 @@ int main() {
   mockIC.run_test("greet_0", greet_0, "4449444c0000",
                   "4449444c0001710668656c6c6f21", silent_on_trap, my_principal);
 
+  // '()' -> '("Hello static library world!")'
+  mockIC.run_test(
+      "greet_0_static_lib", greet_0_static_lib, "4449444c0000",
+      "4449444c0001711b48656c6c6f20737461746963206c69627261727920776f726c6421",
+      silent_on_trap, my_principal);
+
   // '()' -> '(variant { Err = 401 : nat16})'
   // Unauthorized to call this API if not logged in
   mockIC.run_test("greet_0_auth err", greet_0_auth, "4449444c0000",

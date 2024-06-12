@@ -184,6 +184,8 @@ setup(
     #
     package_data={  # Optional
         "icpp": [
+            "canisters/greet/libhello/*",
+            "canisters/greet/libworld/*",
             "canisters/greet/native/*",
             "canisters/greet/src/*",
             "canisters/greet/src/vendors/nlohmann/json/json.hpp",

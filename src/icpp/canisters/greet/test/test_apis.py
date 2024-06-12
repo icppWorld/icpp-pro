@@ -32,6 +32,18 @@ def test__greet_0(network: str) -> None:
     assert response == expected_response
 
 
+def test__greet_0_static_lib(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="greet_0_static_lib",
+        canister_argument="()",
+        network=network,
+    )
+    expected_response = '("Hello static library world!")'
+    assert response == expected_response
+
+
 # Run this test with anonymous identity
 def test__greet_0_auth_err(identity_anonymous: Dict[str, str], network: str) -> None:
     # double check the identity_anonymous fixture worked

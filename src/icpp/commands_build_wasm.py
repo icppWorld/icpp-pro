@@ -22,6 +22,7 @@ from icpp.options_build import (
     generate_bindings_callback,
     option_generate_bindings_values_string,
 )
+from icpp.commands_build_library import build_library
 
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
@@ -54,12 +55,22 @@ def build_wasm(
     """
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 
+    # ----------------------------------------------------------------------
+    # First build the libraries
+    if to_compile != "mine-no-lib":
+        build_library()
+
+    # ----------------------------------------------------------------------
+    typer.echo("----------------------------")
+    typer.echo("Building the wasm...")
+
+    # ----------------------------------------------------------------------
     build_path = icpp_toml.icpp_toml_path.parent / "build"
     typer.echo(f"Build folder: {build_path.resolve()}")
 
     if to_compile == "all":
         if build_path.exists():
-            typer.echo("Deleting the build folder.")
+            typer.echo(f"Deleting the folder: {build_path}")
             try:
                 shutil.rmtree(build_path)
             except OSError as e:
@@ -143,16 +154,6 @@ def build_wasm(
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=build_path)
 
-    def cpp_compile_file_icpp(file: str) -> None:
-        cmd = f"{cpp_compile_cmd_default()} -c {file}"
-        typer.echo(cmd)
-        run_shell_cmd(cmd, cwd=build_path)
-
-    def c_compile_file_icpp(file: str) -> None:
-        cmd = f"{c_compile_cmd_default()} -c {file}"
-        typer.echo(cmd)
-        run_shell_cmd(cmd, cwd=build_path)
-
     try:
         # ----------------------------------------------------------------------
         # compile 'mine' C++ files, if we have any
@@ -186,61 +187,29 @@ def build_wasm(
                 typer.echo(cmd)
                 run_shell_cmd(cmd, cwd=build_path)
 
-        if to_compile == "all":
-            # ----------------------------------------------------------------------
-            # compile the C++ files of the IC API, if we have any
-            if len(config_default.IC_CPP_FILES.strip()) > 0:
-                if CONCURRENCY == "multi-threading":
-                    typer.echo("--")
-                    typer.echo(
-                        "Compiling C++ files of the IC_API using multi-threading:"
-                    )
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        executor.map(
-                            cpp_compile_file_icpp,
-                            config_default.IC_CPP_FILES_LIST,
-                        )
-                else:
-                    cmd = (
-                        f"{cpp_compile_cmd_default()} "
-                        f"-c {config_default.IC_CPP_FILES}"
-                    )
-
-                    typer.echo("--")
-                    typer.echo("Compiling C++ files of the IC_API with command:")
-                    typer.echo(cmd)
-                    run_shell_cmd(cmd, cwd=build_path)
-
-            # ----------------------------------------------------------------------
-            # compile the C files of the IC API, if we have any
-            if len(config_default.IC_C_FILES.strip()) > 0:
-                if CONCURRENCY == "multi-threading":
-                    typer.echo("--")
-                    typer.echo(
-                        "Compiling C++ files of the IC_API using multi-threading:"
-                    )
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        executor.map(
-                            c_compile_file_icpp,
-                            config_default.IC_C_FILES_LIST,
-                        )
-                else:
-                    cmd = f"{c_compile_cmd_default()} -c {config_default.IC_C_FILES}"
-
-                    typer.echo("--")
-                    typer.echo("Compiling C files of the IC_API with command:")
-                    typer.echo(cmd)
-                    run_shell_cmd(cmd, cwd=build_path)
-
         # ----------------------------------------------------------------------
         # link it into a wasm
+
         cmd = (
             f"{config_default.WASM_CPP} "
             f"{config_default.WASM_CPP_REQUIRED_FLAGS} "
             f"{cpp_link_flags_defaults_s} "
             f"{cpp_link_flags_s} "
-            f"*.o -o {icpp_toml.build_wasm['canister']}.wasm"
+            f"*.o "
         )
+
+        # statically link the libraries
+        for library in icpp_toml.libraries:
+            full_lib_name = f"{library['lib_name']}{config_default.WASM_AR_EXT}"
+            full_lib_path = (
+                icpp_toml.icpp_toml_path.parent
+                / "build-library"
+                / library["lib_name"]
+                / full_lib_name
+            ).resolve()
+            cmd += f"{full_lib_path} "
+
+        cmd += f"-o {icpp_toml.build_wasm['canister']}.wasm "
 
         typer.echo("--")
         typer.echo("Linking it into a wasm with command:")
@@ -355,4 +324,4 @@ def build_wasm(
             typer.echo(" ")
 
     # ----------------------------------------------------------------------
-    typer.echo("--")
+    typer.echo("-----")

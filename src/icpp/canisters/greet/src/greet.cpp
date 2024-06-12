@@ -1,4 +1,6 @@
 #include "greet.h"
+#include "hello.h" // libhello
+#include "world.h" // libworld
 
 #include <string>
 
@@ -12,6 +14,16 @@
 void greet_0() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   ic_api.to_wire(CandidTypeText{"hello!"});
+}
+
+/* ---------------------------------------------------------
+  Use static library functions to build the response
+*/
+void greet_0_static_lib() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  std::string msg = ns_hello::hello() + " " + ns_world::world();
+  IC_API::debug_print(msg);
+  ic_api.to_wire(CandidTypeText{msg});
 }
 
 /* ---------------------------------------------------------

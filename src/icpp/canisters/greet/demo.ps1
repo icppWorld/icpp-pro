@@ -60,6 +60,7 @@ Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Running some manual tests with dfx"
 wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_0
+wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_0_static_lib
 wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_1
 wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_2 '("C++ Developer")'
 wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_3 '(record { "icpp version" = 1 : int; OS = "Linux" : text })'

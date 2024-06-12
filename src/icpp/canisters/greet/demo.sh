@@ -37,6 +37,7 @@ echo " "
 echo "--------------------------------------------------"
 echo "Running some manual tests with dfx"
 dfx canister call greet greet_0
+dfx canister call greet greet_0_static_lib
 dfx canister call greet greet_1
 dfx canister call greet greet_2 '("C++ Developer")'
 dfx canister call greet greet_3 '(record { "icpp version" = 1 : int; OS = "Linux" : text })'

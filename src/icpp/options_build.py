@@ -4,7 +4,7 @@ from typing import Optional
 import typer
 from icpp import pro
 
-option_to_compile_values = ["all", "mine"]
+option_to_compile_values = ["all", "mine", "mine-no-lib"]
 option_to_compile_values_string = f"[{'/'.join(option_to_compile_values)}]"
 
 option_generate_bindings_values = ["yes", "no"]

@@ -12,6 +12,7 @@ type GreetingRecordResult = variant {
 
 service : {
   "greet_0" : () -> (text) query;
+  "greet_0_static_lib" : () -> (text) query;
   "greet_0_auth" : () -> (GreetingRecordResult) query;
   "greet_1" : () -> (int) query;
   "greet_2" : (text) -> (text) query;

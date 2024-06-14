@@ -226,83 +226,83 @@ wasm-ld: warning: function signature mismatch: __multi3
 //return 1;
 //}
 
-long double __multf3(long double a, long double b) {
-  ic_trap("Your code is calling a stubbed out function:  __multf3");
-  return 1;
-}
+// long double __multf3(long double a, long double b) {
+//   ic_trap("Your code is calling a stubbed out function:  __multf3");
+//   return 1;
+// }
 
-long double __subtf3(long double a, long double b) {
-  ic_trap("Your code is calling a stubbed out function:  __subtf3");
-  return 1;
-}
+// long double __subtf3(long double a, long double b) {
+//   ic_trap("Your code is calling a stubbed out function:  __subtf3");
+//   return 1;
+// }
 
-long double __divtf3(long double a, long double b) {
-  ic_trap("Your code is calling a stubbed out function:  __divtf3");
-  return 1;
-}
+// long double __divtf3(long double a, long double b) {
+//   ic_trap("Your code is calling a stubbed out function:  __divtf3");
+//   return 1;
+// }
 
-long double __addtf3(long double a, long double b) {
-  ic_trap("Your code is calling a stubbed out function:  __addtf3");
-  return 1;
-}
+// long double __addtf3(long double a, long double b) {
+//   ic_trap("Your code is calling a stubbed out function:  __addtf3");
+//   return 1;
+// }
 
 void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off) {
   ic_trap("Your code is calling a stubbed out function:  mmap64");
   return 0;
 }
 
-int __letf2(long double a, long double b) {
-  ic_trap("Your code is calling a stubbed out function:  __letf2");
-  return 1;
-}
+// int __letf2(long double a, long double b) {
+//   ic_trap("Your code is calling a stubbed out function:  __letf2");
+//   return 1;
+// }
 
-int __getf2(long double a, long double b) {
-  ic_trap("Your code is calling a stubbed out function:  __getf2");
-  return 1;
-}
+// int __getf2(long double a, long double b) {
+//   ic_trap("Your code is calling a stubbed out function:  __getf2");
+//   return 1;
+// }
 
-int __lttf2(long double a, long double b) {
-  ic_trap("Your code is calling a stubbed out function:  __lttf2");
-  return 1;
-}
+// int __lttf2(long double a, long double b) {
+//   ic_trap("Your code is calling a stubbed out function:  __lttf2");
+//   return 1;
+// }
 
-int __gttf2(long double a, long double b) {
-  ic_trap("Your code is calling a stubbed out function:  __gttf2");
-  return 1;
-}
+// int __gttf2(long double a, long double b) {
+//   ic_trap("Your code is calling a stubbed out function:  __gttf2");
+//   return 1;
+// }
 
-void __floatditf(long a, long long b) {
-  ic_trap("Your code is calling a stubbed out function:  __floatditf");
-}
+// void __floatditf(long a, long long b) {
+//   ic_trap("Your code is calling a stubbed out function:  __floatditf");
+// }
 
-void __floatsitf(int i, int j) {
-  ic_trap("Your code is calling a stubbed out function:  __floatsitf");
-}
+// void __floatsitf(int i, int j) {
+//   ic_trap("Your code is calling a stubbed out function:  __floatsitf");
+// }
 
-int __fixtfsi(long double a) {
-  ic_trap("Your code is calling a stubbed out function:  __fixtfsi");
-  return 1;
-}
+// int __fixtfsi(long double a) {
+//   ic_trap("Your code is calling a stubbed out function:  __fixtfsi");
+//   return 1;
+// }
 
-double __trunctfdf2(long double a) {
-  ic_trap("Your code is calling a stubbed out function:  __trunctfdf2");
-  return 1;
-}
+// double __trunctfdf2(long double a) {
+//   ic_trap("Your code is calling a stubbed out function:  __trunctfdf2");
+//   return 1;
+// }
 
-long double __extenddftf2(double a) {
-  ic_trap("Your code is calling a stubbed out function:  __extenddftf2 ");
-  return 1;
-}
+// long double __extenddftf2(double a) {
+//   ic_trap("Your code is calling a stubbed out function:  __extenddftf2 ");
+//   return 1;
+// }
 
 int posix_fallocate64(int fd, off_t base, off_t len) {
   ic_trap("Your code is calling a stubbed out function:  posix_fallocate64");
   return 1;
 }
 
-char *strerror(int e) {
-  ic_trap("Your code is calling a stubbed out function:  strerror");
-  return 0;
-}
+// char *strerror(int e) {
+//   ic_trap("Your code is calling a stubbed out function:  strerror");
+//   return 0;
+// }
 
 off_t ftruncate64(int fd, off_t offset) {
   ic_trap("Your code is calling a stubbed out function:  ftruncate64");
@@ -326,10 +326,10 @@ int __wasilibc_nocwd_openat_nomode(int fd, const char *path, int oflag) {
   return 1;
 }
 
-int ioctl(int fildes, int request, ...) {
-  ic_trap("Your code is calling a stubbed out function:  ioctl");
-  return 1;
-}
+// int ioctl(int fildes, int request, ...) {
+//   ic_trap("Your code is calling a stubbed out function:  ioctl");
+//   return 1;
+// }
 
 int getsockopt(int socket, int level, int option_name,
                void *restrict option_value, socklen_t *restrict option_len) {

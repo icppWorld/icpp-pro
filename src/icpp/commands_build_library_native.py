@@ -18,6 +18,9 @@ from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
 
 from icpp.decorators import requires_native_compiler
+from icpp.options_build import (
+    config_callback,
+)
 
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
@@ -26,12 +29,19 @@ CONCURRENCY = "multi-threading"
 @app.command()
 @requires_native_compiler()
 def build_library_native(
+    config: Annotated[
+        str,
+        typer.Option(
+            help="Name of configuration toml file.",
+            callback=config_callback,
+        ),
+    ] = "icpp.toml",
     lib_name: Annotated[
         Optional[str],
         typer.Argument(
             help="lib_name to build. If not specified, all libraries are built."
         ),
-    ] = None
+    ] = None,
 ) -> None:
     """Builds one or more native static libraries, with your systems' Clang compiler.
 
@@ -39,6 +49,7 @@ def build_library_native(
     (-) C++ & C files from [[build-library-native]] AND [[build-library]]\n
     (-) Only the compile flags of [build-library-native]
     """
+    config_default.ICPP_TOML_PATH = Path(config)
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 
     typer.echo("----------------------------")

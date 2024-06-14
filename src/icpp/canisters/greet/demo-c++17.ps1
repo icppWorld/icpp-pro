@@ -46,8 +46,8 @@ Write-Host $output -ForegroundColor Green
 Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Building the wasm with wasi-sdk"
-icpp build-wasm --to-compile all
-# icpp build-wasm --to-compile mine-no-lib
+icpp build-wasm --config icpp-c++17.toml --to-compile all
+# icpp build-wasm --config icpp-c++17.toml --to-compile mine-no-lib
 
 #######################################################################
 Write-Host " "
@@ -83,8 +83,8 @@ wsl --% . ~/.local/share/dfx/env; dfx stop
 Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Building the Windows native debug executable with clang++"
-icpp build-native --to-compile all
-# icpp build-native --to-compile mine-no-lib
+icpp build-native --config icpp-c++17.toml --to-compile all
+# icpp build-native --config icpp-c++17.toml --to-compile mine-no-lib
 
 #######################################################################
 Write-Host " "

@@ -2,6 +2,7 @@
 
 # pylint: disable = too-many-statements
 import sys
+from pathlib import Path
 import subprocess
 import shutil
 import concurrent.futures
@@ -17,6 +18,7 @@ from icpp.run_dfx_cmd import run_dfx_cmd
 
 from icpp.decorators import requires_wasi_sdk
 from icpp.options_build import (
+    config_callback,
     to_compile_callback,
     option_to_compile_values_string,
     generate_bindings_callback,
@@ -31,6 +33,13 @@ CONCURRENCY = "multi-threading"
 @app.command()
 @requires_wasi_sdk()
 def build_wasm(
+    config: Annotated[
+        str,
+        typer.Option(
+            help="Name of configuration toml file.",
+            callback=config_callback,
+        ),
+    ] = "icpp.toml",
     to_compile: Annotated[
         str,
         typer.Option(
@@ -53,12 +62,13 @@ def build_wasm(
 
     Reads icpp.toml in the current folder; Compiles & builds a wasm file.
     """
+    config_default.ICPP_TOML_PATH = Path(config)
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 
     # ----------------------------------------------------------------------
     # First build the libraries
     if to_compile != "mine-no-lib":
-        build_library()
+        build_library(config)
 
     # ----------------------------------------------------------------------
     typer.echo("----------------------------")

@@ -19,10 +19,11 @@ else:
         sys.exit(1)
 
 # Look for `icpp.toml`in the current folder
-icpp_toml_path = Path("icpp.toml")
+icpp_toml_path = config_default.ICPP_TOML_PATH
 if not icpp_toml_path.exists():
     typer.echo(
-        f"ERROR: There is no `icpp.toml` file in the current working directory: \n"
+        f"ERROR: There is no {config_default.ICPP_TOML_PATH} file in the "
+        f"current working directory: \n"
         f"        {icpp_toml_path.parent.resolve()} \n"
         f"       Maybe you're in the wrong folder, \n"
         f"       or else can you please create one, so I know what to build?"
@@ -71,7 +72,10 @@ def read_build_wasm_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
 
 
 def read_libraries(
-    d_in: List[Dict[Any, Any]], native: bool = False
+    d_in: List[Dict[Any, Any]],
+    build_wasm_: Dict[Any, Any],
+    build_native_: Dict[Any, Any],
+    native: bool = False,
 ) -> List[Dict[Any, Any]]:
     """Reads and processes the '[[build-library]]' tables."""
     libs = []
@@ -95,7 +99,7 @@ def read_libraries(
 
     # If not defined in the icpp.toml, add the library for the IC & CANDID files
     if "__ic_candid__" not in seen_lib_names:
-        library = library_ic_candid(native)
+        library = library_ic_candid(build_wasm_, build_native_, native)
         seen_lib_names.add(library["lib_name"])
         libs.append(library)
 
@@ -112,50 +116,52 @@ def read_build_native_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
     return d
 
 
-def library_ic_candid(native: bool = False) -> Dict[Any, Any]:
+def library_ic_candid(
+    build_wasm_: Dict[Any, Any], build_native_: Dict[Any, Any], native: bool = False
+) -> Dict[Any, Any]:
     """Creates a dict for a static library contain the IC and CANDID files"""
 
-    # Keep this in sync with 'read_build_table_common'
     d: Dict[Any, Any] = {}
-    d["lib_name"] = "__ic_candid__"
 
-    # if non-empty, these defaults will overwrite internal settings
-    d["cpp_compile_flags_defaults"] = []
-    d["c_compile_flags_defaults"] = []
-
-    #
-    # concurrent compiler uses a list of strings for the files to compile
-    #
     if native:
+        d = build_native_.copy()
         d["cpp_files_list"] = config_default.MOCKIC_CPP_FILES_LIST
         d["c_files_list"] = config_default.MOCKIC_C_FILES_LIST
         d["cpp_files"] = config_default.MOCKIC_CPP_FILES
         d["cpp_header_files"] = config_default.MOCKIC_HEADER_FILES
         d["c_files"] = config_default.MOCKIC_C_FILES
     else:
+        d = build_wasm_.copy()
         d["cpp_files_list"] = config_default.IC_CPP_FILES_LIST
         d["c_files_list"] = config_default.IC_C_FILES_LIST
         d["cpp_files"] = config_default.IC_CPP_FILES
         d["cpp_header_files"] = config_default.IC_HEADER_FILES
         d["c_files"] = config_default.IC_C_FILES
+
+    d["lib_name"] = "__ic_candid__"
+
+    # if non-empty, these defaults will overwrite internal settings
+    # d["cpp_compile_flags_defaults"] = []
+    # d["c_compile_flags_defaults"] = []
+
     #
     # all in one compiler uses a long string of strings, not a list
     #
     d["cpp_include_flags"] = ""
-    d["cpp_compile_flags_s"] = ""
+    # d["cpp_compile_flags_s"] = ""
     d["c_include_flags"] = ""
-    d["c_header_files"] = ""
-    d["c_compile_flags_s"] = ""
+    # d["c_header_files"] = ""
+    # d["c_compile_flags_s"] = ""
 
     #
     # overwriting defaults also uses strings
     #
-    d["cpp_compile_flags_defaults_s"] = ""
-    d["c_compile_flags_defaults_s"] = ""
+    # d["cpp_compile_flags_defaults_s"] = ""
+    # d["c_compile_flags_defaults_s"] = ""
 
-    d["overwrite_default_CFLAGS"] = False
-    d["overwrite_default_CPPFLAGS"] = False
-    d["overwrite_default_LDFLAGS"] = False
+    # d["overwrite_default_CFLAGS"] = False
+    # d["overwrite_default_CPPFLAGS"] = False
+    # d["overwrite_default_LDFLAGS"] = False
 
     return d
 
@@ -259,8 +265,8 @@ validate(data)
 build_wasm: Dict[Any, Any] = read_build_wasm_table(data.get("build-wasm", {}))
 build_native: Dict[Any, Any] = read_build_native_table(data.get("build-native", {}))
 libraries: List[Dict[Any, Any]] = read_libraries(
-    data.get("build-library", []), native=False
+    data.get("build-library", []), build_wasm, build_native, native=False
 )
 libraries_native: List[Dict[Any, Any]] = read_libraries(
-    data.get("build-library-native", []), native=True
+    data.get("build-library-native", []), build_wasm, build_native, native=True
 )

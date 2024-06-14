@@ -72,6 +72,11 @@ ICPP_CANDID_PATH = Path(sys.modules["icpp_candid"].__path__[0])
 ICPP_CANDID_DIR = str(ICPP_CANDID_PATH)
 
 ########################################################################
+# icpp.toml  (can be overwritten by --config)
+#
+ICPP_TOML_PATH = Path("icpp.toml")
+
+########################################################################
 # The greet canister created by `icpp init`
 #
 ICPP_INIT_PATH = ICPP_PATH / "canisters/greet"

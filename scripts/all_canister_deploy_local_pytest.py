@@ -14,37 +14,76 @@ def main() -> int:
     """Start local network; Deploy canister; Pytest"""
     canister_paths_1 = list((ROOT_PATH / "test/canisters").glob("canister_*"))
     canister_paths_2 = list((ROOT_PATH / "src/icpp/canisters").glob("*"))
-    canister_paths = canister_paths_1 + canister_paths_2
+    canister_paths = canister_paths_2 + canister_paths_1
     for canister_path in canister_paths:
         test_api_path = canister_path / "test/test_apis.py"
-        try:
-            typer.echo("--\nStop the local network")
-            run_dfx_cmd("stop")
+        configs = [file.name for file in canister_path.glob("*.toml")]
+        for config in configs:
+            try:
+                typer.echo("--\nStop the local network")
+                run_dfx_cmd("stop")
 
-            typer.echo("--\nStart a clean local network")
-            run_dfx_cmd("start --clean --background")
+                typer.echo("--\nStart a clean local network")
+                run_dfx_cmd("start --clean --background")
 
-            typer.echo("--\nBuild the wasm")
-            run_shell_cmd("icpp build-wasm --to-compile all", cwd=canister_path)
+                typer.echo(f"--\nBuild the wasm with config {config}")
+                run_shell_cmd(f"icpp build-wasm --config {config} --to-compile all", cwd=canister_path)
 
-            # typer.echo(
-            #     "--\ngzip --keep the wasm (keep original for those who deploy unzipped wasm)"
-            # )
-            # run_shell_cmd("gzip --keep build/*.wasm", cwd=canister_path)
+                # typer.echo(
+                #     "--\ngzip --keep the wasm (keep original for those who deploy unzipped wasm)"
+                # )
+                # run_shell_cmd("gzip --keep build/*.wasm", cwd=canister_path)
 
-            typer.echo(f"--\nDeploy {canister_path.name}")
-            run_dfx_cmd("deploy", cwd=canister_path)
+                typer.echo(f"--\nDeploy {canister_path.name}")
+                run_dfx_cmd("deploy", cwd=canister_path)
 
-            typer.echo(f"--\nRun pytest on {test_api_path}")
-            run_shell_cmd(f"pytest --network=local {test_api_path}", cwd=ROOT_PATH)
+                typer.echo(f"--\nRun pytest on {test_api_path}")
+                run_shell_cmd(f"pytest --network=local {test_api_path}", cwd=ROOT_PATH)
 
-            typer.echo("--\nStop the local network")
-            run_dfx_cmd("stop")
+                typer.echo("--\nStop the local network")
+                run_dfx_cmd("stop")
 
-        except subprocess.CalledProcessError as e:
-            typer.echo("--\nSomething did not pass\nStop the local network")
-            run_dfx_cmd("stop")
-            return e.returncode
+            except subprocess.CalledProcessError as e:
+                typer.echo("--\nSomething did not pass\nStop the local network")
+                run_dfx_cmd("stop")
+                return e.returncode
+        
+            # For greet canister, also test build-library
+            if canister_path.name == "greet":
+                try:
+                    typer.echo("--\nStop the local network")
+                    run_dfx_cmd("stop")
+
+                    typer.echo("--\nStart a clean local network")
+                    run_dfx_cmd("start --clean --background")
+
+                    typer.echo(f"--\nBuild all libraries for the greet canister with config {config}")
+                    run_shell_cmd(f"icpp build-library --config {config} ", cwd=canister_path)
+
+                    typer.echo(f"--\nBuild libhello for the greet canister with config {config}")
+                    run_shell_cmd(f"icpp build-library --config {config} libhello", cwd=canister_path)
+
+                    typer.echo(f"--\nBuild the wasm with config {config}")
+                    run_shell_cmd(f"icpp build-wasm --config {config} --to-compile mine-no-lib", cwd=canister_path)
+
+                    # typer.echo(
+                    #     "--\ngzip --keep the wasm (keep original for those who deploy unzipped wasm)"
+                    # )
+                    # run_shell_cmd("gzip --keep build/*.wasm", cwd=canister_path)
+
+                    typer.echo(f"--\nDeploy {canister_path.name}")
+                    run_dfx_cmd("deploy", cwd=canister_path)
+
+                    typer.echo(f"--\nRun pytest on {test_api_path}")
+                    run_shell_cmd(f"pytest --network=local {test_api_path}", cwd=ROOT_PATH)
+
+                    typer.echo("--\nStop the local network")
+                    run_dfx_cmd("stop")
+
+                except subprocess.CalledProcessError as e:
+                    typer.echo("--\nSomething did not pass\nStop the local network")
+                    run_dfx_cmd("stop")
+                    return e.returncode
 
     typer.echo("--\nCongratulations, everything passed!")
     try:

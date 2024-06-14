@@ -181,7 +181,7 @@ def read_build_table_common(d: Dict[Any, Any], d_in: Dict[Any, Any]) -> None:
     if "cpp_include_dirs" in d.keys():
         d["cpp_include_dirs"].extend(expand_paths(d_in.get("cpp_include_dirs", [])))
     else:
-        d["cpp_include_dirs"] = d_in.get("cpp_include_dirs", [])
+        d["cpp_include_dirs"] = expand_paths(d_in.get("cpp_include_dirs", []))
     d["cpp_header_paths"] = expand_paths(d_in.get("cpp_header_paths", []))
     d["cpp_compile_flags"] = d_in.get("cpp_compile_flags", [])
     d["cpp_link_flags"] = d_in.get("cpp_link_flags", [])

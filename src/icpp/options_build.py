@@ -13,6 +13,15 @@ option_generate_bindings_values_string = (
 )
 
 
+def config_callback(ctx: typer.Context, value: str) -> Optional[str]:
+    """--config [...]"""
+    # Handle auto complete
+    if ctx.resilient_parsing:
+        return None
+
+    return value
+
+
 def to_compile_callback(ctx: typer.Context, value: str) -> Optional[str]:
     """--to-compile [...]"""
     # Handle auto complete

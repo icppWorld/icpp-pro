@@ -1,0 +1,54 @@
+[build-wasm]
+canister = "greet"
+did_path = "src/greet.did"
+cpp_paths = ["src/*.cpp"]
+cpp_include_dirs = ["libhello", "libworld", "src/vendors/*"]
+cpp_compile_flags = ["-std=c++17", "-D JSON_HAS_FILESYSTEM=0"]
+cpp_link_flags = ["-std=c++17"]
+c_paths = []
+c_include_dirs = []
+c_compile_flags = []
+[build-native]
+cpp_paths = ["native/main.cpp"]
+cpp_include_dirs = []
+cpp_compile_flags = ["-std=c++17"]
+cpp_link_flags = ["-std=c++17"]
+c_paths = []
+c_include_dirs = []
+c_compile_flags = []
+
+[[build-library]]
+lib_name = "libhello"
+cpp_paths = ["libhello/*.cpp"]
+cpp_include_dirs = []
+cpp_compile_flags = ["-std=c++17"]
+c_paths = []
+c_include_dirs = []
+c_compile_flags = []
+[[build-library-native]]
+lib_name = "libhello"
+cpp_paths = []
+cpp_include_dirs = []
+cpp_compile_flags = ["-std=c++17"]
+c_paths = []
+c_include_dirs = []
+c_compile_flags = []
+
+
+[[build-library]]
+lib_name = "libworld"
+cpp_paths = ["libworld/*.cpp"]
+cpp_include_dirs = []
+cpp_compile_flags = ["-std=c++17"]
+c_paths = []
+c_include_dirs = []
+c_compile_flags = []
+[[build-library-native]]
+lib_name = "libworld"
+cpp_paths = []
+cpp_include_dirs = []
+cpp_compile_flags = ["-std=c++17"]
+c_paths = []
+c_include_dirs = []
+c_compile_flags = []
+

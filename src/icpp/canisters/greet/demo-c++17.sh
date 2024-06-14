@@ -23,8 +23,8 @@ dfx start --clean --background
 #######################################################################
 echo "--------------------------------------------------"
 echo "Building the wasm with wasi-sdk"
-icpp build-wasm --to-compile all
-# icpp build-wasm --to-compile mine-no-lib
+icpp build-wasm --config icpp-c++17.toml --to-compile all
+# icpp build-wasm --config icpp-c++17.toml --to-compile mine-no-lib
 
 #######################################################################
 echo " "
@@ -59,8 +59,8 @@ dfx stop
 echo " "
 echo "--------------------------------------------------"
 echo "Building the OS native debug executable with clang++"
-icpp build-native --to-compile all
-# icpp build-native --to-compile mine-no-lib
+icpp build-native --config icpp-c++17.toml --to-compile all
+# icpp build-native --config icpp-c++17.toml --to-compile mine-no-lib
 
 #######################################################################
 echo " "

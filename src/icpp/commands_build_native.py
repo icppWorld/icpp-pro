@@ -2,6 +2,7 @@
 
 # pylint: disable=too-many-statements
 import sys
+from pathlib import Path
 import subprocess
 import shutil
 import concurrent.futures
@@ -15,6 +16,7 @@ from icpp.run_dfx_cmd import run_dfx_cmd
 
 from icpp.decorators import requires_native_compiler, requires_pro
 from icpp.options_build import (
+    config_callback,
     to_compile_callback,
     option_to_compile_values_string,
     generate_bindings_callback,
@@ -30,6 +32,13 @@ CONCURRENCY = "multi-threading"
 @requires_native_compiler()
 @requires_pro("build-native")
 def build_native(
+    config: Annotated[
+        str,
+        typer.Option(
+            help="Name of configuration toml file.",
+            callback=config_callback,
+        ),
+    ] = "icpp.toml",
     to_compile: Annotated[
         str,
         typer.Option(
@@ -55,12 +64,13 @@ def build_native(
     (-) Only the compile flags of [build-native] \n
     (-) Only the link flags of [build-native]
     """
+    config_default.ICPP_TOML_PATH = Path(config)
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 
     # ----------------------------------------------------------------------
     # First build the libraries
     if to_compile != "mine-no-lib":
-        build_library_native()
+        build_library_native(config)
 
     # ----------------------------------------------------------------------
     typer.echo("----------------------------")

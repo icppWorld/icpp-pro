@@ -1,6 +1,7 @@
 """Handles 'icpp build-library' """
 
 # pylint: disable = too-many-statements
+import os
 import sys
 import subprocess
 import shutil
@@ -73,13 +74,19 @@ def build_library(
     c_compile_flags_defaults_s = config_default.WASM_CFLAGS
 
     def cpp_compile_file_mine(file: str, cpp_compile_cmd: str, path: Path) -> None:
-        cmd = f"{cpp_compile_cmd} -c {file}"
-        typer.echo(cmd)
+        # ensure unique *.o names, even if file has same name in a subdirectory
+        # pylint: disable=no-member
+        output_file = f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_")
+        cmd = f"{cpp_compile_cmd} -c {file} -o {output_file}.o"
+        typer.echo(file)
         run_shell_cmd(cmd, cwd=path)
 
     def c_compile_file_mine(file: str, c_compile_cmd: str, path: Path) -> None:
-        cmd = f"{c_compile_cmd} -c {file}"
-        typer.echo(cmd)
+        # ensure unique *.o names, even if file has same name in a subdirectory
+        # pylint: disable=no-member
+        output_file = f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_")
+        cmd = f"{c_compile_cmd} -c {file} -o {output_file}.o"
+        typer.echo(file)
         run_shell_cmd(cmd, cwd=path)
 
     for library in icpp_toml.libraries:
@@ -143,6 +150,7 @@ def build_library(
                         typer.echo(
                             f"Compiling C++ files for library: {library['lib_name']}"
                         )
+                        typer.echo(f"Compile command: {cpp_compile_cmd_mine}")
                         with concurrent.futures.ThreadPoolExecutor() as executor:
                             executor.map(
                                 lambda file, cpp_compile_cmd=cpp_compile_cmd_mine, build_path=build_path: cpp_compile_file_mine(  # pylint: disable=line-too-long
@@ -168,6 +176,7 @@ def build_library(
                         typer.echo(
                             f"Compiling C files for library: {library['lib_name']}"
                         )
+                        typer.echo(f"Compile command: {c_compile_cmd_mine}")
                         with concurrent.futures.ThreadPoolExecutor() as executor:
                             executor.map(
                                 lambda file, c_compile_cmd=c_compile_cmd_mine, build_path=build_path: c_compile_file_mine(  # pylint: disable=line-too-long

@@ -2,6 +2,7 @@
 
 # pylint: disable=too-many-statements
 import sys
+import os
 from pathlib import Path
 import subprocess
 import shutil
@@ -155,13 +156,19 @@ def build_native(
         return cmd
 
     def cpp_compile_file_mine(file: str) -> None:
-        cmd = f"{cpp_compile_cmd_mine()} -c {file}"
-        typer.echo(cmd)
+        # ensure unique *.o names, even if file has same name in a
+        # pylint: disable=no-member
+        output_file = f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_")
+        cmd = f"{cpp_compile_cmd_mine()} -c {file} -o {output_file}.o"
+        typer.echo(file)
         run_shell_cmd(cmd, cwd=build_path)
 
     def c_compile_file_mine(file: str) -> None:
-        cmd = f"{c_compile_cmd_mine()} -c {file}"
-        typer.echo(cmd)
+        # ensure unique *.o names, even if file has same name in a subdirectory
+        # pylint: disable=no-member
+        output_file = f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_")
+        cmd = f"{c_compile_cmd_mine()} -c {file} -o {output_file}.o"
+        typer.echo(file)
         run_shell_cmd(cmd, cwd=build_path)
 
     try:
@@ -171,6 +178,7 @@ def build_native(
             if CONCURRENCY == "multi-threading":
                 typer.echo("--")
                 typer.echo("Compiling your C++ files:")
+                typer.echo(f"Compile command: {cpp_compile_cmd_mine()}")
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     executor.map(cpp_compile_file_mine, cpp_files_list)
             else:
@@ -187,6 +195,7 @@ def build_native(
             if CONCURRENCY == "multi-threading":
                 typer.echo("--")
                 typer.echo("Compiling your C files:")
+                typer.echo(f"Compile command: {c_compile_cmd_mine()}")
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     executor.map(c_compile_file_mine, c_files_list)
             else:

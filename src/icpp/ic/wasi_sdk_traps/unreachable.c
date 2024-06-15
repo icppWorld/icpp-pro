@@ -77,40 +77,40 @@ int fchmod(const char *pathname, int mode) {
 //   return 1;
 // }
 
-int munmap(const char *pathname, int mode) {
-  ic_trap("Your code is calling a stubbed out function:  munmap");
-  return 1;
-}
+// int munmap(const char *pathname, int mode) {
+//   ic_trap("Your code is calling a stubbed out function:  munmap");
+//   return 1;
+// }
 
-int lstat64(const char *pathname, int mode) {
-  ic_trap("Your code is calling a stubbed out function:  lstat64");
-  return 1;
-}
+// int lstat64(const char *pathname, int mode) {
+//   ic_trap("Your code is calling a stubbed out function:  lstat64");
+//   return 1;
+// }
 
-int utimes(const char *pathname, int mode) {
-  ic_trap("Your code is calling a stubbed out function:  utimes");
-  return 1;
-}
+// int utimes(const char *pathname, int mode) {
+//   ic_trap("Your code is calling a stubbed out function:  utimes");
+//   return 1;
+// }
 
-int gettimeofday(const char *pathname, int mode) {
-  ic_trap("Your code is calling a stubbed out function:  gettimeofday");
-  return 1;
-}
+// int gettimeofday(const char *pathname, int mode) {
+//   ic_trap("Your code is calling a stubbed out function:  gettimeofday");
+//   return 1;
+// }
 
-int nanosleep(const char *pathname, int mode) {
-  ic_trap("Your code is calling a stubbed out function:  nanosleep");
-  return 1;
-}
+// int nanosleep(const char *pathname, int mode) {
+//   ic_trap("Your code is calling a stubbed out function:  nanosleep");
+//   return 1;
+// }
 
-int __munmap(const char *pathname, int mode) {
-  ic_trap("Your code is calling a stubbed out function:  __mumap");
-  return 1;
-}
+// int __munmap(const char *pathname, int mode) {
+//   ic_trap("Your code is calling a stubbed out function:  __mumap");
+//   return 1;
+// }
 
-int __map_file(const char *pathname, int mode) {
-  ic_trap("Your code is calling a stubbed out function:  __map_file");
-  return 1;
-}
+// int __map_file(const char *pathname, int mode) {
+//   ic_trap("Your code is calling a stubbed out function:  __map_file");
+//   return 1;
+// }
 
 // is in posix.c
 // int unlink(const char *pathname) {

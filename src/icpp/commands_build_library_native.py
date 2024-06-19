@@ -82,7 +82,7 @@ def build_library_native(
     def cpp_compile_file_mine(file: str, cpp_compile_cmd: str, path: Path) -> None:
         # ensure unique *.o names, even if file has same name in a subdirectory
         # pylint: disable=no-member
-        output_file = f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_")
+        output_file = f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         cmd = f"{cpp_compile_cmd} -c {file} -o {output_file}.o"
         typer.echo(file)
         run_shell_cmd(cmd, cwd=path)
@@ -90,7 +90,7 @@ def build_library_native(
     def c_compile_file_mine(file: str, c_compile_cmd: str, path: Path) -> None:
         # ensure unique *.o names, even if file has same name in a subdirectory
         # pylint: disable=no-member
-        output_file = f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_")
+        output_file = f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         cmd = f"{c_compile_cmd} -c {file} -o {output_file}.o"
         typer.echo(file)
         run_shell_cmd(cmd, cwd=path)

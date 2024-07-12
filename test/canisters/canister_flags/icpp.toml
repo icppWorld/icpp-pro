@@ -20,10 +20,7 @@ cpp_compile_flags_defaults = [
     "-D ICPP_VERBOSE=0",
 ]
 cpp_link_flags_defaults = [
-    "-nostartfiles",
-    "-Wl,--no-entry",
     # "-Wl,--lto-O3",
-    # "-Wl,--strip-all",
     # "-Wl,--strip-debug",
     "-Wl,--stack-first",
     "-Wl,--export-dynamic", # required for IC

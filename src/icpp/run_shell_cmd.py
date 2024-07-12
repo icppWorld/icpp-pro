@@ -1,9 +1,14 @@
-"""Utility to run 'cmd' from python as a subprocess"""
+"""Utilities to run 'cmd' from python as a subprocess"""
 
+import platform
 import subprocess
 import re
 from pathlib import Path
 from typing import Optional, Union, List
+
+RUN_IN_POWERSHELL = False
+if platform.win32_ver()[0]:
+    RUN_IN_POWERSHELL = True
 
 
 def escape_ansi(line: Optional[str]) -> Optional[str]:
@@ -29,6 +34,25 @@ def escape_ansi(line: Optional[str]) -> Optional[str]:
     )
     ansi_escape = re.compile(ansi_regex, flags=re.IGNORECASE)
     return ansi_escape.sub("", line)
+
+
+def run_shell_cmd_with_log(
+    log_file: Path,
+    mode: str,
+    cmd: str,
+    cwd: Optional[Path] = None,
+    timeout_seconds: Optional[int] = None,
+) -> None:
+    """Opens a log file with mode ["w"/"a"],runs the command; writes/appends output"""
+    with open(log_file, mode, encoding="utf-8") as file:
+        file.write("\n$ ")
+        file.write(cmd)
+        file.write("\n")
+        cmd_output = run_shell_cmd(
+            cmd, capture_output=True, cwd=cwd, timeout_seconds=timeout_seconds
+        )
+        file.write(cmd_output)
+        file.write("\n")
 
 
 def run_shell_cmd(
@@ -84,7 +108,7 @@ def run_shell_cmd(
         cwd = Path(".")
 
     if run_in_powershell is None:
-        run_in_powershell = False
+        run_in_powershell = RUN_IN_POWERSHELL
 
     # for certain commands on Windows
     cmd_: Union[str, List[str]] = cmd
@@ -116,11 +140,15 @@ def run_shell_cmd(
                     timeout=timeout_seconds,
                 )
                 if p_1.returncode != 0:
-                    # typer.echo(p_1.stdout)
+                    output = (
+                        f"Command '{cmd_}' failed:\n " f"{escape_ansi(p_1.stdout)}\n\n"
+                    )
+                    # print(output)
+
                     raise subprocess.CalledProcessError(
                         returncode=p_1.returncode,
                         cmd=p_1.args,
-                        output=escape_ansi(p_1.stdout),
+                        output=output,
                         stderr=escape_ansi(p_1.stderr),
                     )
                 capture_stdout += p_1.stdout

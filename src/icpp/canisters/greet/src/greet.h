@@ -11,3 +11,4 @@ void greet_2() WASM_SYMBOL_EXPORTED("canister_query greet_2");
 void greet_3() WASM_SYMBOL_EXPORTED("canister_query greet_3");
 void greet_4() WASM_SYMBOL_EXPORTED("canister_query greet_4");
 void greet_json() WASM_SYMBOL_EXPORTED("canister_query greet_json");
+void greet_log_file() WASM_SYMBOL_EXPORTED("canister_query greet_log_file");

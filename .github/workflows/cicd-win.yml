@@ -109,6 +109,11 @@
 #           echo "Installing wasi-sdk"
 #           icpp install-wasi-sdk
 
+#       - name: install-rust
+#         shell: powershell
+#         run: |
+#           echo "Installing rust"
+#           icpp install-rust
 
 #       # -------------------------------------------------------------------
 #       # Set up wsl

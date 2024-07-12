@@ -528,7 +528,7 @@ int main() {
       "4449444c036c01b2c39bb804016c01b3c39bb804026c01b4c39bb8047101000676616c756531",
       "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531",
       silent_on_trap, my_principal);
-  // Candid with only used type tables, as created by icpp, with type tables flipped (record3,2,1)
+  // Candid with only used type tables, as created by icpp-pro, with type tables flipped (record3,2,1)
   mockIC.run_test(
       "roundtrip_record_record_record 2", roundtrip_record_record_record,
       "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531",

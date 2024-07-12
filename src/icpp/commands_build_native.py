@@ -15,7 +15,7 @@ from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
 from icpp.run_dfx_cmd import run_dfx_cmd
 
-from icpp.decorators import requires_native_compiler, requires_pro
+from icpp.decorators import requires_native_compiler, requires_rust
 from icpp.options_build import (
     config_callback,
     to_compile_callback,
@@ -30,8 +30,8 @@ CONCURRENCY = "multi-threading"
 
 
 @app.command()
+@requires_rust()
 @requires_native_compiler()
-@requires_pro("build-native")
 def build_native(
     config: Annotated[
         str,

@@ -80,6 +80,10 @@ int main() {
                   "4449444c000171157b226772656574223a2248656c6c6f20414a21227d",
                   silent_on_trap, my_principal);
 
+  // '()' -> '()'
+  mockIC.run_test("greet_log_file", greet_log_file, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+
   // returns 1 if any tests failed
   return mockIC.test_summary();
 }

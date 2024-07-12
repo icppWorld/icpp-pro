@@ -43,6 +43,7 @@ dfx canister call greet greet_2 '("C++ Developer")'
 dfx canister call greet greet_3 '(record { "icpp version" = 1 : int; OS = "Linux" : text })'
 dfx canister call greet greet_4 '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })'
 dfx canister call greet greet_json '("{\"name\": \"AJ\"}")'
+dfx canister call greet greet_log_file
 
 #######################################################################
 echo " "

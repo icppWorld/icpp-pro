@@ -142,3 +142,15 @@ def test__greet_json(network: str, principal: str) -> None:
     )
     expected_response = '("{\\"greet\\":\\"Hello AJB!\\"}")'
     assert response == expected_response
+
+
+def test__greet_log_file(network: str) -> None:
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="greet_log_file",
+        canister_argument="()",
+        network=network,
+    )
+    expected_response = ""
+    assert response == expected_response

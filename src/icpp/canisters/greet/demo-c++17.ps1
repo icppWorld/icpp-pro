@@ -66,6 +66,7 @@ wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_2 '("C++ Develop
 wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_3 '(record { "icpp version" = 1 : int; OS = "Linux" : text })'
 wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_4 '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })'
 wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_json '("{\"name\": \"AJ\"}")'
+wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_log_file
 
 #######################################################################
 Write-Host " "

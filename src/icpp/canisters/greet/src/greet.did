@@ -19,4 +19,5 @@ service : {
   "greet_3" : (record { "icpp version" : int; OS : text }) -> (record { "icpp Release Details" : text; "release year" : int }) query;
   "greet_4" : (record { 6 : int; 9 : int }, record { 7 : int; 10 : int }) -> (text, text, int, int, int, int) query;
   "greet_json" : (text) -> (text) query;
+  "greet_log_file" : () -> () query;
 };

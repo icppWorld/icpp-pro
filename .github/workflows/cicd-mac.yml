@@ -76,6 +76,12 @@ jobs:
           echo "Installing wasi-sdk"
           icpp install-wasi-sdk
 
+      - name: install-rust
+        shell: bash -l {0}
+        run: |
+          echo "Installing rust"
+          icpp install-rust
+
       - name: all-tests
         shell: bash -l {0}
         run: |

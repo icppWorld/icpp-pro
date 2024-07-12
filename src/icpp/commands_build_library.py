@@ -17,7 +17,7 @@ from icpp.__main__ import app
 from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
 
-from icpp.decorators import requires_wasi_sdk
+from icpp.decorators import requires_wasi_sdk, requires_rust
 from icpp.options_build import (
     config_callback,
 )
@@ -27,6 +27,7 @@ CONCURRENCY = "multi-threading"
 
 
 @app.command()
+@requires_rust()
 @requires_wasi_sdk()
 def build_library(
     config: Annotated[

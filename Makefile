@@ -38,10 +38,10 @@ VERSION_CLANG := $(shell cat version_clang.txt)
 
 ###########################################################################
 # Use some clang tools that come with wasi-sdk
-ICPP_COMPILER_VERSION := $(shell python -c "import sys; sys.path.append('src'); from src.icpp.version_wasi_sdk import __version__; print(__version__)")
-ICPP_COMPILER_ROOT := $(HOME)/.icpp/$(ICPP_COMPILER_VERSION)
-CLANG_FORMAT = $(ICPP_COMPILER_ROOT)/bin/clang-format
-CLANG_TIDY = $(ICPP_COMPILER_ROOT)/bin/clang-tidy
+WASI_SDK_COMPILER_VERSION := $(shell python -c "import sys; sys.path.append('src'); from src.icpp.version_wasi_sdk import __version__; print(__version__)")
+WASI_SDK_COMPILER_ROOT := $(shell python -c "import sys; sys.path.append('src'); from src.icpp.config_default import WASI_SDK_COMPILER_ROOT; print(WASI_SDK_COMPILER_ROOT)")
+CLANG_FORMAT = $(WASI_SDK_COMPILER_ROOT)/bin/clang-format
+CLANG_TIDY = $(WASI_SDK_COMPILER_ROOT)/bin/clang-tidy
 
 .PHONY: summary
 summary:
@@ -49,8 +49,8 @@ summary:
 	@echo OS=$(OS)
 	@echo VERSION_DIDC=$(VERSION_DIDC)
 	@echo VERSION_CLANG=$(VERSION_CLANG)
-	@echo ICPP_COMPILER_VERSION=$(ICPP_COMPILER_VERSION)
-	@echo ICPP_COMPILER_ROOT=$(ICPP_COMPILER_ROOT)
+	@echo WASI_SDK_COMPILER_VERSION=$(WASI_SDK_COMPILER_VERSION)
+	@echo WASI_SDK_COMPILER_ROOT=$(WASI_SDK_COMPILER_ROOT)
 	@echo CLANG_FORMAT=$(CLANG_FORMAT)
 	@echo CLANG_TIDY=$(CLANG_TIDY)
 	@echo "-------------------------------------------------------------"

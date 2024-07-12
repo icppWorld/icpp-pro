@@ -3,6 +3,8 @@
 #include "world.h" // libworld
 
 #include <string>
+#include <iostream>
+#include <stdio.h>
 
 #include "ic_api.h"
 
@@ -13,6 +15,13 @@
 */
 void greet_0() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // Print a debug message to the dfx console window
+  // - Only active when running local.
+  // - Does nothing when running on mainnet
+  std::cout << "Hi dfx console!" << std::endl;
+
+  // Sends a message back over the wire, in Candid format
   ic_api.to_wire(CandidTypeText{"hello!"});
 }
 
@@ -22,7 +31,7 @@ void greet_0() {
 void greet_0_static_lib() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   std::string msg = ns_hello::hello() + " " + ns_world::world();
-  IC_API::debug_print(msg);
+  std::cout << msg << std::endl;
   ic_api.to_wire(CandidTypeText{msg});
 }
 
@@ -186,4 +195,53 @@ void greet_json() {
   // Return the json object as a Candid Text
   std::string s = j_out.dump();
   ic_api.to_wire(CandidTypeText{s});
+}
+
+/* ---------------------------------------------------------
+  Write a LOG file and then read & print to the dfx console
+*/
+void greet_log_file() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  std::cout << "--------------------------------------" << std::endl;
+  std::cout << "Write a LOG file, using fopen/fprintf" << std::endl;
+
+  std::string file_name = "greet.log";
+
+  std::cout << "Opening the file " << file_name << std::endl;
+  FILE *log_file = fopen(file_name.c_str(), "a"); // Open in append mode
+  if (log_file != nullptr) {
+    fprintf(log_file, "LOG: Hi log file!\n");
+    fprintf(log_file, "LOG: How are you!\n");
+
+    std::cout << "Closing the file " << file_name << std::endl;
+    fclose(log_file);
+
+  } else {
+    std::cerr << "cerr: Unable to open log file " << std::endl;
+  }
+
+  std::cout << "--------------------------------------" << std::endl;
+  std::cout << "Read and print the LOG file           " << std::endl;
+
+  log_file = fopen(file_name.c_str(), "r");
+  if (log_file != nullptr) {
+
+    std::cout << "Content of " + file_name + ": " << std::endl;
+
+    char buffer[1024];
+    while (fgets(buffer, sizeof(buffer), log_file) != nullptr) {
+      std::cout << buffer;
+    }
+
+    std::cout << std::endl;
+
+    std::cout << "Closing the file " << file_name << std::endl;
+    fclose(log_file);
+
+  } else {
+    std::cerr << "cerr: Unable to open log file " << std::endl;
+  }
+
+  ic_api.to_wire();
 }

@@ -16,6 +16,8 @@ def main() -> int:
     canister_paths_2 = list((ROOT_PATH / "src/icpp/canisters").glob("*"))
     canister_paths = canister_paths_2 + canister_paths_1
     for canister_path in canister_paths:
+        typer.echo(f"====\nTesting canister: {canister_path.name}")
+
         test_api_path = canister_path / "test/test_apis.py"
         configs = [file.name for file in canister_path.glob("*.toml")]
         for config in configs:
@@ -28,11 +30,6 @@ def main() -> int:
 
                 typer.echo(f"--\nBuild the wasm with config {config}")
                 run_shell_cmd(f"icpp build-wasm --config {config} --to-compile all", cwd=canister_path)
-
-                # typer.echo(
-                #     "--\ngzip --keep the wasm (keep original for those who deploy unzipped wasm)"
-                # )
-                # run_shell_cmd("gzip --keep build/*.wasm", cwd=canister_path)
 
                 typer.echo(f"--\nDeploy {canister_path.name}")
                 run_dfx_cmd("deploy", cwd=canister_path)
@@ -65,11 +62,6 @@ def main() -> int:
 
                     typer.echo(f"--\nBuild the wasm with config {config}")
                     run_shell_cmd(f"icpp build-wasm --config {config} --to-compile mine-no-lib", cwd=canister_path)
-
-                    # typer.echo(
-                    #     "--\ngzip --keep the wasm (keep original for those who deploy unzipped wasm)"
-                    # )
-                    # run_shell_cmd("gzip --keep build/*.wasm", cwd=canister_path)
 
                     typer.echo(f"--\nDeploy {canister_path.name}")
                     run_dfx_cmd("deploy", cwd=canister_path)

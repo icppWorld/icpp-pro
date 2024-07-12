@@ -16,6 +16,8 @@ def main() -> int:
     canister_paths_2 = list((ROOT_PATH / "src/icpp/canisters").glob("*"))
     canister_paths = canister_paths_2 + canister_paths_1
     for canister_path in canister_paths:
+        typer.echo(f"====\nTesting canister: {canister_path.name}")
+
         configs = [file.name for file in canister_path.glob("*.toml")]
         for config in configs:
             try:

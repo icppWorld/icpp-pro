@@ -38,9 +38,11 @@ WASI2IC = RUST_BIN / "wasi2ic"
 IC_WASI_POLYFILL = RUST_TARGET / "libic_wasi_polyfill.a"
 
 # Ensure that rust is installed in the correct folder
-os.environ["CARGO_TARGET_DIR"] = str(RUST_COMPILER_ROOT / "target")
-os.environ["CARGO_HOME"] = str(RUST_COMPILER_ROOT)
-os.environ["RUSTUP_HOME"] = str(RUST_COMPILER_ROOT)
+os.environ["CARGO_TARGET_DIR"] = str(  # pylint: disable = no-member
+    RUST_COMPILER_ROOT / "target"
+)
+os.environ["CARGO_HOME"] = str(RUST_COMPILER_ROOT)  # pylint: disable = no-member
+os.environ["RUSTUP_HOME"] = str(RUST_COMPILER_ROOT)  # pylint: disable = no-member
 
 #######################################################################
 USER = getpass.getuser()

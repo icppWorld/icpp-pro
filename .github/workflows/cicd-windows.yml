@@ -3,7 +3,7 @@
 # (-) the tool installation
 # Reference: https://github.com/WebAssembly/wasi-sdk/blob/main/.github/workflows/main.yml
 
-name: cicd-win
+name: cicd-windows
 
 on:
   workflow_dispatch:

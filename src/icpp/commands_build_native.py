@@ -14,15 +14,12 @@ from typing_extensions import Annotated
 from icpp.__main__ import app
 from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
-from icpp.run_dfx_cmd import run_dfx_cmd
 
 from icpp.decorators import requires_native_compiler
 from icpp.options_build import (
     config_callback,
     to_compile_callback,
     option_to_compile_values_string,
-    generate_bindings_callback,
-    option_generate_bindings_values_string,
 )
 from icpp.commands_build_library_native import build_library_native
 
@@ -50,16 +47,6 @@ def build_native(
             callback=to_compile_callback,
         ),
     ] = "all",
-    generate_bindings: Annotated[
-        str,
-        typer.Option(
-            help=(
-                f"Generate Javascript bindings "
-                f"{option_generate_bindings_values_string}."
-            ),
-            callback=generate_bindings_callback,
-        ),
-    ] = "yes",
 ) -> None:
     """Builds a native debug executable."""
 

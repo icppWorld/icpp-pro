@@ -113,7 +113,7 @@ def run_shell_cmd(
     # for certain commands on Windows
     cmd_: Union[str, List[str]] = cmd
     if run_in_powershell:
-        cmd_ = ["powershell.exe", "-Command", cmd]
+        cmd_ = ["powershell.exe", "-Command", '& {'+cmd+'}']
 
     if timeout_seconds is None:
         timeout_seconds = 30

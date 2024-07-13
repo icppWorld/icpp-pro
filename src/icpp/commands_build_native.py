@@ -252,7 +252,7 @@ def build_native(
     if OS_SYSTEM == "Windows":
         typer.echo("--")
         typer.echo("Copying the MinGW-w64 runtime DLLs to 'build-native' folder")
-        for dll_file in config_default.MINGW64_BIN.glob('*.dll'):
+        for dll_file in config_default.MINGW64_BIN.glob("*.dll"):
             shutil.copy(dll_file, build_path)
 
     # ----------------------------------------------------------------------

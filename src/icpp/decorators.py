@@ -45,7 +45,9 @@ def requires_wasi_sdk() -> Callable[[F], F]:
         @wraps(f)
         def decorated(*args: Any, **kwargs: Any) -> Any:
             if not is_wasi_sdk_installed():
-                typer.echo("The wasi-sdk compiler is not installed. Let's do this first.")
+                typer.echo(
+                    "The wasi-sdk compiler is not installed. Let's do this first."
+                )
                 install_wasi_sdk()
 
             return f(*args, **kwargs)
@@ -67,7 +69,9 @@ def requires_native_compiler() -> Callable[[F], F]:
         @wraps(f)
         def decorated(*args: Any, **kwargs: Any) -> Any:
             if OS_SYSTEM == "Windows" and not is_mingw64_installed():
-                typer.echo("The MinGW-w64 compiler is not installed. Let's do this first.")
+                typer.echo(
+                    "The MinGW-w64 compiler is not installed. Let's do this first."
+                )
                 install_mingw64()
 
             exit_if_native_compiler_not_installed()
@@ -121,14 +125,19 @@ def requires_rust() -> Callable[[F], F]:
         def decorated(*args: Any, **kwargs: Any) -> Any:
             # Rust requires the native clang compiler to be installed
             if OS_SYSTEM == "Windows" and not is_mingw64_installed():
-                typer.echo("The MinGW-w64 compiler is not installed. Let's do this first.")
+                typer.echo(
+                    "The MinGW-w64 compiler is not installed. Let's do this first."
+                )
                 install_mingw64()
 
             exit_if_native_compiler_not_installed()
 
             # Now we can install rust
             if not is_rust_installed():
-                typer.echo("The rust compiler and dependencies are not installed. Let's do this first.")
+                typer.echo(
+                    "The rust compiler and dependencies are not installed. "
+                    "Let's do this first."
+                )
                 install_rust()
 
             return f(*args, **kwargs)

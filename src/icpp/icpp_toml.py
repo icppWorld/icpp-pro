@@ -176,6 +176,7 @@ def read_build_table_common(d: Dict[Any, Any], d_in: Dict[Any, Any]) -> None:
             absolute_pattern = icpp_toml_path.parent.resolve() / pattern
             paths.update(map(Path, glob.glob(str(absolute_pattern))))
         return list(paths)
+
     # def expand_paths(patterns):
     #     paths = set()  # Using a set to store unique paths
     #     for pattern in patterns:

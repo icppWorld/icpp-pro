@@ -12,7 +12,7 @@ echo "Running from directory: "
 pwd
 
 # Define the path to your win-all-static.sh script
-PRE_COMMIT_SCRIPT_PATH="./win-all-static.sh"
+PRE_COMMIT_SCRIPT_PATH="./windows-all-static.sh"
 
 # Function to check the exit status of the last executed command
 check_exit_status() {

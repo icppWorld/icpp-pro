@@ -1,14 +1,9 @@
-"""Utilities to run 'cmd' from python as a subprocess"""
+"""Utility to run 'cmd' from python as a subprocess"""
 
-import platform
 import subprocess
 import re
 from pathlib import Path
 from typing import Optional, Union, List
-
-RUN_IN_POWERSHELL = False
-if platform.win32_ver()[0]:
-    RUN_IN_POWERSHELL = True
 
 
 def escape_ansi(line: Optional[str]) -> Optional[str]:
@@ -42,6 +37,7 @@ def run_shell_cmd_with_log(
     cmd: str,
     cwd: Optional[Path] = None,
     timeout_seconds: Optional[int] = None,
+    run_in_powershell: Optional[bool] = None,
 ) -> None:
     """Opens a log file with mode ["w"/"a"],runs the command; writes/appends output"""
     with open(log_file, mode, encoding="utf-8") as file:
@@ -49,7 +45,11 @@ def run_shell_cmd_with_log(
         file.write(cmd)
         file.write("\n")
         cmd_output = run_shell_cmd(
-            cmd, capture_output=True, cwd=cwd, timeout_seconds=timeout_seconds
+            cmd,
+            capture_output=True,
+            cwd=cwd,
+            timeout_seconds=timeout_seconds,
+            run_in_powershell=run_in_powershell,
         )
         file.write(cmd_output)
         file.write("\n")
@@ -108,13 +108,12 @@ def run_shell_cmd(
         cwd = Path(".")
 
     if run_in_powershell is None:
-        run_in_powershell = RUN_IN_POWERSHELL
+        run_in_powershell = False
 
     # for certain commands on Windows
     cmd_: Union[str, List[str]] = cmd
     if run_in_powershell:
         cmd_ = ["powershell.exe", "-Command", cmd]
-        # cmd_ = ["powershell.exe", "-Command", '& {'+cmd+'}']
 
     if timeout_seconds is None:
         timeout_seconds = 30

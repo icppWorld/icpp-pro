@@ -119,6 +119,14 @@ def requires_rust() -> Callable[[F], F]:
     def decorator(f: F) -> Any:
         @wraps(f)
         def decorated(*args: Any, **kwargs: Any) -> Any:
+            # Rust requires the native clang compiler to be installed
+            if OS_SYSTEM == "Windows" and not is_mingw64_installed():
+                typer.echo("The MinGW-w64 compiler is not installed. Let's do this first.")
+                install_mingw64()
+
+            exit_if_native_compiler_not_installed()
+
+            # Now we can install rust
             if not is_rust_installed():
                 typer.echo("The rust compiler and dependencies are not installed. Let's do this first.")
                 install_rust()

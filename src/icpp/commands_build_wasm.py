@@ -17,7 +17,7 @@ from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
 from icpp.run_dfx_cmd import run_dfx_cmd
 
-from icpp.decorators import requires_wasi_sdk, requires_rust
+from icpp.decorators import requires_wasi_sdk, requires_rust, requires_native_compiler
 from icpp.options_build import (
     config_callback,
     to_compile_callback,
@@ -32,6 +32,7 @@ CONCURRENCY = "multi-threading"
 
 
 @app.command()
+@requires_native_compiler()
 @requires_rust()
 @requires_wasi_sdk()
 def build_wasm(

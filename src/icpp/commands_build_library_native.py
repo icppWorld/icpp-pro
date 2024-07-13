@@ -18,7 +18,7 @@ from icpp.__main__ import app
 from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
 
-from icpp.decorators import requires_native_compiler, requires_rust
+from icpp.decorators import requires_native_compiler
 from icpp.options_build import (
     config_callback,
 )
@@ -28,7 +28,6 @@ CONCURRENCY = "multi-threading"
 
 
 @app.command()
-@requires_rust()
 @requires_native_compiler()
 def build_library_native(
     config: Annotated[

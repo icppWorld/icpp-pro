@@ -95,27 +95,22 @@ def install_mingw64() -> None:
                         f.write(chunk)
                         ctr.update()
 
-                progress_bar_manager.stop()
-
         ################################################################################
         # Unzip the zip file
         nstep += 1
         typer.echo(f"- {nstep}/{num_steps} Unzipping {fpath}")
 
-        use_zip_progress_bar = True
-
-        if not use_zip_progress_bar:
+        if not use_progress_bar:
             with zipfile.ZipFile(fpath, "r") as zip_ref:
                 zip_ref.extractall(path=config_default.MINGW64_COMPILER_ROOT)
         else:
-            progress_bar_manager = enlighten.get_manager()
             with zipfile.ZipFile(fpath, "r") as zip_ref:
                 # All the files in the zipfile
                 file_list = zip_ref.namelist()
 
                 # Create a progress bar
                 progress_bar = progress_bar_manager.counter(
-                    color="cyan", total=len(file_list), unit="files"
+                    color="cyan", total=len(file_list), leave=False, unit="files"
                 )
 
                 for file in file_list:
@@ -124,6 +119,9 @@ def install_mingw64() -> None:
 
                 # Close the progress bar
                 progress_bar.close()
+
+            # Now we can delete the progress_bar_manager
+            progress_bar_manager.stop()
 
         # Cleaning up
         nstep += 1

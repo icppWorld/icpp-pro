@@ -2,6 +2,7 @@
 
 # pylint: disable=too-many-statements
 import sys
+import platform
 import os
 from pathlib import Path
 import subprocess
@@ -15,7 +16,7 @@ from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
 from icpp.run_dfx_cmd import run_dfx_cmd
 
-from icpp.decorators import requires_native_compiler, requires_rust
+from icpp.decorators import requires_native_compiler
 from icpp.options_build import (
     config_callback,
     to_compile_callback,
@@ -25,12 +26,14 @@ from icpp.options_build import (
 )
 from icpp.commands_build_library_native import build_library_native
 
+OS_SYSTEM = platform.system()
+OS_PROCESSOR = platform.processor()
+
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
 
 
 @app.command()
-@requires_rust()
 @requires_native_compiler()
 def build_native(
     config: Annotated[
@@ -216,7 +219,7 @@ def build_native(
             f"*.o "
         )
 
-        # statically link the libraries
+        # link the static libraries
         for library in icpp_toml.libraries:
             full_lib_name = f"{library['lib_name']}{config_default.WASM_AR_EXT}"
             full_lib_path = (
@@ -242,6 +245,15 @@ def build_native(
             f"Exception is: \n{e}"
         )
         sys.exit(1)
+
+    # ----------------------------------------------------------------------
+    # On Windows, we need to copy the runtime DLLs to the build folder
+    # We do it this way, so the user does not have to set a system wide PATH
+    if OS_SYSTEM == "Windows":
+        typer.echo("--")
+        typer.echo("Copying the MinGW-w64 runtime DLLs to 'build-native' folder")
+        for dll_file in config_default.MINGW64_BIN.glob('*.dll'):
+            shutil.copy(dll_file, build_path)
 
     # ----------------------------------------------------------------------
     # All done

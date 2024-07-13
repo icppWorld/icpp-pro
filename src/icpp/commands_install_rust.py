@@ -123,7 +123,7 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
 
 def remove_readonly(func: Callable[[str], None], path: str, _: None) -> None:
     """Make file writeable, then try again to apply func"""
-    os.chmod(path, stat.S_IWRITE)
+    os.chmod(path, stat.S_IWRITE)  # pylint: disable = no-member
     func(path)
 
 

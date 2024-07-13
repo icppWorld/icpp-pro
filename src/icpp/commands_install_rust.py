@@ -1,13 +1,20 @@
 """Handles 'icpp install-rust' """
 
+import os
 import sys
+import platform
 import subprocess
 import shutil
+import stat
 import typer
+import requests
 from icpp.__main__ import app
 from icpp import config_default
 from icpp import __version_rust__
 from icpp.run_shell_cmd import run_shell_cmd_with_log
+
+OS_SYSTEM = platform.system()
+OS_PROCESSOR = platform.processor()
 
 LOG_FILE = config_default.ICPP_LOGS / "install_rust.log"
 TIMEOUT_SECONDS = 1000
@@ -15,19 +22,43 @@ TIMEOUT_SECONDS = 1000
 
 def install_rustup(nstep: int, num_steps: int) -> None:
     """Installs rustup into user's icpp folder"""
-    typer.echo(f"- {nstep}/{num_steps} Installing rustup")
+    typer.echo(f"- {nstep}/{num_steps} Installing rustup (be patient...)")
 
-    cmd = (
-        f'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | '
-        f'sh -s -- --no-modify-path -y --default-toolchain="{__version_rust__}" '
-    )
+    if OS_SYSTEM == "Windows":
+        # See: https://stackoverflow.com/a/73777000
+        url = "https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-gnu/rustup-init.exe"
+        rustup_init_exe = config_default.RUST_ROOT / "rustup-init.exe"
+
+        if OS_SYSTEM == "Windows":
+            rustup_init_exe.unlink(missing_ok=True)
+
+        response = requests.get(url)
+        with open(rustup_init_exe, "wb") as file:
+            file.write(response.content)
+
+        cmd = (
+            f'{rustup_init_exe} --no-modify-path -y --default-toolchain="{__version_rust__}" '
+            f' --default-host x86_64-pc-windows-gnu '
+        )
+    else:
+        cmd = (
+            f'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | '
+            f'sh -s -- --no-modify-path -y --default-toolchain="{__version_rust__}" '
+        )
+    
+    # Note: in config_default.py, we defined the environment variables for
+    #       CARGO_TARGET_DIR, CARGO_HOME, RUSTUP_HOME
+    #       which ensures that rust is installed in the correct folder (~/.icpp/rust)
+    #
     run_shell_cmd_with_log(LOG_FILE, "w", cmd, timeout_seconds=TIMEOUT_SECONDS)
 
+    if OS_SYSTEM == "Windows":
+        rustup_init_exe.unlink(missing_ok=True)
 
 def install_wasm32_wasi(nstep: int, num_steps: int) -> None:
     """Installs rust wasm32-wasi target into user's icpp folder"""
     typer.echo(f"- {nstep}/{num_steps} Installing wasm32-wasi target for rust compiler")
-    cmd = f'"{config_default.RUSTUP}" target add wasm32-wasi '
+    cmd = f'{config_default.RUSTUP} target add wasm32-wasi '
     run_shell_cmd_with_log(LOG_FILE, "a", cmd, timeout_seconds=TIMEOUT_SECONDS)
 
 
@@ -35,7 +66,7 @@ def install_wasi2ic(nstep: int, num_steps: int) -> None:
     """Installs wasi2ic into user's icpp folder"""
     typer.echo(f"- {nstep}/{num_steps} Installing wasi2ic")
     cmd = (
-        f'"{config_default.CARGO}" install '
+        f'{config_default.CARGO} install '
         f"--git https://github.com/wasm-forge/wasi2ic "
         f"--tag v0.2.11 "
     )
@@ -44,14 +75,8 @@ def install_wasi2ic(nstep: int, num_steps: int) -> None:
 
 def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
     """Installs ic-wasi-polyfill as a static library into user's icpp folder"""
-    transient_memory = False
-
+    
     msg = f"- {nstep}/{num_steps} Installing ic-wasi-polyfill "
-    if transient_memory:
-        msg += "(with files written to transient memory (op))"
-    else:
-        msg += "(with files written to stable memory)"
-
     typer.echo(msg)
 
     cmd = "git clone https://github.com/wasm-forge/ic-wasi-polyfill "
@@ -72,7 +97,7 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
         timeout_seconds=TIMEOUT_SECONDS,
     )
 
-    cmd = f"{config_default.CARGO} build --release " f"--target wasm32-wasi "
+    cmd = f"{config_default.CARGO} build --release --target wasm32-wasi "
 
     #
     # The 'transient' feature use the transient file system implementation.
@@ -80,6 +105,7 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
     # system's state in stable memory (and the ability to keep FS state
     # between canister upgrades)
     #
+    transient_memory = False
     if transient_memory:
         cmd += " --features transient "
 
@@ -92,6 +118,11 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
     )
 
 
+def remove_readonly(func, path, _):
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
 @app.command()
 def install_rust() -> None:
     """Install rust and required dependencies for use by icpp-pro.
@@ -102,7 +133,7 @@ def install_rust() -> None:
     typer.echo(f"Details in {LOG_FILE}")
 
     try:
-        shutil.rmtree(config_default.RUST_COMPILER_ROOT)
+        shutil.rmtree(config_default.RUST_COMPILER_ROOT, onerror=remove_readonly)
     except FileNotFoundError:
         pass
     except OSError as e:

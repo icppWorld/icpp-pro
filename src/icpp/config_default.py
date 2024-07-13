@@ -29,12 +29,20 @@ RUST_ROOT = ICPP_ROOT / "rust"
 RUST_COMPILER_ROOT = RUST_ROOT / f"{__version_rust__}"
 RUST_BIN = RUST_COMPILER_ROOT / "bin"
 RUST_TARGET = RUST_COMPILER_ROOT / "target/wasm32-wasi/release"
-CARGO = RUST_BIN / "cargo"
-# CARGO_BINSTALL = RUST_BIN / "cargo-binstall"  # Not using this yet...
-RUSTUP = RUST_BIN / "rustup"
-RUSTC = RUST_BIN / "rustc"
 
-WASI2IC = RUST_BIN / "wasi2ic"
+if OS_SYSTEM == "Windows":
+    CARGO = RUST_BIN / "cargo.exe"
+    # CARGO_BINSTALL = RUST_BIN / "cargo-binstall.exe"  # Not using this yet...
+    RUSTUP = RUST_BIN / "rustup.exe"
+    RUSTC = RUST_BIN / "rustc.exe"
+    WASI2IC = RUST_BIN / "wasi2ic.exe"
+else:
+    CARGO = RUST_BIN / "cargo"
+    # CARGO_BINSTALL = RUST_BIN / "cargo-binstall"  # Not using this yet...
+    RUSTUP = RUST_BIN / "rustup"
+    RUSTC = RUST_BIN / "rustc"
+    WASI2IC = RUST_BIN / "wasi2ic"
+
 IC_WASI_POLYFILL = RUST_TARGET / "libic_wasi_polyfill.a"
 
 # Ensure that rust is installed in the correct folder

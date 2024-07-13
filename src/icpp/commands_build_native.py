@@ -268,18 +268,4 @@ def build_native(
         typer.echo("(-)You can debug it with VS Code + CodeLLDB")
 
     # ----------------------------------------------------------------------
-    typer.echo("--")
-    if generate_bindings.lower() == "no":
-        typer.echo("Skipping generation of Javascript bindings from your .did file.")
-    else:
-        typer.echo("Generating Javascript bindings from your .did file:")
-        declarations_path = icpp_toml.icpp_toml_path.parent / "src/declarations"
-        typer.echo(f"{declarations_path.resolve()}/{icpp_toml.build_wasm['canister']}")
-        run_dfx_cmd("generate", capture_output=True)
-        try:
-            typer.echo("✔️")
-        except UnicodeEncodeError:
-            typer.echo(" ")
-
-    # ----------------------------------------------------------------------
     typer.echo("-----")

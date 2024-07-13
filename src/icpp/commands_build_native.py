@@ -58,13 +58,8 @@ def build_native(
         ),
     ] = "yes",
 ) -> None:
-    """Builds a native debug executable with your systems' Clang compiler.
+    """Builds a native debug executable."""
 
-    Reads 'icpp.toml' file in the current folder, and uses: \n
-    (-) C++ & C files from [build-native] AND [build-wasm]\n
-    (-) Only the compile flags of [build-native] \n
-    (-) Only the link flags of [build-native]
-    """
     config_default.ICPP_TOML_PATH = Path(config)
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 

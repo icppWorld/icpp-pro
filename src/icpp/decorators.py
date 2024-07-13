@@ -18,6 +18,7 @@ See: https://realpython.com/primer-on-python-decorators/
 """
 
 import sys
+import platform
 import shutil
 from typing import Any, Callable, TypeVar
 from functools import wraps
@@ -25,9 +26,13 @@ import typer
 from icpp import config_default
 from icpp.commands_install_wasi_sdk import is_wasi_sdk_installed, install_wasi_sdk
 from icpp.commands_install_rust import is_rust_installed, install_rust
+from icpp.commands_install_mingw64 import is_mingw64_installed, install_mingw64
 
 
 F = TypeVar("F", bound=Callable[..., Any])
+
+OS_SYSTEM = platform.system()
+OS_PROCESSOR = platform.processor()
 
 
 def requires_wasi_sdk() -> Callable[[F], F]:
@@ -40,6 +45,7 @@ def requires_wasi_sdk() -> Callable[[F], F]:
         @wraps(f)
         def decorated(*args: Any, **kwargs: Any) -> Any:
             if not is_wasi_sdk_installed():
+                typer.echo("The wasi-sdk compiler is not installed. Let's do this first.")
                 install_wasi_sdk()
 
             return f(*args, **kwargs)
@@ -52,12 +58,18 @@ def requires_wasi_sdk() -> Callable[[F], F]:
 def requires_native_compiler() -> Callable[[F], F]:
     """Decorates a command that requires a native compiler.
 
-    If the native compiler is not installed, it will exit.
+    If the native compiler is not installed:
+    - Windows: installs mingw64
+    - Other systems: exits
     """
 
     def decorator(f: F) -> Any:
         @wraps(f)
         def decorated(*args: Any, **kwargs: Any) -> Any:
+            if OS_SYSTEM == "Windows" and not is_mingw64_installed():
+                typer.echo("The MinGW-w64 compiler is not installed. Let's do this first.")
+                install_mingw64()
+
             exit_if_native_compiler_not_installed()
             return f(*args, **kwargs)
 
@@ -108,6 +120,7 @@ def requires_rust() -> Callable[[F], F]:
         @wraps(f)
         def decorated(*args: Any, **kwargs: Any) -> Any:
             if not is_rust_installed():
+                typer.echo("The rust compiler and dependencies are not installed. Let's do this first.")
                 install_rust()
 
             return f(*args, **kwargs)

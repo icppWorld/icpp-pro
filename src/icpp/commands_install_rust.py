@@ -129,10 +129,10 @@ def remove_readonly(func: Callable[[str], None], path: str, _: None) -> None:
 
 @app.command()
 def install_rust() -> None:
-    """Install rust and required dependencies for use by icpp-pro.
+    """Installs rust and required dependencies.
 
-    Installs the rust compiler and dependencies used by icpp-pro.
-    """
+    Compiler will be installed in ~/.icpp"""
+
     typer.echo(f"Installing rust into {config_default.RUST_COMPILER_ROOT}")
     typer.echo(f"Details in {LOG_FILE}")
 

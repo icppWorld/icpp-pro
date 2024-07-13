@@ -45,12 +45,8 @@ def build_library_native(
         ),
     ] = None,
 ) -> None:
-    """Builds one or more native static libraries, with your systems' Clang compiler.
+    """Builds one or more native static debug libraries."""
 
-    Reads 'icpp.toml' file in the current folder, and uses: \n
-    (-) C++ & C files from [[build-library-native]] AND [[build-library]]\n
-    (-) Only the compile flags of [build-library-native]
-    """
     config_default.ICPP_TOML_PATH = Path(config)
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 

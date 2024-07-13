@@ -242,12 +242,12 @@ install-python-w-llama_cpp_canister:
 	pip install -e ".[dev]"
 	cd ../../../onicai/repos/llama_cpp_canister && pip install -r requirements.txt
 
-.PHONY:install-rust
-install-rust:
-	@echo "Installing rust"
-	curl https://sh.rustup.rs -sSf | sh -s -- -y
-	@echo "Installing ic-cdk-optimizer"
-	cargo install ic-cdk-optimizer
+# .PHONY:install-rust
+# install-rust:
+# 	@echo "Installing rust"
+# 	curl https://sh.rustup.rs -sSf | sh -s -- -y
+# 	@echo "Installing ic-cdk-optimizer"
+# 	cargo install ic-cdk-optimizer
 
 .PHONY: install-wabt
 install-wabt:

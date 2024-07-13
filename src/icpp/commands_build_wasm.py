@@ -60,10 +60,8 @@ def build_wasm(
         ),
     ] = "yes",
 ) -> None:
-    """Builds the wasm for a canister, using the wasi-sdk compiler.
+    """Builds the wasm."""
 
-    Reads icpp.toml in the current folder; Compiles & builds a wasm file.
-    """
     config_default.ICPP_TOML_PATH = Path(config)
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 

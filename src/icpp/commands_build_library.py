@@ -44,7 +44,7 @@ def build_library(
         ),
     ] = None,
 ) -> None:
-    """Builds one or more static libraries, using the wasi-sdk compiler."""
+    """Builds one or more wasm static libraries."""
     config_default.ICPP_TOML_PATH = Path(config)
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 

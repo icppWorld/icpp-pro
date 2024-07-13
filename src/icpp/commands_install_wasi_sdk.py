@@ -63,10 +63,10 @@ ICPP_ROOT_UNTAR_DIR = config_default.WASI_SDK_ROOT / f"{get_wasi_sdk_untar_dir_n
 
 @app.command()
 def install_wasi_sdk() -> None:
-    """Install wasi-sdk compiler.
+    """Installs wasi-sdk compiler.
 
-    Installs the wasi-sdk compiler for icpp.
-    """
+    Compiler will be installed in ~/.icpp"""
+
     if WASI_SDK_OS_NAME == "unknown":
         typer.echo("ERROR: a wasi-sdk binary is not available for your system.")
         typer.echo(f"       - Your system: {OS_SYSTEM}")

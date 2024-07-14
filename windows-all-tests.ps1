@@ -22,9 +22,7 @@ $winAllTestPath = ".\windows-all-tests.sh"
 & $gitBashPath $winAllTestPath $pythonInterpreter "all-tests"
 
 # Capture the exit code from Git Bash
-$exitCodeAllStatic = $LASTEXITCODE
+$exitCode = $LASTEXITCODE
 
-# Exit PowerShell with the same exit code only if it's not 0
-if ($exitCodeAllStatic -ne 0) {
-    exit $exitCodeAllStatic
-}
+# Exit PowerShell with the same exit code
+exit $exitCode

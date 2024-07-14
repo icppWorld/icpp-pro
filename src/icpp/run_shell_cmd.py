@@ -111,7 +111,7 @@ def run_shell_cmd(
         run_in_powershell = False
 
     # for certain commands on Windows
-    cmd_: List[str] | Path | str
+    cmd_: Union[List[str], Path, str]
     if run_in_powershell:
         if isinstance(cmd, Path):
             cmd_ = ["powershell.exe", "-File", str(cmd)]

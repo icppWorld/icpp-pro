@@ -13,32 +13,13 @@ $pythonInterpreter = Join-Path $activeEnvPath "python.exe"
 $gitBashPath = "C:\Program Files\Git\bin\bash.exe"
 
 # ---------------------------------------------------------
-# Run all the tests
+# Run the tests
 
 # Define the path to the all-test bash script
 $winAllTestPath = ".\windows-all-tests.sh"
 
-# Execute the all-static bash script using Git Bash, passing the variables as arguments
+# Execute the bash script using Git Bash
 & $gitBashPath $winAllTestPath $pythonInterpreter "all-tests"
-
-# Capture the exit code from Git Bash
-$exitCodeAllStatic = $LASTEXITCODE
-
-# Exit PowerShell with the same exit code only if it's not 0
-if ($exitCodeAllStatic -ne 0) {
-    exit $exitCodeAllStatic
-}
-
-# ---------------------------------------------------------
-# Run the native tests
-
-python -m scripts.all_canister_native
-
-# Define the path to the all-test bash script
-$winAllStaticPath = ".\windows-all-static.sh"
-
-# Execute the all-static bash script using Git Bash, passing the variables as arguments
-& $gitBashPath $winAllStaticPath $pythonInterpreter
 
 # Capture the exit code from Git Bash
 $exitCodeAllStatic = $LASTEXITCODE

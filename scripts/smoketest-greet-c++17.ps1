@@ -1,15 +1,6 @@
-#######################################################################
-# This is a Windows PowerShell script
-#
-# (-) Install icpp-pro in a python environment on windows
-# (-) Install dfx  in wsl
-# (-) In a Windows PowerShell (*):
-#
-#     .\demo.ps1
-#
-# (*) The Miniconda Powershell is highly recommended
-#
-#######################################################################
+###########################################################################
+# This is a Windows PowerShell script for smoketesting the greet canister #
+###########################################################################
 Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Stopping the local network in wsl"
@@ -18,7 +9,7 @@ wsl --% . ~/.local/share/dfx/env; dfx stop
 Write-Host " "
 Write-Host "--------------------------------------------------"
 Write-Host "Starting the local network in wsl as a PowerShell background job"
-$jobName = "greet"
+$jobName = "smoketest"
 
 # Stop the job if it already exist
 # Get a list of all the background jobs with a specific name
@@ -45,9 +36,16 @@ Write-Host $output -ForegroundColor Green
 #######################################################################
 Write-Host " "
 Write-Host "--------------------------------------------------"
+Write-Host "Building the libraries for c++17"
+icpp build-library --config icpp-c++17.toml
+icpp build-library --config icpp-c++17.toml libhello
+
+#######################################################################
+Write-Host " "
+Write-Host "--------------------------------------------------"
 Write-Host "Building the wasm with wasi-sdk"
-icpp build-wasm --to-compile all
-# icpp build-wasm --to-compile mine-no-lib
+# icpp build-wasm --config icpp-c++17.toml --to-compile all
+icpp build-wasm --config icpp-c++17.toml --to-compile mine-no-lib
 
 #######################################################################
 Write-Host " "
@@ -58,21 +56,11 @@ wsl --% . ~/.local/share/dfx/env; dfx deploy
 #######################################################################
 Write-Host " "
 Write-Host "--------------------------------------------------"
-Write-Host "Running some manual tests with dfx"
-wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_0
-wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_0_static_lib
-wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_1
-wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_2 '("C++ Developer")'
-wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_3 '(record { "icpp version" = 1 : int; OS = "Linux" : text })'
-wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_4 '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })'
-wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_json '("{\"name\": \"AJ\"}")'
-wsl --% . ~/.local/share/dfx/env; dfx canister call greet greet_log_file
-
-#######################################################################
-Write-Host " "
-Write-Host "--------------------------------------------------"
 Write-Host "Running the full smoketests with pytest"
 pytest --network=local
+
+# Capture the exit code of the pytest command
+$pytestExitCode = $LASTEXITCODE
 
 #######################################################################
 Write-Host " "
@@ -81,14 +69,11 @@ Write-Host "Stopping the local network in wsl"
 wsl --% . ~/.local/share/dfx/env; dfx stop
 
 #######################################################################
-Write-Host " "
-Write-Host "--------------------------------------------------"
-Write-Host "Building the Windows native debug executable with clang++"
-icpp build-native --to-compile all
-# icpp build-native --to-compile mine-no-lib
+# Check if the pytestExitCode is non-zero
+if ($pytestExitCode -ne 0) {
+    # Print the exit code
+    Write-Output "Pytest had a failure - Exit code: $pytestExitCode"
 
-#######################################################################
-Write-Host " "
-Write-Host "--------------------------------------------------"
-Write-Host "Running the Windows native debug executable"
-.\build-native\mockic.exe
+    # Exit the script with the same exit code as pytest
+    exit $pytestExitCode
+}

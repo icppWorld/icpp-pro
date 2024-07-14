@@ -31,8 +31,32 @@ def escape_ansi(line: Optional[str]) -> Optional[str]:
     return ansi_escape.sub("", line)
 
 
-def run_shell_cmd(
+def run_shell_cmd_with_log(
+    log_file: Path,
+    mode: str,
     cmd: str,
+    cwd: Optional[Path] = None,
+    timeout_seconds: Optional[int] = None,
+    run_in_powershell: Optional[bool] = None,
+) -> None:
+    """Opens a log file with mode ["w"/"a"],runs the command; writes/appends output"""
+    with open(log_file, mode, encoding="utf-8") as file:
+        file.write("\n$ ")
+        file.write(cmd)
+        file.write("\n")
+        cmd_output = run_shell_cmd(
+            cmd,
+            capture_output=True,
+            cwd=cwd,
+            timeout_seconds=timeout_seconds,
+            run_in_powershell=run_in_powershell,
+        )
+        file.write(cmd_output)
+        file.write("\n")
+
+
+def run_shell_cmd(
+    cmd: Union[Path, str],
     capture_output: bool = False,
     print_captured_output: bool = False,
     cwd: Optional[Path] = None,
@@ -87,9 +111,14 @@ def run_shell_cmd(
         run_in_powershell = False
 
     # for certain commands on Windows
-    cmd_: Union[str, List[str]] = cmd
+    cmd_: Union[List[str], Path, str]
     if run_in_powershell:
-        cmd_ = ["powershell.exe", "-Command", cmd]
+        if isinstance(cmd, Path):
+            cmd_ = ["powershell.exe", "-File", str(cmd)]
+        else:
+            cmd_ = ["powershell.exe", "-Command", cmd]
+    else:
+        cmd_ = cmd
 
     if timeout_seconds is None:
         timeout_seconds = 30
@@ -116,11 +145,15 @@ def run_shell_cmd(
                     timeout=timeout_seconds,
                 )
                 if p_1.returncode != 0:
-                    # typer.echo(p_1.stdout)
+                    output = (
+                        f"Command '{cmd_}' failed:\n " f"{escape_ansi(p_1.stdout)}\n\n"
+                    )
+                    # print(output)
+
                     raise subprocess.CalledProcessError(
                         returncode=p_1.returncode,
                         cmd=p_1.args,
-                        output=escape_ansi(p_1.stdout),
+                        output=output,
                         stderr=escape_ansi(p_1.stderr),
                     )
                 capture_stdout += p_1.stdout

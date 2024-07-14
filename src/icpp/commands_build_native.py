@@ -2,6 +2,7 @@
 
 # pylint: disable=too-many-statements
 import sys
+import platform
 import os
 from pathlib import Path
 import subprocess
@@ -13,17 +14,17 @@ from typing_extensions import Annotated
 from icpp.__main__ import app
 from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
-from icpp.run_dfx_cmd import run_dfx_cmd
 
-from icpp.decorators import requires_native_compiler, requires_pro
+from icpp.decorators import requires_native_compiler
 from icpp.options_build import (
     config_callback,
     to_compile_callback,
     option_to_compile_values_string,
-    generate_bindings_callback,
-    option_generate_bindings_values_string,
 )
 from icpp.commands_build_library_native import build_library_native
+
+OS_SYSTEM = platform.system()
+OS_PROCESSOR = platform.processor()
 
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
@@ -31,7 +32,6 @@ CONCURRENCY = "multi-threading"
 
 @app.command()
 @requires_native_compiler()
-@requires_pro("build-native")
 def build_native(
     config: Annotated[
         str,
@@ -47,24 +47,9 @@ def build_native(
             callback=to_compile_callback,
         ),
     ] = "all",
-    generate_bindings: Annotated[
-        str,
-        typer.Option(
-            help=(
-                f"Generate Javascript bindings "
-                f"{option_generate_bindings_values_string}."
-            ),
-            callback=generate_bindings_callback,
-        ),
-    ] = "yes",
 ) -> None:
-    """Builds a native debug executable with your systems' Clang compiler.
+    """Builds a native debug executable."""
 
-    Reads 'icpp.toml' file in the current folder, and uses: \n
-    (-) C++ & C files from [build-native] AND [build-wasm]\n
-    (-) Only the compile flags of [build-native] \n
-    (-) Only the link flags of [build-native]
-    """
     config_default.ICPP_TOML_PATH = Path(config)
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 
@@ -221,7 +206,7 @@ def build_native(
             f"*.o "
         )
 
-        # statically link the libraries
+        # link the static libraries
         for library in icpp_toml.libraries:
             full_lib_name = f"{library['lib_name']}{config_default.WASM_AR_EXT}"
             full_lib_path = (
@@ -249,6 +234,15 @@ def build_native(
         sys.exit(1)
 
     # ----------------------------------------------------------------------
+    # On Windows, we need to copy the runtime DLLs to the build folder
+    # We do it this way, so the user does not have to set a system wide PATH
+    if OS_SYSTEM == "Windows":
+        typer.echo("--")
+        typer.echo("Copying the MinGW-w64 runtime DLLs to 'build-native' folder")
+        for dll_file in config_default.MINGW64_BIN.glob("*.dll"):
+            shutil.copy(dll_file, build_path)
+
+    # ----------------------------------------------------------------------
     # All done
     typer.echo("--")
     typer.echo("All done building the native debug executable:")
@@ -259,20 +253,6 @@ def build_native(
     except UnicodeEncodeError:
         typer.echo("(-)You can run it from the command line")
         typer.echo("(-)You can debug it with VS Code + CodeLLDB")
-
-    # ----------------------------------------------------------------------
-    typer.echo("--")
-    if generate_bindings.lower() == "no":
-        typer.echo("Skipping generation of Javascript bindings from your .did file.")
-    else:
-        typer.echo("Generating Javascript bindings from your .did file:")
-        declarations_path = icpp_toml.icpp_toml_path.parent / "src/declarations"
-        typer.echo(f"{declarations_path.resolve()}/{icpp_toml.build_wasm['canister']}")
-        run_dfx_cmd("generate", capture_output=True)
-        try:
-            typer.echo("✔️")
-        except UnicodeEncodeError:
-            typer.echo(" ")
 
     # ----------------------------------------------------------------------
     typer.echo("-----")

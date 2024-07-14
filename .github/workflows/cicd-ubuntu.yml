@@ -1,4 +1,4 @@
-name: cicd
+name: cicd-ubuntu
 
 on:
   workflow_dispatch:
@@ -8,11 +8,11 @@ on:
       - "test/**"
       - "Makefile"
       - ".github/trigger.txt"
-      - ".github/workflows/cicd.yml"
+      - ".github/workflows/cicd-ubuntu.yml"
 
 jobs:
-  all:
-    name: all
+  all-ubuntu:
+    name: all-ubuntu
     strategy:
       matrix:
         python-version: [3.8, 3.11]
@@ -77,6 +77,12 @@ jobs:
         run: |
           echo "Installing wasi-sdk"
           icpp install-wasi-sdk
+
+      - name: install-rust
+        shell: bash -l {0}
+        run: |
+          echo "Installing rust"
+          icpp install-rust
 
       - name: all-tests
         shell: bash -l {0}

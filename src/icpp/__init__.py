@@ -19,9 +19,17 @@ reference: https://realpython.com/pypi-publish-python-package/
 
 import icpp.version
 import icpp.version_wasi_sdk
+import icpp.version_rust
+import icpp.version_mingw64
 
 # Version of package
 __version__ = icpp.version.__version__
 
-# Version of wasi-sdk
+# Version of wasi-sdk we will install in ~/.icpp
 __version_wasi_sdk__ = icpp.version_wasi_sdk.__version__
+
+# Version of rust we will install in ~/.icpp
+__version_rust__ = icpp.version_rust.__version__
+
+# Version of mingw64 we will install in ~/.icpp (Windows only)
+__version_mingw64__ = icpp.version_mingw64.__version__

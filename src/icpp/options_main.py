@@ -3,7 +3,7 @@
 from typing import Optional
 import typer
 from icpp.__main__ import app
-from icpp import __version__, __version_wasi_sdk__
+from icpp import __version__, __version_wasi_sdk__, __version_rust__
 
 
 def version_callback(value: bool) -> None:
@@ -14,6 +14,7 @@ def version_callback(value: bool) -> None:
     if value:
         typer.echo(f"icpp-pro version: {__version__}")
         typer.echo(f"wasi-sdk version: {__version_wasi_sdk__}")
+        typer.echo(f"rust version    : {__version_rust__}")
         raise typer.Exit()
 
 

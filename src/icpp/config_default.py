@@ -2,67 +2,70 @@
 Set the default config variables
 """
 
+import os
 import sys
 import platform
 from pathlib import Path
 import getpass
 import icpp_candid  # pylint: disable = unused-import
-from icpp import __version_wasi_sdk__
+from icpp import __version_wasi_sdk__, __version_rust__, __version_mingw64__
 
 # The OS we're running on - https://stackoverflow.com/a/1857/5480536
 
 OS_SYSTEM = platform.system()
 OS_PROCESSOR = platform.processor()
 
+#######################################################################
+# Paths for logs & to install dependencies (wasi-sdk, rust, ...)
+ICPP_ROOT = Path.home() / ".icpp"
+ICPP_LOGS = ICPP_ROOT / "logs"
+
+# wasi-sdk compiler
+WASI_SDK_ROOT = ICPP_ROOT / "wasi-sdk"
+WASI_SDK_COMPILER_ROOT = WASI_SDK_ROOT / f"{__version_wasi_sdk__}"
+
+# mingw64 compiler (Windows only)
+MINGW64_ROOT = ICPP_ROOT / "mingw64"
+MINGW64_COMPILER_ROOT = MINGW64_ROOT / f"{__version_mingw64__}"
+MINGW64_BIN = MINGW64_COMPILER_ROOT / "mingw64" / "bin"
+if OS_SYSTEM == "Windows":
+    # Add the mingw64/bin directory to the PATH
+    # pylint: disable = no-member
+    os.environ["PATH"] = (
+        str(MINGW64_BIN)
+        + os.pathsep  # pylint: disable = no-member
+        + os.environ["PATH"]
+    )
+
+# Rust & dependencies
+RUST_ROOT = ICPP_ROOT / "rust"
+RUST_COMPILER_ROOT = RUST_ROOT / f"{__version_rust__}"
+RUST_BIN = RUST_COMPILER_ROOT / "bin"
+RUST_TARGET = RUST_COMPILER_ROOT / "target/wasm32-wasi/release"
+
+if OS_SYSTEM == "Windows":
+    CARGO = RUST_BIN / "cargo.exe"
+    # CARGO_BINSTALL = RUST_BIN / "cargo-binstall.exe"  # Not using this yet...
+    RUSTUP = RUST_BIN / "rustup.exe"
+    RUSTC = RUST_BIN / "rustc.exe"
+    WASI2IC = RUST_BIN / "wasi2ic.exe"
+else:
+    CARGO = RUST_BIN / "cargo"
+    # CARGO_BINSTALL = RUST_BIN / "cargo-binstall"  # Not using this yet...
+    RUSTUP = RUST_BIN / "rustup"
+    RUSTC = RUST_BIN / "rustc"
+    WASI2IC = RUST_BIN / "wasi2ic"
+
+IC_WASI_POLYFILL = RUST_TARGET / "libic_wasi_polyfill.a"
+
+# Ensure that rust is installed in the correct folder
+os.environ["CARGO_TARGET_DIR"] = str(  # pylint: disable = no-member
+    RUST_COMPILER_ROOT / "target"
+)
+os.environ["CARGO_HOME"] = str(RUST_COMPILER_ROOT)  # pylint: disable = no-member
+os.environ["RUSTUP_HOME"] = str(RUST_COMPILER_ROOT)  # pylint: disable = no-member
 
 #######################################################################
-# The compatible wasi-sdk compiler
-
-
-def get_wasi_sdk_os_name() -> str:
-    """Returns the os name used for the releases build by the CI/CD of the wasi-sdk
-    repo, for the current OS."""
-
-    if OS_SYSTEM == "Linux":
-        return "-linux"
-
-    if OS_SYSTEM == "Darwin":
-        return "-macos"
-
-    if OS_SYSTEM == "Windows":
-        # Naming changed with wasi-sdk 20
-        return ".m-mingw"
-
-    return "unknown"
-
-
-def get_wasi_sdk_untar_dir_name() -> str:
-    """Returns the dir name after untarring, for the current OS."""
-
-    if OS_SYSTEM == "Linux":
-        return __version_wasi_sdk__
-
-    if OS_SYSTEM == "Darwin":
-        return __version_wasi_sdk__
-
-    if OS_SYSTEM == "Windows":
-        # Naming changed with wasi-sdk 20
-        return __version_wasi_sdk__ + "+m"
-
-    return "unknown"
-
-
-WASI_SDK_OS_NAME = get_wasi_sdk_os_name()
-WASI_SDK_URL = (
-    f"https://github.com/WebAssembly/wasi-sdk/releases/download/"
-    f"{__version_wasi_sdk__.split('.',1)[0]}/"
-    f"{__version_wasi_sdk__}{WASI_SDK_OS_NAME}.tar.gz"
-)
-
-ICPP_ROOT = Path.home() / ".icpp"
-ICPP_ROOT_UNTAR_DIR = ICPP_ROOT / f"{get_wasi_sdk_untar_dir_name()}"
-ICPP_ROOT_COMPILER = ICPP_ROOT / f"{__version_wasi_sdk__}"
-
 USER = getpass.getuser()
 
 ICPP_PATH = Path(sys.modules["icpp"].__path__[0])
@@ -121,7 +124,7 @@ IC_C_FILES = " ".join(IC_C_FILES_LIST) + " "
 IC_CPP_FILES = " ".join(IC_CPP_FILES_LIST) + " "
 IC_HEADER_FILES = " ".join(IC_HEADER_FILES_LIST) + " "
 
-SYSROOT = ICPP_ROOT_COMPILER / "share/wasi-sysroot"
+SYSROOT = WASI_SDK_COMPILER_ROOT / "share/wasi-sysroot"
 
 WASM_C_REQUIRED_FLAGS = (
     f" --target=wasm32-wasi --sysroot {SYSROOT} "
@@ -132,24 +135,21 @@ WASM_C_REQUIRED_FLAGS = (
 )
 WASM_CPP_REQUIRED_FLAGS = WASM_C_REQUIRED_FLAGS + " -std=c++20 "
 
-WASM_C = ICPP_ROOT_COMPILER / "bin/clang"
-WASM_CPP = ICPP_ROOT_COMPILER / "bin/clang++"
-WASM_AR = ICPP_ROOT_COMPILER / "bin/llvm-ar"
+WASM_C = WASI_SDK_COMPILER_ROOT / "bin/clang"
+WASM_CPP = WASI_SDK_COMPILER_ROOT / "bin/clang++"
+WASM_AR = WASI_SDK_COMPILER_ROOT / "bin/llvm-ar"
 WASM_CFLAGS = (
     " -O3 -flto -fno-exceptions -fvisibility=hidden -D NDEBUG -D ICPP_VERBOSE=0 "
 )
 WASM_CPPFLAGS = WASM_CFLAGS
-WASM_LDFLAGS = (
-    " -nostartfiles -Wl,--no-entry -Wl,--lto-O3 "
-    " -Wl,--strip-debug -Wl,--stack-first -Wl,--export-dynamic "
-)
+WASM_LDFLAGS = " -Wl,--lto-O3 -Wl,--strip-debug -Wl,--stack-first -Wl,--export-dynamic "
 WASM_ARFLAGS = "qc"
 WASM_AR_EXT = ".a"
 
 # Utilities we can use too
-CLANG_FORMAT = ICPP_ROOT_COMPILER / "bin/clang-format"
-CLANG_TIDY = ICPP_ROOT_COMPILER / "bin/clang-tidy"
-LLVM_OBJCOPY = ICPP_ROOT_COMPILER / "bin/llvm-objcopy"
+CLANG_FORMAT = WASI_SDK_COMPILER_ROOT / "bin/clang-format"
+CLANG_TIDY = WASI_SDK_COMPILER_ROOT / "bin/clang-tidy"
+LLVM_OBJCOPY = WASI_SDK_COMPILER_ROOT / "bin/llvm-objcopy"
 
 ########################################################################
 # build-native

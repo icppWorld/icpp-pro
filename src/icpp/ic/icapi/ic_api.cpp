@@ -21,6 +21,8 @@
 
 #include "ic0.h"
 
+// ----------------------------------------------------------
+
 IC_API::IC_API() : IC_API(CanisterQuery("-unknown-"), false) {}
 IC_API::IC_API(const bool &debug_print)
     : IC_API(CanisterQuery("-unknown-"), debug_print) {}

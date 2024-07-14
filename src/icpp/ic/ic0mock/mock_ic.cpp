@@ -10,7 +10,6 @@
 #include "ic_api.h"
 #include "mock_ic_.h"
 #include "mock_ic_constants.h"
-#include "pro.h"
 
 #include <cstddef>
 #include <cstdlib>
@@ -27,7 +26,6 @@
 #include <sstream>
 
 MockIC::MockIC(const bool &exit_on_fail) {
-  Pro().exit_if_not_pro();
   m_tests_total = 0;
   m_tests_failed = 0;
   m_B_in.clear();

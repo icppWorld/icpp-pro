@@ -8,7 +8,6 @@ from typing import Optional, Any, Dict
 import pytest  # pylint: disable=unused-import
 
 from icpp.run_shell_cmd import run_shell_cmd
-from icpp import pro
 
 DFX = "dfx"
 RUN_IN_POWERSHELL = False
@@ -30,7 +29,6 @@ def call_canister_api(
     timeout_seconds: Optional[int] = None,
 ) -> str:
     """Calls a canister method"""
-    pro.exit_if_not_pro("smoketesting with pytest")
 
     # verify that canister_name is part of dfx.json
     with open(dfx_json_path, "rb") as f:
@@ -99,7 +97,6 @@ def get_canister_url(
     timeout_seconds: Optional[int] = None,
 ) -> str:
     """Returns the url for calling a canister as a Web2.0 HTTP server"""
-    pro.exit_if_not_pro("smoketesting with pytest")
 
     canister_id = get_canister_id(
         dfx_json_path=dfx_json_path,
@@ -133,7 +130,6 @@ def get_canister_id(
     timeout_seconds: Optional[int] = None,
 ) -> str:
     """Returns the canister_id of a canister"""
-    pro.exit_if_not_pro("smoketesting with pytest")
 
     # verify that canister_name is part of dfx.json
     with open(dfx_json_path, "rb") as f:
@@ -178,7 +174,6 @@ def get_local_webserver_port(
     timeout_seconds: Optional[int] = None,
 ) -> str:
     """Returns the webserver port of the network"""
-    pro.exit_if_not_pro("smoketesting with pytest")
 
     arg = f"{DFX} info webserver-port "
     try:
@@ -197,14 +192,12 @@ def get_local_webserver_port(
 
 def dict_to_candid_text(d: Dict[Any, Any]) -> str:
     """Serializes dict to Candid text to send it over the wire"""
-    pro.exit_if_not_pro("smoketesting with pytest")
     # pull it through twice, so all " are escaped into \"
     return json.dumps(json.dumps(d))
 
 
 def network_status(network: str) -> str:
     """Returns the network status."""
-    pro.exit_if_not_pro("smoketesting with pytest")
     arg = f"{DFX} ping {network}"
     try:
         response = run_shell_cmd(
@@ -235,7 +228,6 @@ def network_status(network: str) -> str:
 
 def get_identity() -> str:
     """Returns the current dfx identity."""
-    pro.exit_if_not_pro("smoketesting with pytest")
     arg = f"{DFX} identity whoami "
     try:
         identity = run_shell_cmd(
@@ -253,7 +245,6 @@ def get_identity() -> str:
 
 def set_identity(identity: str) -> None:
     """Sets the dfx identity."""
-    pro.exit_if_not_pro("smoketesting with pytest")
     arg = f"{DFX} identity use {identity}"
     try:
         run_shell_cmd(arg, run_in_powershell=RUN_IN_POWERSHELL)
@@ -263,7 +254,6 @@ def set_identity(identity: str) -> None:
 
 def get_principal() -> str:
     """Returns the principal of the current dfx identity."""
-    pro.exit_if_not_pro("smoketesting with pytest")
     arg = f"{DFX} identity get-principal "
     try:
         principal = run_shell_cmd(

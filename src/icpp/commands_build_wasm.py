@@ -17,7 +17,7 @@ from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
 from icpp.run_dfx_cmd import run_dfx_cmd
 
-from icpp.decorators import requires_wasi_sdk
+from icpp.decorators import requires_wasi_sdk, requires_rust, requires_native_compiler
 from icpp.options_build import (
     config_callback,
     to_compile_callback,
@@ -32,6 +32,8 @@ CONCURRENCY = "multi-threading"
 
 
 @app.command()
+@requires_native_compiler()
+@requires_rust()
 @requires_wasi_sdk()
 def build_wasm(
     config: Annotated[
@@ -59,10 +61,8 @@ def build_wasm(
         ),
     ] = "yes",
 ) -> None:
-    """Builds the wasm for a canister, using the wasi-sdk compiler.
+    """Builds the wasm."""
 
-    Reads icpp.toml in the current folder; Compiles & builds a wasm file.
-    """
     config_default.ICPP_TOML_PATH = Path(config)
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 
@@ -211,7 +211,7 @@ def build_wasm(
                 run_shell_cmd(cmd, cwd=build_path)
 
         # ----------------------------------------------------------------------
-        # link it into a wasm
+        # link it into a wasi compatible wasm
 
         cmd = (
             f"{config_default.WASM_CPP} "
@@ -221,7 +221,10 @@ def build_wasm(
             f"*.o "
         )
 
-        # statically link the libraries
+        # The rust system libraries
+        cmd += f"{config_default.IC_WASI_POLYFILL} "
+
+        # The project libraries
         for library in icpp_toml.libraries:
             full_lib_name = f"{library['lib_name']}{config_default.WASM_AR_EXT}"
             full_lib_path = (
@@ -232,10 +235,23 @@ def build_wasm(
             ).resolve()
             cmd += f"{full_lib_path} "
 
-        cmd += f"-o {icpp_toml.build_wasm['canister']}.wasm "
+        cmd += f"-o {icpp_toml.build_wasm['canister']}_wasi.wasm "
 
         typer.echo("--")
-        typer.echo("Linking it into a wasm with command:")
+        typer.echo("Building a wasi compatible wasm with command:")
+        typer.echo(cmd)
+        run_shell_cmd(cmd, cwd=build_path)
+
+        # ----------------------------------------------------------------------
+        # converting it into an IC compatible wasm using wasi2ic
+
+        cmd = (
+            f"{config_default.WASI2IC} "
+            f"{icpp_toml.build_wasm['canister']}_wasi.wasm "
+            f"{icpp_toml.build_wasm['canister']}.wasm "
+        )
+        typer.echo("--")
+        typer.echo("Converting into an IC compatible wasm with command:")
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=build_path)
 

@@ -3,7 +3,7 @@
 #######################################################################
 # This is a Linux & Mac shell script
 #
-# (-) Install icpp-pro or icpp-free in a python environment
+# (-) Install icpp-pro in a python environment
 # (-) Install dfx
 # (-) In a terminal:
 #

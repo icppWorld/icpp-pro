@@ -25,30 +25,8 @@ jobs:
         python-version: [3.8, 3.11]
         include:
           - arch: x64
-            # We install our own mingw64 with icpp
-            # sys: clang64
-            # env: clang-x86_64
     
     steps:
-      # - uses: actions/cache@v4
-      #   with:
-      #     path: ~/AppData/Local/ccache
-      #     key: 0-${{ format( 'cache-windows-latest-{0}', matrix.arch) }}-${{ github.run_id }}
-      #     restore-keys: |
-      #       0-${{ format( 'cache-windows-latest-{0}', matrix.arch) }}
-      # - uses: msys2/setup-msys2@v2
-      #   with:
-      #     install: >-
-      #       base-devel
-      #       git
-      #       mingw-w64-${{ matrix.env }}-ccache
-      #       mingw-w64-${{ matrix.env }}-cmake
-      #       mingw-w64-${{ matrix.env }}-ninja
-      #       mingw-w64-${{ matrix.env }}-toolchain
-      #     msystem: ${{ matrix.sys }}
-      #     update: true
-      #     release: false
-      #     path-type: inherit
 
       # https://github.com/marketplace/actions/setup-miniconda
       - uses: conda-incubator/setup-miniconda@v3
@@ -105,7 +83,7 @@ jobs:
           where icpp
 
       # -------------------------------------------------------------------
-      # Run the native tests first
+      # Run the native tests - only mingw64 is needed
 
       - name: install-mingw64
         shell: powershell
@@ -113,99 +91,77 @@ jobs:
           echo "Installing mingw64"
           icpp install-mingw64
 
-      - name: all_canister_native
+      - name: native mockic test
         shell: powershell
         run: |
           echo "Testing all_canister_native"
           python -m scripts.all_canister_native
 
-      # # -------------------------------------------------------------------
-      # # Next, The wasm tests
+      # -------------------------------------------------------------------
+      # Run the smoke tests - requires wasi-sdk & rust with dependencies
 
-      # - name: install-wasi-sdk
-      #   shell: powershell
-      #   run: |
-      #     echo "Installing wasi-sdk"
-      #     icpp install-wasi-sdk
+      - name: install-wasi-sdk
+        shell: powershell
+        run: |
+          echo "Installing wasi-sdk"
+          icpp install-wasi-sdk
 
-      # - name: install-rust
-      #   shell: powershell
-      #   run: |
-      #     echo "Installing rust"
-      #     icpp install-rust
+      - name: install-rust
+        shell: powershell
+        run: |
+          echo "Installing rust"
+          icpp install-rust
 
-      # # -------------------------------------------------------------------
-      # # Set up wsl
-      # #
-      # - name: enable WSL
-      #   run: |
-      #     echo "Enabling WSL"
-      #     dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
-      #     dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
-      #   shell: pwsh
+      # -------------------------------------------------------------------
+      # Set up wsl
+      #
+      - name: enable WSL
+        run: |
+          echo "Enabling WSL"
+          dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+          dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+        shell: pwsh
 
-      # - name: wsl setup with Vampire
-      #   uses: Vampire/setup-wsl@v3
-      #   with: 
-      #     distribution: Ubuntu-20.04
-      #     additional-packages:
-      #       build-essential
+      - name: wsl setup with Vampire
+        uses: Vampire/setup-wsl@v3
+        with: 
+          distribution: Ubuntu-20.04
+          additional-packages:
+            build-essential
 
-      # - name: pwd in wsl-bash
-      #   shell: wsl-bash {0}
-      #   run: pwd
+      - name: pwd in wsl-bash
+        shell: wsl-bash {0}
+        run: pwd
 
-      # - name: install dfx in wsl-bash
-      #   shell: wsl-bash {0}
-      #   run: make install-dfx
+      - name: install dfx in wsl-bash
+        shell: wsl-bash {0}
+        run: make install-dfx
 
-      # - name: configure dfx in wsl-bash
-      #   shell: wsl-bash {0}
-      #   run: source "$HOME/.local/share/dfx/env"
+      - name: configure dfx in wsl-bash
+        shell: wsl-bash {0}
+        run: source "$HOME/.local/share/dfx/env"
 
-      # - name: install jp in wsl-bash
-      #   shell: wsl-bash {0}
-      #   run: make install-jp-ubuntu
+      - name: install jp in wsl-bash
+        shell: wsl-bash {0}
+        run: make install-jp-ubuntu
 
-      # - name: Check wsl items accessed from wsl-bash
-      #   shell: wsl-bash {0}
-      #   run: |
-      #     echo "jp version  : $(jp --version)"
-      #     echo "dfx version : $(dfx --version)"
+      - name: Check wsl items accessed from wsl-bash
+        shell: wsl-bash {0}
+        run: |
+          echo "jp version  : $(jp --version)"
+          echo "dfx version : $(dfx --version)"
 
-      # # - name: Check wsl items accessed from conda shell
-      # #   shell: powershell
-      # #   run: |
-      # #     echo "wsl jp version  : $(wsl jp --version)"
-      # #     echo "wsl dfx version : $(wsl --% . ~/.local/share/dfx/env; dfx --version)"
+      - name: Check wsl items accessed from conda shell
+        shell: powershell
+        run: |
+          echo "wsl jp version  : $(wsl jp --version)"
+          echo "wsl dfx version : $(wsl --% . ~/.local/share/dfx/env; dfx --version)"
 
-      # # -------------------------------------------------------------------
-      # # TODO: Run smoketests
-      # # Note:
-      # #  - We should run: python -m scripts.all_canister_deploy_local_pytest
-      # #  - However, the we you start a local network is not yet implemented
-      # #  - So, we just run demo.ps1 in every folder 
-      # #
-      # # - name: run greet/demo.ps1
-      # #   shell: powershell
-      # #   run: |
-      # #     cd ./src/icpp/canisters/greet/
-      # #     ./demo.ps1
-          
-      # # - name: run canister_1/demo.ps1
-      # #   shell: powershell
-      # #   run: |
-      # #     cd ./test/canisters/canister_1/
-      # #     ./demo.ps1
+      
+      - name: smoketest
+        shell: powershell
+        run: |
+          echo "Testing all_canister_deploy_local_pytest"
+          python -m scripts.all_canister_deploy_local_pytest
 
-      # # - name: run canister_1/demo.ps1
-      # #   shell: powershell
-      # #   run: |
-      # #     cd ./test/canisters/canister_1/
-      # #     ./demo.ps1
-
-      # # - name: run canister_http/demo.ps1
-      # #   shell: powershell
-      # #   run: |
-      # #     cd ./test/canisters/canister_http/
-      # #     ./demo.ps1
+      

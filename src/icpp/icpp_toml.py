@@ -177,14 +177,6 @@ def read_build_table_common(d: Dict[Any, Any], d_in: Dict[Any, Any]) -> None:
             paths.update(map(Path, glob.glob(str(absolute_pattern))))
         return list(paths)
 
-    # def expand_paths(patterns):
-    #     paths = set()  # Using a set to store unique paths
-    #     for pattern in patterns:
-    #         absolute_pattern = (Path(icpp_toml_path).parent / pattern).resolve()
-    #         print(f"Resolving pattern: {absolute_pattern}")  # Debug statement
-    #         paths.update(map(Path, glob.glob(str(absolute_pattern))))
-    #     return list(paths)
-
     d["cpp_paths"] = expand_paths(d_in.get("cpp_paths", []))
     if "cpp_include_dirs" in d.keys():
         d["cpp_include_dirs"].extend(expand_paths(d_in.get("cpp_include_dirs", [])))

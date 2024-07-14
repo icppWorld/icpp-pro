@@ -3,7 +3,7 @@
 import subprocess
 import re
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import Optional, Union
 
 
 def escape_ansi(line: Optional[str]) -> Optional[str]:
@@ -56,7 +56,7 @@ def run_shell_cmd_with_log(
 
 
 def run_shell_cmd(
-    cmd: str,
+    cmd: Union[Path, str],
     capture_output: bool = False,
     print_captured_output: bool = False,
     cwd: Optional[Path] = None,
@@ -111,9 +111,12 @@ def run_shell_cmd(
         run_in_powershell = False
 
     # for certain commands on Windows
-    cmd_: Union[str, List[str]] = cmd
+    cmd_ = [cmd]
     if run_in_powershell:
-        cmd_ = ["powershell.exe", "-Command", cmd]
+        if isinstance(cmd, Path):
+            cmd_ = ["powershell.exe", "-File", cmd]
+        else:
+            cmd_ = ["powershell.exe", "-Command", cmd]
 
     if timeout_seconds is None:
         timeout_seconds = 30

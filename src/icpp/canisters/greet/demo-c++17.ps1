@@ -1,7 +1,7 @@
 #######################################################################
 # This is a Windows PowerShell script
 #
-# (-) Install icpp-pro or icpp-free in a python environment on windows
+# (-) Install icpp-pro in a python environment on windows
 # (-) Install dfx  in wsl
 # (-) In a Windows PowerShell (*):
 #

@@ -24,7 +24,7 @@ def main() -> int:
         for config in configs:
             try:
                 if platform.system() == "Windows":
-                    # On Windows, we run a simpler test, all within a single Powershell script
+                    # On Windows, we run it all within a single Powershell script
                     if config == "icpp.toml":
                         run_shell_cmd(SCRIPTS_PATH / "smoketest.ps1", run_in_powershell=True, cwd=canister_path)
                 else:

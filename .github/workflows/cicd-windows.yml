@@ -13,7 +13,7 @@ on:
       - "test/**"
       - "Makefile"
       - ".github/trigger.txt"
-      - ".github/workflows/cicd-win.yml"
+      - ".github/workflows/cicd-windows.yml"
 
 jobs:
   all:
@@ -38,7 +38,6 @@ jobs:
         run: |
           conda info
           conda list
-          # clang++ --version
 
       # -------------------------------------------------------------------
       # Checkout icpp-pro & icpp-candid as nested directory
@@ -72,8 +71,6 @@ jobs:
         shell: powershell
         run: |
           echo "icpp --version: $(icpp --version)"
-          # echo "clang++ --version: $(clang++ --version)"
-          # echo "g++ --version: $(g++ --version)"
           echo "pip version     : $(pip --version)"
           echo "python version  : $(python --version)"
           echo "Ensure conda works properly"
@@ -113,55 +110,70 @@ jobs:
           icpp install-rust
 
       # -------------------------------------------------------------------
-      # Set up wsl
-      #
-      - name: enable WSL
-        run: |
-          echo "Enabling WSL"
-          dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
-          dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
-        shell: pwsh
+      # Build wasm for all the canisters
 
-      - name: wsl setup with Vampire
-        uses: Vampire/setup-wsl@v3
-        with: 
-          distribution: Ubuntu-20.04
-          additional-packages:
-            build-essential
-
-      - name: pwd in wsl-bash
-        shell: wsl-bash {0}
-        run: pwd
-
-      - name: install dfx in wsl-bash
-        shell: wsl-bash {0}
-        run: make install-dfx
-
-      - name: configure dfx in wsl-bash
-        shell: wsl-bash {0}
-        run: source "$HOME/.local/share/dfx/env"
-
-      - name: install jp in wsl-bash
-        shell: wsl-bash {0}
-        run: make install-jp-ubuntu
-
-      - name: Check wsl items accessed from wsl-bash
-        shell: wsl-bash {0}
-        run: |
-          echo "jp version  : $(jp --version)"
-          echo "dfx version : $(dfx --version)"
-
-      - name: Check wsl items accessed from conda shell
+      - name: build-wasm greet canister
         shell: powershell
         run: |
-          echo "wsl jp version  : $(wsl jp --version)"
-          echo "wsl dfx version : $(wsl --% . ~/.local/share/dfx/env; dfx --version)"
+          cd .\src\icpp\canisters\greet
+          icpp build-wasm --generate-bindings no
 
+      - name: build-wasm test\canisters\canister_1
+        shell: powershell
+        run: |
+          cd .\test\canisters\canister_1
+          icpp build-wasm --generate-bindings no
+
+      - name: build-wasm test\canisters\canister_flags
+        shell: powershell
+        run: |
+          cd .\test\canisters\canister_flags
+          icpp build-wasm --generate-bindings no
+        
+      - name: build-wasm test\canisters\canister_http
+        shell: powershell
+        run: |
+          cd .\test\canisters\canister_http
+          icpp build-wasm --generate-bindings no
+
+      # ********************************************************************************
+      # *** CAN'T GET THIS TO WORK IN A GITHUB ACTION                                ***
+      # *** This runs ok locally: python -m scripts.all_canister_deploy_local_pytest ***
+      # ********************************************************************************
+      # -------------------------------------------------------------------
+      # # Set up wsl
+      # #
+      # - name: enable WSL
+      #   run: |
+      #     echo "Enabling WSL"
+      #     dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+      #     dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+      #   shell: pwsh
+
+      # - name: wsl setup with Vampire
+      #   uses: Vampire/setup-wsl@v3
+      #   with: 
+      #     distribution: Ubuntu-20.04
+      #     additional-packages:
+      #       build-essential
+
+      # - name: pwd in wsl-bash
+      #   shell: wsl-bash {0}
+      #   run: pwd
+
+      # - name: install dfx in wsl-bash
+      #   shell: wsl-bash {0}
+      #   run: make install-dfx
+
+      # - name: configure dfx in wsl-bash
+      #   shell: wsl-bash {0}
+      #   run: source "$HOME/.local/share/dfx/env"
       
-      - name: smoketest
-        shell: powershell
-        run: |
-          echo "Testing all_canister_deploy_local_pytest"
-          python -m scripts.all_canister_deploy_local_pytest
+      # - name: smoketest
+      #   shell: powershell
+      #   run: |
+      #     echo "Testing all_canister_deploy_local_pytest"
+      #     python -m scripts.all_canister_deploy_local_pytest
+          
 
       

@@ -8,7 +8,7 @@ on:
       - "test/**"
       - "Makefile"
       - ".github/trigger.txt"
-      - ".github/workflows/cicd.yml"
+      - ".github/workflows/cicd-ubuntu.yml"
 
 jobs:
   all:

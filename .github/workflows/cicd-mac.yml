@@ -11,8 +11,8 @@ on:
       - ".github/workflows/cicd-mac.yml"
 
 jobs:
-  all:
-    name: all
+  all-mac:
+    name: all-mac
     strategy:
       matrix:
         python-version: [3.8, 3.11]

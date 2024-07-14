@@ -16,8 +16,8 @@ on:
       - ".github/workflows/cicd-windows.yml"
 
 jobs:
-  all:
-    name: all
+  all-windows:
+    name: all-windows
     runs-on: windows-latest
     strategy:
       fail-fast: false

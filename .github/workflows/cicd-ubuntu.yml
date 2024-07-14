@@ -11,8 +11,8 @@ on:
       - ".github/workflows/cicd-ubuntu.yml"
 
 jobs:
-  all:
-    name: all
+  all-ubuntu:
+    name: all-ubuntu
     strategy:
       matrix:
         python-version: [3.8, 3.11]

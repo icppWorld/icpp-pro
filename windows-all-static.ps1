@@ -12,10 +12,10 @@ $pythonInterpreter = Join-Path $activeEnvPath "python.exe"
 # Define the path to the Git Bash executable
 $gitBashPath = "C:\Program Files\Git\bin\bash.exe"
 
-# Define the path to the pre-commit script
-$winAllStaticPath = ".\win-all-static.sh"
+# Define the path to the all-static bash script
+$winAllStaticPath = ".\windows-all-static.sh"
 
-# Execute the pre-commit script using Git Bash, passing the variables as arguments
+# Execute the all-static bash script using Git Bash, passing the variables as arguments
 & $gitBashPath $winAllStaticPath $pythonInterpreter
 
 # Capture the exit code from Git Bash

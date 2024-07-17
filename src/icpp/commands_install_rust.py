@@ -11,7 +11,7 @@ import typer
 import requests
 from icpp.__main__ import app
 from icpp import config_default
-from icpp import __version_rust__
+from icpp import __version_rust__, __version_ic_wasi_polyfill__, __version_wasi2ic__
 from icpp.run_shell_cmd import run_shell_cmd_with_log
 
 OS_SYSTEM = platform.system()
@@ -67,11 +67,11 @@ def install_wasm32_wasi(nstep: int, num_steps: int) -> None:
 
 def install_wasi2ic(nstep: int, num_steps: int) -> None:
     """Installs wasi2ic into user's icpp folder"""
-    typer.echo(f"- {nstep}/{num_steps} Installing wasi2ic")
+    typer.echo(f"- {nstep}/{num_steps} Installing wasi2ic {__version_wasi2ic__}")
     cmd = (
         f"{config_default.CARGO} install "
         f"--git https://github.com/wasm-forge/wasi2ic "
-        f"--tag v0.2.11 "
+        f"--tag {__version_wasi2ic__} "
     )
     run_shell_cmd_with_log(LOG_FILE, "a", cmd, timeout_seconds=TIMEOUT_SECONDS)
 
@@ -79,8 +79,10 @@ def install_wasi2ic(nstep: int, num_steps: int) -> None:
 def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
     """Installs ic-wasi-polyfill as a static library into user's icpp folder"""
 
-    msg = f"- {nstep}/{num_steps} Installing ic-wasi-polyfill "
-    typer.echo(msg)
+    typer.echo(
+        f"- {nstep}/{num_steps} Installing ic-wasi-polyfill "
+        f" {__version_ic_wasi_polyfill__}"
+    )
 
     cmd = "git clone https://github.com/wasm-forge/ic-wasi-polyfill "
     run_shell_cmd_with_log(
@@ -91,7 +93,8 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
         timeout_seconds=TIMEOUT_SECONDS,
     )
 
-    cmd = "git switch --detach 2476429bb1604d3ad5a28d458b8faa61bcbe4ada "
+    cmd = f"git switch --detach {__version_ic_wasi_polyfill__} "
+
     run_shell_cmd_with_log(
         LOG_FILE,
         "a",
@@ -110,6 +113,7 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
     #
     transient_memory = False
     if transient_memory:
+        typer.echo("Using transient memory for file storage.")
         cmd += " --features transient "
 
     run_shell_cmd_with_log(

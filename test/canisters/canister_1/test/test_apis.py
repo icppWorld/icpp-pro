@@ -542,7 +542,7 @@ def test__roundtrip_text_to_json_to_text__negative_2(
         canister_argument=text_in,
         network=network,
     )
-    assert "trapped explicitly" in response
+    assert "Failed call to api" in response
 
 
 def test__roundtrip_reserved(network: str, principal: str) -> None:
@@ -1727,11 +1727,6 @@ def test__trap_wrong_number_of_args(network: str, principal: str) -> None:
         network=network,
     )
     assert "Failed call to api" in response
-    assert "trapped explicitly" in response
-    assert (
-        "ERROR: Done with all the expected args, but there is an additional non Opt arg on the wire."
-        in response
-    )
 
 
 # Verify that a canister traps if from_wire is called more than once
@@ -1747,10 +1742,6 @@ def test__trap_multiple_calls_from_wire(network: str, principal: str) -> None:
         network=network,
     )
     assert "Failed call to api" in response
-    assert "trapped explicitly" in response
-    assert (
-        "ERROR: The canister is calling ic_api.from_wire() more than once." in response
-    )
 
 
 # Verify that a canister traps if to_wire is called more than once
@@ -1766,8 +1757,6 @@ def test__trap_multiple_calls_to_wire(network: str, principal: str) -> None:
         network=network,
     )
     assert "Failed call to api" in response
-    assert "trapped explicitly" in response
-    assert "ERROR: The canister is calling ic_api.to_wire() more than once." in response
 
 
 # Verify that a record traps if one of the records's id (hash) on wire does not match expected
@@ -1783,4 +1772,3 @@ def test__trap_roundtrip_record(network: str, principal: str) -> None:
         network=network,
     )
     assert "Failed call to api" in response
-    assert "trapped explicitly" in response

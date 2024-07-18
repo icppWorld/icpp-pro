@@ -42,7 +42,7 @@ def main() -> int:
                     run_dfx_cmd("deploy", cwd=canister_path)
 
                     typer.echo(f"--\nRun pytest on {test_api_path}")
-                    run_shell_cmd(f"pytest --network=local {test_api_path}", cwd=ROOT_PATH)
+                    run_shell_cmd(f"pytest -vv --network=local {test_api_path}", cwd=ROOT_PATH)
 
                     typer.echo("--\nStop the local network")
                     run_dfx_cmd("stop")
@@ -73,7 +73,7 @@ def main() -> int:
                         run_dfx_cmd("deploy", cwd=canister_path)
 
                         typer.echo(f"--\nRun pytest on {test_api_path}")
-                        run_shell_cmd(f"pytest --network=local {test_api_path}", cwd=ROOT_PATH)
+                        run_shell_cmd(f"pytest -vv --network=local {test_api_path}", cwd=ROOT_PATH)
 
                         typer.echo("--\nStop the local network")
                         run_dfx_cmd("stop")

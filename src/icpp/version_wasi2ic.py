@@ -7,4 +7,4 @@ Defines the version of wasi2ic.
 """
 
 # https://github.com/wasm-forge/wasi2ic/tags
-__version__ = "v0.2.12"
+__version__ = "v0.2.13"

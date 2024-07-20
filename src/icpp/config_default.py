@@ -142,7 +142,10 @@ WASM_CFLAGS = (
     " -O3 -flto -fno-exceptions -fvisibility=hidden -D NDEBUG -D ICPP_VERBOSE=0 "
 )
 WASM_CPPFLAGS = WASM_CFLAGS
-WASM_LDFLAGS = " -Wl,--lto-O3 -Wl,--strip-debug -Wl,--stack-first -Wl,--export-dynamic "
+WASM_LDFLAGS = (
+    " -mexec-model=reactor "
+    " -Wl,--lto-O3 -Wl,--strip-debug -Wl,--stack-first -Wl,--export-dynamic "
+)
 WASM_ARFLAGS = "qc"
 WASM_AR_EXT = ".a"
 

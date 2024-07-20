@@ -3,6 +3,11 @@
 // See: https://isocpp.org/wiki/faq/mixing-c-and-cpp#include-c-hdrs-personal
 
 #ifdef __cplusplus
+
+// only include this in C++ files
+// Ensure the WASI polyfill library is initialized first
+#include "ic_wasi_polyfill.h"
+
 extern "C" {
 #endif
 

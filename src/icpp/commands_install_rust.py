@@ -68,12 +68,35 @@ def install_wasm32_wasi(nstep: int, num_steps: int) -> None:
 def install_wasi2ic(nstep: int, num_steps: int) -> None:
     """Installs wasi2ic into user's icpp folder"""
     typer.echo(f"- {nstep}/{num_steps} Installing wasi2ic {__version_wasi2ic__}")
+    # cmd = (
+    #     f"{config_default.CARGO} install "
+    #     f"--git https://github.com/wasm-forge/wasi2ic "
+    #     f"--tag {__version_wasi2ic__} "
+    # )
+    # run_shell_cmd_with_log(LOG_FILE, "a", cmd, timeout_seconds=TIMEOUT_SECONDS)
+
+    cmd = "git clone https://github.com/wasm-forge/wasi2ic "
+    run_shell_cmd_with_log(
+        LOG_FILE,
+        "a",
+        cmd,
+        cwd=config_default.RUST_COMPILER_ROOT,
+        timeout_seconds=TIMEOUT_SECONDS,
+    )
+
+    cmd = f"git switch --detach {__version_wasi2ic__} "
+
     cmd = (
         f"{config_default.CARGO} install "
-        f"--git https://github.com/wasm-forge/wasi2ic "
-        f"--tag {__version_wasi2ic__} "
+        f" --path {config_default.RUST_COMPILER_ROOT / 'wasi2ic'} "
     )
-    run_shell_cmd_with_log(LOG_FILE, "a", cmd, timeout_seconds=TIMEOUT_SECONDS)
+    run_shell_cmd_with_log(
+        LOG_FILE,
+        "a",
+        cmd,
+        cwd=config_default.RUST_COMPILER_ROOT / "wasi2ic",
+        timeout_seconds=TIMEOUT_SECONDS,
+    )
 
 
 def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:

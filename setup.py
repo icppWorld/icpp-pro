@@ -161,13 +161,13 @@ setup(
     # projects.
     extras_require={  # Optional
         "dev": [
-            "black",
+            "black==23.12.1",
             "pylint==2.13.9",
-            "mypy",
-            "build",
-            "twine",
-            "mkdocs",
-            "types-requests",
+            "mypy==1.8.0",
+            "build==1.0.3",
+            "twine==4.0.2",
+            "mkdocs==1.5.3",
+            "types-requests==2.31.0.10",
         ],
     },
     #

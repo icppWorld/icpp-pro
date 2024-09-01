@@ -23,6 +23,7 @@ import icpp.version_rust
 import icpp.version_mingw64
 import icpp.version_ic_wasi_polyfill
 import icpp.version_wasi2ic
+import icpp.version_ic_wasm
 
 # Version of package
 __version__ = icpp.version.__version__
@@ -41,3 +42,6 @@ __version_ic_wasi_polyfill__ = icpp.version_ic_wasi_polyfill.__version__
 
 # Version of wasi2ic we will install in ~/.icpp
 __version_wasi2ic__ = icpp.version_wasi2ic.__version__
+
+# Version of ic-wasm we will install in ~/.icpp
+__version_ic_wasm__ = icpp.version_ic_wasm.__version__

@@ -49,12 +49,14 @@ if OS_SYSTEM == "Windows":
     RUSTUP = RUST_BIN / "rustup.exe"
     RUSTC = RUST_BIN / "rustc.exe"
     WASI2IC = RUST_BIN / "wasi2ic.exe"
+    IC_WASM = RUST_BIN / "ic-wasm.exe"
 else:
     CARGO = RUST_BIN / "cargo"
     # CARGO_BINSTALL = RUST_BIN / "cargo-binstall"  # Not using this yet...
     RUSTUP = RUST_BIN / "rustup"
     RUSTC = RUST_BIN / "rustc"
     WASI2IC = RUST_BIN / "wasi2ic"
+    IC_WASM = RUST_BIN / "ic-wasm"
 
 IC_WASI_POLYFILL = RUST_TARGET / "libic_wasi_polyfill.a"
 

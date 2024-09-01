@@ -11,6 +11,7 @@ from icpp import (
     __version_mingw64__,
     __version_ic_wasi_polyfill__,
     __version_wasi2ic__,
+    __version_ic_wasm__,
 )
 
 
@@ -27,6 +28,7 @@ def version_callback(value: bool) -> None:
         typer.echo(f"rust             version: {__version_rust__}")
         if platform.win32_ver()[0]:
             typer.echo(f"mingw64          version: {__version_mingw64__}")
+        typer.echo(f"ic-wasm          version: {__version_ic_wasm__}")
         raise typer.Exit()
 
 

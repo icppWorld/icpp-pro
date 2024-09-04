@@ -8,12 +8,7 @@ import typer
 import requests
 from icpp.__main__ import app
 from icpp import config_default
-from icpp import (
-    __version_rust__,
-    __version_ic_wasi_polyfill__,
-    __version_wasi2ic__,
-    __version_ic_wasm__,
-)
+from icpp import __version_rust__, __version_ic_wasi_polyfill__, __version_wasi2ic__
 from icpp.run_shell_cmd import run_shell_cmd_with_log
 from icpp.utils import remove_readonly
 
@@ -151,22 +146,6 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
     )
 
 
-def install_ic_wasm(nstep: int, num_steps: int) -> None:
-    """Installs ic-wasm into user's icpp folder"""
-    typer.echo(f"- {nstep}/{num_steps} Installing ic-wasm {__version_ic_wasm__}")
-
-    cmd = (
-        f"{config_default.CARGO} install " f" ic-wasm --version {__version_ic_wasm__} "
-    )
-    run_shell_cmd_with_log(
-        LOG_FILE,
-        "a",
-        cmd,
-        cwd=config_default.RUST_COMPILER_ROOT,
-        timeout_seconds=TIMEOUT_SECONDS,
-    )
-
-
 @app.command()
 def install_rust() -> None:
     """Installs rust and required dependencies.
@@ -187,7 +166,7 @@ def install_rust() -> None:
     config_default.ICPP_LOGS.mkdir(parents=True, exist_ok=True)
     # ----------------------------------------------------------------
 
-    num_steps = 5
+    num_steps = 4
     nstep = 1
     try:
         install_rustup(nstep, num_steps)
@@ -200,9 +179,6 @@ def install_rust() -> None:
         nstep += 1
 
         install_ic_wasi_polyfill(nstep, num_steps)
-        nstep += 1
-
-        install_ic_wasm(nstep, num_steps)
         nstep += 1
 
         typer.echo("\nSuccessfully installed rust & required dependencies ")
@@ -231,7 +207,6 @@ def is_rust_installed() -> bool:
         config_default.RUSTC,
         config_default.WASI2IC,
         config_default.IC_WASI_POLYFILL,
-        config_default.IC_WASM,
     ]
 
     return all(path.exists() for path in required_paths)

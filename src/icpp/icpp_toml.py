@@ -63,6 +63,8 @@ def read_build_wasm_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
     d["did_path"] = icpp_toml_path.parent / Path(d_in.get("did_path", "")).resolve()
     d["did_file"] = str(d["did_path"]) + " "
 
+    d["post_wasm_function"] = d_in.get("post_wasm_function", None)
+
     icpp_toml_path_dir = icpp_toml_path.parent.resolve()
     d["cpp_include_dirs"] = [icpp_toml_path_dir, icpp_toml_path_dir / "src"]
     d["c_include_dirs"] = [icpp_toml_path_dir, icpp_toml_path_dir / "src"]

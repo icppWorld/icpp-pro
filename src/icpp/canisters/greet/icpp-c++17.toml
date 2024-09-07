@@ -8,6 +8,7 @@ cpp_link_flags = ["-std=c++17"]
 c_paths = []
 c_include_dirs = []
 c_compile_flags = []
+post_wasm_function = ""
 [build-native]
 cpp_paths = ["native/main.cpp"]
 cpp_include_dirs = []

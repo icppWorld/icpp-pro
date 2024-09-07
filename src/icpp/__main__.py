@@ -9,6 +9,8 @@ the main flow, calling other parts as needed
 reference: https://realpython.com/pypi-publish-python-package/
 """
 
+import os
+import sys
 import typer
 
 
@@ -33,6 +35,10 @@ from icpp import commands_install_mingw64
 
 def main() -> None:
     """Entry point of program"""
+
+    # Add this to find user's extensions in sub-folders
+    sys.path.insert(1, os.getcwd())  # pylint: disable=no-member
+
     app(prog_name="icpp")
 
 

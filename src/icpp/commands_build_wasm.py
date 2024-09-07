@@ -26,6 +26,7 @@ from icpp.options_build import (
     option_generate_bindings_values_string,
 )
 from icpp.commands_build_library import build_library
+from icpp.call_function_from_name import call_function
 
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
@@ -254,6 +255,16 @@ def build_wasm(
         typer.echo("Converting into an IC compatible wasm with command:")
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=build_path)
+
+        # ----------------------------------------------------------------------
+        # Call optional user provided function
+
+        post_wasm_function = icpp_toml.build_wasm["post_wasm_function"]
+        if post_wasm_function is not None and post_wasm_function.strip() != "":
+            typer.echo("--")
+            typer.echo(f"Calling post_wasm_function: {post_wasm_function}")
+
+            call_function(post_wasm_function)
 
         # ----------------------------------------------------------------------
         # add custom sections:

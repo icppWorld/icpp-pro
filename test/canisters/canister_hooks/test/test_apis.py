@@ -32,5 +32,5 @@ def test__greet(network: str, principal: str) -> None:
     assert response == expected_response
 
     # This proves that the post_wasm_function was called
-    opt_wasm_file_path = Path("build/my_canister_before_opt.wasm")
+    opt_wasm_file_path = Path("build/my_canister_before_opt.wasm").resolve()
     assert opt_wasm_file_path.exists()

@@ -29,17 +29,23 @@
     <script>
         async function fetchData(method = 'GET') {
             try {
-                const IC = true;
+                // When testing mainnet
+                // const IC = true;
+                // When testing local
+                const IC = false;
+
                 const RAW_RESPONSE = false;
+
                 let url;
 
                 if (IC) {
                     const canisterId = '5ugrv-zqaaa-aaaag-acfna-cai';
                     url = `https://5ugrv-zqaaa-aaaag-acfna-cai.raw.icp0.io/counter`;
                 } else {
+                    // See: https://forum.dfinity.org/t/upgrading-to-dfx-0-24-1-breaks-the-http-request-endpoint/36709/12
                     const webserverPort = 4943;
                     const canisterId = 'bkyz2-fmaaa-aaaaa-qaaaq-cai';
-                    url = `http://localhost:${webserverPort}/api/nft/${NFT_ID}?canisterId=${canisterId}`;
+                    url = `http://${canisterId}.raw.localhost:${webserverPort}/counter`;
                 }
 
                 const response = await fetch(url, { method: method });

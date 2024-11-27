@@ -4,7 +4,7 @@ import subprocess
 import json
 import platform
 from pathlib import Path
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, Tuple
 import pytest  # pylint: disable=unused-import
 
 from icpp.run_shell_cmd import run_shell_cmd
@@ -96,7 +96,13 @@ def get_canister_url(
     url_path: Optional[str] = None,
     timeout_seconds: Optional[int] = None,
 ) -> str:
-    """Returns the url for calling a canister as a Web2.0 HTTP server"""
+    """THIS FUNCTION IS DEPRECATED. DO NOT USE...
+    use get_canister_url_with_headers instead
+
+    Returns the url for calling a canister as a Web2.0 HTTP server
+    """
+    print("get_canister_url has been deprecated since dfx 0.14.1")
+    print("instead, use: get_canister_url_with_headers")
 
     canister_id = get_canister_id(
         dfx_json_path=dfx_json_path,
@@ -120,6 +126,40 @@ def get_canister_url(
         url = f"{url}?canisterId={canister_id}"
 
     return url
+
+
+def get_canister_url_with_headers(
+    *,
+    dfx_json_path: Path,
+    canister_name: str,
+    network: str = "local",
+    url_path: Optional[str] = None,
+    timeout_seconds: Optional[int] = None,
+) -> Tuple[str, Optional[Dict[str, str]]]:
+    """Returns the url + headers for calling a canister as a Web2.0 HTTP server"""
+    # Updated version for dfx 0.14.1
+
+    canister_id = get_canister_id(
+        dfx_json_path=dfx_json_path,
+        canister_name=canister_name,
+        network=network,
+        timeout_seconds=timeout_seconds,
+    )
+
+    # See: https://forum.dfinity.org/t/upgrading-to-dfx-0-24-1-breaks-the-http-request-endpoint/36709/13?u=icpp # pylint: disable=line-too-long
+    headers = None
+    if network == "ic":
+        url = f"https://{canister_id}.raw.icp0.io"
+    else:
+        webserver_port = get_local_webserver_port()
+        url = f"http://127.0.0.1:{webserver_port}"
+        headers = {"Host": f"{canister_id}.raw.localhost"}
+
+    # Add the path
+    if url_path is not None:
+        url = f"{url}/{url_path}"
+
+    return url, headers
 
 
 def get_canister_id(

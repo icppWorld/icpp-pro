@@ -15,7 +15,7 @@ import requests
 from icpp.smoketest import (
     call_canister_api,
     dict_to_candid_text,
-    get_canister_url,
+    get_canister_url_with_headers,
 )
 
 # Path to the dfx.json file
@@ -37,47 +37,61 @@ CANISTER_NAME = "my_canister"
 
 
 def test__http_request_get_counter(network: str, principal: str) -> None:
-    url = get_canister_url(
+    url, headers = get_canister_url_with_headers(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
         network=network,
         url_path="counter",
     )
-    response = requests.get(url)
+    response = requests.get(url, headers=headers)
     assert response.status_code == 200
-    assert response.json() == {"counter": 0}
+    assert "counter" in response.json().keys()
 
 
 def test__http_request_post_counter(network: str, principal: str) -> None:
-    # Increment the counter, using a POST request
-    url = get_canister_url(
+    url, headers = get_canister_url_with_headers(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
         network=network,
         url_path="counter",
     )
-    response = requests.post(url)
+    response = requests.get(url, headers=headers)
     assert response.status_code == 200
-    assert response.json() == {"counter": 1}
+    counter_before = response.json()["counter"]
+    print(f"counter_before = {counter_before}")
+
+    # Increment the counter, using a POST request
+    url, headers = get_canister_url_with_headers(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        network=network,
+        url_path="counter",
+    )
+    response = requests.post(url, headers=headers)
+    assert response.status_code == 200
+    assert "counter" in response.json().keys()
 
     # verify, by using a GET request, that Orthogonal Persistence worked
-    url = get_canister_url(
+    url, headers = get_canister_url_with_headers(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
         network=network,
         url_path="counter",
     )
-    response = requests.get(url)
+    response = requests.get(url, headers=headers)
     assert response.status_code == 200
-    assert response.json() == {"counter": 1}
+    counter_after = response.json()["counter"]
+    print(f"counter_after = {counter_after}")
+    assert counter_after - counter_before == 1
 
 
 def test__http_request_get_404_not_found(network: str, principal: str) -> None:
-    url = get_canister_url(
+    url, headers = get_canister_url_with_headers(
         dfx_json_path=DFX_JSON_PATH,
         canister_name=CANISTER_NAME,
         network=network,
-        url_path="a-non-existing-path",
+        url_path="unknown-path",
     )
-    response = requests.get(url)
+    response = requests.get(url, headers=headers)
+    print(f"response = {response}")
     assert response.status_code == 404

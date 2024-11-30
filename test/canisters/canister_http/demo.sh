@@ -41,10 +41,11 @@ pytest --network=local
 #######################################################################
 echo " "
 echo "--------------------------------------------------"
-echo "Calling the deployed canister with curl, skipping the asserts"
-curl -X GET -H "skip-asserts: yes" -H "Content-Type: application/json" -d '{"key1":"value1", "key2":"value2"}' http://localhost:$(dfx info webserver-port)/?canisterId=$(dfx canister id my_canister)
+echo "Calling the deployed canister with curl"
+curl -X GET http://$(dfx canister id my_canister).raw.localhost:$(dfx info webserver-port)/counter
 
 #######################################################################
+echo " "
 echo "--------------------------------------------------"
 echo "Stopping the local network"
 dfx stop

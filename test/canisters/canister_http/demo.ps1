@@ -65,8 +65,8 @@ pytest --network=local
 #######################################################################
 Write-Host " "
 Write-Host "--------------------------------------------------"
-Write-Host "Calling the deployed canister with curl, skipping the asserts"
-wsl --% curl -X GET -H "skip-asserts: yes" -H "Content-Type: application/json" -d '{"key1":"value1", "key2":"value2"}' http://localhost:$(dfx info webserver-port)/?canisterId=$(dfx canister id my_canister)
+Write-Host "Calling the deployed canister with curl"
+wsl --% curl -X GET http://$(dfx canister id my_canister).raw.localhost:$(dfx info webserver-port)/counter
 
 #######################################################################
 Write-Host " "

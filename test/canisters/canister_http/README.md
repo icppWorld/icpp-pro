@@ -32,7 +32,9 @@ $ curl -X GET https://5ugrv-zqaaa-aaaag-acfna-cai.raw.icp0.io/counter
  
 
 # local network
-curl -X GET http://localhost:$(dfx info webserver-port)/?canisterId=$(dfx canister id my_canister)
+$ curl -X GET http://$(dfx canister id my_canister).raw.localhost:$(dfx info webserver-port)/counter
+# typically resolves to:
+$ curl -X GET http://bkyz2-fmaaa-aaaaa-qaaaq-cai.raw.localhost:4943/counter
 ```
 
 ### HTML / Javascript: Fetch

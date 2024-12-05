@@ -375,3 +375,9 @@ def build_wasm(
 
     # ----------------------------------------------------------------------
     typer.echo("-----")
+
+    # ----------------------------------------------------------------------
+    typer.echo("Support icpp-pro by purchasing an icpp-art NFT at:")
+    typer.echo("https://bioniq.io/launch/icpp-art/public")
+    # ----------------------------------------------------------------------
+    typer.echo("-----")

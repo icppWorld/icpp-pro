@@ -3,14 +3,13 @@
 
 // This header is imported by both C & C++ code
 // See: https://isocpp.org/wiki/faq/mixing-c-and-cpp#include-c-hdrs-personal
+#pragma once
+
+#include <cstdint>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#pragma once
-
-#include <cstdint>
 
 // See:
 // https://smartcontracts.org/docs/interface-spec/index.html#system-api-imports

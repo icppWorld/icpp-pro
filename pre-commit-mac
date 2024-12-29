@@ -1,0 +1,16 @@
+#!/bin/bash
+
+#############################################################
+# For Mac & Ubuntu: copy this file to .git/hooks/pre-commit 
+#
+# Then make it executable:
+#   $ chmod +x .git/hooks/pre-commit
+# 
+# And test it with:
+#   $ .git/hooks/pre-commit
+#
+#############################################################
+
+# Apply all static auto-formatting & perform the static checks
+export PATH="/opt/miniconda3/envs/icpp-pro/bin:$PATH"
+/usr/bin/make all-static

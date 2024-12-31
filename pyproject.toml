@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 name = "icpp-pro"
 description = "C++ Canister Development Kit (CDK) for the Internet Computer"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [{ name = "icpp-pro", email = "icpp@icpp.world" }]
 maintainers = [{ name = "icpp-pro", email = "icpp@icpp.world" }]
 license = { file = "LICENSE" }
@@ -36,7 +36,7 @@ classifiers = [
     # that you indicate you support Python 3. These classifiers are *not*
     # checked by 'pip install'. See instead 'python_requires' below.
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################
-# For Mac & Ubuntu: copy this file to .git/hooks/pre-commit 
+# For Mac: copy this file to .git/hooks/pre-commit 
 #
 # Then make it executable:
 #   $ chmod +x .git/hooks/pre-commit

@@ -30,7 +30,6 @@ from icpp import commands_build_library
 from icpp import commands_build_library_native
 from icpp import commands_install_wasi_sdk
 from icpp import commands_install_rust
-from icpp import commands_install_mingw64
 
 
 def main() -> None:

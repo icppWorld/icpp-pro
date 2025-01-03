@@ -20,7 +20,6 @@ reference: https://realpython.com/pypi-publish-python-package/
 import icpp.version
 import icpp.version_wasi_sdk
 import icpp.version_rust
-import icpp.version_mingw64
 import icpp.version_ic_wasi_polyfill
 import icpp.version_wasi2ic
 
@@ -32,9 +31,6 @@ __version_wasi_sdk__ = icpp.version_wasi_sdk.__version__
 
 # Version of rust we will install in ~/.icpp
 __version_rust__ = icpp.version_rust.__version__
-
-# Version of mingw64 we will install in ~/.icpp (Windows only)
-__version_mingw64__ = icpp.version_mingw64.__version__
 
 # Version of ic-wasi-polyfill we will install in ~/.icpp
 __version_ic_wasi_polyfill__ = icpp.version_ic_wasi_polyfill.__version__

@@ -3,7 +3,7 @@
 import subprocess
 import re
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import Optional, Union
 
 
 def escape_ansi(line: Optional[str]) -> Optional[str]:
@@ -37,7 +37,6 @@ def run_shell_cmd_with_log(
     cmd: str,
     cwd: Optional[Path] = None,
     timeout_seconds: Optional[int] = None,
-    run_in_powershell: Optional[bool] = None,
 ) -> None:
     """Opens a log file with mode ["w"/"a"],runs the command; writes/appends output"""
     with open(log_file, mode, encoding="utf-8") as file:
@@ -45,11 +44,7 @@ def run_shell_cmd_with_log(
         file.write(cmd)
         file.write("\n")
         cmd_output = run_shell_cmd(
-            cmd,
-            capture_output=True,
-            cwd=cwd,
-            timeout_seconds=timeout_seconds,
-            run_in_powershell=run_in_powershell,
+            cmd, capture_output=True, cwd=cwd, timeout_seconds=timeout_seconds
         )
         file.write(cmd_output)
         file.write("\n")
@@ -61,7 +56,6 @@ def run_shell_cmd(
     print_captured_output: bool = False,
     cwd: Optional[Path] = None,
     timeout_seconds: Optional[int] = None,
-    run_in_powershell: Optional[bool] = None,
 ) -> str:
     """Runs 'cmd' with following behavior, so we can
     use it in our sequential CI/CD pipeline:
@@ -107,26 +101,13 @@ def run_shell_cmd(
     if cwd is None:
         cwd = Path(".")
 
-    if run_in_powershell is None:
-        run_in_powershell = False
-
-    # for certain commands on Windows
-    cmd_: Union[List[str], Path, str]
-    if run_in_powershell:
-        if isinstance(cmd, Path):
-            cmd_ = ["powershell.exe", "-File", str(cmd)]
-        else:
-            cmd_ = ["powershell.exe", "-Command", cmd]
-    else:
-        cmd_ = cmd
-
     if timeout_seconds is None:
         timeout_seconds = 30
 
     capture_stdout = ""
 
     if capture_output is False:
-        subprocess.run(cmd_, shell=True, check=True, text=True, cwd=cwd)
+        subprocess.run(cmd, shell=True, check=True, text=True, cwd=cwd)
     else:
         # These will block & cannot be used to start a background process from make.
         if print_captured_output is False:
@@ -135,7 +116,7 @@ def run_shell_cmd(
                 # - return it if there is no error
                 # - includes it in a possibly raised error
                 p_1 = subprocess.run(
-                    cmd_,
+                    cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     shell=shell,
@@ -146,7 +127,7 @@ def run_shell_cmd(
                 )
                 if p_1.returncode != 0:
                     output = (
-                        f"Command '{cmd_}' failed:\n " f"{escape_ansi(p_1.stdout)}\n\n"
+                        f"Command '{cmd}' failed:\n " f"{escape_ansi(p_1.stdout)}\n\n"
                     )
                     # print(output)
 
@@ -178,7 +159,7 @@ def run_shell_cmd(
             # This prints output while running, and we capture it as well & return it
             # https://stackoverflow.com/a/28319191/5480536
             with subprocess.Popen(
-                cmd_,
+                cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 shell=shell,

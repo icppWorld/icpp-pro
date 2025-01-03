@@ -44,9 +44,7 @@ def get_wasi_sdk_os_name() -> str:
 
     # wasi-sdk now supports arm64 (Apple Silicon (M1, M2, ...))
     # https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-25
-    if (MACHINE_NAME == "arm64" and (SYSTEM_NAME in ["linux", "macos"])) or (
-        MACHINE_NAME == "x86_64" and (SYSTEM_NAME in ["linux", "macos", "windows"])
-    ):
+    if (MACHINE_NAME in ["arm64", "x86_64"]) and (SYSTEM_NAME in ["linux", "macos"]):
         return f"{MACHINE_NAME}-{SYSTEM_NAME}"
 
     return "unknown"

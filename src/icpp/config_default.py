@@ -8,7 +8,7 @@ import platform
 from pathlib import Path
 import getpass
 import icpp_candid  # pylint: disable = unused-import
-from icpp import __version_wasi_sdk__, __version_rust__, __version_mingw64__
+from icpp import __version_wasi_sdk__, __version_rust__
 
 # The OS we're running on - https://stackoverflow.com/a/1857/5480536
 
@@ -24,37 +24,17 @@ ICPP_LOGS = ICPP_ROOT / "logs"
 WASI_SDK_ROOT = ICPP_ROOT / "wasi-sdk"
 WASI_SDK_COMPILER_ROOT = WASI_SDK_ROOT / f"{__version_wasi_sdk__}"
 
-# mingw64 compiler (Windows only)
-MINGW64_ROOT = ICPP_ROOT / "mingw64"
-MINGW64_COMPILER_ROOT = MINGW64_ROOT / f"{__version_mingw64__}"
-MINGW64_BIN = MINGW64_COMPILER_ROOT / "mingw64" / "bin"
-if OS_SYSTEM == "Windows":
-    # Add the mingw64/bin directory to the PATH
-    # pylint: disable = no-member
-    os.environ["PATH"] = (
-        str(MINGW64_BIN)
-        + os.pathsep  # pylint: disable = no-member
-        + os.environ["PATH"]
-    )
-
 # Rust & dependencies
 RUST_ROOT = ICPP_ROOT / "rust"
 RUST_COMPILER_ROOT = RUST_ROOT / f"{__version_rust__}"
 RUST_BIN = RUST_COMPILER_ROOT / "bin"
 RUST_TARGET = RUST_COMPILER_ROOT / "target/wasm32-wasi/release"
 
-if OS_SYSTEM == "Windows":
-    CARGO = RUST_BIN / "cargo.exe"
-    # CARGO_BINSTALL = RUST_BIN / "cargo-binstall.exe"  # Not using this yet...
-    RUSTUP = RUST_BIN / "rustup.exe"
-    RUSTC = RUST_BIN / "rustc.exe"
-    WASI2IC = RUST_BIN / "wasi2ic.exe"
-else:
-    CARGO = RUST_BIN / "cargo"
-    # CARGO_BINSTALL = RUST_BIN / "cargo-binstall"  # Not using this yet...
-    RUSTUP = RUST_BIN / "rustup"
-    RUSTC = RUST_BIN / "rustc"
-    WASI2IC = RUST_BIN / "wasi2ic"
+CARGO = RUST_BIN / "cargo"
+# CARGO_BINSTALL = RUST_BIN / "cargo-binstall"  # Not using this yet...
+RUSTUP = RUST_BIN / "rustup"
+RUSTC = RUST_BIN / "rustc"
+WASI2IC = RUST_BIN / "wasi2ic"
 
 IC_WASI_POLYFILL = RUST_TARGET / "libic_wasi_polyfill.a"
 

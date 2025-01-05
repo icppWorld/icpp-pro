@@ -1,6 +1,5 @@
 [![icpp-pro](https://github.com/icppWorld/icpp-pro/actions/workflows/cicd-ubuntu.yml/badge.svg)](https://github.com/icppWorld/icpp-pro/actions/workflows/cicd-ubuntu.yml)
 [![icpp-pro](https://github.com/icppWorld/icpp-pro/actions/workflows/cicd-mac.yml/badge.svg)](https://github.com/icppWorld/icpp-pro/actions/workflows/cicd-mac.yml)
-[![icpp-pro](https://github.com/icppWorld/icpp-pro/actions/workflows/cicd-windows.yml/badge.svg)](https://github.com/icppWorld/icpp-pro/actions/workflows/cicd-windows.yml)
 
 # C++ Canister Development Kit
 

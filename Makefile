@@ -240,7 +240,7 @@ install-python-w-llama_cpp_canister:
 	cd icpp-candid && rm -rf src/*.egg-info && pip install -e ".[dev]"
 	rm -rf src/*.egg-info
 	pip install -e ".[dev]"
-	cd ../../../onicai/repos/llama_cpp_canister && pip install -r requirements.txt
+	cd ../llama_cpp_canister && pip install -r requirements.txt
 
 # .PHONY:install-rust
 # install-rust:

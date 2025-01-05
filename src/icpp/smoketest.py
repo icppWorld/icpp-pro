@@ -2,7 +2,6 @@
 
 import subprocess
 import json
-import platform
 from pathlib import Path
 from typing import Optional, Any, Dict, Tuple
 import pytest  # pylint: disable=unused-import
@@ -10,10 +9,6 @@ import pytest  # pylint: disable=unused-import
 from icpp.run_shell_cmd import run_shell_cmd
 
 DFX = "dfx"
-RUN_IN_POWERSHELL = False
-if platform.win32_ver()[0]:
-    DFX = "wsl --% . ~/.local/share/dfx/env; dfx"
-    RUN_IN_POWERSHELL = True
 
 
 def call_canister_api(
@@ -63,7 +58,6 @@ def call_canister_api(
             capture_output=True,
             cwd=Path(dfx_json_path).parent,
             timeout_seconds=timeout_seconds,
-            run_in_powershell=RUN_IN_POWERSHELL,
         )
         response = response.rstrip("\n")
     except subprocess.CalledProcessError as e:
@@ -188,7 +182,6 @@ def get_canister_id(
             capture_output=True,
             cwd=Path(dfx_json_path).parent,
             timeout_seconds=timeout_seconds,
-            run_in_powershell=RUN_IN_POWERSHELL,
         )
         canister_id = response.rstrip("\n")
     except subprocess.CalledProcessError as e:
@@ -218,10 +211,7 @@ def get_local_webserver_port(
     arg = f"{DFX} info webserver-port "
     try:
         response = run_shell_cmd(
-            arg,
-            capture_output=True,
-            timeout_seconds=timeout_seconds,
-            run_in_powershell=RUN_IN_POWERSHELL,
+            arg, capture_output=True, timeout_seconds=timeout_seconds
         )
         webserver_port = response.rstrip("\n")
     except subprocess.CalledProcessError as e:
@@ -240,9 +230,7 @@ def network_status(network: str) -> str:
     """Returns the network status."""
     arg = f"{DFX} ping {network}"
     try:
-        response = run_shell_cmd(
-            arg, capture_output=False, run_in_powershell=RUN_IN_POWERSHELL
-        )
+        response = run_shell_cmd(arg, capture_output=False)
     except subprocess.CalledProcessError:
         if network == "local":
             msg = (
@@ -270,12 +258,7 @@ def get_identity() -> str:
     """Returns the current dfx identity."""
     arg = f"{DFX} identity whoami "
     try:
-        identity = run_shell_cmd(
-            arg,
-            capture_output=True,
-            timeout_seconds=30,
-            run_in_powershell=RUN_IN_POWERSHELL,
-        )
+        identity = run_shell_cmd(arg, capture_output=True, timeout_seconds=30)
         identity = identity.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
@@ -287,7 +270,7 @@ def set_identity(identity: str) -> None:
     """Sets the dfx identity."""
     arg = f"{DFX} identity use {identity}"
     try:
-        run_shell_cmd(arg, run_in_powershell=RUN_IN_POWERSHELL)
+        run_shell_cmd(arg)
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
 
@@ -296,12 +279,7 @@ def get_principal() -> str:
     """Returns the principal of the current dfx identity."""
     arg = f"{DFX} identity get-principal "
     try:
-        principal = run_shell_cmd(
-            arg,
-            capture_output=True,
-            timeout_seconds=30,
-            run_in_powershell=RUN_IN_POWERSHELL,
-        )
+        principal = run_shell_cmd(arg, capture_output=True, timeout_seconds=30)
         principal = principal.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")

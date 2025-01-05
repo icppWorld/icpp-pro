@@ -13,48 +13,53 @@ from icpp.__main__ import app
 from icpp import config_default
 from icpp import __version_wasi_sdk__
 
-OS_SYSTEM = platform.system()
-OS_PROCESSOR = platform.processor()
+# linux, darwin, windows
+PLATFORM_SYSTEM = platform.system().lower()
+
+# arm64, aarch64
+# x86_64, amd64
+PLATFORM_MACHINE = platform.machine().lower()
+
+########################################################
+# Convert to naming convention of wasi-sdk
+
+# linux, macos, windows
+SYSTEM_NAME = PLATFORM_SYSTEM
+if PLATFORM_SYSTEM == "darwin":
+    SYSTEM_NAME = "macos"
+
+# arm64 ; x86_64
+MACHINE_NAME = "unknown"
+if PLATFORM_MACHINE in ["arm64", "aarch64"]:
+    MACHINE_NAME = "arm64"
+if PLATFORM_MACHINE in ["x86_64", "amd64"]:
+    MACHINE_NAME = "x86_64"
+
+########################################################
 
 
 def get_wasi_sdk_os_name() -> str:
     """Returns the os name used for the releases build by the CI/CD of the wasi-sdk
-    repo, for the current OS."""
+    repo, for the current machine & system."""
 
-    if OS_SYSTEM == "Linux":
-        return "-linux"
-
-    if OS_SYSTEM == "Darwin":
-        return "-macos"
-
-    if OS_SYSTEM == "Windows":
-        # Naming changed with wasi-sdk 20
-        return ".m-mingw"
+    # wasi-sdk now supports arm64 (Apple Silicon (M1, M2, ...))
+    # https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-25
+    if (MACHINE_NAME in ["arm64", "x86_64"]) and (SYSTEM_NAME in ["linux", "macos"]):
+        return f"{MACHINE_NAME}-{SYSTEM_NAME}"
 
     return "unknown"
 
 
 def get_wasi_sdk_untar_dir_name() -> str:
     """Returns the dir name after untarring, for the current OS."""
-
-    if OS_SYSTEM == "Linux":
-        return __version_wasi_sdk__
-
-    if OS_SYSTEM == "Darwin":
-        return __version_wasi_sdk__
-
-    if OS_SYSTEM == "Windows":
-        # Naming changed with wasi-sdk 20
-        return __version_wasi_sdk__ + "+m"
-
-    return "unknown"
+    return f"{__version_wasi_sdk__}-{MACHINE_NAME}-{SYSTEM_NAME}"
 
 
 WASI_SDK_OS_NAME = get_wasi_sdk_os_name()
 WASI_SDK_URL = (
     f"https://github.com/WebAssembly/wasi-sdk/releases/download/"
     f"{__version_wasi_sdk__.split('.',1)[0]}/"
-    f"{__version_wasi_sdk__}{WASI_SDK_OS_NAME}.tar.gz"
+    f"{__version_wasi_sdk__}-{WASI_SDK_OS_NAME}.tar.gz"
 )
 
 
@@ -69,7 +74,8 @@ def install_wasi_sdk() -> None:
 
     if WASI_SDK_OS_NAME == "unknown":
         typer.echo("ERROR: a wasi-sdk binary is not available for your system.")
-        typer.echo(f"       - Your system: {OS_SYSTEM}")
+        typer.echo(f"       - Your system: {PLATFORM_SYSTEM}")
+        typer.echo(f"       - Your CPU   : {PLATFORM_MACHINE}")
         typer.echo(
             f"       Please follow instructions at "
             f"       https://github.com/WebAssembly/wasi-sdk to build it yourself"
@@ -79,6 +85,9 @@ def install_wasi_sdk() -> None:
 
     # ----------------------------------------------------------------
     typer.echo(f"Installing wasi-sdk into {config_default.WASI_SDK_ROOT}")
+
+    typer.echo(f"- Your system: {PLATFORM_SYSTEM}")
+    typer.echo(f"- Your CPU   : {PLATFORM_MACHINE}")
 
     fpath = Path(str(config_default.WASI_SDK_COMPILER_ROOT) + ".tar.gz")
     fpath.unlink(missing_ok=True)

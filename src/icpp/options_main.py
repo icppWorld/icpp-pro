@@ -1,6 +1,5 @@
 """Callback functions of our icpp typer app"""
 
-import platform
 from typing import Optional
 import typer
 from icpp.__main__ import app
@@ -8,7 +7,6 @@ from icpp import (
     __version__,
     __version_wasi_sdk__,
     __version_rust__,
-    __version_mingw64__,
     __version_ic_wasi_polyfill__,
     __version_wasi2ic__,
 )
@@ -25,8 +23,6 @@ def version_callback(value: bool) -> None:
         typer.echo(f"wasi2ic          version: {__version_wasi2ic__}")
         typer.echo(f"ic-wasi-polyfill version: {__version_ic_wasi_polyfill__}")
         typer.echo(f"rust             version: {__version_rust__}")
-        if platform.win32_ver()[0]:
-            typer.echo(f"mingw64          version: {__version_mingw64__}")
         raise typer.Exit()
 
 

@@ -5,7 +5,6 @@ import platform
 import subprocess
 import shutil
 import typer
-import requests
 from icpp.__main__ import app
 from icpp import config_default
 from icpp import __version_rust__, __version_ic_wasi_polyfill__, __version_wasi2ic__
@@ -23,37 +22,16 @@ def install_rustup(nstep: int, num_steps: int) -> None:
     """Installs rustup into user's icpp folder"""
     typer.echo(f"- {nstep}/{num_steps} Installing rustup (be patient...)")
 
-    if OS_SYSTEM == "Windows":
-        # See: https://stackoverflow.com/a/73777000
-        url = "https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-gnu/rustup-init.exe"  # pylint: disable=line-too-long
-        rustup_init_exe = config_default.RUST_ROOT / "rustup-init.exe"
-
-        if OS_SYSTEM == "Windows":
-            rustup_init_exe.unlink(missing_ok=True)
-
-        response = requests.get(url)
-        with open(rustup_init_exe, "wb") as file:
-            file.write(response.content)
-
-        cmd = (
-            f"{rustup_init_exe} --no-modify-path -y "
-            f'--default-toolchain="{__version_rust__}" '
-            f" --default-host x86_64-pc-windows-gnu "
-        )
-    else:
-        cmd = (
-            f'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | '
-            f'sh -s -- --no-modify-path -y --default-toolchain="{__version_rust__}" '
-        )
+    cmd = (
+        f'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | '
+        f'sh -s -- --no-modify-path -y --default-toolchain="{__version_rust__}" '
+    )
 
     # Note: in config_default.py, we defined the environment variables for
     #       CARGO_TARGET_DIR, CARGO_HOME, RUSTUP_HOME
     #       which ensures that rust is installed in the correct folder (~/.icpp/rust)
     #
     run_shell_cmd_with_log(LOG_FILE, "w", cmd, timeout_seconds=TIMEOUT_SECONDS)
-
-    if OS_SYSTEM == "Windows":
-        rustup_init_exe.unlink(missing_ok=True)
 
 
 def install_wasm32_wasi(nstep: int, num_steps: int) -> None:

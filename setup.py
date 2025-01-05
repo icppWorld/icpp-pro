@@ -47,33 +47,8 @@ setup(
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        f"icpp-candid=={version.__version__}",
-        "typer[all]>=0.9.0",
-        "tomli",
-        "requests",
-        "enlighten",
-        "pytest",
+        f"icpp-candid=={version.__version__}"
     ],  # Optional
-    #
-    # List additional groups of dependencies here (e.g. development
-    # dependencies). Users will be able to install these using the "extras"
-    # syntax, for example:
-    #
-    #   $ pip install "sampleproject[dev]"
-    #
-    # Similar to `install_requires` above, these must be valid existing
-    # projects.
-    extras_require={  # Optional
-        "dev": [
-            "black==23.12.1",
-            "pylint==2.13.9",
-            "mypy==1.8.0",
-            "build==1.2.2",
-            "twine==6.0.1",
-            "mkdocs==1.5.3",
-            "types-requests==2.31.0.10",
-        ],
-    },
     #
     # If there are data files included in your packages that need to be
     # installed, specify them here.
@@ -117,18 +92,4 @@ setup(
     # In this case, 'data_file' will be installed into '<sys.prefix>/my_data'
     ##    data_files=[('my_data', ['data/data_file'])],  # Optional
     #
-    # To provide executable scripts, use entry points in preference to the
-    # "scripts" keyword. Entry points provide cross-platform support and allow
-    # `pip` to create the appropriate form of executable for the target
-    # platform.
-    #
-    # For example, the following would provide a command called `icpp` which
-    # executes the function `main` from this package when invoked:
-    # NOTE: you can create multiple entry_points, for example, when distributing
-    #       more than one packages, you can create an entry_point for each package
-    entry_points={  # Optional
-        "console_scripts": [
-            "icpp=icpp.__main__:main",
-        ],
-    },
 )

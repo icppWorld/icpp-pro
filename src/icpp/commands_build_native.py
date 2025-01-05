@@ -234,15 +234,6 @@ def build_native(
         sys.exit(1)
 
     # ----------------------------------------------------------------------
-    # On Windows, we need to copy the runtime DLLs to the build folder
-    # We do it this way, so the user does not have to set a system wide PATH
-    if OS_SYSTEM == "Windows":
-        typer.echo("--")
-        typer.echo("Copying the MinGW-w64 runtime DLLs to 'build-native' folder")
-        for dll_file in config_default.MINGW64_BIN.glob("*.dll"):
-            shutil.copy(dll_file, build_path)
-
-    # ----------------------------------------------------------------------
     # All done
     typer.echo("--")
     typer.echo("All done building the native debug executable:")

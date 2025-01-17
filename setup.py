@@ -40,16 +40,6 @@ setup(
     #
     packages=find_packages(where="src"),  # Required
     #
-    # This field lists other packages that your project depends on to run.
-    # Any package you put here will be installed by pip when your project is
-    # installed, so they must be valid existing projects.
-    #
-    # For an analysis of "install_requires" vs pip's requirements files see:
-    # https://packaging.python.org/en/latest/requirements.html
-    install_requires=[
-        f"icpp-candid=={version.__version__}"
-    ],  # Optional
-    #
     # If there are data files included in your packages that need to be
     # installed, specify them here.
     # https://setuptools.pypa.io/en/latest/userguide/datafiles.html#package-data

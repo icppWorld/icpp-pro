@@ -38,7 +38,6 @@ classifiers = [
     # checked by 'pip install'. See instead 'python_requires' below.
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -48,6 +47,7 @@ classifiers = [
     "Operating System :: MacOS",
 ]
 dependencies = [
+    "icpp-candid>=5.0.1",
     'icpp-pro-is-not-supported-on-windows; platform_system == "Windows"',
     "typer[all]>=0.9.0",
     "tomli",
@@ -55,12 +55,10 @@ dependencies = [
     "enlighten",
     "pytest",
 ]
-dynamic = [
-    "version"
-]
+dynamic = ["version"]
 
 [project.scripts]
-    icpp = "icpp.__main__:main"
+icpp = "icpp.__main__:main"
 
 [project.optional-dependencies]
 dev = [

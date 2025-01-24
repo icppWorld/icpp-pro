@@ -101,7 +101,8 @@ uint32_t ic0_is_controller(uint32_t src, uint32_t size)
 void ic0_debug_print(uint32_t src, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "debug_print");
 
-[[noreturn]] void ic0_trap(uint32_t src, uint32_t size) WASM_SYMBOL_IMPORTED("ic0", "trap");
+[[noreturn]] void ic0_trap(uint32_t src, uint32_t size)
+    WASM_SYMBOL_IMPORTED("ic0", "trap");
 
 #ifdef __cplusplus
 }

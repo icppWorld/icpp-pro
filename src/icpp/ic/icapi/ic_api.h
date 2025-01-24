@@ -43,8 +43,8 @@ public:
   static void debug_print(const std::string &msg); // docs end: demo_debug_print
 
   // docs start: demo_trap
-  static void trap(const char *msg);
-  static void trap(const std::string &msg); // docs end: demo_trap
+  [[noreturn]] static void trap(const char *msg);
+  [[noreturn]] static void trap(const std::string &msg); // docs end: demo_trap
 
   // docs start: demo_time
   static uint64_t time(); // docs end: demo_time

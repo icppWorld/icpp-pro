@@ -72,7 +72,7 @@ uint32_t ic0_is_controller(uintptr_t src, uint32_t size);
 
 void ic0_debug_print(uintptr_t src, uint32_t size);
 
-void ic0_trap(uintptr_t src, uint32_t size);
+[[noreturn]] void ic0_trap(uintptr_t src, uint32_t size);
 
 #ifdef __cplusplus
 }

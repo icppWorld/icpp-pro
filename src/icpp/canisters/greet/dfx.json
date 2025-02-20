@@ -3,7 +3,7 @@
   "canisters": {
     "greet": {
       "type": "custom",
-      "candid": "src/greet.did",
+      "candid": "build/greet.did",
       "wasm": "build/greet.wasm"
     }
   },

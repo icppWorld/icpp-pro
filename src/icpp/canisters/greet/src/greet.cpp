@@ -1,3 +1,13 @@
+/*
+greet: The icpp-pro getting started tutorial: build, deploy & query
+
+Try it out in Candid UI: 
+https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=eavxv-bqaaa-aaaag-ahkrq-cai
+
+See the Getting Started tutorial:
+https://docs.icpp.world/getting-started.html
+
+*/
 #include "greet.h"
 #include "hello.h" // libhello
 #include "world.h" // libworld
@@ -179,18 +189,20 @@ void greet_json() {
   // See: https://json.nlohmann.me/api/basic_json/parse/
   nlohmann::json j_in = nlohmann::json::parse(in);
 
+  // Store a greeting or an error in a json object
+  nlohmann::json j_out;
+
   // Extract the "name" from the json object
   std::string name;
   if (j_in.contains("name")) {
     // there is an entry with key "name"
     name = j_in["name"];
+    // Store a greeting in the json object
+    j_out["greet"] = "Hello " + name + "!";
   } else {
-    IC_API::trap("ERROR in JSON: - missing key 'name' ");
+    // Store an ERROR in the json object
+    j_out["ERROR"] = "missing key 'name'. The json string received is: " + in;
   }
-
-  // Store a greeting in a json object
-  nlohmann::json j_out;
-  j_out["greet"] = "Hello " + name + "!";
 
   // Return the json object as a Candid Text
   std::string s = j_out.dump();

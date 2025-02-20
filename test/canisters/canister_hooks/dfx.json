@@ -3,7 +3,7 @@
   "canisters": {
     "my_canister": {
       "type": "custom",
-      "candid": "src/my_canister.did",
+      "candid": "build/my_canister.did",
       "wasm": "build/my_canister.wasm"
     }
   },

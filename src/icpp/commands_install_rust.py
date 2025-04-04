@@ -36,7 +36,9 @@ def install_rustup(nstep: int, num_steps: int) -> None:
 
 def install_wasm32_wasip1(nstep: int, num_steps: int) -> None:
     """Installs rust wasm32-wasip1 target into user's icpp folder"""
-    typer.echo(f"- {nstep}/{num_steps} Installing wasm32-wasip1 target for rust compiler")
+    typer.echo(
+        f"- {nstep}/{num_steps} Installing wasm32-wasip1 target for rust compiler"
+    )
     cmd = f"{config_default.RUSTUP} target add wasm32-wasip1 "
     run_shell_cmd_with_log(LOG_FILE, "a", cmd, timeout_seconds=TIMEOUT_SECONDS)
 

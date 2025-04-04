@@ -28,7 +28,7 @@ WASI_SDK_COMPILER_ROOT = WASI_SDK_ROOT / f"{__version_wasi_sdk__}"
 RUST_ROOT = ICPP_ROOT / "rust"
 RUST_COMPILER_ROOT = RUST_ROOT / f"{__version_rust__}"
 RUST_BIN = RUST_COMPILER_ROOT / "bin"
-RUST_TARGET = RUST_COMPILER_ROOT / "target/wasm32-wasi/release"
+RUST_TARGET = RUST_COMPILER_ROOT / "target/wasm32-wasip1/release"
 
 CARGO = RUST_BIN / "cargo"
 # CARGO_BINSTALL = RUST_BIN / "cargo-binstall"  # Not using this yet...

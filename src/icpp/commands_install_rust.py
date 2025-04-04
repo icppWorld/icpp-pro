@@ -34,10 +34,12 @@ def install_rustup(nstep: int, num_steps: int) -> None:
     run_shell_cmd_with_log(LOG_FILE, "w", cmd, timeout_seconds=TIMEOUT_SECONDS)
 
 
-def install_wasm32_wasi(nstep: int, num_steps: int) -> None:
-    """Installs rust wasm32-wasi target into user's icpp folder"""
-    typer.echo(f"- {nstep}/{num_steps} Installing wasm32-wasi target for rust compiler")
-    cmd = f"{config_default.RUSTUP} target add wasm32-wasi "
+def install_wasm32_wasip1(nstep: int, num_steps: int) -> None:
+    """Installs rust wasm32-wasip1 target into user's icpp folder"""
+    typer.echo(
+        f"- {nstep}/{num_steps} Installing wasm32-wasip1 target for rust compiler"
+    )
+    cmd = f"{config_default.RUSTUP} target add wasm32-wasip1 "
     run_shell_cmd_with_log(LOG_FILE, "a", cmd, timeout_seconds=TIMEOUT_SECONDS)
 
 
@@ -102,7 +104,7 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
         timeout_seconds=TIMEOUT_SECONDS,
     )
 
-    cmd = f"{config_default.CARGO} build --release --target wasm32-wasi "
+    cmd = f"{config_default.CARGO} build --release --target wasm32-wasip1 "
 
     #
     # The 'transient' feature use the transient file system implementation.
@@ -150,7 +152,7 @@ def install_rust() -> None:
         install_rustup(nstep, num_steps)
         nstep += 1
 
-        install_wasm32_wasi(nstep, num_steps)
+        install_wasm32_wasip1(nstep, num_steps)
         nstep += 1
 
         install_wasi2ic(nstep, num_steps)

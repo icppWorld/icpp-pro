@@ -16,6 +16,11 @@ OS_SYSTEM = platform.system()
 OS_PROCESSOR = platform.processor()
 
 #######################################################################
+# See: https://github.com/onicai/icpp_pro_messaging_canister
+ICPP_PRO_MESSAGING_CANISTER = "ahlje-dqaaa-aaaag-aua5q-cai"
+ICPP_PRO_MESSAGING_CANISTER_DEFAULT_MESSAGE = "Thank you for using icpp-pro 💻️"
+
+#######################################################################
 # Paths for logs & to install dependencies (wasi-sdk, rust, ...)
 ICPP_ROOT = Path.home() / ".icpp"
 ICPP_LOGS = ICPP_ROOT / "logs"

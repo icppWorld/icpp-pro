@@ -4,6 +4,7 @@
 import sys
 import platform
 import os
+import json
 from pathlib import Path
 import subprocess
 import shutil
@@ -247,3 +248,23 @@ def build_native(
 
     # ----------------------------------------------------------------------
     typer.echo("-----")
+
+    icpp_pro_messaging_canister_message = (
+        config_default.ICPP_PRO_MESSAGING_CANISTER_DEFAULT_MESSAGE
+    )
+    try:
+        cmd = (
+            f"dfx canister call {config_default.ICPP_PRO_MESSAGING_CANISTER} "
+            f"get_message --ic --output json"
+        )
+        response_str = run_shell_cmd(cmd, capture_output=True)
+        if response_str is not None:
+            response = json.loads(response_str)
+            if "Ok" in response and "message" in response["Ok"]:
+                icpp_pro_messaging_canister_message = response["Ok"]["message"]
+    except:  # pylint: disable=bare-except
+        pass
+
+    typer.echo(icpp_pro_messaging_canister_message)
+    typer.echo("-----")
+    # ----------------------------------------------------------------------

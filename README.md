@@ -5,15 +5,13 @@
 
 icpp-pro is a cdk to develop C++ smart contracts for the  [Internet Computer](https://internetcomputer.org/):
 
-# Internet Computer C++ Bootcamp
+# In the wild
 
-We are working on the Internet Computer C++ Bootcamp
+Check out these real world on-chain AI examples build with icpp-pro:
 
-You can support it by purchasing an [ICPP Art NFT at bioniq](https://bioniq.io/collection/icpp-art/inscriptions) 🎨✨
-
-We use the proceeds towards development of the C++ bootcamp. 🚀
-
-Learn more about the art pieces at [icpp-art.com](https://icpp-art.com/)
+- [funnai.onicai.com](https://funnai.onicai.com/) ✨
+- [llama_cpp_canister](https://github.com/onicai/llama_cpp_canister) ✨
+- [IConfucius](https://github.com/onicai/IConfucius) ✨
 
 --- 
 

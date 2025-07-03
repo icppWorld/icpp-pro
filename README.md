@@ -10,8 +10,9 @@ icpp-pro is a cdk to develop C++ smart contracts for the  [Internet Computer](ht
 Check out these real world on-chain AI examples build with icpp-pro:
 
 - [funnai.onicai.com](https://funnai.onicai.com/) ✨
-- [llama_cpp_canister](https://github.com/onicai/llama_cpp_canister) ✨
+- [icgpt.onicai.com](https://icgpt.onicai.com/) ✨
 - [IConfucius](https://github.com/onicai/IConfucius) ✨
+- [llama_cpp_canister](https://github.com/onicai/llama_cpp_canister) ✨
 
 --- 
 

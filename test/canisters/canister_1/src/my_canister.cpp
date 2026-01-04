@@ -558,7 +558,7 @@ void roundtrip_vec_record_variant() {
   // Use "record of vecs" pattern like CandidTypeVecRecord
 
   std::vector<std::string> principals;
-  std::vector<std::string> roles;  // will hold the variant labels
+  std::vector<std::string> roles; // will hold the variant labels
   std::vector<std::string> assignedBys;
   std::vector<uint64_t> assignedAts;
   std::vector<std::string> notes;

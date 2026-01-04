@@ -505,6 +505,116 @@ void roundtrip_vec_record() {
   ic_api.to_wire(CandidTypeVecRecord{r_out});
 }
 
+void roundtrip_vec_variant() {
+  // This tests a vector of unit variants (variants with no associated data)
+  // Example: vec { variant { AdminQuery }; variant { AdminUpdate } }
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+
+  // Create a template variant with the valid options
+  CandidTypeVariant v_template;
+  v_template.append("AdminQuery", CandidTypeNull{});
+  v_template.append("AdminUpdate", CandidTypeNull{});
+
+  // Vector to receive the decoded labels
+  std::vector<std::string> labels;
+
+  ic_api.from_wire(CandidTypeVecVariant{&v_template, &labels});
+
+  // ---------------------------------------------------------------------------
+  // Verify the data
+  if (labels.size() == 0)
+    IC_API::trap("ASSERT ERROR no labels found - " + std::string(__func__));
+
+  // Each label should be either "AdminQuery" or "AdminUpdate"
+  for (const auto &label : labels) {
+    if (label != "AdminQuery" && label != "AdminUpdate")
+      IC_API::trap("ASSERT ERROR invalid label '" + label + "' - " +
+                   std::string(__func__));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Return the data over the wire
+
+  // Create output template variant
+  CandidTypeVariant v_template_out;
+  v_template_out.append("AdminQuery", CandidTypeNull{});
+  v_template_out.append("AdminUpdate", CandidTypeNull{});
+
+  ic_api.to_wire(CandidTypeVecVariant{v_template_out, labels});
+}
+
+void roundtrip_vec_record_variant() {
+  // This tests a vector of records where each record contains a variant field
+  // Similar to the AdminRoleAssignment type used in llama_cpp_canister:
+  // vec record { principal: text; role: variant { AdminQuery; AdminUpdate };
+  //              assignedBy: text; assignedAt: nat64; note: text }
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+
+  // ---------------------------------------------------------------------------
+  // Get the data from the wire
+  // Use "record of vecs" pattern like CandidTypeVecRecord
+
+  std::vector<std::string> principals;
+  std::vector<std::string> roles;  // will hold the variant labels
+  std::vector<std::string> assignedBys;
+  std::vector<uint64_t> assignedAts;
+  std::vector<std::string> notes;
+
+  // Create template variant for the role field
+  CandidTypeVariant role_template;
+  role_template.append("AdminQuery", CandidTypeNull{});
+  role_template.append("AdminUpdate", CandidTypeNull{});
+
+  CandidTypeRecord r_in;
+  r_in.append("principal", CandidTypeVecText{&principals});
+  r_in.append("role", CandidTypeVecVariant{&role_template, &roles});
+  r_in.append("assignedBy", CandidTypeVecText{&assignedBys});
+  r_in.append("assignedAt", CandidTypeVecNat64{&assignedAts});
+  r_in.append("note", CandidTypeVecText{&notes});
+
+  ic_api.from_wire(CandidTypeVecRecord{&r_in});
+
+  // ---------------------------------------------------------------------------
+  // Verify the data
+  if (principals.size() == 0)
+    IC_API::trap("ASSERT ERROR no records found - " + std::string(__func__));
+
+  // All vectors should have the same size
+  if (principals.size() != roles.size() ||
+      principals.size() != assignedBys.size() ||
+      principals.size() != assignedAts.size() ||
+      principals.size() != notes.size())
+    IC_API::trap("ASSERT ERROR vector sizes don't match - " +
+                 std::string(__func__));
+
+  // Each role should be either "AdminQuery" or "AdminUpdate"
+  for (const auto &role : roles) {
+    if (role != "AdminQuery" && role != "AdminUpdate")
+      IC_API::trap("ASSERT ERROR invalid role '" + role + "' - " +
+                   std::string(__func__));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Return the data over the wire
+
+  // Create output template variant
+  CandidTypeVariant role_template_out;
+  role_template_out.append("AdminQuery", CandidTypeNull{});
+  role_template_out.append("AdminUpdate", CandidTypeNull{});
+
+  CandidTypeRecord r_out;
+  r_out.append("principal", CandidTypeVecText{principals});
+  r_out.append("role", CandidTypeVecVariant{role_template_out, roles});
+  r_out.append("assignedBy", CandidTypeVecText{assignedBys});
+  r_out.append("assignedAt", CandidTypeVecNat64{assignedAts});
+  r_out.append("note", CandidTypeVecText{notes});
+
+  ic_api.to_wire(CandidTypeVecRecord{r_out});
+}
+
 void roundtrip_vec_all() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 

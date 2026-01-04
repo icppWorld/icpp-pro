@@ -66,6 +66,9 @@ service: {
     "caller_is_controller" : () -> (bool) query;
     "roundtrip_vec_nat16" : (vec nat16) -> (vec nat16) query;
     "roundtrip_vec_record" : (vec record { name: text; value: text }) -> (vec record { name: text; value: text }) query;
+    "roundtrip_vec_variant" : (vec variant { AdminQuery; AdminUpdate }) -> (vec variant { AdminQuery; AdminUpdate }) query;
+    "roundtrip_vec_record_variant" : (vec record { "principal": text; role: variant { AdminQuery; AdminUpdate }; assignedBy: text; assignedAt: nat64; note: text }) ->
+                                     (vec record { "principal": text; role: variant { AdminQuery; AdminUpdate }; assignedBy: text; assignedAt: nat64; note: text }) query;
     "roundtrip_vec_all" : (vec bool, vec nat, vec nat8, vec nat16, vec nat32, vec nat64, vec int, vec int8, vec int16, vec int32, vec int64, vec float32, vec float64, vec text, vec principal) -> 
                           (vec bool, vec nat, vec nat8, vec nat16, vec nat32, vec nat64, vec int, vec int8, vec int16, vec int32, vec int64, vec float32, vec float64, vec text, vec principal) 
                           query;

@@ -336,6 +336,31 @@ int main() {
       "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e",
       silent_on_trap, my_principal);
 
+  // '(vec { variant { AdminQuery }; variant { AdminUpdate }; variant { AdminQuery } })'
+  // -> same (icpp generates a more verbose type table)
+  // Use compact type table of didc
+  mockIC.run_test(
+      "roundtrip_vec_variant", roundtrip_vec_variant,
+      "4449444c026d016b0299d8ddf2087fd8a7f6ae0b7f010003000100",
+      "4449444c046b0299d8ddf2087fd8a7f6ae0b7f6b006b0299d8ddf2087fd8a7f6ae0b7f6d02010303000100",
+      silent_on_trap, my_principal);
+  // Use larger type table of icpp
+  mockIC.run_test(
+      "roundtrip_vec_variant 2", roundtrip_vec_variant,
+      "4449444c046b0299d8ddf2087fd8a7f6ae0b7f6b006b0299d8ddf2087fd8a7f6ae0b7f6d02010303000100",
+      "4449444c046b0299d8ddf2087fd8a7f6ae0b7f6b006b0299d8ddf2087fd8a7f6ae0b7f6d02010303000100",
+      silent_on_trap, my_principal);
+
+  // vec record { "principal": text; role: variant { AdminQuery; AdminUpdate }; assignedBy: text; assignedAt: nat64; note: text }
+  // Tests the complex type pattern used in llama_cpp_canister's getAdminRoles
+  // Note: The output type table is larger than the input because VecRecord re-encodes
+  // each record with its own variant type table entries, but values are semantically equivalent
+  mockIC.run_test(
+      "roundtrip_vec_record_variant", roundtrip_vec_record_variant,
+      "4449444c036d016c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd04026b0299d8ddf2087fd8a7f6ae0b7f010002076162632d313233d2029649000000000a636f6e74726f6c6c65720474657374000778797a2d373839ea16b04c020000000b636f6e74726f6c6c65723205746573743201",
+      "4449444c0f6b0299d8ddf2087fd8a7f6ae0b7f6c05ae9db1900102e1e194b40206c5e394b40202f2afa8c80402f6d6bbdd04056d716b006b0299d8ddf2087fd8a7f6ae0b7f6d046d786c006c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd04096b0299d8ddf2087fd8a7f6ae0b7f6d086c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd040c6b0299d8ddf2087fd8a7f6ae0b7f6c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd040e6b0299d8ddf2087fd8a7f6ae0b7f010a02076162632d313233d2029649000000000a636f6e74726f6c6c65720474657374000778797a2d373839ea16b04c020000000b636f6e74726f6c6c65723205746573743201",
+      silent_on_trap, my_principal);
+
   // '(vec { true : bool; false : bool }, vec { 101 : nat; 102 : nat; 103 : nat }, vec { 101 : nat8; 102 : nat8; 103 : nat8 }, vec { 101 : nat16; 102 : nat16; 103 : nat16 }, vec { 101 : nat32; 102 : nat32; 103 : nat32 }, vec { 101 : nat64; 102 : nat64; 103 : nat64 }, vec { -101 : int; -102 : int; -103 : int }, vec { -101 : int8; -102 : int8; -103 : int8 }, vec { -101 : int16; -102 : int16; -103 : int16 }, vec { -101 : int32; -102 : int32; -103 : int32 }, vec { -101 : int64; -102 : int64; -103 : int64 }, vec { -1.01 : float32; -1.02 : float32; -1.03 : float32 }, vec { -1.01 : float64; -1.02 : float64; -1.03 : float64 }, vec { "Hello 101" : text; "Hello 102" : text; "Hello 103" : text }, vec { principal "2ibo7-dia"; principal "w3gef-eqbai"; principal "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae"})'
   // -> same
   mockIC.run_test(

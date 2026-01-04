@@ -722,6 +722,36 @@ def test__roundtrip_vec_record_2(network: str, principal: str) -> None:
     assert response == expected_response
 
 
+def test__roundtrip_vec_variant(network: str, principal: str) -> None:
+    """Test vec variant { AdminQuery; AdminUpdate }"""
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_vec_variant",
+        canister_argument="4449444c026d016b0299d8ddf2087fd8a7f6ae0b7f010003000100",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c046b0299d8ddf2087fd8a7f6ae0b7f6b006b0299d8ddf2087fd8a7f6ae0b7f6d02010303000100"
+    assert response == expected_response
+
+
+def test__roundtrip_vec_record_variant(network: str, principal: str) -> None:
+    """Test vec record with variant field - pattern used in llama_cpp_canister's getAdminRoles"""
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_vec_record_variant",
+        canister_argument="4449444c036d016c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd04026b0299d8ddf2087fd8a7f6ae0b7f010002076162632d313233d2029649000000000a636f6e74726f6c6c65720474657374000778797a2d373839ea16b04c020000000b636f6e74726f6c6c65723205746573743201",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    expected_response = "4449444c0f6b0299d8ddf2087fd8a7f6ae0b7f6c05ae9db1900102e1e194b40206c5e394b40202f2afa8c80402f6d6bbdd04056d716b006b0299d8ddf2087fd8a7f6ae0b7f6d046d786c006c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd04096b0299d8ddf2087fd8a7f6ae0b7f6d086c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd040c6b0299d8ddf2087fd8a7f6ae0b7f6c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd040e6b0299d8ddf2087fd8a7f6ae0b7f010a02076162632d313233d2029649000000000a636f6e74726f6c6c65720474657374000778797a2d373839ea16b04c020000000b636f6e74726f6c6c65723205746573743201"
+    assert response == expected_response
+
+
 def test__roundtrip_vec_all(network: str, principal: str) -> None:
     response = call_canister_api(
         dfx_json_path=DFX_JSON_PATH,

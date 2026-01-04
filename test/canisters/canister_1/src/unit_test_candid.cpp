@@ -146,6 +146,73 @@ int unit_test_candid() {
       IC_API::trap(std::string(__func__) + ": 4c");
   }
 
+  { // Verify serialization & deserialization of CandidTypeVecVariant (unit variants)
+    // didc encode '(vec { variant { AdminQuery }; variant { AdminUpdate }; variant { AdminQuery } })'
+    // Note: We test unit variants where the variant options have no associated data
+
+    { // serialize
+      CandidSerializeTypeTableRegistry::get_instance().clear();
+
+      // Create a template variant with the valid options
+      CandidTypeVariant v_template;
+      v_template.append("AdminQuery", CandidTypeNull{});
+      v_template.append("AdminUpdate", CandidTypeNull{});
+
+      // Vector of selected labels
+      std::vector<std::string> labels = {"AdminQuery", "AdminUpdate",
+                                         "AdminQuery"};
+
+      CandidArgs A;
+      A.append(CandidTypeVecVariant{v_template, labels});
+
+      std::string s = CandidSerialize(A).as_hex_string();
+      // Verify it starts with DIDL and has expected structure
+      if (s.substr(0, 8) != "4449444c")
+        IC_API::trap(std::string(__func__) + ": vec_variant 1a - bad magic");
+      // The hex should encode: vec of 3 variants with indices 0, 1, 0
+      // Type table + vec length (3) + values (0, 1, 0)
+    }
+
+    { // deserialize
+      CandidSerializeTypeTableRegistry::get_instance().clear();
+
+      // Create a template variant with the valid options
+      CandidTypeVariant v_template;
+      v_template.append("AdminQuery", CandidTypeNull{});
+      v_template.append("AdminUpdate", CandidTypeNull{});
+
+      // Vector to receive the decoded labels
+      std::vector<std::string> labels;
+
+      CandidArgs A;
+      A.append(CandidTypeVecVariant{&v_template, &labels});
+
+      // First serialize to get the hex string
+      CandidSerializeTypeTableRegistry::get_instance().clear();
+      CandidTypeVariant v_template_encode;
+      v_template_encode.append("AdminQuery", CandidTypeNull{});
+      v_template_encode.append("AdminUpdate", CandidTypeNull{});
+      std::vector<std::string> labels_encode = {"AdminQuery", "AdminUpdate",
+                                                "AdminQuery"};
+      CandidArgs A_encode;
+      A_encode.append(CandidTypeVecVariant{v_template_encode, labels_encode});
+      std::string hex = CandidSerialize(A_encode).as_hex_string();
+
+      // Now deserialize
+      CandidSerializeTypeTableRegistry::get_instance().clear();
+      CandidDeserialize(hex, A);
+
+      if (labels.size() != 3)
+        IC_API::trap(std::string(__func__) + ": vec_variant 1b - wrong size");
+      if (labels[0] != "AdminQuery")
+        IC_API::trap(std::string(__func__) + ": vec_variant 1c - labels[0]");
+      if (labels[1] != "AdminUpdate")
+        IC_API::trap(std::string(__func__) + ": vec_variant 1d - labels[1]");
+      if (labels[2] != "AdminQuery")
+        IC_API::trap(std::string(__func__) + ": vec_variant 1e - labels[2]");
+    }
+  }
+
   // Verify CandidTypePrincipal (https://internetcomputer.org/docs/current/references/id-encoding-spec#decode)
   {
     CandidSerializeTypeTableRegistry::get_instance().clear();

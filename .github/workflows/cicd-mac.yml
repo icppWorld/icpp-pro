@@ -16,8 +16,8 @@ jobs:
     strategy:
       matrix:
         python-version: [3.9, 3.11]
-        # macos-13 is an intel runner, macos-14 is apple silicon
-        os: [macos-13, macos-14]
+        # macos-15-intel for Intel, macos-latest for Apple Silicon arm64
+        os: [macos-15-intel, macos-latest]
 
     runs-on: ${{ matrix.os }}
     

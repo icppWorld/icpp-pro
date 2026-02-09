@@ -6,4 +6,4 @@ Defines the version for the compatible rust compiler.
 
 """
 
-__version__ = "1.86.0"
+__version__ = "1.87.0"

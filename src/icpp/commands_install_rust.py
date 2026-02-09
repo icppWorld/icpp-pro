@@ -63,6 +63,13 @@ def install_wasi2ic(nstep: int, num_steps: int) -> None:
     )
 
     cmd = f"git switch --detach {__version_wasi2ic__} "
+    run_shell_cmd_with_log(
+        LOG_FILE,
+        "a",
+        cmd,
+        cwd=config_default.RUST_COMPILER_ROOT / "wasi2ic",
+        timeout_seconds=TIMEOUT_SECONDS,
+    )
 
     cmd = (
         f"{config_default.CARGO} install "

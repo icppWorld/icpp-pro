@@ -26,6 +26,13 @@ pip install icpp-pro
 
 The docs can be found [here](https://docs.icpp.world)
 
+## Source Code
+
+The source code is open source and available at:
+
+- [icpp-pro](https://github.com/icppWorld/icpp-pro)
+- [icpp-candid](https://github.com/icppWorld/icpp-candid)
+
 ## Community
 
 Please join our [C++ community on OpenChat](https://oc.app/community/cklkv-3aaaa-aaaar-ar7uq-cai/?ref=6e3y2-4yaaa-aaaaf-araya-cai)

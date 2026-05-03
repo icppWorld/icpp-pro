@@ -68,6 +68,8 @@ void ic0_stable_read(uintptr_t dst, uint32_t off, uint32_t size);
 
 uint64_t ic0_time();
 
+uint64_t ic0_global_timer_set(uint64_t timestamp_ns);
+
 uint32_t ic0_is_controller(uintptr_t src, uint32_t size);
 
 void ic0_debug_print(uintptr_t src, uint32_t size);

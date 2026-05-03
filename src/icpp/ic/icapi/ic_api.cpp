@@ -20,6 +20,7 @@
 #include <string>
 
 #include "ic0.h"
+#include "ic_timers.h"
 
 // ----------------------------------------------------------
 
@@ -31,17 +32,25 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
     : m_canister_entry(canister_entry), m_debug_print(dbug) {
   // Always start with a clean type table registry in the registry singleton
   CandidSerializeTypeTableRegistry::get_instance().clear();
-  // Fill 'm_B_in' with the bytes of msg_arg_data
-  std::vector<uint8_t> bytes(ic0_msg_arg_data_size());
-  ic0_msg_arg_data_copy(reinterpret_cast<uintptr_t>(bytes.data()), 0,
-                        bytes.size());
-  m_B_in.store(bytes.data(), bytes.size());
 
-  // Get the principal of caller
-  std::vector<uint8_t> bytes_caller(ic0_msg_caller_size());
-  ic0_msg_caller_copy(reinterpret_cast<uintptr_t>(bytes_caller.data()), 0,
-                      bytes_caller.size());
-  m_caller = CandidTypePrincipal(bytes_caller);
+  // ic0.msg_arg_data_* and ic0.msg_caller_* are not available in T (timer /
+  // heartbeat) entries — the IC traps if we call them. Skip both sections
+  // for those entries; m_B_in stays empty and m_caller stays default.
+  const bool has_msg_context = !m_canister_entry.is_entry_T();
+
+  if (has_msg_context) {
+    // Fill 'm_B_in' with the bytes of msg_arg_data
+    std::vector<uint8_t> bytes(ic0_msg_arg_data_size());
+    ic0_msg_arg_data_copy(reinterpret_cast<uintptr_t>(bytes.data()), 0,
+                          bytes.size());
+    m_B_in.store(bytes.data(), bytes.size());
+
+    // Get the principal of caller
+    std::vector<uint8_t> bytes_caller(ic0_msg_caller_size());
+    ic0_msg_caller_copy(reinterpret_cast<uintptr_t>(bytes_caller.data()), 0,
+                        bytes_caller.size());
+    m_caller = CandidTypePrincipal(bytes_caller);
+  }
 
   // Get  canister id
   std::vector<uint8_t> bytes_canister_self(ic0_canister_self_size());
@@ -52,11 +61,15 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
 
   if (m_debug_print) {
     debug_print("\n--");
-    debug_print("IC_API caller's principal       :" + m_caller.get_text());
+    if (has_msg_context) {
+      debug_print("IC_API caller's principal       :" + m_caller.get_text());
+    }
     debug_print("IC_API canister_self's principal:" +
                 m_canister_self.get_text());
-    debug_print("IC_API received these bytes over the wire:");
-    m_B_in.debug_print();
+    if (has_msg_context) {
+      debug_print("IC_API received these bytes over the wire:");
+      m_B_in.debug_print();
+    }
   }
 }
 
@@ -107,6 +120,23 @@ void IC_API::trap(const char *message) {
 void IC_API::trap(const std::string &s) { IC_API::trap(s.c_str()); }
 
 uint64_t IC_API::time() { return ic0_time(); }
+
+uint64_t IC_API::set_timer(uint64_t delay_ns, std::function<void()> cb) {
+  return IcTimers::instance().add_one_shot(delay_ns, std::move(cb));
+}
+
+uint64_t IC_API::set_timer_recurring(uint64_t period_ns,
+                                     std::function<void()> cb) {
+  return IcTimers::instance().add_recurring(period_ns, std::move(cb));
+}
+
+bool IC_API::cancel_timer(uint64_t id) {
+  return IcTimers::instance().cancel(id);
+}
+
+uint64_t IC_API::global_timer_set_raw(uint64_t timestamp_ns) {
+  return ic0_global_timer_set(timestamp_ns);
+}
 
 // DeSerialize the byte stream received over the wire
 void IC_API::from_wire(CandidArgs A) {

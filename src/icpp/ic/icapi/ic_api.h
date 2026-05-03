@@ -10,6 +10,7 @@
 
 #include <array>
 #include <deque>
+#include <functional>
 #include <list>
 #include <map>
 #include <set>
@@ -48,6 +49,19 @@ public:
 
   // docs start: demo_time
   static uint64_t time(); // docs end: demo_time
+
+  // Multi-timer scheduler layered on ic0.global_timer_set. Returns a
+  // non-zero id usable with cancel_timer.
+  // docs start: set_timer
+  static uint64_t set_timer(uint64_t delay_ns, std::function<void()> cb);
+  static uint64_t set_timer_recurring(uint64_t period_ns,
+                                      std::function<void()> cb);
+  static bool cancel_timer(uint64_t id); // docs end: set_timer
+
+  // Thin pass-through to ic0.global_timer_set for callers that want to
+  // bypass the IcTimers registry and manage scheduling themselves.
+  // Returns the previous deadline. timestamp_ns == 0 disarms.
+  static uint64_t global_timer_set_raw(uint64_t timestamp_ns);
 
   // docs start: get_caller
   CandidTypePrincipal get_caller(); // docs end: get_caller

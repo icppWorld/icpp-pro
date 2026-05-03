@@ -222,6 +222,24 @@ uint64_t ic0_time() {
   return time_in_ns;
 }
 
+// Mock IC does not actually fire timers. Native tests drive
+// canister_global_timer manually via MockIC::run_test. We just record the
+// last armed deadline so tests can introspect / log it, and return the
+// previous value as the IC interface spec requires.
+namespace {
+uint64_t g_mock_armed_global_timer{0};
+} // namespace
+
+uint64_t ic0_global_timer_set(uint64_t timestamp_ns) {
+  uint64_t previous = g_mock_armed_global_timer;
+  g_mock_armed_global_timer = timestamp_ns;
+#if ICPP_VERBOSE > 0
+  std::cout << "ic0mock ic0::global_timer_set -> " << timestamp_ns << " (was "
+            << previous << ")" << std::endl;
+#endif
+  return previous;
+}
+
 uint32_t ic0_is_controller(uintptr_t src, uint32_t size) {
   const uint8_t *p_bytes = reinterpret_cast<const uint8_t *>(src);
   std::vector<uint8_t> bytes(p_bytes, p_bytes + size);

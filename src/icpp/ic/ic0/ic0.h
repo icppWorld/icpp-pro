@@ -95,6 +95,9 @@ void ic0_stable_read(uint32_t dst, uint32_t off, uint32_t size)
 
 uint64_t ic0_time() WASM_SYMBOL_IMPORTED("ic0", "time");
 
+uint64_t ic0_global_timer_set(uint64_t timestamp_ns)
+    WASM_SYMBOL_IMPORTED("ic0", "global_timer_set");
+
 uint32_t ic0_is_controller(uint32_t src, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "is_controller");
 

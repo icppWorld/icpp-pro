@@ -134,10 +134,6 @@ bool IC_API::cancel_timer(uint64_t id) {
   return IcTimers::instance().cancel(id);
 }
 
-uint64_t IC_API::global_timer_set_raw(uint64_t timestamp_ns) {
-  return ic0_global_timer_set(timestamp_ns);
-}
-
 // DeSerialize the byte stream received over the wire
 void IC_API::from_wire(CandidArgs A) {
   if (m_called_from_wire) {

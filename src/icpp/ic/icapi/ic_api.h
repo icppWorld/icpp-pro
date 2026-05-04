@@ -58,10 +58,13 @@ public:
                                       std::function<void()> cb);
   static bool cancel_timer(uint64_t id); // docs end: set_timer
 
-  // Thin pass-through to ic0.global_timer_set for callers that want to
-  // bypass the IcTimers registry and manage scheduling themselves.
-  // Returns the previous deadline. timestamp_ns == 0 disarms.
-  static uint64_t global_timer_set_raw(uint64_t timestamp_ns);
+  // Note: rev0 also exposed `IC_API::global_timer_set_raw(timestamp_ns)`
+  // as a thin pass-through to ic0.global_timer_set. It was removed in
+  // rev1 because mixing it with the IcTimers registry desynchronized the
+  // armed-deadline cache (the wrapper bypassed IcTimers but was named as
+  // if it composed with it). Callers that genuinely want raw access can
+  // `#include "ic0.h"` and call `ic0_global_timer_set` directly — the
+  // conflict with IcTimers is then explicit at the call site.
 
   // docs start: get_caller
   CandidTypePrincipal get_caller(); // docs end: get_caller

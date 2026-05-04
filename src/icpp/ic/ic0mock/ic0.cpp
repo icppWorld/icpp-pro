@@ -214,7 +214,23 @@ void ic0_stable_read(uintptr_t dst, uint32_t off, uint32_t size) {
   std::cout << "...doing nothing..." << std::endl;
 }
 
+// Mock-IC-only state: last armed global-timer deadline, an invocation
+// counter so tests can prove arm_next() actually issued an ic0 syscall, and
+// a time override (flag + value pair, so clearing flips the flag without
+// silently pinning time at 0). All exposed via the accessor / control
+// helpers further below; native test drivers use them to drive scenarios
+// that wall-clock alone would undermine.
+namespace {
+uint64_t g_mock_armed_global_timer{0};
+uint64_t g_mock_global_timer_set_call_count{0};
+bool g_mock_time_overridden{false};
+uint64_t g_mock_time_override_ns{0};
+} // namespace
+
 uint64_t ic0_time() {
+  if (g_mock_time_overridden) {
+    return g_mock_time_override_ns;
+  }
   uint64_t time_in_ns =
       std::chrono::duration_cast<std::chrono::nanoseconds>(
           std::chrono::high_resolution_clock::now().time_since_epoch())
@@ -222,22 +238,31 @@ uint64_t ic0_time() {
   return time_in_ns;
 }
 
-// Mock IC does not actually fire timers. Native tests drive
-// canister_global_timer manually via MockIC::run_test. We just record the
-// last armed deadline so tests can introspect / log it, and return the
-// previous value as the IC interface spec requires.
-namespace {
-uint64_t g_mock_armed_global_timer{0};
-} // namespace
-
 uint64_t ic0_global_timer_set(uint64_t timestamp_ns) {
   uint64_t previous = g_mock_armed_global_timer;
   g_mock_armed_global_timer = timestamp_ns;
+  ++g_mock_global_timer_set_call_count;
 #if ICPP_VERBOSE > 0
   std::cout << "ic0mock ic0::global_timer_set -> " << timestamp_ns << " (was "
             << previous << ")" << std::endl;
 #endif
   return previous;
+}
+
+uint64_t ic0mock_global_timer_set_call_count() {
+  return g_mock_global_timer_set_call_count;
+}
+
+void ic0mock_set_time_override(uint64_t time_ns) {
+  g_mock_time_overridden = true;
+  g_mock_time_override_ns = time_ns;
+}
+
+void ic0mock_clear_time_override() {
+  // Flip the flag only; do not zero the override value. If a subsequent test
+  // forgot to call set_override and we had reset the value to 0, ic0_time()
+  // would silently pin to 0 instead of returning wall-clock.
+  g_mock_time_overridden = false;
 }
 
 uint32_t ic0_is_controller(uintptr_t src, uint32_t size) {

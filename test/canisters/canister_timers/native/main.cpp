@@ -18,6 +18,12 @@
 #include "icpp_hooks.h"
 #include "mock_ic.h"
 
+// In the native build the include path resolves "ic0.h" to the ic0mock
+// header, which exposes the mock-only test helpers
+// (ic0mock_global_timer_set_call_count, ic0mock_set_time_override,
+// ic0mock_clear_time_override) used by the cache-stranding regression below.
+#include "ic0.h"
+
 #include "../src/my_canister.h"
 
 namespace {
@@ -38,7 +44,12 @@ int expect_eq_u64(const char *label, uint64_t actual, uint64_t expected) {
 } // namespace
 
 int main() {
-  bool exit_on_fail = true;
+  // exit_on_fail = false so a failing run_test does not call exit(1) and
+  // bypass the cleanup code below (in particular, ic0mock_clear_time_override
+  // calls in the time-pinned regression scenario). Failures are aggregated
+  // via mockIC.test_summary() + extra_failures; main() returns the OR of
+  // both at the end.
+  bool exit_on_fail = false;
   MockIC mockIC(exit_on_fail);
 
   std::string my_principal{
@@ -125,6 +136,81 @@ int main() {
                                   g_one_shot_count, before + 15);
   extra_failures += expect_eq_u64("registry empty after second drain",
                                   IcTimers::instance().size(), 0);
+
+  // ---- Cache-stranding regression (the High #1 bug from the rev1 review) --
+  // Without time-override, 15 successive set_timer(0,...) calls produce 15
+  // different deadlines (wall-clock advances between them) and the bug's
+  // exact pre-condition (remaining earliest deadline equals the
+  // previously-armed deadline) does not hold. We pin time so all 15 land at
+  // the same deadline, then dispatch and assert that arm_next() actually
+  // re-armed at the same deadline value. Without the fix in
+  // IcTimers::dispatch_due (which sets m_armed_deadline = 0 at entry),
+  // arm_next() would skip the syscall and the remaining 5 timers would be
+  // permanently stranded.
+  ic0mock_set_time_override(1000);
+  uint64_t cnt_before = ic0mock_global_timer_set_call_count();
+  uint64_t shots_before = g_one_shot_count;
+  for (int i = 0; i < 15; ++i) {
+    IC_API::set_timer(0, []() { ++g_one_shot_count; });
+  }
+  extra_failures +=
+      expect_eq_u64("[pinned] registry size before dispatch with 15 timers",
+                    IcTimers::instance().size(), 15);
+
+  // Advance the override past the deadline (which is 1000 + 0 = 1000).
+  ic0mock_set_time_override(2000);
+
+  // First dispatch: drain 10 of 15.
+  uint64_t cnt_a = ic0mock_global_timer_set_call_count();
+  mockIC.run_test("[pinned] canister_global_timer (drain 10 of 15)",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  uint64_t cnt_b = ic0mock_global_timer_set_call_count();
+  extra_failures += expect_eq_u64(
+      "[pinned] ic0_global_timer_set call delta after first dispatch",
+      cnt_b - cnt_a, 1);
+  extra_failures +=
+      expect_eq_u64("[pinned] g_one_shot_count delta after first dispatch",
+                    g_one_shot_count - shots_before, 10);
+  extra_failures +=
+      expect_eq_u64("[pinned] registry size after first dispatch (5 left)",
+                    IcTimers::instance().size(), 5);
+
+  // Second dispatch: drain remaining 5 (under the 10-per-tick cap). Note
+  // we expect a delta of 0 here, not 1. After draining, the registry is
+  // empty, so arm_next() computes target = 0 ("disarm"). The cache fix
+  // also set m_armed_deadline = 0 at function entry, so target == cache
+  // and arm_next legitimately skips the syscall — disarming an already-
+  // disarmed IC is wasteful. The interesting assertion is the FIRST
+  // dispatch's delta above (which would be 0 without the cache fix and
+  // is 1 with it).
+  uint64_t cnt_c = ic0mock_global_timer_set_call_count();
+  mockIC.run_test("[pinned] canister_global_timer (drain remaining 5)",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  uint64_t cnt_d = ic0mock_global_timer_set_call_count();
+  extra_failures += expect_eq_u64(
+      "[pinned] ic0_global_timer_set call delta after second dispatch (registry empty -> already disarmed -> skip)",
+      cnt_d - cnt_c, 0);
+  extra_failures +=
+      expect_eq_u64("[pinned] g_one_shot_count delta total", g_one_shot_count,
+                    shots_before + 15);
+  extra_failures +=
+      expect_eq_u64("[pinned] registry empty after second dispatch",
+                    IcTimers::instance().size(), 0);
+
+  // Total syscall count for the whole scenario: one when the first set_timer
+  // armed the IC at deadline 1000, plus one when the first dispatch re-armed
+  // at the same deadline 1000 (the cache fix forced this through). The second
+  // dispatch contributes 0 (see comment above). Total: 2.
+  extra_failures += expect_eq_u64(
+      "[pinned] ic0_global_timer_set total scenario delta",
+      ic0mock_global_timer_set_call_count() - cnt_before, 2);
+
+  // Always clear the override before main() returns. Pattern A (this whole
+  // runner uses exit_on_fail=false) means we reach this line even on
+  // assertion failure, so a single clear at scenario end is sufficient.
+  ic0mock_clear_time_override();
 
   std::cout << "\n----------\n";
   std::cout << "Extra direct-state assertions: "

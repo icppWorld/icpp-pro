@@ -55,6 +55,14 @@ void IcTimers::arm_next() {
 }
 
 void IcTimers::dispatch_due(uint64_t now_ns) {
+  // The IC fired our one-shot global timer to invoke this entry, so whatever
+  // we had armed is consumed at the IC level. Invalidate the cache so
+  // arm_next() will re-arm unconditionally — otherwise, when the remaining
+  // earliest deadline equals the previously-armed value (e.g. >MAX_PER_TICK
+  // timers all sharing a deadline), arm_next would skip the syscall and the
+  // remaining timers would be permanently stranded.
+  m_armed_deadline = 0;
+
   std::vector<std::function<void()>> to_run;
   to_run.reserve(MAX_PER_TICK);
 

@@ -70,12 +70,15 @@ public:
   // discarded anyway.
   //
   // Current-dispatch semantics: if called from inside a timer callback,
-  // callbacks already collected into the in-flight dispatch_due() batch
-  // will still execute — they were copied to a local vector before any
-  // callback ran. What is cancelled is *future* firings: any recurring
-  // timer's just-rescheduled next deadline, plus any one-shot timers not
-  // yet drained from the multimap. The IC's global timer is disarmed and
-  // stays disarmed until something else calls a set_timer* API.
+  // any due timer in the same dispatch batch that has NOT yet executed
+  // is also cancelled — dispatch_due() looks each id up in the registry
+  // at execute time and skips entries that have been removed. (Recurring
+  // timers had their next deadline rescheduled during the batch's gather
+  // phase; cancel_all_timers() removes them too, so they don't fire then
+  // or later.) The currently-executing callback is not interrupted and
+  // any callbacks that have already returned in this batch keep their
+  // observable effects. The IC's global timer is disarmed and stays
+  // disarmed until something else calls a set_timer* API.
   //
   // Raw-call interaction: users can still call ic0_global_timer_set
   // directly via #include "ic0.h". cancel_all_timers() only clears the

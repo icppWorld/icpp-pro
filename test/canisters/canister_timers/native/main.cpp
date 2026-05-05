@@ -224,10 +224,13 @@ int main() {
   // otherwise give them slightly different deadlines.
   //
   // Registration order is the test's intent: the cancelling timer is
-  // registered FIRST so its callback lands at the front of `to_run`. We
-  // want to prove that the OTHER two callbacks, copied into `to_run`
-  // before the cancel ran, still execute. Registering the cancelling
-  // timer last would prove nothing about post-cancel callback execution.
+  // registered FIRST so its callback runs first in this batch. After T1
+  // calls cancel_all_timers(), T2 and T3 — which are also "due" in this
+  // batch but have not yet run — must NOT fire, because dispatch_due
+  // looks them up in m_by_id at execute time and sees clear() removed
+  // them. (Earlier semantics copied callbacks into the batch up front and
+  // would have fired T2 and T3 anyway; that was observably-wrong cancel
+  // behavior and was changed in response to PR review.)
   ic0mock_set_time_override(1000);
   // Reset counters from earlier scenarios so the asserts below are scoped.
   IC_API::cancel_all_timers();
@@ -253,11 +256,11 @@ int main() {
   extra_failures +=
       expect_eq_u64("[cancel-from-cb] T1 callback ran", t1_count, 1);
   extra_failures += expect_eq_u64(
-      "[cancel-from-cb] T2 callback ran despite earlier cancel_all_timers",
-      t2_count, 1);
+      "[cancel-from-cb] T2 callback was cancelled mid-batch (did NOT run)",
+      t2_count, 0);
   extra_failures += expect_eq_u64(
-      "[cancel-from-cb] T3 callback ran despite earlier cancel_all_timers",
-      t3_count, 1);
+      "[cancel-from-cb] T3 callback was cancelled mid-batch (did NOT run)",
+      t3_count, 0);
   extra_failures +=
       expect_eq_u64("[cancel-from-cb] registry empty after dispatch",
                     IcTimers::instance().size(), 0);
@@ -276,10 +279,10 @@ int main() {
                   my_principal);
   extra_failures +=
       expect_eq_u64("[cancel-from-cb] T1 did not fire again", t1_count, 1);
-  extra_failures +=
-      expect_eq_u64("[cancel-from-cb] T2 did not fire again", t2_count, 1);
-  extra_failures +=
-      expect_eq_u64("[cancel-from-cb] T3 did not fire again", t3_count, 1);
+  extra_failures += expect_eq_u64(
+      "[cancel-from-cb] T2 still 0 after second dispatch", t2_count, 0);
+  extra_failures += expect_eq_u64(
+      "[cancel-from-cb] T3 still 0 after second dispatch", t3_count, 0);
 
   ic0mock_clear_time_override();
 

@@ -44,9 +44,10 @@ public:
   // Correctness beats saving one syscall.
   //
   // Current-dispatch semantics: if called from inside a timer callback,
-  // callbacks already collected into the in-flight dispatch_due() batch
-  // still execute (they were copied to a local vector before any callback
-  // ran). What is cancelled is *future* firings.
+  // due timers in the same batch that have NOT yet executed are also
+  // cancelled — dispatch_due() looks each id up in m_by_id at execute
+  // time, and clear() empties m_by_id, so post-clear lookups skip those
+  // entries. The currently-executing callback continues to completion.
   void clear();
 
   // Fire all timers whose deadline is <= now_ns, capped at MAX_PER_TICK.

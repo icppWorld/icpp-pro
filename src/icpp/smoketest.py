@@ -212,8 +212,11 @@ def get_canister_id(
                 "*******************************************"
             )
             pytest.exit(msg)
-        else:
-            response = f"Failed to get id of canister '{canister_name}':" f"{e.output}"
+        # pytest.fail raises, so canister_id never has to be defined for this
+        # path. The earlier code built `response` here and fell through to
+        # `return canister_id`, which raised UnboundLocalError and hid the
+        # real dfx error.
+        pytest.fail(f"Failed to get id of canister '{canister_name}': {e.output}")
 
     return canister_id
 
@@ -231,7 +234,11 @@ def get_local_webserver_port(
         )
         webserver_port = _strip_dfx_warnings(response).rstrip("\n")
     except subprocess.CalledProcessError as e:
-        response = f"Failed to get local network's webserver port:" f"{e.output}"
+        # pytest.fail raises so webserver_port never has to be defined for
+        # this path. The earlier code built a `response` string here and
+        # fell through to `return webserver_port`, which raised
+        # UnboundLocalError and hid the real dfx error.
+        pytest.fail(f"Failed to get local network's webserver port: {e.output}")
 
     return webserver_port
 

@@ -231,10 +231,14 @@ uint64_t ic0_time() {
   if (g_mock_time_overridden) {
     return g_mock_time_override_ns;
   }
-  uint64_t time_in_ns =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(
-          std::chrono::high_resolution_clock::now().time_since_epoch())
-          .count();
+  // steady_clock, not high_resolution_clock: the latter's is_steady is
+  // implementation-defined and on some libc++ targets aliases system_clock,
+  // which can move backward when the wall clock is adjusted. Native timer
+  // tests assume monotonicity (deadline math relies on it), so use the
+  // clock that is_steady is guaranteed to be true for.
+  uint64_t time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                            std::chrono::steady_clock::now().time_since_epoch())
+                            .count();
   return time_in_ns;
 }
 

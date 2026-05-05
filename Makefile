@@ -229,6 +229,12 @@ install-python:
 	# `python` is the conda env's interpreter — installs land in the wrong
 	# site-packages and `import icpp_candid` later fails. `python -m pip`
 	# is always the active interpreter's pip.
+	#
+	# `ensurepip` first: conda envs created via setup-miniconda with
+	# channel-priority=strict do NOT include pip by default, so the very
+	# first `python -m pip` would fail with "No module named pip".
+	# ensurepip is stdlib (no network) and bootstraps the bundled pip.
+	python -m ensurepip --upgrade
 	python -m pip install --upgrade pip
 	cd icpp-candid && rm -rf src/*.egg-info && python -m pip install -e ".[dev]"
 	rm -rf src/*.egg-info
@@ -236,7 +242,8 @@ install-python:
 
 .PHONY: install-python-w-demos
 install-python-w-demos:
-	# See the install-python comment above for why `python -m pip`.
+	# See the install-python comment above for `ensurepip` and `python -m pip`.
+	python -m ensurepip --upgrade
 	python -m pip install --upgrade pip
 	cd icpp-candid && rm -rf src/*.egg-info && python -m pip install -e ".[dev]"
 	rm -rf src/*.egg-info
@@ -246,6 +253,7 @@ install-python-w-demos:
 
 .PHONY: install-python-w-icpp-llm
 install-python-w-icpp-llm:
+	python -m ensurepip --upgrade
 	python -m pip install --upgrade pip
 	cd icpp-candid && rm -rf src/*.egg-info && python -m pip install -e ".[dev]"
 	rm -rf src/*.egg-info
@@ -254,6 +262,7 @@ install-python-w-icpp-llm:
 
 .PHONY: install-python-w-llama_cpp_canister
 install-python-w-llama_cpp_canister:
+	python -m ensurepip --upgrade
 	python -m pip install --upgrade pip
 	cd icpp-candid && rm -rf src/*.egg-info && python -m pip install -e ".[dev]"
 	rm -rf src/*.egg-info

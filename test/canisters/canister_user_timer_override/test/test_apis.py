@@ -42,20 +42,26 @@ def test__user_override_wins_on_real_ic(network: str, principal: str) -> None:
     assert timer_id > 0
 
     try:
-        # Bounded wait — recurring-timer firings are timing-dependent on a
-        # busy local replica. Sleep ~3 s to let the IC fire
-        # canister_global_timer at least once.
-        time.sleep(3.0)
-
-        # Query the three counters.
-        user_calls = _parse_nat64(
-            call_canister_api(
-                dfx_json_path=DFX_JSON_PATH,
-                canister_name=CANISTER_NAME,
-                canister_method="get_user_dispatcher_calls",
-                network=network,
+        # Poll until the user override has fired at least once, with a
+        # bounded deadline. This adapts to replica load — fixed sleeps were
+        # both flake-prone on busy boxes (too short) and wasteful on quiet
+        # ones (too long).
+        deadline = time.time() + 15.0
+        user_calls = 0
+        while time.time() < deadline:
+            user_calls = _parse_nat64(
+                call_canister_api(
+                    dfx_json_path=DFX_JSON_PATH,
+                    canister_name=CANISTER_NAME,
+                    canister_method="get_user_dispatcher_calls",
+                    network=network,
+                )
             )
-        )
+            if user_calls >= 1:
+                break
+            time.sleep(0.2)
+
+        # Now query the other two counters to confirm side-effect absence.
         icpp_calls = _parse_nat64(
             call_canister_api(
                 dfx_json_path=DFX_JSON_PATH,

@@ -250,8 +250,8 @@ int main() {
                   my_principal);
   uint64_t cnt_f = ic0mock_global_timer_set_call_count();
 
-  extra_failures += expect_eq_u64("[cancel-from-cb] T1 callback ran", t1_count,
-                                  1);
+  extra_failures +=
+      expect_eq_u64("[cancel-from-cb] T1 callback ran", t1_count, 1);
   extra_failures += expect_eq_u64(
       "[cancel-from-cb] T2 callback ran despite earlier cancel_all_timers",
       t2_count, 1);

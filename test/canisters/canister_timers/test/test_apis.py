@@ -131,9 +131,7 @@ def test__cancel_unknown_returns_false(network: str, principal: str) -> None:
     assert "false" in response
 
 
-def test__reset_counts_cancels_recurring_timer(
-    network: str, principal: str
-) -> None:
+def test__reset_counts_cancels_recurring_timer(network: str, principal: str) -> None:
     """Leak-proof reset (commit 4): reset_counts now cancels every
     registered timer in addition to zeroing counters. After reset, a
     previously-registered recurring timer must NOT continue to fire."""

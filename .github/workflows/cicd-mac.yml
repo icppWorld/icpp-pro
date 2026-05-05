@@ -28,6 +28,14 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
+          # Python 3.14 (and often the newest 3.x line generally) is not
+          # in conda's `defaults` channel for every (os, arch) combo —
+          # macos-15-intel + python=3.14 in particular fails with
+          # PackagesNotFoundError. conda-forge tracks new Python releases
+          # faster, so prefer it. `channel-priority: strict` keeps the
+          # solver predictable across versions.
+          channels: conda-forge,defaults
+          channel-priority: strict
 
       # -------------------------------------------------------------------
       # Checkout icpp-pro & icpp-candid as nested directory

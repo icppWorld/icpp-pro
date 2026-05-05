@@ -14,6 +14,9 @@ jobs:
   all-ubuntu:
     name: all-ubuntu
     strategy:
+      # Don't cancel the whole matrix when one cell flakes — see comment
+      # in cicd-mac.yml. Each cell stands or falls on its own.
+      fail-fast: false
       matrix:
         # NOTE: Python versions MUST be quoted strings — unquoted 3.10 is
         # parsed by YAML as the float 3.1 and breaks actions/setup-python.
@@ -88,6 +91,11 @@ jobs:
 
       - name: install-rust
         shell: bash -l {0}
+        # Bump cargo's default network-retry from 3 to 10 to weather
+        # transient DNS / index.crates.io hiccups on the runner.
+        env:
+          CARGO_NET_RETRY: "10"
+          CARGO_HTTP_TIMEOUT: "60"
         run: |
           echo "Installing rust"
           icpp install-rust

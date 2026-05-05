@@ -14,6 +14,11 @@ jobs:
   all-mac:
     name: all-mac
     strategy:
+      # Don't cancel the whole matrix when one cell flakes (e.g. transient
+      # DNS resolution failures hitting index.crates.io during install-rust
+      # on macos-15-intel). Each (python-version, os) pair stands or falls
+      # on its own and is rerun-able independently from the GitHub UI.
+      fail-fast: false
       matrix:
         # NOTE: Python versions MUST be quoted strings — unquoted 3.10 is
         # parsed by YAML as the float 3.1 and breaks actions/setup-python.
@@ -89,6 +94,13 @@ jobs:
 
       - name: install-rust
         shell: bash -l {0}
+        # Cargo's default network retry is 3 attempts. macos-15-intel
+        # runners have shown longer-than-3-attempt DNS resolution flakes
+        # against index.crates.io. Bump retry count and request timeout
+        # so transient hiccups don't take the cell down.
+        env:
+          CARGO_NET_RETRY: "10"
+          CARGO_HTTP_TIMEOUT: "60"
         run: |
           echo "Installing rust"
           icpp install-rust

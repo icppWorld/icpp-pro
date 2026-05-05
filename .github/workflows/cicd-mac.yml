@@ -15,7 +15,9 @@ jobs:
     name: all-mac
     strategy:
       matrix:
-        python-version: [3.9, 3.11]
+        # NOTE: Python versions MUST be quoted strings — unquoted 3.10 is
+        # parsed by YAML as the float 3.1 and breaks actions/setup-python.
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         # macos-15-intel for Intel, macos-latest for Apple Silicon arm64
         os: [macos-15-intel, macos-latest]
 

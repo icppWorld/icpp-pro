@@ -1,5 +1,6 @@
 """Functions to be used in a pytest test"""
 
+import re
 import subprocess
 import json
 from pathlib import Path
@@ -9,6 +10,21 @@ import pytest  # pylint: disable=unused-import
 from icpp.run_shell_cmd import run_shell_cmd
 
 DFX = "dfx"
+
+# dfx 0.32.0 started emitting this deprecation banner on stderr for every
+# invocation. run_shell_cmd merges stderr into stdout, so the banner ends up
+# in our captured response and corrupts string-equality assertions in
+# pytest. Strip exactly this known line — narrow enough that it cannot
+# accidentally swallow legitimate canister output. Update or extend if dfx
+# adds new pre-call warnings later.
+_DFX_DEPRECATION_RE = re.compile(
+    r"^WARNING: dfx is deprecated.*$\n?", flags=re.MULTILINE
+)
+
+
+def _strip_dfx_warnings(s: str) -> str:
+    """Remove the known dfx deprecation banner from captured shell output."""
+    return _DFX_DEPRECATION_RE.sub("", s)
 
 
 def call_canister_api(
@@ -59,7 +75,7 @@ def call_canister_api(
             cwd=Path(dfx_json_path).parent,
             timeout_seconds=timeout_seconds,
         )
-        response = response.rstrip("\n")
+        response = _strip_dfx_warnings(response).rstrip("\n")
     except subprocess.CalledProcessError as e:
         if "Error: Failed to determine id for canister" in e.output:
             msg = (
@@ -183,7 +199,7 @@ def get_canister_id(
             cwd=Path(dfx_json_path).parent,
             timeout_seconds=timeout_seconds,
         )
-        canister_id = response.rstrip("\n")
+        canister_id = _strip_dfx_warnings(response).rstrip("\n")
     except subprocess.CalledProcessError as e:
         if "Error: Failed to determine id for canister" in e.output:
             msg = (
@@ -213,7 +229,7 @@ def get_local_webserver_port(
         response = run_shell_cmd(
             arg, capture_output=True, timeout_seconds=timeout_seconds
         )
-        webserver_port = response.rstrip("\n")
+        webserver_port = _strip_dfx_warnings(response).rstrip("\n")
     except subprocess.CalledProcessError as e:
         response = f"Failed to get local network's webserver port:" f"{e.output}"
 
@@ -259,7 +275,7 @@ def get_identity() -> str:
     arg = f"{DFX} identity whoami "
     try:
         identity = run_shell_cmd(arg, capture_output=True, timeout_seconds=30)
-        identity = identity.rstrip("\n")
+        identity = _strip_dfx_warnings(identity).rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
 
@@ -280,7 +296,7 @@ def get_principal() -> str:
     arg = f"{DFX} identity get-principal "
     try:
         principal = run_shell_cmd(arg, capture_output=True, timeout_seconds=30)
-        principal = principal.rstrip("\n")
+        principal = _strip_dfx_warnings(principal).rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
 

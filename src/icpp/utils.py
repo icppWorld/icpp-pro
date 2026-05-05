@@ -29,7 +29,7 @@ def rmtree_force(path: Union[str, Path]) -> None:
     of `onexc` (with a different 3rd-arg signature). pylint 3.x running
     against Python 3.13's stdlib stubs flags `onerror=` calls as
     `W4903 deprecated-argument`. To keep CI clean across the
-    Python 3.10–3.14 matrix we branch by version here. `remove_readonly`
+    Python 3.10-3.14 matrix we branch by version here. `remove_readonly`
     above ignores the 3rd argument so the same callback works for both.
     """
     # On each Python version one branch below is "right" and the other is

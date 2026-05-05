@@ -36,6 +36,19 @@ public:
   // Remove a registered timer. Returns true if the id was found.
   bool cancel(uint64_t id);
 
+  // Cancel every registered timer (one-shot and recurring) and unconditionally
+  // disarm the IC's global timer. The unconditional disarm — i.e., always
+  // calling ic0_global_timer_set(0) regardless of m_armed_deadline — is
+  // deliberate: clear() is a reset helper, and prior raw / custom
+  // interactions or dispatch edges may have desynchronized the cache.
+  // Correctness beats saving one syscall.
+  //
+  // Current-dispatch semantics: if called from inside a timer callback,
+  // callbacks already collected into the in-flight dispatch_due() batch
+  // still execute (they were copied to a local vector before any callback
+  // ran). What is cancelled is *future* firings.
+  void clear();
+
   // Fire all timers whose deadline is <= now_ns, capped at MAX_PER_TICK.
   // Recurring timers are rescheduled with Motoko-style catch-up.
   // Called from canister_global_timer.

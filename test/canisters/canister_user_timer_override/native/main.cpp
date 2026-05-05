@@ -89,9 +89,9 @@ int main() {
   mockIC.run_test("canister_global_timer (user override, second call)",
                   canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
                   my_principal);
-  extra_failures += expect_eq_u64(
-      "g_user_dispatcher_calls after second dispatch", g_user_dispatcher_calls,
-      2);
+  extra_failures +=
+      expect_eq_u64("g_user_dispatcher_calls after second dispatch",
+                    g_user_dispatcher_calls, 2);
   extra_failures +=
       expect_eq_u64("g_icpp_callback_calls still 0 after second dispatch",
                     g_icpp_callback_calls, 0);

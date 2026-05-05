@@ -129,3 +129,59 @@ def test__cancel_unknown_returns_false(network: str, principal: str) -> None:
         network=network,
     )
     assert "false" in response
+
+
+def test__reset_counts_cancels_recurring_timer(
+    network: str, principal: str
+) -> None:
+    """Leak-proof reset (commit 4): reset_counts now cancels every
+    registered timer in addition to zeroing counters. After reset, a
+    previously-registered recurring timer must NOT continue to fire."""
+    _reset(network)
+
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="start_recurring",
+        canister_argument="(1_000_000_000 : nat64)",
+        network=network,
+    )
+    timer_id = _parse_nat64(response)
+    assert timer_id > 0
+
+    time.sleep(2.5)
+    initial_count = _parse_nat64(
+        call_canister_api(
+            dfx_json_path=DFX_JSON_PATH,
+            canister_name=CANISTER_NAME,
+            canister_method="get_recurring_count",
+            network=network,
+        )
+    )
+    assert initial_count >= 2, (
+        f"recurring timer was not firing; expected >=2 ticks in 2.5s, "
+        f"got {initial_count}"
+    )
+
+    # reset_counts now also calls IC_API::cancel_all_timers().
+    call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="reset_counts",
+        network=network,
+    )
+
+    # Sleep long enough that, if the timer leaked, the count would advance.
+    time.sleep(3.0)
+    after_reset_count = _parse_nat64(
+        call_canister_api(
+            dfx_json_path=DFX_JSON_PATH,
+            canister_name=CANISTER_NAME,
+            canister_method="get_recurring_count",
+            network=network,
+        )
+    )
+    assert after_reset_count == 0, (
+        f"recurring timer leaked across reset: count grew to "
+        f"{after_reset_count} after reset_counts"
+    )

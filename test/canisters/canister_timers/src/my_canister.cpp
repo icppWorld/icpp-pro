@@ -59,6 +59,10 @@ void reset_counts() {
   ic_api.from_wire();
   g_one_shot_count = 0;
   g_recurring_count = 0;
+  // Cancel every registered timer too — the docstring at the top of this
+  // file says reset_counts "zeros counters and cancels all timers", and
+  // pytest scenarios depend on a clean registry between scenarios.
+  IC_API::cancel_all_timers();
   ic_api.to_wire();
 }
 

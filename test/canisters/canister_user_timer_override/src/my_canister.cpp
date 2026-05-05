@@ -45,8 +45,8 @@ void start_user_timer() {
   IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
   uint64_t period_ns{0};
   ic_api.from_wire(CandidTypeNat64{&period_ns});
-  g_user_timer_id = IC_API::set_timer_recurring(
-      period_ns, []() { ++g_icpp_callback_calls; });
+  g_user_timer_id =
+      IC_API::set_timer_recurring(period_ns, []() { ++g_icpp_callback_calls; });
   ic_api.to_wire(CandidTypeNat64{g_user_timer_id});
 }
 

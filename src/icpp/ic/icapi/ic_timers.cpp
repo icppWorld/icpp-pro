@@ -46,6 +46,16 @@ bool IcTimers::cancel(uint64_t id) {
 
 std::size_t IcTimers::size() const { return m_by_id.size(); }
 
+void IcTimers::clear() {
+  m_by_deadline.clear();
+  m_by_id.clear();
+  m_armed_deadline = 0;
+  // Unconditionally disarm — do NOT defer to arm_next()'s cache-equality
+  // skip here. After raw / custom interactions or dispatch edges the cache
+  // may not reflect IC state; correctness beats saving one syscall.
+  ic0_global_timer_set(0);
+}
+
 void IcTimers::arm_next() {
   uint64_t target = m_by_deadline.empty() ? 0 : m_by_deadline.begin()->first;
   if (target != m_armed_deadline) {

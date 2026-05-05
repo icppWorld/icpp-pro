@@ -134,6 +134,8 @@ bool IC_API::cancel_timer(uint64_t id) {
   return IcTimers::instance().cancel(id);
 }
 
+void IC_API::cancel_all_timers() { IcTimers::instance().clear(); }
+
 // DeSerialize the byte stream received over the wire
 void IC_API::from_wire(CandidArgs A) {
   if (m_called_from_wire) {

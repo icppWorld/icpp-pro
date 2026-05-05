@@ -211,6 +211,78 @@ int main() {
   // assertion failure, so a single clear at scenario end is sufficient.
   ic0mock_clear_time_override();
 
+  // ---- Cancel-all-from-callback test (commit 4) -------------------------
+  // Locks down the documented current-dispatch semantics: callbacks already
+  // collected into the in-flight dispatch_due() batch (copied into the
+  // local `to_run` vector before any callback ran) STILL execute even after
+  // a callback calls cancel_all_timers() mid-batch. Future firings, and
+  // any recurring timer's next-deadline rescheduling, are cancelled.
+  //
+  // Time is pinned (per reviewer) so all 3 recurring timers compute the
+  // same deadline and are guaranteed due in a single dispatch batch — wall-
+  // clock drift between successive set_timer_recurring calls would
+  // otherwise give them slightly different deadlines.
+  //
+  // Registration order is the test's intent: the cancelling timer is
+  // registered FIRST so its callback lands at the front of `to_run`. We
+  // want to prove that the OTHER two callbacks, copied into `to_run`
+  // before the cancel ran, still execute. Registering the cancelling
+  // timer last would prove nothing about post-cancel callback execution.
+  ic0mock_set_time_override(1000);
+  // Reset counters from earlier scenarios so the asserts below are scoped.
+  IC_API::cancel_all_timers();
+  uint64_t t1_count = 0, t2_count = 0, t3_count = 0;
+  IC_API::set_timer_recurring(100, [&t1_count]() {
+    ++t1_count;
+    IC_API::cancel_all_timers();
+  });
+  IC_API::set_timer_recurring(100, [&t2_count]() { ++t2_count; });
+  IC_API::set_timer_recurring(100, [&t3_count]() { ++t3_count; });
+  extra_failures += expect_eq_u64(
+      "[cancel-from-cb] registry size after registering 3 recurring",
+      IcTimers::instance().size(), 3);
+
+  // Advance past the deadline (1000 + 100 = 1100).
+  ic0mock_set_time_override(1100);
+  uint64_t cnt_e = ic0mock_global_timer_set_call_count();
+  mockIC.run_test("[cancel-from-cb] canister_global_timer",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  uint64_t cnt_f = ic0mock_global_timer_set_call_count();
+
+  extra_failures += expect_eq_u64("[cancel-from-cb] T1 callback ran", t1_count,
+                                  1);
+  extra_failures += expect_eq_u64(
+      "[cancel-from-cb] T2 callback ran despite earlier cancel_all_timers",
+      t2_count, 1);
+  extra_failures += expect_eq_u64(
+      "[cancel-from-cb] T3 callback ran despite earlier cancel_all_timers",
+      t3_count, 1);
+  extra_failures +=
+      expect_eq_u64("[cancel-from-cb] registry empty after dispatch",
+                    IcTimers::instance().size(), 0);
+  // The clear()'s unconditional ic0_global_timer_set(0) should show in the
+  // mock counter delta during this dispatch. The dispatch's final arm_next
+  // sees an empty registry (target=0) matching the cache (also 0 after the
+  // top-of-dispatch invalidation), so it skips. Net delta: 1 syscall from
+  // clear()'s explicit disarm.
+  extra_failures += expect_eq_u64(
+      "[cancel-from-cb] ic0_global_timer_set delta (clear's disarm)",
+      cnt_f - cnt_e, 1);
+
+  // Drive again — registry is empty so no callbacks should fire.
+  mockIC.run_test("[cancel-from-cb] canister_global_timer (second, no-op)",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  extra_failures +=
+      expect_eq_u64("[cancel-from-cb] T1 did not fire again", t1_count, 1);
+  extra_failures +=
+      expect_eq_u64("[cancel-from-cb] T2 did not fire again", t2_count, 1);
+  extra_failures +=
+      expect_eq_u64("[cancel-from-cb] T3 did not fire again", t3_count, 1);
+
+  ic0mock_clear_time_override();
+
   std::cout << "\n----------\n";
   std::cout << "Extra direct-state assertions: "
             << (extra_failures == 0 ? "all PASSED" : "some FAILED")

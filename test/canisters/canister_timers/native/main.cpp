@@ -192,9 +192,8 @@ int main() {
   extra_failures += expect_eq_u64(
       "[pinned] ic0_global_timer_set call delta after second dispatch (registry empty -> already disarmed -> skip)",
       cnt_d - cnt_c, 0);
-  extra_failures +=
-      expect_eq_u64("[pinned] g_one_shot_count delta total", g_one_shot_count,
-                    shots_before + 15);
+  extra_failures += expect_eq_u64("[pinned] g_one_shot_count delta total",
+                                  g_one_shot_count, shots_before + 15);
   extra_failures +=
       expect_eq_u64("[pinned] registry empty after second dispatch",
                     IcTimers::instance().size(), 0);
@@ -203,9 +202,9 @@ int main() {
   // armed the IC at deadline 1000, plus one when the first dispatch re-armed
   // at the same deadline 1000 (the cache fix forced this through). The second
   // dispatch contributes 0 (see comment above). Total: 2.
-  extra_failures += expect_eq_u64(
-      "[pinned] ic0_global_timer_set total scenario delta",
-      ic0mock_global_timer_set_call_count() - cnt_before, 2);
+  extra_failures +=
+      expect_eq_u64("[pinned] ic0_global_timer_set total scenario delta",
+                    ic0mock_global_timer_set_call_count() - cnt_before, 2);
 
   // Always clear the override before main() returns. Pattern A (this whole
   // runner uses exit_on_fail=false) means we reach this line even on

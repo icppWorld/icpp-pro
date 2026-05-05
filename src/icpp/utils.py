@@ -36,12 +36,15 @@ def rmtree_force(path: Union[str, Path]) -> None:
     # statically unreachable. Pylint nonetheless analyzes both with the
     # local stdlib stubs and would flag whichever branch doesn't match —
     # `unexpected-keyword-arg` for `onexc` on 3.10/3.11, and
-    # `deprecated-argument` for `onerror` on 3.12+. Both inline disables
-    # are needed; the inactive one is silenced by `useless-suppression`
-    # in .pylintrc.
+    # `deprecated-argument` for `onerror` on 3.12+. Both `disable-next`
+    # comments are needed; the inactive one is silenced by
+    # `useless-suppression` in .pylintrc. Note: `disable-next=` is used
+    # rather than a free-standing `disable=` because the latter's
+    # line-scope rules vary across pylint versions and let the warning
+    # leak through in CI on Python 3.12+.
     if sys.version_info >= (3, 12):
-        # pylint: disable=unexpected-keyword-arg
+        # pylint: disable-next=unexpected-keyword-arg
         shutil.rmtree(path, onexc=remove_readonly)
     else:
-        # pylint: disable=deprecated-argument
+        # pylint: disable-next=deprecated-argument
         shutil.rmtree(path, onerror=remove_readonly)

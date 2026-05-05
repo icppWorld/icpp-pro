@@ -139,12 +139,15 @@ def install_wasi_sdk() -> None:
                 progress_bar_manager = enlighten.get_manager()
                 dlen = int(r.headers.get("Content-Length", "0")) or None
 
-                with progress_bar_manager.counter(
-                    color="cyan",
-                    total=dlen and math.ceil(dlen / 2**20),
-                    unit="MiB",
-                    leave=False,
-                ) as ctr, open(fpath, "wb", buffering=2**24) as f:
+                with (
+                    progress_bar_manager.counter(
+                        color="cyan",
+                        total=dlen and math.ceil(dlen / 2**20),
+                        unit="MiB",
+                        leave=False,
+                    ) as ctr,
+                    open(fpath, "wb", buffering=2**24) as f,
+                ):
                     for chunk in r.iter_content(chunk_size=2**20):
                         # print(chunk[-16:].hex().upper())
                         f.write(chunk)

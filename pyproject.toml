@@ -63,9 +63,14 @@ icpp = "icpp.__main__:main"
 
 [project.optional-dependencies]
 dev = [
-    "black==23.12.1",
-    "pylint==2.13.9",
-    "mypy==1.8.0",
+    # Bumped from black==23.12.1 / pylint==2.13.9 / mypy==1.8.0 to
+    # versions that handle Python 3.12+ syntax (PEP 695 `type X = ...`).
+    # Older pylint+astroid crashed with
+    #   AttributeError: 'TreeRebuilder' object has no attribute 'visit_typealias'
+    # the moment any imported module used the new syntax.
+    "black==24.10.0",
+    "pylint==3.3.4",
+    "mypy==1.13.0",
     "build==1.2.2",
     "twine==6.0.1",
     "mkdocs==1.5.3",

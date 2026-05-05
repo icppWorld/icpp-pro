@@ -1,6 +1,7 @@
 """
 A demo post_wasm_function.
 """
+
 from pathlib import Path
 import shutil
 from icpp import icpp_toml

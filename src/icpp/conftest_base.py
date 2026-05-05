@@ -37,7 +37,7 @@ def identity() -> Any:
     """A fixture that returns the name of the used identity."""
     identity_ = get_identity()
     if identity_.startswith("ERROR"):
-        raise Exception(identity_)
+        raise RuntimeError(identity_)
     return identity_
 
 
@@ -51,8 +51,8 @@ def principal() -> Any:
                 f"Identity '{get_identity()}' uses a passphrase. "
                 f"Use identity created with '--storage-mode plaintext'!"
             )
-            raise Exception(msg)
-        raise Exception(principal_)
+            raise RuntimeError(msg)
+        raise RuntimeError(principal_)
     return principal_
 
 

@@ -312,14 +312,14 @@ int main() {
   mockIC.run_test("[catch-up,skip=1] canister_global_timer at now=1250",
                   canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
                   my_principal);
-  extra_failures +=
-      expect_eq_u64("[catch-up,skip=1] callback fired exactly once at slow tick",
-                    cu1_count, 1);
+  extra_failures += expect_eq_u64(
+      "[catch-up,skip=1] callback fired exactly once at slow tick", cu1_count,
+      1);
   // Just before computed next deadline: must NOT fire.
   ic0mock_set_time_override(1299);
-  mockIC.run_test("[catch-up,skip=1] canister_global_timer at now=next-1 (1299)",
-                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
-                  my_principal);
+  mockIC.run_test(
+      "[catch-up,skip=1] canister_global_timer at now=next-1 (1299)",
+      canister_global_timer, EMPTY_CANDID, "", silent_on_trap, my_principal);
   extra_failures += expect_eq_u64(
       "[catch-up,skip=1] no fire at next-1 (proves next > now_ns of slow tick)",
       cu1_count, 1);
@@ -356,15 +356,14 @@ int main() {
   mockIC.run_test("[catch-up,skip=99] re-drive at now=10000 (next=10100)",
                   canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
                   my_principal);
-  extra_failures +=
-      expect_eq_u64("[catch-up,skip=99] no second fire at same now",
-                    cu2_count, 1);
+  extra_failures += expect_eq_u64(
+      "[catch-up,skip=99] no second fire at same now", cu2_count, 1);
   ic0mock_set_time_override(10099);
   mockIC.run_test("[catch-up,skip=99] canister_global_timer at next-1 (10099)",
                   canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
                   my_principal);
-  extra_failures += expect_eq_u64("[catch-up,skip=99] no fire at next-1",
-                                  cu2_count, 1);
+  extra_failures +=
+      expect_eq_u64("[catch-up,skip=99] no fire at next-1", cu2_count, 1);
   ic0mock_set_time_override(10100);
   mockIC.run_test("[catch-up,skip=99] canister_global_timer at next (10100)",
                   canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
@@ -396,8 +395,7 @@ int main() {
   ic0mock_set_time_override(100);
   IC_API::cancel_all_timers();
   uint64_t cu3_count = 0;
-  IC_API::set_timer_recurring(U64_MAX - 200,
-                              [&cu3_count]() { ++cu3_count; });
+  IC_API::set_timer_recurring(U64_MAX - 200, [&cu3_count]() { ++cu3_count; });
   extra_failures += expect_eq_u64("[catch-up,saturate] registered 1 recurring",
                                   IcTimers::instance().size(), 1);
 
@@ -417,9 +415,9 @@ int main() {
   mockIC.run_test(
       "[catch-up,saturate] canister_global_timer at now = UINT64_MAX-1",
       canister_global_timer, EMPTY_CANDID, "", silent_on_trap, my_principal);
-  extra_failures += expect_eq_u64(
-      "[catch-up,saturate] saturated next > now: no further fire",
-      cu3_count, 1);
+  extra_failures +=
+      expect_eq_u64("[catch-up,saturate] saturated next > now: no further fire",
+                    cu3_count, 1);
   extra_failures += expect_eq_u64(
       "[catch-up,saturate] timer still in registry (recurring, not auto-cancelled)",
       IcTimers::instance().size(), 1);

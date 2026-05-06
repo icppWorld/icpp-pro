@@ -18,12 +18,9 @@
 uint64_t g_one_shot_count{0};
 uint64_t g_recurring_count{0};
 
-namespace {
 // One-shot delay used by start_one_shot. Zero so the deadline lands at "now"
-// and the next canister_global_timer tick will fire it — both on the IC and
-// in the native MockIC driver.
+// and the next canister_global_timer tick will fire it.
 constexpr uint64_t ONE_SHOT_DELAY_NS = 0;
-} // namespace
 
 void canister_init() {
   IC_API ic_api(CanisterInit{std::string(__func__)}, false);

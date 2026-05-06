@@ -9,6 +9,7 @@
 #include "main.h"
 
 #include <iostream>
+#include <limits>
 
 // ic_api.h transitively pulls in canister.h, which declares the built-in
 // canister_global_timer() entry. Include it before the user's canister
@@ -284,6 +285,146 @@ int main() {
   extra_failures += expect_eq_u64(
       "[cancel-from-cb] T3 still 0 after second dispatch", t3_count, 0);
 
+  ic0mock_clear_time_override();
+
+  // ---- Motoko-style catch-up after a slow tick (recurring timers) ----------
+  // dispatch_due() recomputes the next deadline as
+  //   next = pivot + period * (skipped + 1)
+  // where  skipped = (now_ns - pivot) / period.  This block locks down both
+  // the "skipped == 0" trivial case (already covered above) and the
+  // "skipped >= 1" catch-up path, which the cancel-from-callback scenario
+  // does not exercise (it advances time exactly one period past pivot).
+  //
+  // We "simulate a slow tick" by jumping the time override forward by many
+  // periods before invoking canister_global_timer. The behavioral check is:
+  //   (a) the callback fires exactly ONCE per dispatch (no fire-storm), and
+  //   (b) the recomputed next deadline lands at pivot + (skipped+1)*period
+  //       — verified by dispatching at next-1 (no fire) and at next (fires).
+
+  // ---- Catch-up: skip a single period --------------------------------------
+  ic0mock_set_time_override(1000);
+  IC_API::cancel_all_timers();
+  uint64_t cu1_count = 0;
+  IC_API::set_timer_recurring(100, [&cu1_count]() { ++cu1_count; });
+  // pivot = 1000 + 100 = 1100. Jump to 1250: skipped = (1250-1100)/100 = 1,
+  // advance = 2, next = 1100 + 2*100 = 1300.
+  ic0mock_set_time_override(1250);
+  mockIC.run_test("[catch-up,skip=1] canister_global_timer at now=1250",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  extra_failures +=
+      expect_eq_u64("[catch-up,skip=1] callback fired exactly once at slow tick",
+                    cu1_count, 1);
+  // Just before computed next deadline: must NOT fire.
+  ic0mock_set_time_override(1299);
+  mockIC.run_test("[catch-up,skip=1] canister_global_timer at now=next-1 (1299)",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  extra_failures += expect_eq_u64(
+      "[catch-up,skip=1] no fire at next-1 (proves next > now_ns of slow tick)",
+      cu1_count, 1);
+  // At computed next deadline: must fire exactly once more.
+  ic0mock_set_time_override(1300);
+  mockIC.run_test("[catch-up,skip=1] canister_global_timer at now=next (1300)",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  extra_failures += expect_eq_u64(
+      "[catch-up,skip=1] fire at next (locks down next == pivot + 2*period)",
+      cu1_count, 2);
+  IC_API::cancel_all_timers();
+  ic0mock_clear_time_override();
+
+  // ---- Catch-up: skip many periods (no fire-storm) -------------------------
+  ic0mock_set_time_override(0);
+  IC_API::cancel_all_timers();
+  uint64_t cu2_count = 0;
+  IC_API::set_timer_recurring(100, [&cu2_count]() { ++cu2_count; });
+  // pivot = 100, period = 100. Jump to 10_000: skipped = 99, advance = 100,
+  // next = 100 + 100*100 = 10_100. The bug-without-this-code would fire the
+  // callback ~100 times (once per missed period); the bug-without-the-+1
+  // would fire and reschedule next == 10_000 == now_ns, then fire again on
+  // the very next dispatch tick at the same now (tight loop).
+  ic0mock_set_time_override(10000);
+  mockIC.run_test("[catch-up,skip=99] canister_global_timer at now=10000",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  extra_failures += expect_eq_u64(
+      "[catch-up,skip=99] callback fired exactly ONCE (no fire-storm)",
+      cu2_count, 1);
+  // Drive again at the same now — registry still has the recurring entry but
+  // its new deadline is 10_100, so nothing fires.
+  mockIC.run_test("[catch-up,skip=99] re-drive at now=10000 (next=10100)",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  extra_failures +=
+      expect_eq_u64("[catch-up,skip=99] no second fire at same now",
+                    cu2_count, 1);
+  ic0mock_set_time_override(10099);
+  mockIC.run_test("[catch-up,skip=99] canister_global_timer at next-1 (10099)",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  extra_failures += expect_eq_u64("[catch-up,skip=99] no fire at next-1",
+                                  cu2_count, 1);
+  ic0mock_set_time_override(10100);
+  mockIC.run_test("[catch-up,skip=99] canister_global_timer at next (10100)",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  extra_failures += expect_eq_u64(
+      "[catch-up,skip=99] fire at next (locks down next == pivot + 100*period)",
+      cu2_count, 2);
+  IC_API::cancel_all_timers();
+  ic0mock_clear_time_override();
+
+  // ---- Catch-up: pivot + increment overflow saturates to UINT64_MAX --------
+  // Adversarial scenario: pivot lands close to UINT64_MAX and adding one full
+  // period would overflow. The saturating_add in dispatch_due must clamp the
+  // new deadline to UINT64_MAX so the timer "never fires again" rather than
+  // wrapping into the past and refiring in a tight loop.
+  //
+  // Setup: now=100, period = UINT64_MAX-200. Registration deadline =
+  // saturating_add(100, UINT64_MAX-200) = UINT64_MAX-100 (no saturation; just
+  // arithmetic). Then jump now to UINT64_MAX-50: skipped = 50/(UINT64_MAX-200)
+  // = 0, advance = 1, increment = period*1 = UINT64_MAX-200, and
+  // next = saturating_add(UINT64_MAX-100, UINT64_MAX-200) saturates to
+  // UINT64_MAX. (We do not directly hit the period*advance overflow branch
+  // — that requires advance >= 2 with period > UINT64_MAX/advance, which is
+  // unreachable from a clean set_timer_recurring because registration would
+  // have saturated pivot to UINT64_MAX and the timer would never fire. The
+  // pivot+increment saturating_add below is what protects against fire-storm
+  // in the reachable adversarial case.)
+  constexpr uint64_t U64_MAX = std::numeric_limits<uint64_t>::max();
+  ic0mock_set_time_override(100);
+  IC_API::cancel_all_timers();
+  uint64_t cu3_count = 0;
+  IC_API::set_timer_recurring(U64_MAX - 200,
+                              [&cu3_count]() { ++cu3_count; });
+  extra_failures += expect_eq_u64("[catch-up,saturate] registered 1 recurring",
+                                  IcTimers::instance().size(), 1);
+
+  ic0mock_set_time_override(U64_MAX - 50);
+  mockIC.run_test("[catch-up,saturate] canister_global_timer at huge now",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  extra_failures += expect_eq_u64(
+      "[catch-up,saturate] callback fired exactly once on overflow tick",
+      cu3_count, 1);
+
+  // Drive again at a time as close to UINT64_MAX as we can get. The
+  // recomputed next deadline saturated to UINT64_MAX, so it must remain
+  // strictly greater than any reachable now_ns we can pass to dispatch_due,
+  // and the callback must not fire again.
+  ic0mock_set_time_override(U64_MAX - 1);
+  mockIC.run_test(
+      "[catch-up,saturate] canister_global_timer at now = UINT64_MAX-1",
+      canister_global_timer, EMPTY_CANDID, "", silent_on_trap, my_principal);
+  extra_failures += expect_eq_u64(
+      "[catch-up,saturate] saturated next > now: no further fire",
+      cu3_count, 1);
+  extra_failures += expect_eq_u64(
+      "[catch-up,saturate] timer still in registry (recurring, not auto-cancelled)",
+      IcTimers::instance().size(), 1);
+
+  IC_API::cancel_all_timers();
   ic0mock_clear_time_override();
 
   std::cout << "\n----------\n";

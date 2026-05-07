@@ -130,6 +130,11 @@ WASM_CPPFLAGS = WASM_CFLAGS
 WASM_LDFLAGS = (
     " -mexec-model=reactor "
     " -Wl,--lto-O3 -Wl,--strip-debug -Wl,--stack-first -Wl,--export-dynamic "
+    # Force the built-in canister_global_timer dispatcher to be linked in and
+    # exported. It lives in __ic_candid__.a and would otherwise be dropped
+    # by the WASM linker's archive-selection rules (no caller references it
+    # statically — the IC invokes it at runtime).
+    " -Wl,-u,canister_global_timer -Wl,--export=canister_global_timer "
 )
 WASM_ARFLAGS = "qc"
 WASM_AR_EXT = ".a"

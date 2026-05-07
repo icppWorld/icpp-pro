@@ -3,13 +3,12 @@
 import sys
 import platform
 import subprocess
-import shutil
 import typer
 from icpp.__main__ import app
 from icpp import config_default
 from icpp import __version_rust__, __version_ic_wasi_polyfill__, __version_wasi2ic__
 from icpp.run_shell_cmd import run_shell_cmd_with_log
-from icpp.utils import remove_readonly
+from icpp.utils import rmtree_force
 
 OS_SYSTEM = platform.system()
 OS_PROCESSOR = platform.processor()
@@ -143,7 +142,7 @@ def install_rust() -> None:
     typer.echo(f"Details in {LOG_FILE}")
 
     try:
-        shutil.rmtree(config_default.RUST_COMPILER_ROOT, onerror=remove_readonly)
+        rmtree_force(config_default.RUST_COMPILER_ROOT)
     except FileNotFoundError:
         pass
     except OSError as e:

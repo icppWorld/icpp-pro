@@ -1,0 +1,7 @@
+service : {
+  start_user_timer : (nat64) -> (nat64);
+  stop_user_timer : (nat64) -> (bool);
+  get_user_dispatcher_calls : () -> (nat64) query;
+  get_icpp_callback_calls : () -> (nat64) query;
+  get_icpp_timer_count : () -> (nat64) query;
+}

@@ -4,9 +4,11 @@ from typing import Optional
 import typer
 
 option_to_compile_values = ["all", "mine", "mine-no-lib"]
+# pylint: disable=invalid-name
 option_to_compile_values_string = f"[{'/'.join(option_to_compile_values)}]"
 
 option_generate_bindings_values = ["yes", "no"]
+# pylint: disable=invalid-name
 option_generate_bindings_values_string = (
     f"[{'/'.join(option_generate_bindings_values)}]"
 )

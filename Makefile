@@ -38,8 +38,19 @@ VERSION_CLANG := $(shell cat version_clang.txt)
 
 ###########################################################################
 # Use some clang tools that come with wasi-sdk
+#
+# WASI_SDK_COMPILER_VERSION is read directly from the small version_wasi_sdk
+# module (no transitive imports). WASI_SDK_COMPILER_ROOT is then constructed
+# the same way config_default.py does it (~/.icpp/wasi-sdk/<version>).
+#
+# We deliberately do NOT import config_default for this — that module imports
+# icpp_candid, which is not yet installed at the time `make install-python`
+# parses the Makefile, and on CI runners where pip and python resolve to
+# different interpreters (a system Python 3.14 at /Library/Frameworks vs the
+# conda env's Python 3.13) it can stay broken even after install. Computing
+# the path in pure Make keeps `make` self-bootstrapping.
 WASI_SDK_COMPILER_VERSION := $(shell python -c "import sys; sys.path.append('src'); from src.icpp.version_wasi_sdk import __version__; print(__version__)")
-WASI_SDK_COMPILER_ROOT := $(shell python -c "import sys; sys.path.append('src'); from src.icpp.config_default import WASI_SDK_COMPILER_ROOT; print(WASI_SDK_COMPILER_ROOT)")
+WASI_SDK_COMPILER_ROOT := $(HOME)/.icpp/wasi-sdk/$(WASI_SDK_COMPILER_VERSION)
 CLANG_FORMAT = $(WASI_SDK_COMPILER_ROOT)/bin/clang-format
 CLANG_TIDY = $(WASI_SDK_COMPILER_ROOT)/bin/clang-tidy
 
@@ -212,35 +223,51 @@ install-homebrew-mac:
 
 .PHONY: install-python
 install-python:
-	pip install --upgrade pip
-	cd icpp-candid && rm -rf src/*.egg-info && pip install -e ".[dev]"
+	# Use `python -m pip` rather than `pip`. On GitHub macOS runners the
+	# bare `pip` can resolve to a system Python framework (e.g.
+	# /Library/Frameworks/Python.framework/.../pip for Python 3.14) while
+	# `python` is the conda env's interpreter — installs land in the wrong
+	# site-packages and `import icpp_candid` later fails. `python -m pip`
+	# is always the active interpreter's pip.
+	#
+	# `ensurepip` first: conda envs created via setup-miniconda with
+	# channel-priority=strict do NOT include pip by default, so the very
+	# first `python -m pip` would fail with "No module named pip".
+	# ensurepip is stdlib (no network) and bootstraps the bundled pip.
+	python -m ensurepip --upgrade
+	python -m pip install --upgrade pip
+	cd icpp-candid && rm -rf src/*.egg-info && python -m pip install -e ".[dev]"
 	rm -rf src/*.egg-info
-	pip install -e ".[dev]"
+	python -m pip install -e ".[dev]"
 
 .PHONY: install-python-w-demos
 install-python-w-demos:
-	pip install --upgrade pip
-	cd icpp-candid && rm -rf src/*.egg-info && pip install -e ".[dev]"
+	# See the install-python comment above for `ensurepip` and `python -m pip`.
+	python -m ensurepip --upgrade
+	python -m pip install --upgrade pip
+	cd icpp-candid && rm -rf src/*.egg-info && python -m pip install -e ".[dev]"
 	rm -rf src/*.egg-info
-	pip install -e ".[dev]"
-	cd ../icpp-demos && pip install -r requirements.txt
+	python -m pip install -e ".[dev]"
+	cd ../icpp-demos && python -m pip install -r requirements.txt
 
 
 .PHONY: install-python-w-icpp-llm
 install-python-w-icpp-llm:
-	pip install --upgrade pip
-	cd icpp-candid && rm -rf src/*.egg-info && pip install -e ".[dev]"
+	python -m ensurepip --upgrade
+	python -m pip install --upgrade pip
+	cd icpp-candid && rm -rf src/*.egg-info && python -m pip install -e ".[dev]"
 	rm -rf src/*.egg-info
-	pip install -e ".[dev]"
-	cd ../icpp_llm && pip install -r requirements.txt
+	python -m pip install -e ".[dev]"
+	cd ../icpp_llm && python -m pip install -r requirements.txt
 
 .PHONY: install-python-w-llama_cpp_canister
 install-python-w-llama_cpp_canister:
-	pip install --upgrade pip
-	cd icpp-candid && rm -rf src/*.egg-info && pip install -e ".[dev]"
+	python -m ensurepip --upgrade
+	python -m pip install --upgrade pip
+	cd icpp-candid && rm -rf src/*.egg-info && python -m pip install -e ".[dev]"
 	rm -rf src/*.egg-info
-	pip install -e ".[dev]"
-	cd ../llama_cpp_canister && pip install -r requirements.txt
+	python -m pip install -e ".[dev]"
+	cd ../llama_cpp_canister && python -m pip install -r requirements.txt
 
 # .PHONY:install-rust
 # install-rust:

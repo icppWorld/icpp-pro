@@ -68,11 +68,39 @@ void ic0_stable_read(uintptr_t dst, uint32_t off, uint32_t size);
 
 uint64_t ic0_time();
 
+uint64_t ic0_global_timer_set(uint64_t timestamp_ns);
+
 uint32_t ic0_is_controller(uintptr_t src, uint32_t size);
 
 void ic0_debug_print(uintptr_t src, uint32_t size);
 
 [[noreturn]] void ic0_trap(uintptr_t src, uint32_t size);
+
+// ----------------------------------------------------------------------------
+// Mock-only test helpers — NOT part of the IC0 API.
+// Native test drivers use these to introspect / control the mock IC.
+
+// Number of times ic0_global_timer_set has been invoked since process start.
+// Tests should snapshot before / after a scenario and assert the delta, not
+// absolute values, since the counter is a single static across all scenarios
+// in the same runner process.
+uint64_t ic0mock_global_timer_set_call_count();
+
+// Pin the value returned by ic0_time() to a fixed nanosecond timestamp.
+// This is needed for tests that must force multiple set_timer calls to land
+// on identical deadlines (the wall-clock would otherwise advance between
+// calls). Implemented with a flag plus value: ic0_time() honors the override
+// only while the flag is set.
+void ic0mock_set_time_override(uint64_t time_ns);
+
+// Clear the time override, restoring genuine wall-clock behavior. This
+// flips a flag — it does NOT set the override value to 0 (which would
+// silently pin time at 0 for any subsequent test that did not explicitly
+// override). Tests that pin time MUST call this on every exit path; with
+// MockIC's exit_on_fail=true semantics, RAII guards do not fire on
+// assertion failure, so prefer either a runner-wide MockIC with
+// exit_on_fail=false, or explicit pre-assertion clears.
+void ic0mock_clear_time_override();
 
 #ifdef __cplusplus
 }

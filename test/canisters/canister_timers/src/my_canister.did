@@ -1,0 +1,9 @@
+service : {
+  start_one_shot : () -> (nat64);
+  start_recurring : (nat64) -> (nat64);
+  stop_timer : (nat64) -> (bool);
+  get_one_shot_count : () -> (nat64) query;
+  get_recurring_count : () -> (nat64) query;
+  get_timer_count : () -> (nat64) query;
+  reset_counts : () -> ();
+}

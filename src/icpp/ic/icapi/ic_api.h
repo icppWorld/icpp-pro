@@ -10,6 +10,7 @@
 
 #include <array>
 #include <deque>
+#include <functional>
 #include <list>
 #include <map>
 #include <set>
@@ -48,6 +49,53 @@ public:
 
   // docs start: demo_time
   static uint64_t time(); // docs end: demo_time
+
+  // Multi-timer scheduler layered on ic0.global_timer_set. Returns a
+  // non-zero id usable with cancel_timer.
+  // docs start: set_timer
+  static uint64_t set_timer(uint64_t delay_ns, std::function<void()> cb);
+  static uint64_t set_timer_recurring(uint64_t period_ns,
+                                      std::function<void()> cb);
+  static bool cancel_timer(uint64_t id); // docs end: set_timer
+
+  // docs start: cancel_all_timers
+  // Cancels every currently registered timer (one-shot and recurring) and
+  // disarms the IC's global timer.
+  //
+  // Valid entry points: canister_init, canister_post_upgrade,
+  // canister_pre_upgrade, canister_update, canister_heartbeat,
+  // canister_global_timer, and reply / reject / cleanup callbacks. Not
+  // valid from canister_query — ic0.global_timer_set is not available in
+  // query context per the IC interface spec, and query mutations would be
+  // discarded anyway.
+  //
+  // Current-dispatch semantics: if called from inside a timer callback,
+  // any due timer in the same dispatch batch that has NOT yet executed
+  // is also cancelled — dispatch_due() looks each id up in the registry
+  // at execute time and skips entries that have been removed. (Recurring
+  // timers had their next deadline rescheduled during the batch's gather
+  // phase; cancel_all_timers() removes them too, so they don't fire then
+  // or later.) The currently-executing callback is not interrupted and
+  // any callbacks that have already returned in this batch keep their
+  // observable effects. The IC's global timer is disarmed and stays
+  // disarmed until something else calls a set_timer* API.
+  //
+  // Raw-call interaction: users can still call ic0_global_timer_set
+  // directly via #include "ic0.h". cancel_all_timers() only clears the
+  // IcTimers registry and disarms the IC at the moment it runs — a
+  // subsequent direct ic0_global_timer_set(t) call from user code can
+  // re-arm the IC outside the registry's knowledge. Mixing the two is
+  // the user's responsibility; the registry's correctness boundary does
+  // not extend across that fence.
+  static void cancel_all_timers(); // docs end: cancel_all_timers
+
+  // Note: rev0 also exposed `IC_API::global_timer_set_raw(timestamp_ns)`
+  // as a thin pass-through to ic0.global_timer_set. It was removed in
+  // rev1 because mixing it with the IcTimers registry desynchronized the
+  // armed-deadline cache (the wrapper bypassed IcTimers but was named as
+  // if it composed with it). Callers that genuinely want raw access can
+  // `#include "ic0.h"` and call `ic0_global_timer_set` directly — the
+  // conflict with IcTimers is then explicit at the call site.
 
   // docs start: get_caller
   CandidTypePrincipal get_caller(); // docs end: get_caller

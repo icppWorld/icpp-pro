@@ -6,10 +6,9 @@ import sys
 import subprocess
 import shutil
 import concurrent.futures
-from typing import Optional
+from typing import Annotated, Optional
 from pathlib import Path
 import typer
-from typing_extensions import Annotated
 
 from icpp import __version__
 from icpp.__main__ import app

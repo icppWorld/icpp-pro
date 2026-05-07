@@ -9,8 +9,8 @@ from pathlib import Path
 import subprocess
 import shutil
 import concurrent.futures
+from typing import Annotated
 import typer
-from typing_extensions import Annotated
 
 from icpp.__main__ import app
 from icpp import config_default

@@ -1,0 +1,84 @@
+name: cicd-wheel-test
+
+# Catches the class of bug where a runtime import works in the dev
+# environment (because dev extras transitively pull in the dependency)
+# but fails for end users installing the published wheel with only the
+# runtime deps declared in pyproject.toml. Example: 5.4.0 shipped with
+# `from typing_extensions import Annotated` but no `typing_extensions`
+# in [project.dependencies] — the full matrix passed because mypy/pylint
+# pulled it in transitively. This job builds the wheels and imports the
+# package in a clean venv with only runtime deps.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/**"
+      - "icpp-candid/**"
+      - "pyproject.toml"
+      - ".github/workflows/cicd-wheel-test.yml"
+
+jobs:
+  wheel-test:
+    name: wheel-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout icpp-pro
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: checkout icpp-candid
+        uses: actions/checkout@v4
+        with:
+          repository: icppWorld/icpp-candid
+          path: icpp-candid
+          fetch-depth: 0
+
+      # Use the minimum supported Python (matches `requires-python = ">=3.10"`
+      # in pyproject.toml). Packaging bugs are version-independent, so one
+      # cell is sufficient.
+      - name: set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: install build tooling
+        run: python -m pip install --upgrade pip build
+
+      - name: build icpp-candid wheel
+        working-directory: icpp-candid
+        run: python -m build --wheel
+
+      - name: build icpp-pro wheel
+        run: python -m build --wheel
+
+      - name: create clean venv and install wheels (runtime deps only)
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/pip install --upgrade pip
+          # Install icpp-candid from the local wheel so the >=X.Y.Z
+          # constraint in icpp-pro's pyproject.toml resolves before the
+          # version is published to PyPI.
+          /tmp/clean/bin/pip install icpp-candid/dist/icpp_candid-*.whl
+          /tmp/clean/bin/pip install dist/icpp_pro-*.whl
+
+      - name: smoke test — icpp --version
+        run: /tmp/clean/bin/icpp --version
+
+      - name: smoke test — import all command modules
+        run: |
+          /tmp/clean/bin/python -c "
+          from icpp import (
+              commands_build_wasm,
+              commands_build_native,
+              commands_build_library,
+              commands_build_library_native,
+              commands_get,
+              commands_init,
+              commands_install_wasi_sdk,
+              commands_install_rust,
+          )
+          print('all command modules imported cleanly')
+          "

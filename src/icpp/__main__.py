@@ -40,8 +40,9 @@ def main() -> None:
     app(prog_name="icpp")
 
 
-#
-# Always start it up or debug as a module:
-#  python -m icpp.__main__
-#
-main()
+# The console-script `icpp` (created by [project.scripts]) imports and
+# calls main() explicitly. The guard prevents main() from firing on plain
+# imports (e.g. `from icpp import commands_build_wasm`), which would
+# otherwise invoke the CLI with the host process's sys.argv.
+if __name__ == "__main__":
+    main()

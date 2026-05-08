@@ -48,7 +48,7 @@ classifiers = [
     "Operating System :: MacOS",
 ]
 dependencies = [
-    "icpp-candid>=5.4.0",
+    "icpp-candid>=5.4.1",
     'icpp-pro-is-not-supported-on-windows; platform_system == "Windows"',
     "typer[all]>=0.9.0",
     "tomli",

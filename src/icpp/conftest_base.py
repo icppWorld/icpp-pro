@@ -1,5 +1,5 @@
 """pytest fixtures provided by icpp-pro
-   https://docs.pytest.org/en/latest/fixture.html
+https://docs.pytest.org/en/latest/fixture.html
 """
 
 from typing import Any, Generator, Dict

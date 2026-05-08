@@ -1,4 +1,4 @@
-"""Handles 'icpp install-rust' """
+"""Handles 'icpp install-rust'"""
 
 import sys
 import platform

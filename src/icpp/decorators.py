@@ -27,7 +27,6 @@ from icpp import config_default
 from icpp.commands_install_wasi_sdk import is_wasi_sdk_installed, install_wasi_sdk
 from icpp.commands_install_rust import is_rust_installed, install_rust
 
-
 F = TypeVar("F", bound=Callable[..., Any])
 
 OS_SYSTEM = platform.system()

@@ -68,7 +68,7 @@ dev = [
     # Older pylint+astroid crashed with
     #   AttributeError: 'TreeRebuilder' object has no attribute 'visit_typealias'
     # the moment any imported module used the new syntax.
-    "black==24.10.0",
+    "black==26.3.1",
     "pylint==3.3.4",
     "mypy==1.13.0",
     "build==1.2.2",

@@ -13,7 +13,6 @@ import os
 import sys
 import typer
 
-
 # Instantiate the Typer app globally with app = typer.Typer().
 # That way, we can decorate any function we want to call from the command line,
 # using the @app.command() decorator.

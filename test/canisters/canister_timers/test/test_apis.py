@@ -1,8 +1,8 @@
 """Test canister APIs for canister_timers.
 
-   First deploy the canister, then run:
+First deploy the canister, then run:
 
-   $ pytest --network=[local/ic]
+$ pytest --network=[local/ic]
 """
 
 # pylint: disable=missing-function-docstring, unused-import, wildcard-import, unused-wildcard-import

@@ -1,4 +1,4 @@
-"""Handles 'icpp get-...' """
+"""Handles 'icpp get-...'"""
 
 import typer
 from icpp.__main__ import app

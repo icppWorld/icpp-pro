@@ -1,9 +1,9 @@
 """Test that a user-supplied strong canister_global_timer overrides the
-   icpp-pro weak built-in dispatcher end-to-end on a real local replica.
+icpp-pro weak built-in dispatcher end-to-end on a real local replica.
 
-   First deploy the canister, then run:
+First deploy the canister, then run:
 
-   $ pytest --network=[local/ic]
+$ pytest --network=[local/ic]
 """
 
 # pylint: disable=missing-function-docstring, unused-import, wildcard-import, unused-wildcard-import

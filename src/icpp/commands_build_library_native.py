@@ -1,4 +1,4 @@
-"""Handles 'icpp build-library-native' """
+"""Handles 'icpp build-library-native'"""
 
 # pylint: disable = too-many-statements
 import sys

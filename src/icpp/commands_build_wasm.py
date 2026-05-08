@@ -1,4 +1,4 @@
-"""Handles 'icpp build-wasm' """
+"""Handles 'icpp build-wasm'"""
 
 # pylint: disable = too-many-statements
 import sys

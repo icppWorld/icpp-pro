@@ -1,4 +1,4 @@
-"""Handles 'icpp install-wasi-sdk' """
+"""Handles 'icpp install-wasi-sdk'"""
 
 import sys
 import platform

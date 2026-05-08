@@ -1,4 +1,4 @@
-"""Handles 'icpp init' """
+"""Handles 'icpp init'"""
 
 import sys
 import shutil

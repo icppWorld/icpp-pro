@@ -1,8 +1,8 @@
 """Test canister APIs - just one test
 
-   First deploy the canister, then run:
+First deploy the canister, then run:
 
-   $ pytest --network=[local/ic] test/test_one.py
+$ pytest --network=[local/ic] test/test_one.py
 
 """
 

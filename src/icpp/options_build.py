@@ -1,4 +1,4 @@
-"""Handles validation of --compile option """
+"""Handles validation of --compile option"""
 
 from typing import Optional
 import typer

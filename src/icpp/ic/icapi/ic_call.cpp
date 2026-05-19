@@ -63,10 +63,10 @@ std::vector<uint8_t> principal_to_bytes(const CandidTypePrincipal &p) {
 // ---------------------------------------------------------------------------
 
 extern "C" void __icpp_call_reply_trampoline(uint32_t env)
-    WASM_SYMBOL_EXPORTED("canister_callback __icpp_call_reply_trampoline");
+    WASM_SYMBOL_EXPORTED("__icpp_call_reply_trampoline");
 
 extern "C" void __icpp_call_reject_trampoline(uint32_t env)
-    WASM_SYMBOL_EXPORTED("canister_callback __icpp_call_reject_trampoline");
+    WASM_SYMBOL_EXPORTED("__icpp_call_reject_trampoline");
 
 extern "C" void __icpp_call_reply_trampoline(uint32_t env) {
   IC_Call::dispatch_reply(env);

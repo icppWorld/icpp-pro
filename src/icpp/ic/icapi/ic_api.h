@@ -105,6 +105,19 @@ public:
   bool is_controller(const CandidTypePrincipal &principal);
 
   // Receive things from the wire in candid format
+  //
+  // IMPORTANT: the CandidType / CandidArgs overloads take their argument by
+  // value, which means the underlying object stored in `m_args_ptrs` after
+  // `CandidArgs::append` is a *copy*. CandidDeserialize writes the decoded
+  // value into that copy, NOT into your local variable. To read the decoded
+  // value, use the pointer-style ctor so the type's internal `m_pv` writes
+  // back into a caller-owned object:
+  //
+  //     std::string s;
+  //     CandidTypeText t(&s);          // register pointer to user storage
+  //     ic_api.from_wire(t);
+  //     // s now holds the decoded text; t.get_v() is NOT updated.
+  //
   // docs start: from_wire
   void from_wire();
   void from_wire(CandidType arg_in);

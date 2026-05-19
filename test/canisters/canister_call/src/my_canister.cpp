@@ -27,7 +27,8 @@ std::string g_last_echoed;
 
 void canister_init_() {
   IC_API ic_api(CanisterInit{std::string(__func__)}, false);
-  ic_api.to_wire();
+  // Note: do NOT call ic_api.to_wire() here. The icpp runtime traps if
+  // to_wire is invoked from a CanisterInit context (only U/Q/Ry/Rt allowed).
 }
 
 // echo(text) -> text
@@ -36,7 +37,7 @@ void echo() {
   CandidTypeText payload;
   ic_api.from_wire(payload);
 
-  std::string s = payload.get();
+  std::string s = payload.get_v();
   ic_api.to_wire(CandidTypeText{s});
 }
 
@@ -46,7 +47,7 @@ void ping_self() {
   IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
   CandidTypeText payload;
   ic_api.from_wire(payload);
-  std::string s = payload.get();
+  std::string s = payload.get_v();
 
   // The callee is "ic0.canister_self" — i.e. this very canister. IC_Call
   // takes the principal bytes directly, so we copy them from IC_API.
@@ -64,7 +65,7 @@ void ping_self() {
         CandidTypeText t;
         reply_args.append(t);
         CandidDeserialize d(bytes, reply_args);
-        g_last_echoed = t.get();
+        g_last_echoed = t.get_v();
 
         // Close the original message with a Candid-encoded unit reply:
         // "DIDL\0\0" = 0x44 0x49 0x44 0x4c 0x00 0x00.

@@ -16,5 +16,5 @@ void canister_init_()      WASM_SYMBOL_EXPORTED("canister_init");
 void echo()                WASM_SYMBOL_EXPORTED("canister_update echo");
 void ping_self()           WASM_SYMBOL_EXPORTED("canister_update ping_self");
 
-void get_last_echoed()     WASM_SYMBOL_EXPORTED("canister_query  get_last_echoed");
-void get_pending_count()   WASM_SYMBOL_EXPORTED("canister_query  get_pending_count");
+void get_last_echoed()     WASM_SYMBOL_EXPORTED("canister_query get_last_echoed");
+void get_pending_count()   WASM_SYMBOL_EXPORTED("canister_query get_pending_count");

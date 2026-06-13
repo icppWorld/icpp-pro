@@ -26,6 +26,14 @@
 #include "canister.h"
 #include "vec_bytes.h"
 
+// Run C++ global constructors exactly once per wasm instance (no-op after
+// the first call, and on native builds). The CanisterBase constructor calls
+// this automatically, so any entry that constructs an IC_API is covered.
+// Call it directly at the top of canister_post_upgrade / canister_pre_upgrade
+// hooks that do NOT construct an IC_API, before touching any global that has
+// a dynamic initializer. See canister_base.cpp for the full story.
+extern "C" void icpp_run_global_ctors_once();
+
 class IC_API {
 public:
   IC_API();

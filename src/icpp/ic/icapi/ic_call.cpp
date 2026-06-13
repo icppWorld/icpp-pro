@@ -1,4 +1,4 @@
-// Inter-canister call helper — see ic_call.h for design notes.
+// Inter-canister call helper -- see ic_call.h for design notes.
 //
 // The IC's call_new takes two function-pointer offsets (reply_fun /
 // reject_fun) into the WASM table plus an `env` u32 cookie that is passed
@@ -24,9 +24,27 @@ struct Pending {
   IC_Call::RejectHandler on_reject;
 };
 
-// env cookie ? handler pair. Cleared by post_upgrade.
-std::unordered_map<uint32_t, Pending> g_pending;
-uint32_t                              g_next_env = 1;
+// env cookie -> handler pair.  Lives on the wasm heap, so a code
+// upgrade implicitly discards it along with the rest of the instance;
+// clear_pending() exists for canisters that want to drop callbacks
+// explicitly.
+//
+// IMPORTANT: this registry must be a function-local static, NOT a
+// namespace-scope global. icpp canisters only run `__wasm_call_ctors()`
+// when an entry point triggers it; a wasm instance created by an
+// *upgrade* may execute code before any such trigger, in which case a
+// namespace-scope std::unordered_map would still be zero-initialized
+// memory: bucket_count == 0 and max_load_factor == 0.0f. With a zero
+// max_load_factor, libc++ doubles the bucket array on EVERY insert, so
+// each inter-canister call doubles the wasm heap until the canister
+// hits its wasm_memory_limit (observed: 3.37 GiB after ~28 calls).
+// A function-local static is guard-initialized on first use, which makes
+// the registry immune to the global-ctor wiring.
+std::unordered_map<uint32_t, Pending> &pending_registry() {
+  static std::unordered_map<uint32_t, Pending> s_pending;
+  return s_pending;
+}
+uint32_t g_next_env = 1;
 
 CallRejectCode code_from_u32(uint32_t c) {
   if (c >= 1 && c <= 5) return static_cast<CallRejectCode>(c);
@@ -58,7 +76,7 @@ std::vector<uint8_t> principal_to_bytes(const CandidTypePrincipal &p) {
 // Exported reply / reject trampolines
 //
 // These are the targets passed to ic0.call_new. They look up the per-call
-// callback in g_pending using the env cookie, copy the reply payload (if
+// callback in pending_registry() using the env cookie, copy the reply payload (if
 // any) into a VecBytes, invoke the C++ handler, and erase the entry.
 // ---------------------------------------------------------------------------
 
@@ -88,7 +106,7 @@ uint32_t IC_Call::raw_call(const std::vector<uint8_t> &callee,
   // Reserve an env cookie before we touch ic0; if call_perform fails we
   // remove it again.
   const uint32_t env = g_next_env++;
-  g_pending.emplace(env, Pending{std::move(on_reply), std::move(on_reject)});
+  pending_registry().emplace(env, Pending{std::move(on_reply), std::move(on_reject)});
 
   // The trampoline function "pointers" we hand to ic0.call_new are the
   // addresses of the exported callbacks in the WASM function table. Cast
@@ -115,9 +133,9 @@ uint32_t IC_Call::raw_call(const std::vector<uint8_t> &callee,
 
   const uint32_t code = ic0_call_perform();
   if (code != 0) {
-    // System refused to queue the call — drop the callback so we don't leak
+    // System refused to queue the call -- drop the callback so we don't leak
     // it forever.
-    g_pending.erase(env);
+    pending_registry().erase(env);
   }
   return code;
 }
@@ -142,13 +160,13 @@ uint32_t IC_Call::call(const std::string &callee_text,
 }
 
 void IC_Call::dispatch_reply(uint32_t env) {
-  auto it = g_pending.find(env);
-  if (it == g_pending.end()) {
+  auto it = pending_registry().find(env);
+  if (it == pending_registry().end()) {
     IC_API::debug_print("ic_call: stale reply env, no handler");
     return;
   }
   auto handler = std::move(it->second.on_reply);
-  g_pending.erase(it);
+  pending_registry().erase(it);
 
   // Copy reply bytes (msg_arg_data_*) into a VecBytes.
   VecBytes reply_bytes;
@@ -163,13 +181,13 @@ void IC_Call::dispatch_reply(uint32_t env) {
 }
 
 void IC_Call::dispatch_reject(uint32_t env) {
-  auto it = g_pending.find(env);
-  if (it == g_pending.end()) {
+  auto it = pending_registry().find(env);
+  if (it == pending_registry().end()) {
     IC_API::debug_print("ic_call: stale reject env, no handler");
     return;
   }
   auto handler = std::move(it->second.on_reject);
-  g_pending.erase(it);
+  pending_registry().erase(it);
 
   CallReject r;
   r.code = code_from_u32(ic0_msg_reject_code());
@@ -183,12 +201,12 @@ void IC_Call::dispatch_reject(uint32_t env) {
 }
 
 void IC_Call::clear_pending() {
-  g_pending.clear();
+  pending_registry().clear();
   g_next_env = 1;
 }
 
 std::size_t IC_Call::pending_count() {
-  return g_pending.size();
+  return pending_registry().size();
 }
 
 // ---------------------------------------------------------------------------

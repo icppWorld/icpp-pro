@@ -88,6 +88,21 @@ def test__test_ic_api(network: str, principal: str) -> None:
     assert response == expected_response
 
 
+def test__test_getenv(network: str, principal: str) -> None:
+    # Regression guard: getenv() in a canister must return NULL for unset names
+    # WITHOUT trapping. Before the ic/wasi_sdk_traps/__wasilibc_initialize_environ.c
+    # fix, calling getenv() dereferenced the (char**)-1 sentinel and trapped with
+    # "heap out of bounds" (IC0502), so this call would fail instead of returning 0.
+    response = call_canister_api(
+        dfx_json_path=DFX_JSON_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_getenv",
+        network=network,
+    )
+    expected_response = "(0 : int)"
+    assert response == expected_response
+
+
 # ----------------------------------------------------------------------------------
 # Run all roundtrip tests
 def test__roundtrip_deprecated_ic_api_constructor(network: str, principal: str) -> None:

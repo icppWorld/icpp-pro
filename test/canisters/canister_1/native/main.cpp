@@ -110,6 +110,11 @@ int main() {
   mockIC.run_test("test_ic_api", test_ic_api, "4449444c0000",
                   "4449444c00017c00", silent_on_trap, my_principal);
 
+  // '()' -> '(0)' : getenv() must not trap and returns NULL for unset names.
+  // (Regression guard for ic/wasi_sdk_traps/__wasilibc_initialize_environ.c.)
+  mockIC.run_test("test_getenv", test_getenv, "4449444c0000",
+                  "4449444c00017c00", silent_on_trap, my_principal);
+
   //----------------------------------------------------------------------------------
   // Run all roundtrip tests
 

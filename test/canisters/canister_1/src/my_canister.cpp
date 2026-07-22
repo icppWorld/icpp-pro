@@ -9,6 +9,7 @@
 #include "compliance_test_prim.h"
 #include "ic_api.h"
 #include "unit_test_candid.h"
+#include "unit_test_getenv.h"
 #include "unit_test_ic_api.h"
 #include "unit_test_vendors.h"
 
@@ -39,6 +40,12 @@ void test_candid() {
 void test_ic_api() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int result = unit_test_ic_api();
+  ic_api.to_wire(CandidTypeInt{result});
+}
+
+void test_getenv() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  int result = unit_test_getenv();
   ic_api.to_wire(CandidTypeInt{result});
 }
 

@@ -12,6 +12,7 @@ void get_canister_info()
 void test_ic_api() WASM_SYMBOL_EXPORTED("canister_query test_ic_api");
 void test_candid() WASM_SYMBOL_EXPORTED("canister_query test_candid");
 void test_vendors() WASM_SYMBOL_EXPORTED("canister_query test_vendors");
+void test_getenv() WASM_SYMBOL_EXPORTED("canister_query test_getenv");
 
 void roundtrip_deprecated_ic_api_constructor() WASM_SYMBOL_EXPORTED(
     "canister_query roundtrip_deprecated_ic_api_constructor");

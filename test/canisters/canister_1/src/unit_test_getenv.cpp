@@ -35,8 +35,12 @@ int unit_test_getenv() {
   }
 
   // This name is never set on the host or in a canister, so getenv() must
-  // return NULL on BOTH native and wasm.
+  // return NULL on BOTH native and wasm. Explicitly unset it first so the
+  // assertion is deterministic on native (where getenv reads the real host
+  // environment) regardless of the developer's shell -- and, as a bonus, this
+  // exercises unsetenv() against the (fixed) empty environ on wasm.
   const char *const kUnset = "ICPP_DEFINITELY_UNSET_ENVIRONMENT_VARIABLE_9Z7Q";
+  unsetenv(kUnset);
   if (getenv(kUnset) != nullptr) {
     failures += 1;
   }

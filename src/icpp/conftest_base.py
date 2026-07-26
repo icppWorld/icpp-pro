@@ -15,7 +15,10 @@ def pytest_addoption(parser: Any) -> None:
         "--network",
         action="store",
         default="local",
-        help="The network to use: local or ic",
+        help=(
+            "The icp.yaml environment to use, eg. local or ic. "
+            "It is passed to icp as `--environment`."
+        ),
     )
 
 
@@ -46,10 +49,10 @@ def principal() -> Any:
     """A fixture that returns the principal of the used identity."""
     principal_ = get_principal()
     if principal_.startswith("ERROR"):
-        if "Please enter the passphrase for your identity" in principal_:
+        if "password" in principal_.lower() or "passphrase" in principal_.lower():
             msg = (
-                f"Identity '{get_identity()}' uses a passphrase. "
-                f"Use identity created with '--storage-mode plaintext'!"
+                f"Identity '{get_identity()}' is password protected. "
+                f"Use an identity created with '--storage plaintext'!"
             )
             raise RuntimeError(msg)
         raise RuntimeError(principal_)
@@ -61,7 +64,7 @@ def principal() -> Any:
 
 
 def handle_identity(identity_to_set: str) -> Generator[Dict[str, str], None, None]:
-    """A fixture that sets the dfx identity."""
+    """A fixture that sets the icp identity."""
     identity_before_test = get_identity()
     set_identity(identity_to_set)
     user = {"identity": get_identity(), "principal": get_principal()}
@@ -71,11 +74,15 @@ def handle_identity(identity_to_set: str) -> Generator[Dict[str, str], None, Non
 
 @pytest.fixture(scope="function")
 def identity_anonymous() -> Generator[Dict[str, str], None, None]:
-    """A fixture that sets the dfx identity to anonymous."""
+    """A fixture that sets the icp identity to anonymous."""
     yield from handle_identity("anonymous")
 
 
 @pytest.fixture(scope="function")
 def identity_default() -> Generator[Dict[str, str], None, None]:
-    """A fixture that sets the dfx identity to default."""
+    """A fixture that sets the icp identity to default.
+
+    Unlike dfx, icp-cli does not create a `default` identity for you. Create
+    it once with: `icp identity new default --storage plaintext`
+    """
     yield from handle_identity("default")

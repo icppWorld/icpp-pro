@@ -3,7 +3,6 @@
 # pylint: disable = too-many-statements
 import sys
 import os
-import json
 from pathlib import Path
 import subprocess
 import shutil
@@ -15,8 +14,8 @@ from icpp import __version__
 from icpp.__main__ import app
 
 from icpp import config_default
+from icpp.icpp_pro_message import icpp_pro_message
 from icpp.run_shell_cmd import run_shell_cmd
-from icpp.run_dfx_cmd import run_dfx_cmd
 
 from icpp.decorators import requires_wasi_sdk, requires_rust, requires_native_compiler
 from icpp.options_build import (
@@ -327,7 +326,11 @@ def build_wasm(
         run_shell_cmd(cmd, cwd=build_path)
 
         # ---
-        # dfx.tech_stack
+        # The wasm metadata section that declares the tech stack is named
+        # `dfx` by the canister metadata standard. Despite the name it is not
+        # tied to the dfx tool - it is what the IC dashboard reads - so this
+        # stays as is now that we build with icp-cli.
+        # https://internetcomputer.org/docs/building-apps/developer-tools/dfx-json#tech-stack
         file_path = build_path / "custom_section_dfx.txt"
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(
@@ -365,34 +368,56 @@ def build_wasm(
     if generate_bindings.lower() == "no":
         typer.echo("Skipping generation of Javascript bindings from your .did file.")
     else:
-        typer.echo("Generating Javascript bindings from your .did file:")
-        declarations_path = icpp_toml.icpp_toml_path.parent / "src/declarations"
-        typer.echo(f"{declarations_path.resolve()}/{icpp_toml.build_wasm['canister']}")
-        run_dfx_cmd("generate", capture_output=True)
-        try:
-            typer.echo("✔️")
-        except UnicodeEncodeError:
-            typer.echo(" ")
-
-    # ----------------------------------------------------------------------
-    typer.echo("-----")
-
-    icpp_pro_messaging_canister_message = (
-        config_default.ICPP_PRO_MESSAGING_CANISTER_DEFAULT_MESSAGE
-    )
-    try:
-        cmd = (
-            f"dfx canister call {config_default.ICPP_PRO_MESSAGING_CANISTER} "
-            f"get_message --ic --output json"
+        generate_javascript_bindings(
+            did_path=did_path,
+            canister=icpp_toml.build_wasm["canister"],
+            declarations_path=icpp_toml.icpp_toml_path.parent / "src/declarations",
         )
-        response_str = run_shell_cmd(cmd, capture_output=True)
-        if response_str is not None:
-            response = json.loads(response_str)
-            if "Ok" in response and "message" in response["Ok"]:
-                icpp_pro_messaging_canister_message = response["Ok"]["message"]
-    except:  # pylint: disable=bare-except
-        pass
 
-    typer.echo(icpp_pro_messaging_canister_message)
     # ----------------------------------------------------------------------
     typer.echo("-----")
+
+    typer.echo(icpp_pro_message())
+    # ----------------------------------------------------------------------
+    typer.echo("-----")
+
+
+def generate_javascript_bindings(
+    did_path: Path,
+    canister: str,
+    declarations_path: Path,
+) -> None:
+    """Writes the Javascript & Typescript bindings for a .did file.
+
+    This used to be done with `dfx generate`. icp-cli, the successor of the
+    deprecated dfx, has no equivalent command, so we call `didc` - the same
+    Candid code generator dfx used under the hood - directly.
+    """
+    typer.echo("Generating Javascript bindings from your .did file:")
+
+    if shutil.which("didc") is None:
+        typer.echo(
+            "Skipped: install `didc` from https://github.com/dfinity/candid/releases,\n"
+            "         or pass `--generate-bindings no` to silence this."
+        )
+        return
+
+    out_path = declarations_path / canister
+    out_path.mkdir(parents=True, exist_ok=True)
+    typer.echo(f"{out_path.resolve()}")
+
+    try:
+        shutil.copy(did_path, out_path / f"{canister}.did")
+        for target, suffix in (("js", "did.js"), ("ts", "did.d.ts")):
+            cmd = f"didc bind {str(did_path)} --target {target}"
+            bindings = run_shell_cmd(cmd, capture_output=True)
+            with open(out_path / f"{canister}.{suffix}", "w", encoding="utf-8") as file:
+                file.write(bindings)
+    except subprocess.CalledProcessError as e:
+        typer.echo(f"ERROR: failed to generate the bindings: \n{e.output}")
+        sys.exit(e.returncode)
+
+    try:
+        typer.echo("✔️")
+    except UnicodeEncodeError:
+        typer.echo(" ")

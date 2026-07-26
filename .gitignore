@@ -22,6 +22,7 @@ CppProperties.json
 
 # Internet Computer
 .dfx
+.icp
 
 # C++
 null.d

@@ -4,7 +4,7 @@
 # This is a Linux & Mac shell script
 #
 # (-) Install icpp-pro in a python environment
-# (-) Install dfx
+# (-) Install icp-cli: npm install -g @icp-sdk/icp-cli
 # (-) In a terminal:
 #
 #     ./demo.sh
@@ -13,12 +13,14 @@
 echo " "
 echo "--------------------------------------------------"
 echo "Stopping the local network"
-dfx stop
+icp network stop
 
 echo " "
 echo "--------------------------------------------------"
-echo "Starting the local network as a background process"
-dfx start --clean --background
+echo "Starting a clean local network as a background process"
+# icp-cli has no `--clean` flag: a managed network keeps its state in .icp/cache
+rm -rf .icp/cache
+icp network start --background
 
 #######################################################################
 echo "--------------------------------------------------"
@@ -30,17 +32,17 @@ icpp build-wasm --to-compile all
 echo " "
 echo "--------------------------------------------------"
 echo "Deploying the wasm to a canister on the local network"
-dfx deploy
+icp deploy --environment local --yes
 
 #######################################################################
 echo " "
 echo "--------------------------------------------------"
-echo "Running some manual tests with dfx"
-dfx canister call my_canister test_candid
-dfx canister call my_canister test_ic_api
-dfx canister call my_canister roundtrip_bool_true '(true)'
-dfx canister call my_canister roundtrip_variant_ok '(variant { Ok })'
-dfx canister call my_canister roundtrip_variant_err '(variant { Err = "Error" : text})'
+echo "Running some manual tests with icp"
+icp canister call my_canister test_candid '()' --environment local
+icp canister call my_canister test_ic_api '()' --environment local
+icp canister call my_canister roundtrip_bool_true '(true)' --environment local
+icp canister call my_canister roundtrip_variant_ok '(variant { Ok })' --environment local
+icp canister call my_canister roundtrip_variant_err '(variant { Err = "Error" : text})' --environment local
 
 #######################################################################
 echo " "
@@ -51,7 +53,7 @@ pytest --network=local
 #######################################################################
 echo "--------------------------------------------------"
 echo "Stopping the local network"
-dfx stop
+icp network stop
 
 #######################################################################
 echo " "

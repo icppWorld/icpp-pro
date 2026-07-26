@@ -13,10 +13,10 @@ from typing import Dict
 import pytest
 from icpp.smoketest import call_canister_api, dict_to_candid_text
 
-# Path to the dfx.json file
-DFX_JSON_PATH = Path(__file__).parent / "../dfx.json"
+# Path to the icp.yaml file
+ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
 
-# Canister in the dfx.json file we want to test
+# Canister in the icp.yaml file we want to test
 CANISTER_NAME = "my_canister"
 
 
@@ -24,7 +24,7 @@ def test__greet_json(network: str, principal: str) -> None:
     d = {"name": "AJB"}
     text_in = dict_to_candid_text(d)
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_json",
         canister_argument=text_in,

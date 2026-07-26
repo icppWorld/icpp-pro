@@ -4,7 +4,7 @@
 # This is a Linux & Mac shell script
 #
 # (-) Install icpp-pro in a python environment
-# (-) Install dfx
+# (-) Install icp-cli: npm install -g @icp-sdk/icp-cli
 # (-) In a terminal:
 #
 #     ./demo.sh
@@ -13,12 +13,14 @@
 echo " "
 echo "--------------------------------------------------"
 echo "Stopping the local network"
-dfx stop
+icp network stop
 
 echo " "
 echo "--------------------------------------------------"
-echo "Starting the local network as a background process"
-dfx start --clean --background
+echo "Starting a clean local network as a background process"
+# icp-cli has no `--clean` flag: a managed network keeps its state in .icp/cache
+rm -rf .icp/cache
+icp network start --background
 
 #######################################################################
 echo "--------------------------------------------------"
@@ -30,7 +32,7 @@ icpp build-wasm --to-compile all
 echo " "
 echo "--------------------------------------------------"
 echo "Deploying the wasm to a canister on the local network"
-dfx deploy
+icp deploy --environment local --yes
 
 #######################################################################
 echo " "
@@ -42,13 +44,15 @@ pytest --network=local
 echo " "
 echo "--------------------------------------------------"
 echo "Calling the deployed canister with curl"
-curl -X GET http://$(dfx canister id my_canister).raw.localhost:$(dfx info webserver-port)/counter
+CANISTER_ID=$(icp canister status my_canister --environment local --json | python -c "import json,sys; print(json.load(sys.stdin)['id'])")
+GATEWAY_PORT=$(icp network status --environment local --json | python -c "import json,sys; print(json.load(sys.stdin)['gateway_url'].rstrip('/').rsplit(':',1)[-1])")
+curl -X GET http://$CANISTER_ID.raw.localhost:$GATEWAY_PORT/counter
 
 #######################################################################
 echo " "
 echo "--------------------------------------------------"
 echo "Stopping the local network"
-dfx stop
+icp network stop
 
 #######################################################################
 echo " "

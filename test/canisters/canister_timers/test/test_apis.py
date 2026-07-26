@@ -16,7 +16,7 @@ import pytest
 
 from icpp.smoketest import call_canister_api
 
-DFX_JSON_PATH = Path(__file__).parent / "../dfx.json"
+ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
 CANISTER_NAME = "my_canister"
 
 
@@ -58,7 +58,7 @@ def _poll_count(
     while time.time() < deadline:
         count = _parse_nat64(
             call_canister_api(
-                dfx_json_path=DFX_JSON_PATH,
+                icp_yaml_path=ICP_YAML_PATH,
                 canister_name=CANISTER_NAME,
                 canister_method=method,
                 network=network,
@@ -72,7 +72,7 @@ def _poll_count(
 
 def _reset(network: str) -> None:
     call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="reset_counts",
         network=network,
@@ -83,7 +83,7 @@ def test__one_shot_fires(network: str, principal: str) -> None:
     _reset(network)
 
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="start_one_shot",
         network=network,
@@ -100,7 +100,7 @@ def test__recurring_fires_and_can_be_cancelled(network: str, principal: str) -> 
 
     # Schedule a recurring timer with period 1s.
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="start_recurring",
         canister_argument="(1_000_000_000 : nat64)",
@@ -117,7 +117,7 @@ def test__recurring_fires_and_can_be_cancelled(network: str, principal: str) -> 
 
     # Cancel.
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="stop_timer",
         canister_argument=f"({timer_id} : nat64)",
@@ -132,7 +132,7 @@ def test__recurring_fires_and_can_be_cancelled(network: str, principal: str) -> 
     time.sleep(2.5)
     after_cancel = _parse_nat64(
         call_canister_api(
-            dfx_json_path=DFX_JSON_PATH,
+            icp_yaml_path=ICP_YAML_PATH,
             canister_name=CANISTER_NAME,
             canister_method="get_recurring_count",
             network=network,
@@ -146,7 +146,7 @@ def test__recurring_fires_and_can_be_cancelled(network: str, principal: str) -> 
 
 def test__cancel_unknown_returns_false(network: str, principal: str) -> None:
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="stop_timer",
         canister_argument="(999_999 : nat64)",
@@ -162,7 +162,7 @@ def test__reset_counts_cancels_recurring_timer(network: str, principal: str) -> 
     _reset(network)
 
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="start_recurring",
         canister_argument="(1_000_000_000 : nat64)",
@@ -181,7 +181,7 @@ def test__reset_counts_cancels_recurring_timer(network: str, principal: str) -> 
 
     # reset_counts now also calls IC_API::cancel_all_timers().
     call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="reset_counts",
         network=network,
@@ -193,7 +193,7 @@ def test__reset_counts_cancels_recurring_timer(network: str, principal: str) -> 
     time.sleep(3.0)
     after_reset_count = _parse_nat64(
         call_canister_api(
-            dfx_json_path=DFX_JSON_PATH,
+            icp_yaml_path=ICP_YAML_PATH,
             canister_name=CANISTER_NAME,
             canister_method="get_recurring_count",
             network=network,

@@ -18,10 +18,10 @@ from icpp.smoketest import (
     get_canister_url_with_headers,
 )
 
-# Path to the dfx.json file
-DFX_JSON_PATH = Path(__file__).parent / "../dfx.json"
+# Path to the icp.yaml file
+ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
 
-# Canister in the dfx.json file we want to test
+# Canister in the icp.yaml file we want to test
 CANISTER_NAME = "my_canister"
 
 #
@@ -38,7 +38,7 @@ CANISTER_NAME = "my_canister"
 
 def test__http_request_get_counter(network: str, principal: str) -> None:
     url, headers = get_canister_url_with_headers(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         network=network,
         url_path="counter",
@@ -50,7 +50,7 @@ def test__http_request_get_counter(network: str, principal: str) -> None:
 
 def test__http_request_post_counter(network: str, principal: str) -> None:
     url, headers = get_canister_url_with_headers(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         network=network,
         url_path="counter",
@@ -62,7 +62,7 @@ def test__http_request_post_counter(network: str, principal: str) -> None:
 
     # Increment the counter, using a POST request
     url, headers = get_canister_url_with_headers(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         network=network,
         url_path="counter",
@@ -73,7 +73,7 @@ def test__http_request_post_counter(network: str, principal: str) -> None:
 
     # verify, by using a GET request, that Orthogonal Persistence worked
     url, headers = get_canister_url_with_headers(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         network=network,
         url_path="counter",
@@ -87,7 +87,7 @@ def test__http_request_post_counter(network: str, principal: str) -> None:
 
 def test__http_request_get_404_not_found(network: str, principal: str) -> None:
     url, headers = get_canister_url_with_headers(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         network=network,
         url_path="unknown-path",

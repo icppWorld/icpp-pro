@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://github.com/dfinity/icp-cli/raw/refs/tags/v1.2.0/docs/schemas/icp-yaml-schema.json
+#
+# icp-cli project configuration. This replaces the legacy `dfx.json`, because
+# dfx is deprecated.
+#
+# The wasm is built by `icpp build-wasm`, so icp only has to pick it up. Its
+# Candid interface travels with it, in the `icp:public candid:service` custom
+# section that `icpp build-wasm` writes into the wasm.
+
+canisters:
+  - name: my_canister
+    build:
+      steps:
+        - type: pre-built
+          path: build/my_canister.wasm
+
+networks:
+  # A project-local replica, started with `icp network start`. Being
+  # project-local, it does not collide with the replicas of other projects.
+  - name: local
+    mode: managed
+
+environments:
+  # The names of these environments are the values you pass to pytest as
+  # `--network=[local/ic]`.
+  - name: local
+    network: local
+  - name: ic
+    network: ic

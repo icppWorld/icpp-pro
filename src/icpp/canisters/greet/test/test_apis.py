@@ -11,18 +11,22 @@ $ pytest --network=[local/ic] test_apis.py
 from pathlib import Path
 from typing import Dict
 import pytest
-from icpp.smoketest import call_canister_api, dict_to_candid_text
+from icpp.smoketest import (
+    call_canister_api,
+    dict_to_candid_text,
+    flatten_candid_text,
+)
 
-# Path to the dfx.json file
-DFX_JSON_PATH = Path(__file__).parent / "../dfx.json"
+# Path to the icp.yaml file
+ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
 
-# Canister in the dfx.json file we want to test
+# Canister in the icp.yaml file we want to test
 CANISTER_NAME = "greet"
 
 
 def test__greet_0(network: str) -> None:
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_0",
         canister_argument="()",
@@ -34,7 +38,7 @@ def test__greet_0(network: str) -> None:
 
 def test__greet_0_static_lib(network: str) -> None:
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_0_static_lib",
         canister_argument="()",
@@ -51,7 +55,7 @@ def test__greet_0_auth_err(identity_anonymous: Dict[str, str], network: str) -> 
     assert identity_anonymous["principal"] == "2vxsx-fae"
 
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_0_auth",
         canister_argument="()",
@@ -67,7 +71,7 @@ def test__greet_0_auth_ok(identity_default: Dict[str, str], network: str) -> Non
     assert identity_default["identity"] == "default"
 
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_0_auth",
         canister_argument="()",
@@ -75,14 +79,14 @@ def test__greet_0_auth_ok(identity_default: Dict[str, str], network: str) -> Non
     )
     principal = identity_default["principal"]
     expected_response = (
-        f'(variant {{ Ok = record {{ greeting = "Hello {principal}";}} }})'
+        f'( variant {{ Ok = record {{ greeting = "Hello {principal}"; }} }}, )'
     )
-    assert response == expected_response
+    assert flatten_candid_text(response) == expected_response
 
 
 def test__greet_1(network: str) -> None:
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_1",
         canister_argument="()",
@@ -94,31 +98,31 @@ def test__greet_1(network: str) -> None:
 
 def test__greet_2(network: str, principal: str) -> None:
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_2",
         canister_argument='("C++ Developer")',
         network=network,
     )
-    expected_response = f'("hello C++ Developer!\\nYour principal is: {principal}")'
-    assert response == expected_response
+    expected_response = f'( "hello C++ Developer!\\nYour principal is: {principal}", )'
+    assert flatten_candid_text(response) == expected_response
 
 
 def test__greet_3(network: str) -> None:
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_3",
         canister_argument='(record { "icpp version" = 1 : int; OS = "Linux" : text })',
         network=network,
     )
-    expected_response = '(record { "icpp Release Details" = "Version = 1 & Operating System = Linux"; "release year" = 2_023 : int;})'
-    assert response == expected_response
+    expected_response = '( record { "icpp Release Details" = "Version = 1 & Operating System = Linux"; "release year" = 2_023 : int; }, )'
+    assert flatten_candid_text(response) == expected_response
 
 
 def test__greet_4(network: str) -> None:
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_4",
         canister_argument="(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })",
@@ -134,7 +138,7 @@ def test__greet_json(network: str, principal: str) -> None:
     d = {"name": "AJB"}
     text_in = dict_to_candid_text(d)
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_json",
         canister_argument=text_in,
@@ -146,11 +150,12 @@ def test__greet_json(network: str, principal: str) -> None:
 
 def test__greet_log_file(network: str) -> None:
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_log_file",
         canister_argument="()",
         network=network,
     )
-    expected_response = ""
+    # dfx printed nothing for a unit response, icp prints the empty tuple
+    expected_response = "()"
     assert response == expected_response

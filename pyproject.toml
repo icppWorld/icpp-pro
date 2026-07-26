@@ -52,6 +52,8 @@ dependencies = [
     'icpp-pro-is-not-supported-on-windows; platform_system == "Windows"',
     "typer[all]>=0.9.0",
     "tomli",
+    # icp.yaml is the icp-cli project file, read by icpp.smoketest
+    "pyyaml",
     "requests",
     "enlighten",
     "pytest",
@@ -75,6 +77,7 @@ dev = [
     "twine==6.0.1",
     "mkdocs==1.5.3",
     "types-requests==2.31.0.10",
+    "types-PyYAML==6.0.12.20240917",
 ]
 
 [project.urls]

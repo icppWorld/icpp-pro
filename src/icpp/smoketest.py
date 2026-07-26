@@ -1,110 +1,232 @@
-"""Functions to be used in a pytest test"""
+"""Functions to be used in a pytest test
 
+These helpers drive `icp` (icp-cli), the successor of the deprecated `dfx`.
+
+The `network` argument of every helper is the name of an *environment* in the
+project's `icp.yaml`, and is passed to icp as `-e <network>`. Define an
+environment per network you test against, e.g.:
+
+    environments:
+      - name: local
+        network: local
+      - name: ic
+        network: ic
+
+so that `pytest --network=local` and `pytest --network=ic` keep working.
+"""
+
+import json
 import re
 import subprocess
-import json
+import warnings
 from pathlib import Path
-from typing import Optional, Any, Dict, Tuple
+from typing import Optional, Any, Dict, List, Tuple
 import pytest  # pylint: disable=unused-import
+import yaml
 
 from icpp.run_shell_cmd import run_shell_cmd
 
-DFX = "dfx"
+ICP = "icp"
 
-# dfx 0.32.0 started emitting this deprecation banner on stderr for every
-# invocation. run_shell_cmd merges stderr into stdout, so the banner ends up
-# in our captured response and corrupts string-equality assertions in
-# pytest. Strip exactly this known line — narrow enough that it cannot
-# accidentally swallow legitimate canister output. Update or extend if dfx
-# adds new pre-call warnings later.
-_DFX_DEPRECATION_RE = re.compile(
-    r"^WARNING: dfx is deprecated.*$\n?", flags=re.MULTILINE
-)
+# dfx's `--type` / `--output` values, mapped onto the icp-cli equivalents
+# (`--args-format` / `--output`). The icp-cli names are passed through, so
+# callers can already use them today.
+_ARGS_FORMATS = {
+    "idl": "candid",
+    "candid": "candid",
+    "raw": "hex",
+    "hex": "hex",
+    "bin": "bin",
+}
+_OUTPUT_FORMATS = {
+    "idl": "candid",
+    "candid": "candid",
+    "pp": "candid",
+    "raw": "hex",
+    "hex": "hex",
+    "text": "text",
+    "auto": "auto",
+}
 
 
-def _strip_dfx_warnings(s: str) -> str:
-    """Remove the known dfx deprecation banner from captured shell output."""
-    return _DFX_DEPRECATION_RE.sub("", s)
+def _icp_yaml(
+    icp_yaml_path: Optional[Path],
+    dfx_json_path: Optional[Path],
+) -> Optional[Path]:
+    """Returns the path of the project's `icp.yaml`, or None if not given.
+
+    `dfx_json_path` is a deprecated alias, kept for one release so test suites
+    written against the dfx-based framework keep working. The icp.yaml is
+    assumed to sit next to the dfx.json it replaced.
+    """
+    if dfx_json_path is not None:
+        if icp_yaml_path is not None:
+            pytest.fail(
+                "ERROR: pass either 'icp_yaml_path' or the deprecated "
+                "'dfx_json_path', not both."
+            )
+        warnings.warn(
+            "'dfx_json_path' is deprecated, because dfx is deprecated. "
+            "Pass 'icp_yaml_path' pointing at your icp.yaml instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        icp_yaml_path = Path(dfx_json_path).parent / "icp.yaml"
+
+    if icp_yaml_path is None:
+        return None
+
+    icp_yaml_path = Path(icp_yaml_path)
+    if not icp_yaml_path.exists():
+        pytest.fail(
+            f"ERROR: '{icp_yaml_path}' does not exist.\n"
+            f"       icpp-pro uses icp-cli, which reads an 'icp.yaml' project file."
+        )
+
+    return icp_yaml_path.resolve()
+
+
+def _require_icp_yaml(
+    icp_yaml_path: Optional[Path],
+    dfx_json_path: Optional[Path],
+) -> Path:
+    """Same as _icp_yaml, but fails the test when no path was given"""
+    icp_yaml = _icp_yaml(icp_yaml_path, dfx_json_path)
+    if icp_yaml is None:
+        pytest.fail("ERROR: 'icp_yaml_path' is required.")
+    return icp_yaml
+
+
+def _canister_names(icp_yaml_path: Path) -> List[str]:
+    """Returns the names of the canisters defined in an icp.yaml"""
+    with open(icp_yaml_path, "rb") as f:
+        data = yaml.safe_load(f)
+
+    canisters = (data or {}).get("canisters") or []
+    return [c["name"] for c in canisters if "name" in c]
+
+
+def _verify_canister_name(
+    canister_name: str,
+    icp_yaml_path: Optional[Path],
+    dfx_json_path: Optional[Path],
+) -> Path:
+    """Fails the test if the canister is not defined in icp.yaml.
+
+    Returns the icp project root.
+    """
+    icp_yaml = _require_icp_yaml(icp_yaml_path, dfx_json_path)
+    if canister_name not in _canister_names(icp_yaml):
+        pytest.fail(
+            f"ERROR: canister '{canister_name}' not defined in '{str(icp_yaml)}'"
+        )
+    return icp_yaml.parent
+
+
+def _as_candid_arg_tuple(argument: str) -> str:
+    """Wraps a bare Candid value in the parentheses that icp-cli requires.
+
+    dfx accepted a bare value, eg. `"a text"`, as a one-element argument list.
+    icp-cli's Candid parser insists on the tuple form, `("a text")`. Callers
+    that build their argument with `dict_to_candid_text` rely on the lenient
+    behaviour, so keep accepting both.
+    """
+    stripped = argument.strip()
+    if stripped.startswith("("):
+        return argument
+    return f"({stripped})"
+
+
+def _run_icp(
+    args: str,
+    project_root: Optional[Path] = None,
+    timeout_seconds: Optional[int] = None,
+) -> str:
+    """Runs an icp command against a project & returns its captured output.
+
+    Without a `project_root`, icp finds the project itself by walking up from
+    the current working directory.
+    """
+    cmd = f"{ICP} {args} "
+    if project_root is not None:
+        cmd += f"--project-root-override {str(project_root)} "
+    # icp launches an interactive prompt when it is missing an argument. Close
+    # stdin so it can never block a test run waiting for input.
+    return run_shell_cmd(
+        f"{cmd} < /dev/null",
+        capture_output=True,
+        timeout_seconds=timeout_seconds,
+    ).rstrip("\n")
 
 
 def call_canister_api(
     *,
-    dfx_json_path: Path,
     canister_name: str,
     canister_method: str,
+    icp_yaml_path: Optional[Path] = None,
     canister_argument: Optional[str] = None,
     canister_input: str = "idl",
     canister_output: str = "idl",
     network: str = "local",
-    quiet: str = "-qq",  # limits dfx to errors only
+    query: bool = False,
+    quiet: str = "-qq",  # deprecated: dfx only, icp-cli has no verbosity flag
     timeout_seconds: Optional[int] = None,
+    dfx_json_path: Optional[Path] = None,  # deprecated alias of icp_yaml_path
 ) -> str:
-    """Calls a canister method"""
+    """Calls a canister method.
 
-    # verify that canister_name is part of dfx.json
-    with open(dfx_json_path, "rb") as f:
-        data = json.load(f)
+    Set `query=True` to send a query request instead of an update request.
+    dfx auto-detected this from the canister's Candid interface; icp-cli does
+    not, and defaults to an update request. Update requests are valid for
+    query methods too, so leaving this at False is always correct - just
+    slower for methods that are declared `query`.
+    """
+    del quiet  # accepted for backwards compatibility, has no icp-cli equivalent
 
-    if canister_name not in data["canisters"].keys():
-        pytest.fail(
-            f"ERROR: canister '{canister_name}' not defined in '{str(dfx_json_path)}'"
-        )
+    project_root = _verify_canister_name(canister_name, icp_yaml_path, dfx_json_path)
+
+    if canister_input not in _ARGS_FORMATS:
+        pytest.fail(f"ERROR: unsupported canister_input '{canister_input}'")
+    if canister_output not in _OUTPUT_FORMATS:
+        pytest.fail(f"ERROR: unsupported canister_output '{canister_output}'")
+
+    argument = "()" if canister_argument is None else canister_argument
+    if _ARGS_FORMATS[canister_input] == "candid":
+        argument = _as_candid_arg_tuple(argument)
 
     arg = (
-        f"{DFX} "
-        f" canister "
-        f" --network {network} "
-        f" {quiet} "
-        f" call "
-        f" --type {canister_input} "
-        f" --output {canister_output} "
+        f" canister call "
         f" {canister_name} "
         f" {canister_method} "
+        f" '{argument}' "
+        f" --environment {network} "
+        f" --args-format {_ARGS_FORMATS[canister_input]} "
+        f" --output {_OUTPUT_FORMATS[canister_output]} "
     )
-
-    if canister_argument is None:
-        arg += " '()' "
-    else:
-        arg += f" '{canister_argument}' "
+    if query:
+        arg += " --query "
 
     try:
-        # response = run_shell_cmd(arg, cwd=Path(dfx_json_path).parent)
-        response = run_shell_cmd(
-            arg,
-            capture_output=True,
-            cwd=Path(dfx_json_path).parent,
-            timeout_seconds=timeout_seconds,
-        )
-        response = _strip_dfx_warnings(response).rstrip("\n")
+        response = _run_icp(arg, project_root, timeout_seconds)
     except subprocess.CalledProcessError as e:
-        if "Error: Failed to determine id for canister" in e.output:
-            msg = (
-                "\n\n"
-                f"FAIL: Call to api '{canister_method}' of canister "
-                f"'{canister_name}'\n\n"
-                "*******************************************\n"
-                "*** Failed to determine id for canister ***\n"
-                "*** Deploy the canister first with:     ***\n"
-                f"***  {DFX} deploy                       ***\n"
-                "*******************************************"
-            )
-            pytest.exit(msg)
-        else:
-            response = (
-                f"Failed call to api '{canister_method}' of canister '{canister_name}':"
-                f"{e.output}"
-            )
+        if _is_not_deployed_error(e.output):
+            pytest.exit(_not_deployed_msg(canister_name, network, canister_method))
+        response = (
+            f"Failed call to api '{canister_method}' of canister '{canister_name}':"
+            f"{e.output}"
+        )
 
     return response
 
 
 def get_canister_url(
     *,
-    dfx_json_path: Path,
     canister_name: str,
+    icp_yaml_path: Optional[Path] = None,
     network: str = "local",
     url_path: Optional[str] = None,
     timeout_seconds: Optional[int] = None,
+    dfx_json_path: Optional[Path] = None,  # deprecated alias of icp_yaml_path
 ) -> str:
     """THIS FUNCTION IS DEPRECATED. DO NOT USE...
     use get_canister_url_with_headers instead
@@ -115,6 +237,7 @@ def get_canister_url(
     print("instead, use: get_canister_url_with_headers")
 
     canister_id = get_canister_id(
+        icp_yaml_path=icp_yaml_path,
         dfx_json_path=dfx_json_path,
         canister_name=canister_name,
         network=network,
@@ -124,7 +247,12 @@ def get_canister_url(
     if network == "ic":
         url = f"https://{canister_id}"
     else:
-        webserver_port = get_local_webserver_port()
+        webserver_port = get_local_webserver_port(
+            icp_yaml_path=icp_yaml_path,
+            dfx_json_path=dfx_json_path,
+            network=network,
+            timeout_seconds=timeout_seconds,
+        )
         url = f"http://localhost:{webserver_port}"
 
     # Add the path
@@ -132,7 +260,7 @@ def get_canister_url(
         url = f"{url}/{url_path}"
 
     # For local network, add the canister_id as a query parameter
-    if network == "local":
+    if network != "ic":
         url = f"{url}?canisterId={canister_id}"
 
     return url
@@ -140,28 +268,37 @@ def get_canister_url(
 
 def get_canister_url_with_headers(
     *,
-    dfx_json_path: Path,
     canister_name: str,
+    icp_yaml_path: Optional[Path] = None,
     network: str = "local",
     url_path: Optional[str] = None,
     timeout_seconds: Optional[int] = None,
+    dfx_json_path: Optional[Path] = None,  # deprecated alias of icp_yaml_path
 ) -> Tuple[str, Optional[Dict[str, str]]]:
     """Returns the url + headers for calling a canister as a Web2.0 HTTP server"""
-    # Updated version for dfx 0.14.1
 
     canister_id = get_canister_id(
+        icp_yaml_path=icp_yaml_path,
         dfx_json_path=dfx_json_path,
         canister_name=canister_name,
         network=network,
         timeout_seconds=timeout_seconds,
     )
 
-    # See: https://forum.dfinity.org/t/upgrading-to-dfx-0-24-1-breaks-the-http-request-endpoint/36709/13?u=icpp # pylint: disable=line-too-long
+    # The `raw` subdomain bypasses response certification, which an icpp-pro
+    # `http_request` does not provide. Same for the icp-cli gateway as it was
+    # for the dfx one:
+    # https://forum.dfinity.org/t/upgrading-to-dfx-0-24-1-breaks-the-http-request-endpoint/36709/13?u=icpp # pylint: disable=line-too-long
     headers = None
     if network == "ic":
         url = f"https://{canister_id}.raw.icp0.io"
     else:
-        webserver_port = get_local_webserver_port()
+        webserver_port = get_local_webserver_port(
+            icp_yaml_path=icp_yaml_path,
+            dfx_json_path=dfx_json_path,
+            network=network,
+            timeout_seconds=timeout_seconds,
+        )
         url = f"http://127.0.0.1:{webserver_port}"
         headers = {"Host": f"{canister_id}.raw.localhost"}
 
@@ -174,73 +311,82 @@ def get_canister_url_with_headers(
 
 def get_canister_id(
     *,
-    dfx_json_path: Path,
     canister_name: str,
+    icp_yaml_path: Optional[Path] = None,
     network: str = "local",
     timeout_seconds: Optional[int] = None,
+    dfx_json_path: Optional[Path] = None,  # deprecated alias of icp_yaml_path
 ) -> str:
     """Returns the canister_id of a canister"""
 
-    # verify that canister_name is part of dfx.json
-    with open(dfx_json_path, "rb") as f:
-        data = json.load(f)
+    project_root = _verify_canister_name(canister_name, icp_yaml_path, dfx_json_path)
 
-    if canister_name not in data["canisters"].keys():
-        pytest.fail(
-            f"ERROR: canister '{canister_name}' not defined in '{str(dfx_json_path)}'"
-        )
+    # icp-cli records the deployed ids per environment in its ID store. For a
+    # `connected` network that store is persistent (`data/`); for a `managed`
+    # network it lives alongside the disposable network state (`cache/`).
+    for sub_dir in ("data", "cache"):
+        ids_path = project_root / ".icp" / sub_dir / "mappings" / f"{network}.ids.json"
+        if ids_path.exists():
+            with open(ids_path, "rb") as f:
+                ids = json.load(f)
+            if canister_name in ids:
+                return str(ids[canister_name])
 
-    # Get the canister id
+    # Not in the ID store - ask the network. This also covers canisters that
+    # were deployed from elsewhere and linked into the project.
     try:
-        arg = f"{DFX} canister --network {network} id {canister_name} "
-        response = run_shell_cmd(
-            arg,
-            capture_output=True,
-            cwd=Path(dfx_json_path).parent,
-            timeout_seconds=timeout_seconds,
+        response = _run_icp(
+            f" canister status {canister_name} --environment {network} --json ",
+            project_root,
+            timeout_seconds,
         )
-        canister_id = _strip_dfx_warnings(response).rstrip("\n")
     except subprocess.CalledProcessError as e:
-        if "Error: Failed to determine id for canister" in e.output:
-            msg = (
-                "\n\n"
-                f"Failed to get id of canister '{canister_name}'\n\n"
-                "*******************************************\n"
-                "*** Failed to determine id for canister ***\n"
-                "*** Deploy the canister first with:     ***\n"
-                f"***  {DFX} deploy                       ***\n"
-                "*******************************************"
-            )
-            pytest.exit(msg)
-        # pytest.fail raises, so canister_id never has to be defined for this
-        # path. The earlier code built `response` here and fell through to
-        # `return canister_id`, which raised UnboundLocalError and hid the
-        # real dfx error.
+        if _is_not_deployed_error(e.output):
+            pytest.exit(_not_deployed_msg(canister_name, network))
         pytest.fail(f"Failed to get id of canister '{canister_name}': {e.output}")
 
-    return canister_id
+    return str(json.loads(response)["id"])
 
 
 def get_local_webserver_port(
     *,
+    icp_yaml_path: Optional[Path] = None,
+    network: str = "local",
     timeout_seconds: Optional[int] = None,
+    dfx_json_path: Optional[Path] = None,  # deprecated alias of icp_yaml_path
 ) -> str:
-    """Returns the webserver port of the network"""
+    """Returns the port of the network's HTTP gateway"""
 
-    arg = f"{DFX} info webserver-port "
+    icp_yaml = _icp_yaml(icp_yaml_path, dfx_json_path)
+    project_root = None if icp_yaml is None else icp_yaml.parent
+
     try:
-        response = run_shell_cmd(
-            arg, capture_output=True, timeout_seconds=timeout_seconds
+        response = _run_icp(
+            f" network status --environment {network} --json ",
+            project_root,
+            timeout_seconds,
         )
-        webserver_port = _strip_dfx_warnings(response).rstrip("\n")
     except subprocess.CalledProcessError as e:
-        # pytest.fail raises so webserver_port never has to be defined for
-        # this path. The earlier code built a `response` string here and
-        # fell through to `return webserver_port`, which raised
-        # UnboundLocalError and hid the real dfx error.
         pytest.fail(f"Failed to get local network's webserver port: {e.output}")
 
-    return webserver_port
+    gateway_url = json.loads(response)["gateway_url"]
+    port = gateway_url.rstrip("/").rsplit(":", maxsplit=1)[-1]
+    return str(port)
+
+
+def flatten_candid_text(candid_text: str) -> str:
+    """Collapses the line breaks & indentation of pretty-printed Candid text.
+
+    dfx printed most responses on a single line, icp-cli wraps records, vecs
+    and long values over several indented lines. Both are the same Candid
+    value, so compare the flattened form when asserting on a response:
+
+        assert flatten_candid_text(response) == '( record { n = 1 : nat }, )'
+
+    Note that this also collapses runs of whitespace *inside* Candid string
+    literals, so do not use it when that whitespace is what you are testing.
+    """
+    return re.sub(r"\s+", " ", candid_text).strip()
 
 
 def dict_to_candid_text(d: Dict[Any, Any]) -> str:
@@ -249,22 +395,23 @@ def dict_to_candid_text(d: Dict[Any, Any]) -> str:
     return json.dumps(json.dumps(d))
 
 
-def network_status(network: str) -> str:
-    """Returns the network status."""
-    arg = f"{DFX} ping {network}"
+def network_status(
+    network: str,
+    icp_yaml_path: Optional[Path] = None,
+    dfx_json_path: Optional[Path] = None,  # deprecated alias of icp_yaml_path
+) -> str:
+    """Returns the network status.
+
+    Without a path, icp finds the project by walking up from the current
+    working directory, so run pytest from within your project.
+    """
+    icp_yaml = _icp_yaml(icp_yaml_path, dfx_json_path)
+    project_root = None if icp_yaml is None else icp_yaml.parent
+
     try:
-        response = run_shell_cmd(arg, capture_output=False)
+        response = _run_icp(f" network ping --environment {network} ", project_root)
     except subprocess.CalledProcessError:
-        if network == "local":
-            msg = (
-                "\n"
-                "***************************************\n"
-                "*** The local network is not up     ***\n"
-                "*** Please start it first with:     ***\n"
-                f"***  {DFX} start --clean --background ***\n"
-                "***************************************"
-            )
-        else:
+        if network == "ic":
             msg = (
                 "\n"
                 "*******************************\n"
@@ -272,17 +419,26 @@ def network_status(network: str) -> str:
                 "*** Please try again later  ***\n"
                 "*******************************"
             )
+        else:
+            msg = (
+                "\n"
+                "*******************************************\n"
+                "*** The local network is not up         ***\n"
+                "*** Please start it first with:         ***\n"
+                f"***  {ICP} network start --background     ***\n"
+                "*******************************************"
+            )
         pytest.exit(msg)
 
     return response
 
 
 def get_identity() -> str:
-    """Returns the current dfx identity."""
-    arg = f"{DFX} identity whoami "
+    """Returns the name of the current icp identity."""
+    arg = f"{ICP} identity default "
     try:
         identity = run_shell_cmd(arg, capture_output=True, timeout_seconds=30)
-        identity = _strip_dfx_warnings(identity).rstrip("\n")
+        identity = identity.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
 
@@ -290,8 +446,8 @@ def get_identity() -> str:
 
 
 def set_identity(identity: str) -> None:
-    """Sets the dfx identity."""
-    arg = f"{DFX} identity use {identity}"
+    """Sets the icp identity."""
+    arg = f"{ICP} identity default {identity}"
     try:
         run_shell_cmd(arg)
     except subprocess.CalledProcessError as e:
@@ -299,12 +455,39 @@ def set_identity(identity: str) -> None:
 
 
 def get_principal() -> str:
-    """Returns the principal of the current dfx identity."""
-    arg = f"{DFX} identity get-principal "
+    """Returns the principal of the current icp identity."""
+    arg = f"{ICP} identity principal "
     try:
         principal = run_shell_cmd(arg, capture_output=True, timeout_seconds=30)
-        principal = _strip_dfx_warnings(principal).rstrip("\n")
+        principal = principal.rstrip("\n")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
 
     return principal
+
+
+def _is_not_deployed_error(output: str) -> bool:
+    """True if icp failed because the canister has no id on this network yet"""
+    return "could not find ID for canister" in output
+
+
+def _not_deployed_msg(
+    canister_name: str,
+    network: str,
+    canister_method: Optional[str] = None,
+) -> str:
+    """The 'deploy the canister first' message shown when a call has no target"""
+    what = (
+        f"Call to api '{canister_method}' of canister '{canister_name}'"
+        if canister_method is not None
+        else f"Failed to get id of canister '{canister_name}'"
+    )
+    return (
+        "\n\n"
+        f"FAIL: {what}\n\n"
+        "*******************************************\n"
+        "*** Failed to determine id for canister ***\n"
+        "*** Deploy the canister first with:     ***\n"
+        "*******************************************\n"
+        f"  {ICP} deploy --environment {network}"
+    )

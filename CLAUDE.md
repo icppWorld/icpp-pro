@@ -25,7 +25,7 @@ make install-python
 # Install toolchains
 icpp install-wasi-sdk
 icpp install-rust
-make install-dfx
+make install-icp
 ```
 
 ## Common Commands
@@ -35,7 +35,7 @@ make install-dfx
 | `make all-tests`                         | Run everything: static checks + native builds + deploy + pytest |
 | `make all-static`                        | All static checks (cpp-format, cpp-lint, python-format, python-lint, python-type) |
 | `make all-canister-native`               | Build all canisters as native executables             |
-| `make all-canister-deploy-local-pytest`  | Deploy canisters to local dfx network and run pytest  |
+| `make all-canister-deploy-local-pytest`  | Deploy canisters to a local icp network and run pytest |
 | `make python-format`                     | Format Python with black                              |
 | `make python-lint`                       | Lint Python with pylint                               |
 | `make python-type`                       | Type check Python with mypy (strict mode)             |
@@ -54,8 +54,8 @@ icpp build-native
 # WASM build + deploy + pytest against local network:
 cd test/canisters/canister_1
 icpp build-wasm
-dfx start --clean --background
-dfx deploy
+icp network start --background
+icp deploy --environment local --yes
 pytest --network=local
 ```
 
@@ -73,7 +73,7 @@ pytest --network=local
   - `config_default.py` - Global defaults (paths, compiler flags, tool versions)
   - `smoketest.py` - Utilities for canister API testing (`call_canister_api`)
   - `conftest_base.py` - Shared pytest fixtures (network, identity, principal)
-  - `run_shell_cmd.py` / `run_dfx_cmd.py` - Command execution helpers
+  - `run_shell_cmd.py` / `run_icp_cmd.py` - Command execution helpers
   - `decorators.py` - e.g. `@requires_wasi_sdk()`
   - `version*.py` - Pinned versions for wasi-sdk, rust, wasi2ic, ic-wasi-polyfill
 - `src/icpp/ic/` - C++ headers and source for IC bindings
@@ -96,7 +96,7 @@ Every canister supports two build targets configured in `icpp.toml`:
 ### Configuration Files
 
 - `icpp.toml` - Per-canister build configuration (source files, include dirs, compiler flags)
-- `dfx.json` - Internet Computer SDK canister definitions
+- `icp.yaml` - icp-cli project file: canisters, networks & environments
 - `.clang-format` - C++ formatting rules (from wasi-sdk)
 - `.pylintrc` - Pylint configuration
 - `.mypy.ini` - Mypy strict mode configuration
@@ -105,7 +105,7 @@ Every canister supports two build targets configured in `icpp.toml`:
 
 - wasi-sdk (WASM compiler)
 - Rust (for wasi2ic converter)
-- dfx (Internet Computer SDK, installed to `~/bin/`)
+- icp-cli (Internet Computer SDK, `npm install -g @icp-sdk/icp-cli`)
 
 ## Code Quality
 
@@ -119,7 +119,7 @@ Every canister supports two build targets configured in `icpp.toml`:
 
 Tests run in two modes:
 1. **Native:** Build with `icpp build-native`, run `mockic.exe` directly
-2. **Deployed:** Build WASM, deploy to local dfx network, run pytest with `--network=local`
+2. **Deployed:** Build WASM, deploy to a local icp network, run pytest with `--network=local`
 
 Pytest fixtures from `conftest_base.py` provide: `network`, `identity`, `principal`, `identity_anonymous`, `identity_default`. Test conftest files import these with `from icpp.conftest_base import *`.
 

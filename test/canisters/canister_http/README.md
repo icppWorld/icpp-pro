@@ -32,9 +32,10 @@ $ curl -X GET https://5ugrv-zqaaa-aaaag-acfna-cai.raw.icp0.io/counter
  
 
 # local network
-$ curl -X GET http://$(dfx canister id my_canister).raw.localhost:$(dfx info webserver-port)/counter
+$ CANISTER_ID=$(icp canister status my_canister --environment local --json | python -c "import json,sys; print(json.load(sys.stdin)['id'])")
+$ curl -X GET http://$CANISTER_ID.raw.localhost:8000/counter
 # typically resolves to:
-$ curl -X GET http://bkyz2-fmaaa-aaaaa-qaaaq-cai.raw.localhost:4943/counter
+$ curl -X GET http://4caro-hl777-77775-aaaba-cai.raw.localhost:8000/counter
 ```
 
 ### HTML / Javascript: Fetch

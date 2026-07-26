@@ -99,15 +99,24 @@ icpp install-wasi-sdk
 icpp install-rust
 ```
 
-### Install dfx
+### Install icp-cli
+
+icp-cli (`icp`) is the successor of the deprecated `dfx`. Version >= 1.2.0 is
+required.
 
 ```bash
-make install-dfx
-
-# start a new shell
+make install-icp
 
 # verify it works
-dfx --version
+icp --version
+```
+
+The test suite deploys as - and asserts on - an identity named `default`.
+Unlike dfx, icp-cli does not create one for you:
+
+```bash
+icp identity new default --storage plaintext
+icp identity default default
 ```
 
 

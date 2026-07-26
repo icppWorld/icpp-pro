@@ -403,10 +403,10 @@ def generate_javascript_bindings(
         return
 
     out_path = declarations_path / canister
-    out_path.mkdir(parents=True, exist_ok=True)
     typer.echo(f"{out_path.resolve()}")
 
     try:
+        out_path.mkdir(parents=True, exist_ok=True)
         shutil.copy(did_path, out_path / f"{canister}.did")
         for target, suffix in (("js", "did.js"), ("ts", "did.d.ts")):
             cmd = f"didc bind {str(did_path)} --target {target}"
@@ -416,6 +416,12 @@ def generate_javascript_bindings(
     except subprocess.CalledProcessError as e:
         typer.echo(f"ERROR: failed to generate the bindings: \n{e.output}")
         sys.exit(e.returncode)
+    except OSError as e:
+        # Creating the directory, copying the .did or writing the bindings can
+        # all fail on eg. a read-only or full disk. Report it the same way as a
+        # failing didc, instead of dumping a traceback.
+        typer.echo(f"ERROR: failed to write the bindings: \n{e}")
+        sys.exit(1)
 
     try:
         typer.echo("✔️")

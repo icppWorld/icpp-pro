@@ -27,7 +27,17 @@ jobs:
         os: [macos-15-intel, macos-latest]
 
     runs-on: ${{ matrix.os }}
-    
+
+    env:
+      # `icp network start` downloads the icp-cli-network-launcher from the
+      # GitHub API. Unauthenticated, that is 60 requests/hour shared across
+      # ALL GitHub-hosted runners, so our matrix jobs randomly died with:
+      #   403 rate limit exceeded for
+      #   api.github.com/repos/dfinity/icp-cli-network-launcher/releases/latest
+      # icp-cli reads this variable and authenticates with it (1000/hour for
+      # this repo's token), for both the version lookup and the download.
+      ICP_CLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       # https://github.com/marketplace/actions/setup-miniconda
       - uses: conda-incubator/setup-miniconda@v3

@@ -32,10 +32,13 @@ $ curl -X GET https://5ugrv-zqaaa-aaaag-acfna-cai.raw.icp0.io/counter
  
 
 # local network
+# The local network's gateway gets an ephemeral port (icp.yaml sets
+# `gateway.port: 0`), so read both the canister id and the port back from icp:
 $ CANISTER_ID=$(icp canister status my_canister --environment local --json | python -c "import json,sys; print(json.load(sys.stdin)['id'])")
-$ curl -X GET http://$CANISTER_ID.raw.localhost:8000/counter
+$ PORT=$(icp network status --environment local --json | python -c "import json,sys; print(json.load(sys.stdin)['gateway_url'].rstrip('/').rsplit(':',1)[-1])")
+$ curl -X GET http://$CANISTER_ID.raw.localhost:$PORT/counter
 # typically resolves to:
-$ curl -X GET http://4caro-hl777-77775-aaaba-cai.raw.localhost:8000/counter
+$ curl -X GET http://4caro-hl777-77775-aaaba-cai.raw.localhost:50698/counter
 ```
 
 ### HTML / Javascript: Fetch

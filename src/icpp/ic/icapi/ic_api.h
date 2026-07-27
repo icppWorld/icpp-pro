@@ -26,6 +26,14 @@
 #include "canister.h"
 #include "vec_bytes.h"
 
+// Run C++ global constructors exactly once per wasm instance (no-op after
+// the first call, and on native builds). The CanisterBase constructor calls
+// this automatically, so any entry that constructs an IC_API is covered.
+// Call it directly at the top of canister_post_upgrade / canister_pre_upgrade
+// hooks that do NOT construct an IC_API, before touching any global that has
+// a dynamic initializer. See canister_base.cpp for the full story.
+extern "C" void icpp_run_global_ctors_once();
+
 class IC_API {
 public:
   IC_API();
@@ -105,6 +113,19 @@ public:
   bool is_controller(const CandidTypePrincipal &principal);
 
   // Receive things from the wire in candid format
+  //
+  // IMPORTANT: the CandidType / CandidArgs overloads take their argument by
+  // value, which means the underlying object stored in `m_args_ptrs` after
+  // `CandidArgs::append` is a *copy*. CandidDeserialize writes the decoded
+  // value into that copy, NOT into your local variable. To read the decoded
+  // value, use the pointer-style ctor so the type's internal `m_pv` writes
+  // back into a caller-owned object:
+  //
+  //     std::string s;
+  //     CandidTypeText t(&s);          // register pointer to user storage
+  //     ic_api.from_wire(t);
+  //     // s now holds the decoded text; t.get_v() is NOT updated.
+  //
   // docs start: from_wire
   void from_wire();
   void from_wire(CandidType arg_in);

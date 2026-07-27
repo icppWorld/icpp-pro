@@ -1,0 +1,6 @@
+service : {
+  "echo"              : (text) -> (text);
+  "ping_self"         : (text) -> ();
+  "get_last_echoed"   : () -> (text) query;
+  "get_pending_count" : () -> (nat32) query;
+}

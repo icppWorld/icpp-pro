@@ -65,7 +65,7 @@ make pypi-build
 rm -rf ~/.icpp
 
 # create a brand new python environment
-conda create --name test python=3.12  # Test for python=3.9-3.12
+conda create --name test python=3.11  # Test for python=3.11-3.14
 conda activate test
 
 # Start fresh

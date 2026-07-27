@@ -6,6 +6,9 @@ on:
     paths:
       - "src/**"
       - "test/**"
+      # scripts/ drives this very workflow (build/deploy/pytest
+      # orchestration), so changes there must re-run the matrix
+      - "scripts/**"
       - "Makefile"
       - ".github/trigger.txt"
       - ".github/workflows/cicd-ubuntu.yml"

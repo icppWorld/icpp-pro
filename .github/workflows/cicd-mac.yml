@@ -23,9 +23,11 @@ jobs:
       # on its own and is rerun-able independently from the GitHub UI.
       fail-fast: false
       matrix:
-        # NOTE: Python versions MUST be quoted strings — unquoted 3.10 is
-        # parsed by YAML as the float 3.1 and breaks actions/setup-python.
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        # NOTE: Python versions MUST be quoted strings — YAML parses an
+        # unquoted x.y0 (e.g. 3.10, 3.20) as a float, which would break
+        # actions/setup-python. Keep the quotes even though the current
+        # matrix has no such version.
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
         # macos-15-intel for Intel, macos-latest for Apple Silicon arm64
         os: [macos-15-intel, macos-latest]
 

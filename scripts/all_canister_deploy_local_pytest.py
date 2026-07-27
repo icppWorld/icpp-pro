@@ -61,13 +61,26 @@ def default_jobs(n_canisters: int) -> int:
     return max(1, min(n_canisters, (os.cpu_count() or 1) // 4))
 
 
-def run_step(cmd: str, cwd: Path, log: List[str]) -> None:
+def run_step(cmd: str, cwd: Path, log: List[str], stream: bool = False) -> None:
     """Runs one command, appending its output to `log`. Raises on failure.
 
-    Output is captured rather than streamed, so that concurrent canisters do
-    not interleave their logs into an unreadable mess.
+    With `stream=True` the output goes straight to the terminal as it is
+    produced, which is what you want when only one canister is running: CI
+    logs stay live (so a hang shows where it stalled) and an interactive
+    `--jobs 1` debug session behaves as it always has.
+
+    With `stream=False` the output is captured and returned via `log`, so that
+    concurrent canisters do not interleave into an unreadable mess.
     """
     log.append(f"$ {cmd}")
+    if stream:
+        # No capture => no timeout => output goes straight to the terminal.
+        try:
+            run_shell_cmd(cmd, cwd=cwd)
+        except subprocess.CalledProcessError as e:
+            raise StepError(cmd) from e
+        return
+
     try:
         out = run_shell_cmd(
             cmd, capture_output=True, cwd=cwd, timeout_seconds=TIMEOUT_SECONDS
@@ -100,7 +113,7 @@ def network_stop(canister_path: Path) -> None:
         pass
 
 
-def network_start_clean(canister_path: Path, log: List[str]) -> None:
+def network_start_clean(canister_path: Path, log: List[str], stream: bool) -> None:
     """Starts a clean, project-local network for the canister.
 
     icp-cli has no `--clean` flag. A managed network keeps both its replica
@@ -112,10 +125,12 @@ def network_start_clean(canister_path: Path, log: List[str]) -> None:
     """
     network_stop(canister_path)
     shutil.rmtree(canister_path / ".icp" / "cache", ignore_errors=True)
-    run_step("icp network start --background", canister_path, log)
+    run_step("icp network start --background", canister_path, log, stream)
 
 
-def test_canister(canister_path: Path) -> Tuple[str, bool, List[str]]:
+def test_canister(
+    canister_path: Path, stream: bool = False
+) -> Tuple[str, bool, List[str]]:
     """Builds, deploys & tests one canister. Returns (name, ok, log)."""
     name = canister_path.name
     notify(f">>>> {name}: started")
@@ -126,38 +141,47 @@ def test_canister(canister_path: Path) -> Tuple[str, bool, List[str]]:
     try:
         for config in configs:
             log.append(f"-- start a clean local network ({name})")
-            network_start_clean(canister_path, log)
+            network_start_clean(canister_path, log, stream)
 
             log.append(f"-- build the wasm with config {config}")
             run_step(
                 f"icpp build-wasm --config {config} --to-compile all",
                 canister_path,
                 log,
+                stream,
             )
 
             log.append(f"-- deploy {name}")
-            run_step("icp deploy --environment local --yes", canister_path, log)
+            run_step("icp deploy --environment local --yes", canister_path, log, stream)
 
             # pytest runs from the canister directory: that is the icp project
             # root, which is how icp finds icp.yaml and this canister's network.
             log.append(f"-- pytest {test_api_path}")
-            run_step(f"pytest -vv --network=local {test_api_path}", canister_path, log)
+            run_step(
+                f"pytest -vv --network=local {test_api_path}",
+                canister_path,
+                log,
+                stream,
+            )
 
             network_stop(canister_path)
 
             # For the greet canister, also exercise build-library & --config
             if name == "greet":
                 log.append(f"-- start a clean local network ({name}, libraries)")
-                network_start_clean(canister_path, log)
+                network_start_clean(canister_path, log, stream)
 
                 log.append(f"-- build all libraries with config {config}")
-                run_step(f"icpp build-library --config {config}", canister_path, log)
+                run_step(
+                    f"icpp build-library --config {config}", canister_path, log, stream
+                )
 
                 log.append(f"-- build libhello with config {config}")
                 run_step(
                     f"icpp build-library --config {config} libhello",
                     canister_path,
                     log,
+                    stream,
                 )
 
                 log.append(f"-- build the wasm with config {config} (mine-no-lib)")
@@ -165,14 +189,20 @@ def test_canister(canister_path: Path) -> Tuple[str, bool, List[str]]:
                     f"icpp build-wasm --config {config} --to-compile mine-no-lib",
                     canister_path,
                     log,
+                    stream,
                 )
 
                 log.append(f"-- deploy {name}")
-                run_step("icp deploy --environment local --yes", canister_path, log)
+                run_step(
+                    "icp deploy --environment local --yes", canister_path, log, stream
+                )
 
                 log.append(f"-- pytest {test_api_path}")
                 run_step(
-                    f"pytest -vv --network=local {test_api_path}", canister_path, log
+                    f"pytest -vv --network=local {test_api_path}",
+                    canister_path,
+                    log,
+                    stream,
                 )
 
                 network_stop(canister_path)
@@ -214,7 +244,10 @@ def main() -> int:
     failed: List[str] = []
     done = 0
     with ThreadPoolExecutor(max_workers=jobs) as pool:
-        futures = [pool.submit(test_canister, p) for p in canister_paths]
+        # Stream output when there is no concurrency to garble it: keeps CI
+        # logs live and `--jobs 1` debugging exactly as it was before.
+        stream = jobs == 1
+        futures = [pool.submit(test_canister, p, stream) for p in canister_paths]
         # as_completed, not map: report each canister the moment IT finishes,
         # rather than waiting for the ones submitted before it.
         for future in as_completed(futures):

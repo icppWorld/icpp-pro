@@ -153,3 +153,7 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Scratch / task-todo notes for AI agents & humans. Deliberately local-only:
+# they capture in-flight plans and findings, not repo state.
+TMP-*

@@ -101,8 +101,10 @@ icpp --version
 icpp init
 cd greet
 icp identity default default
-./demo.sh
-./demo-c++17.sh
+
+# Capture the output - see "Verifying the demo scripts" below for why
+sh ./demo.sh       2>&1 | tee /tmp/release-demo.log
+sh ./demo-c++17.sh 2>&1 | tee /tmp/release-demo17.log
 
 # Cleanup
 cd ../..
@@ -110,6 +112,67 @@ rm -rf release-test
 conda deactivate
 conda remove --name test --all
 ```
+
+### Verifying the demo scripts
+
+**A clean exit from `demo.sh` does NOT mean the tests passed.** The demo scripts
+are plain `#!/bin/sh` with no `set -e`, so they run to completion even when a step
+fails, and their exit code only reflects the **last** command in the script (the
+native `mockic.exe` run) - not `pytest`, which ran much earlier. Scrolling past and
+seeing the script "finish" proves nothing.
+
+So check the pytest section explicitly. In each log, find:
+
+```
+============================= test session starts ==============================
+collected 10 items
+
+test/test_apis.py ..........                                             [100%]
+
+============================== 10 passed in 4.11s ==============================
+```
+
+Every character must be a `.`; an `F` or `E` is a failure. Then scan both logs for
+anything that slipped through:
+
+```bash
+grep -inE "[0-9]+ (failed|error)|FAILED |AssertionError|Traceback|no tests ran|collected 0" \
+     /tmp/release-demo.log /tmp/release-demo17.log
+```
+
+The only acceptable hits are `Error: network 'local' is not running` (the harmless
+`icp network stop` at the top of the script, before anything is running) and the
+native suite's own `- Failed   : 0`.
+
+### Definitive check: run pytest directly
+
+Better than reading logs - run `pytest` yourself and look at its exit code:
+
+```bash
+# from: release-test/greet
+icp network stop; rm -rf .icp/cache; icp network start --background
+icp deploy --environment local --yes
+
+pytest --network=local -q; echo "pytest exit code = $?"
+#  -> 10 passed / exit code = 0
+```
+
+Note `echo $?` must be its **own** statement. Piping pytest into `tail`/`grep` and
+then echoing `$?` reports the exit code of the *pipe*, not of pytest.
+
+### Negative control (recommended)
+
+A green suite only means something if the tests can actually fail. Confirm they are
+really talking to the deployed canister:
+
+```bash
+icp network stop
+pytest --network=local -q; echo "pytest exit code = $?"
+#  -> "The local network is not up" / "no tests ran" / exit code = 2
+```
+
+If that still reports passes, the tests are not reaching the canister and the green
+run above was meaningless.
 
 ## Upload icpp-candid to TestPyPI & PyPI
 

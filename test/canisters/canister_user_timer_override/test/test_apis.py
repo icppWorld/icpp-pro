@@ -54,6 +54,7 @@ def test__user_override_wins_on_real_ic(network: str, principal: str) -> None:
                     icp_yaml_path=ICP_YAML_PATH,
                     canister_name=CANISTER_NAME,
                     canister_method="get_user_dispatcher_calls",
+                    query=True,
                     network=network,
                 )
             )
@@ -67,6 +68,7 @@ def test__user_override_wins_on_real_ic(network: str, principal: str) -> None:
                 icp_yaml_path=ICP_YAML_PATH,
                 canister_name=CANISTER_NAME,
                 canister_method="get_icpp_callback_calls",
+                query=True,
                 network=network,
             )
         )
@@ -75,6 +77,7 @@ def test__user_override_wins_on_real_ic(network: str, principal: str) -> None:
                 icp_yaml_path=ICP_YAML_PATH,
                 canister_name=CANISTER_NAME,
                 canister_method="get_icpp_timer_count",
+                query=True,
                 network=network,
             )
         )

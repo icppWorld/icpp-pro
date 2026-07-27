@@ -62,6 +62,7 @@ def _poll_count(
                 canister_name=CANISTER_NAME,
                 canister_method=method,
                 network=network,
+                query=True,
             )
         )
         if predicate(count):
@@ -136,6 +137,7 @@ def test__recurring_fires_and_can_be_cancelled(network: str, principal: str) -> 
             canister_name=CANISTER_NAME,
             canister_method="get_recurring_count",
             network=network,
+            query=True,
         )
     )
     assert after_cancel <= after_three + 1, (
@@ -197,6 +199,7 @@ def test__reset_counts_cancels_recurring_timer(network: str, principal: str) -> 
             canister_name=CANISTER_NAME,
             canister_method="get_recurring_count",
             network=network,
+            query=True,
         )
     )
     assert after_reset_count == 0, (

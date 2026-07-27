@@ -1,98 +1,237 @@
-"""Deploys & tests all canisters in a freshly started local network"""
+"""Deploys & tests all canisters, each in its own local network.
 
-import sys
+icp-cli runs a local network per project, and every canister's `icp.yaml` asks
+for an ephemeral gateway port (`gateway.port: 0`), so the canisters do not
+collide and can be built, deployed and tested concurrently. Under dfx this was
+impossible: there was a single global replica on a fixed port.
+
+The default number of jobs is deliberately conservative - `icpp build-wasm` is
+itself multi-threaded, so each canister already uses the available cores. On a
+CI runner (3-4 vCPU) this resolves to 1 job, i.e. today's serial behaviour; on
+a developer machine with many cores it runs several canisters at once. Override
+with `--jobs N`.
+"""
+
+import argparse
+import os
 import shutil
-from pathlib import Path
 import subprocess
+import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from typing import List, Tuple
+
 import typer
 from icpp.run_shell_cmd import run_shell_cmd
-from icpp.run_icp_cmd import run_icp_cmd
 
 SCRIPTS_PATH = Path(__file__).parent
 ROOT_PATH = Path(__file__).parent.parent
+
+# Generous ceiling: a cold `icpp build-wasm` compiles the whole C++ tree.
+# It matters that this is explicit - `run_shell_cmd` defaults to 30s whenever
+# output is captured, which a build blows through.
+TIMEOUT_SECONDS = 3600
+
+
+class StepError(Exception):
+    """A step of a canister's pipeline failed."""
+
+
+# Canister logs are buffered & printed as one block, so concurrent runs stay
+# readable. That means the only live progress signal is these one-line
+# notices - keep them serialised so they do not interleave mid-line.
+PRINT_LOCK = threading.Lock()
+
+
+def notify(msg: str) -> None:
+    """Prints a single progress line, without interleaving across threads."""
+    with PRINT_LOCK:
+        typer.echo(msg)
+
+
+def default_jobs(n_canisters: int) -> int:
+    """How many canisters to run concurrently, by default.
+
+    `icpp build-wasm` already parallelises across compile units, so running one
+    canister per core would oversubscribe. A quarter of the cores keeps CI
+    (3-4 vCPU -> 1 job, unchanged behaviour) safe while still giving a
+    developer machine real concurrency.
+    """
+    return max(1, min(n_canisters, (os.cpu_count() or 1) // 4))
+
+
+def run_step(cmd: str, cwd: Path, log: List[str]) -> None:
+    """Runs one command, appending its output to `log`. Raises on failure.
+
+    Output is captured rather than streamed, so that concurrent canisters do
+    not interleave their logs into an unreadable mess.
+    """
+    log.append(f"$ {cmd}")
+    try:
+        out = run_shell_cmd(
+            cmd, capture_output=True, cwd=cwd, timeout_seconds=TIMEOUT_SECONDS
+        )
+    except subprocess.CalledProcessError as e:
+        log.append(e.output or "")
+        raise StepError(cmd) from e
+
+    log.append(out)
+    # A timeout does NOT raise - run_shell_cmd returns this marker string
+    # instead, which would otherwise read as success.
+    if out.startswith("ERROR: Command") and "timed out" in out:
+        raise StepError(cmd)
 
 
 def network_stop(canister_path: Path) -> None:
     """Stops the canister's project-local network, if it is running.
 
     `icp network stop` exits non-zero when no network is running, which is not
-    an error for us - we only want the network to be down afterwards.
+    an error for us - we only want the network down afterwards.
     """
     try:
-        run_shell_cmd("icp network stop", capture_output=True, cwd=canister_path)
+        run_shell_cmd(
+            "icp network stop",
+            capture_output=True,
+            cwd=canister_path,
+            timeout_seconds=TIMEOUT_SECONDS,
+        )
     except subprocess.CalledProcessError:
         pass
 
 
-def network_start_clean(canister_path: Path) -> None:
+def network_start_clean(canister_path: Path, log: List[str]) -> None:
     """Starts a clean, project-local network for the canister.
 
     icp-cli has no `--clean` flag. A managed network keeps both its replica
     state and its canister id mappings under `.icp/cache`, so removing that
     directory is the equivalent of `dfx start --clean`.
+
+    NOTE: only `.icp/cache` - never `.icp`, which also holds `data/mappings/`
+    with the mainnet canister ids.
     """
     network_stop(canister_path)
     shutil.rmtree(canister_path / ".icp" / "cache", ignore_errors=True)
-    run_icp_cmd("network start --background", cwd=canister_path)
+    run_step("icp network start --background", canister_path, log)
+
+
+def test_canister(canister_path: Path) -> Tuple[str, bool, List[str]]:
+    """Builds, deploys & tests one canister. Returns (name, ok, log)."""
+    name = canister_path.name
+    notify(f">>>> {name}: started")
+    log: List[str] = [f"==== {name}"]
+    test_api_path = canister_path / "test/test_apis.py"
+    configs = [file.name for file in canister_path.glob("*.toml")]
+
+    try:
+        for config in configs:
+            log.append(f"-- start a clean local network ({name})")
+            network_start_clean(canister_path, log)
+
+            log.append(f"-- build the wasm with config {config}")
+            run_step(
+                f"icpp build-wasm --config {config} --to-compile all",
+                canister_path,
+                log,
+            )
+
+            log.append(f"-- deploy {name}")
+            run_step("icp deploy --environment local --yes", canister_path, log)
+
+            # pytest runs from the canister directory: that is the icp project
+            # root, which is how icp finds icp.yaml and this canister's network.
+            log.append(f"-- pytest {test_api_path}")
+            run_step(f"pytest -vv --network=local {test_api_path}", canister_path, log)
+
+            network_stop(canister_path)
+
+            # For the greet canister, also exercise build-library & --config
+            if name == "greet":
+                log.append(f"-- start a clean local network ({name}, libraries)")
+                network_start_clean(canister_path, log)
+
+                log.append(f"-- build all libraries with config {config}")
+                run_step(f"icpp build-library --config {config}", canister_path, log)
+
+                log.append(f"-- build libhello with config {config}")
+                run_step(
+                    f"icpp build-library --config {config} libhello",
+                    canister_path,
+                    log,
+                )
+
+                log.append(f"-- build the wasm with config {config} (mine-no-lib)")
+                run_step(
+                    f"icpp build-wasm --config {config} --to-compile mine-no-lib",
+                    canister_path,
+                    log,
+                )
+
+                log.append(f"-- deploy {name}")
+                run_step("icp deploy --environment local --yes", canister_path, log)
+
+                log.append(f"-- pytest {test_api_path}")
+                run_step(
+                    f"pytest -vv --network=local {test_api_path}", canister_path, log
+                )
+
+                network_stop(canister_path)
+        return name, True, log
+
+    except StepError as e:
+        log.append(f"!! FAILED: {e}")
+        return name, False, log
+    finally:
+        # Never leave a replica running, whatever happened above.
+        network_stop(canister_path)
 
 
 def main() -> int:
-    """Start local network; Deploy canister; Pytest"""
-    canister_paths_1 = list((ROOT_PATH / "test/canisters").glob("canister_*"))
-    canister_paths_2 = list((ROOT_PATH / "src/icpp/canisters").glob("*"))
-    canister_paths = canister_paths_2 + canister_paths_1
-    for canister_path in canister_paths:
-        typer.echo(f"====\nTesting canister: {canister_path.name}")
+    """Build, deploy & pytest every canister."""
+    canister_paths = sorted(
+        p
+        for p in list((ROOT_PATH / "src/icpp/canisters").glob("*"))
+        + list((ROOT_PATH / "test/canisters").glob("canister_*"))
+        if (p / "icp.yaml").exists()  # skips __pycache__ & friends
+    )
 
-        test_api_path = canister_path / "test/test_apis.py"
-        configs = [file.name for file in canister_path.glob("*.toml")]
-        for config in configs:
-            try:
-                # On Mac & Ubuntu, it is much more flexible, and we test more variations
-                typer.echo("--\nStart a clean local network")
-                network_start_clean(canister_path)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--jobs",
+        type=int,
+        default=default_jobs(len(canister_paths)),
+        help="how many canisters to build & test concurrently (1 = serial)",
+    )
+    args = parser.parse_args()
+    jobs = max(1, args.jobs)
 
-                typer.echo(f"--\nBuild the wasm with config {config}")
-                run_shell_cmd(f"icpp build-wasm --config {config} --to-compile all", cwd=canister_path)
+    typer.echo(
+        f"Testing {len(canister_paths)} canisters with {jobs} job(s) "
+        f"on {os.cpu_count()} core(s): "
+        f"{', '.join(p.name for p in canister_paths)}"
+    )
 
-                typer.echo(f"--\nDeploy {canister_path.name}")
-                run_icp_cmd("deploy --environment local --yes", cwd=canister_path)
+    failed: List[str] = []
+    done = 0
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        futures = [pool.submit(test_canister, p) for p in canister_paths]
+        # as_completed, not map: report each canister the moment IT finishes,
+        # rather than waiting for the ones submitted before it.
+        for future in as_completed(futures):
+            name, ok, log = future.result()
+            done += 1
+            with PRINT_LOCK:
+                typer.echo("\n".join(log))
+                typer.echo(
+                    f"---- {name}: {'PASSED' if ok else 'FAILED'} "
+                    f"({done}/{len(canister_paths)})\n"
+                )
+            if not ok:
+                failed.append(name)
 
-                typer.echo(f"--\nRun pytest on {test_api_path}")
-                # Run from the canister directory: that is the icp project root,
-                # which is how icp-cli finds icp.yaml and the local network.
-                run_shell_cmd(f"pytest -vv --network=local {test_api_path}", cwd=canister_path)
-
-                typer.echo("--\nStop the local network")
-                network_stop(canister_path)
-
-                # For greet canister, also test build-library & --config flags
-                if canister_path.name == "greet":
-                    typer.echo("--\nStart a clean local network")
-                    network_start_clean(canister_path)
-
-                    typer.echo(f"--\nBuild all libraries for the greet canister with config {config}")
-                    run_shell_cmd(f"icpp build-library --config {config} ", cwd=canister_path)
-
-                    typer.echo(f"--\nBuild libhello for the greet canister with config {config}")
-                    run_shell_cmd(f"icpp build-library --config {config} libhello", cwd=canister_path)
-
-                    typer.echo(f"--\nBuild the wasm with config {config}")
-                    run_shell_cmd(f"icpp build-wasm --config {config} --to-compile mine-no-lib", cwd=canister_path)
-
-                    typer.echo(f"--\nDeploy {canister_path.name}")
-                    run_icp_cmd("deploy --environment local --yes", cwd=canister_path)
-
-                    typer.echo(f"--\nRun pytest on {test_api_path}")
-                    run_shell_cmd(f"pytest -vv --network=local {test_api_path}", cwd=canister_path)
-
-                    typer.echo("--\nStop the local network")
-                    network_stop(canister_path)
-
-            except subprocess.CalledProcessError as e:
-                typer.echo("--\nSomething did not pass")
-                network_stop(canister_path)
-                return e.returncode
+    if failed:
+        typer.echo(f"--\nSomething did not pass: {', '.join(failed)}")
+        return 1
 
     typer.echo("--\nCongratulations, everything passed!")
     try:

@@ -73,8 +73,13 @@ summary:
 all-tests: all-static all-canister-native all-canister-deploy-local-pytest 
 	
 .PHONY: all-canister-deploy-local-pytest
+# JOBS = how many canisters to build & test concurrently. Each canister has its
+# own local network on an ephemeral port, so they do not collide. The default is
+# cpu_count/4 (CI runners have 3-4 vCPU -> 1 job, i.e. serial), because
+# icpp build-wasm is itself multi-threaded. Use JOBS=1 to force serial.
+JOBS ?=
 all-canister-deploy-local-pytest: icp-identity-default
-	@python -m scripts.all_canister_deploy_local_pytest
+	@python -m scripts.all_canister_deploy_local_pytest $(if $(JOBS),--jobs $(JOBS),)
 
 # The tests deploy as - and assert on - the `default` identity. Unlike dfx,
 # icp-cli does not create one for you, so create it if it is not there yet.

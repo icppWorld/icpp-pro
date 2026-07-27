@@ -113,14 +113,128 @@ def _verify_canister_name(
 ) -> Path:
     """Fails the test if the canister is not defined in icp.yaml.
 
-    Returns the icp project root.
+    Returns the path of the icp.yaml (its parent is the icp project root).
     """
     icp_yaml = _require_icp_yaml(icp_yaml_path, dfx_json_path)
     if canister_name not in _canister_names(icp_yaml):
         pytest.fail(
             f"ERROR: canister '{canister_name}' not defined in '{str(icp_yaml)}'"
         )
-    return icp_yaml.parent
+    return icp_yaml
+
+
+def _canister_wasm_path(icp_yaml_path: Path, canister_name: str) -> Optional[Path]:
+    """Returns the `pre-built` wasm path declared for a canister, if any."""
+    with open(icp_yaml_path, "rb") as f:
+        data = yaml.safe_load(f)
+
+    for canister in (data or {}).get("canisters") or []:
+        if canister.get("name") != canister_name:
+            continue
+        steps = (canister.get("build") or {}).get("steps") or []
+        for step in steps:
+            path = step.get("path")
+            if path:
+                return icp_yaml_path.parent / str(path)
+    return None
+
+
+def _skip_balanced(text: str, i: int) -> int:
+    """Given the index of an opening `(`/`{`, returns the index just past its
+    matching close, skipping over nested groups and string literals."""
+    openers = {"(": ")", "{": "}"}
+    stack = [openers[text[i]]]
+    i += 1
+    while i < len(text) and stack:
+        char = text[i]
+        if char == '"':
+            i += 1
+            while i < len(text) and text[i] != '"':
+                i += 2 if text[i] == "\\" else 1
+        elif char in openers:
+            stack.append(openers[char])
+        elif char == stack[-1]:
+            stack.pop()
+        i += 1
+    return i
+
+
+def _is_query_in_did(did_text: str, method: str) -> Optional[bool]:
+    """True/False if `method` is/isn't declared `query` in the Candid text.
+
+    Returns None when the method cannot be found, so the caller can fall back
+    to an update call.
+
+    A declaration looks like:
+        get_count : () -> (nat64) query;
+        "quoted name" : (record { a: nat; b: nat }) -> (text);
+    The annotation sits between the closing paren of the result type and the
+    terminating `;` - which is why the result type has to be skipped as a
+    balanced group: it may itself contain `;` inside a `record { ... }`.
+    """
+    text = re.sub(r"//[^\n]*", "", did_text)
+
+    for match in re.finditer(
+        rf'(?:"{re.escape(method)}"|\b{re.escape(method)}\b)\s*:', text
+    ):
+        arrow = text.find("->", match.end())
+        if arrow == -1:
+            continue
+        i = arrow + 2
+        while i < len(text) and text[i].isspace():
+            i += 1
+        if i < len(text) and text[i] in "({":
+            i = _skip_balanced(text, i)
+        end = text.find(";", i)
+        annotation = text[i : end if end != -1 else len(text)]
+        return bool(re.search(r"\b(query|composite_query)\b", annotation))
+    return None
+
+
+# canister -> {method: is_query}. A polling loop hits the same method many
+# times; resolving the interface once keeps that cheap.
+_CANDID_CACHE: Dict[Tuple[str, str, str], Optional[str]] = {}
+
+
+def _candid_text(
+    project_root: Path,
+    icp_yaml_path: Path,
+    canister_name: str,
+    network: str,
+    timeout_seconds: Optional[int],
+) -> Optional[str]:
+    """Returns the canister's Candid interface, or None if it cannot be found.
+
+    Looks for the `.did` that `icpp build-wasm` writes next to the wasm first
+    (no network needed), then asks the deployed canister for its
+    `candid:service` metadata - which works for any canister, however it was
+    built.
+    """
+    key = (str(project_root), canister_name, network)
+    if key in _CANDID_CACHE:
+        return _CANDID_CACHE[key]
+
+    did_text: Optional[str] = None
+
+    wasm_path = _canister_wasm_path(icp_yaml_path, canister_name)
+    if wasm_path is not None:
+        did_path = wasm_path.with_suffix(".did")
+        if did_path.exists():
+            did_text = did_path.read_text(encoding="utf-8")
+
+    if did_text is None:
+        try:
+            did_text = _run_icp(
+                f" canister metadata {canister_name} candid:service "
+                f" --environment {network} ",
+                project_root,
+                timeout_seconds,
+            )
+        except subprocess.CalledProcessError:
+            did_text = None
+
+    _CANDID_CACHE[key] = did_text
+    return did_text
 
 
 def _as_candid_arg_tuple(argument: str) -> str:
@@ -168,22 +282,30 @@ def call_canister_api(
     canister_input: str = "idl",
     canister_output: str = "idl",
     network: str = "local",
-    query: bool = False,
+    query: Optional[bool] = None,
     quiet: str = "-qq",  # deprecated: dfx only, icp-cli has no verbosity flag
     timeout_seconds: Optional[int] = None,
     dfx_json_path: Optional[Path] = None,  # deprecated alias of icp_yaml_path
 ) -> str:
     """Calls a canister method.
 
-    Set `query=True` to send a query request instead of an update request.
-    dfx auto-detected this from the canister's Candid interface; icp-cli does
-    not, and defaults to an update request. Update requests are valid for
-    query methods too, so leaving this at False is always correct - just
-    slower for methods that are declared `query`.
+    `query` selects the request type:
+
+    - `None` (default) - look the method up in the canister's Candid interface
+      and send a query request if it is declared `query`, else an update
+      request. This is what dfx did. Unlike the icp-cli default (always an
+      update request), it keeps query methods fast, which matters for tests
+      that poll a counter or assert on timing.
+    - `True` / `False` - force a query / update request.
+
+    When the interface cannot be resolved, an update request is sent: that is
+    valid for query methods too, so the fallback can only cost speed, never
+    correctness.
     """
     del quiet  # accepted for backwards compatibility, has no icp-cli equivalent
 
-    project_root = _verify_canister_name(canister_name, icp_yaml_path, dfx_json_path)
+    icp_yaml = _verify_canister_name(canister_name, icp_yaml_path, dfx_json_path)
+    project_root = icp_yaml.parent
 
     if canister_input not in _ARGS_FORMATS:
         pytest.fail(f"ERROR: unsupported canister_input '{canister_input}'")
@@ -193,6 +315,14 @@ def call_canister_api(
     argument = "()" if canister_argument is None else canister_argument
     if _ARGS_FORMATS[canister_input] == "candid":
         argument = _as_candid_arg_tuple(argument)
+
+    if query is None:
+        did_text = _candid_text(
+            project_root, icp_yaml, canister_name, network, timeout_seconds
+        )
+        query = bool(
+            did_text is not None and _is_query_in_did(did_text, canister_method)
+        )
 
     arg = (
         f" canister call "
@@ -319,7 +449,9 @@ def get_canister_id(
 ) -> str:
     """Returns the canister_id of a canister"""
 
-    project_root = _verify_canister_name(canister_name, icp_yaml_path, dfx_json_path)
+    project_root = _verify_canister_name(
+        canister_name, icp_yaml_path, dfx_json_path
+    ).parent
 
     # icp-cli records the deployed ids per environment in its ID store. For a
     # `connected` network that store is persistent (`data/`); for a `managed`

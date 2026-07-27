@@ -59,7 +59,7 @@ setup(
             "canisters/greet/src/*",
             "canisters/greet/src/vendors/nlohmann/json/json.hpp",
             "canisters/greet/test/*",
-            "canisters/greet/dfx.json",
+            "canisters/greet/icp.yaml",
             "canisters/greet/icpp.toml",
             "canisters/greet/icpp-c++17.toml",
             "canisters/greet/README.md",

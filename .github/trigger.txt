@@ -1,2 +1,3 @@
 # A dummy file to trigger the workflow without making any actual change.
 # Just change something arbitrary in this line, like a space.
+# Trigger full matrix for the 5.5.0 release (dfx -> icp-cli).

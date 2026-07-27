@@ -73,9 +73,15 @@ summary:
 all-tests: all-static all-canister-native all-canister-deploy-local-pytest 
 	
 .PHONY: all-canister-deploy-local-pytest
-all-canister-deploy-local-pytest:
-	dfx identity use default
+all-canister-deploy-local-pytest: icp-identity-default
 	@python -m scripts.all_canister_deploy_local_pytest
+
+# The tests deploy as - and assert on - the `default` identity. Unlike dfx,
+# icp-cli does not create one for you, so create it if it is not there yet.
+.PHONY: icp-identity-default
+icp-identity-default:
+	@icp identity list | grep -qw default || icp identity new default --storage plaintext
+	@icp identity default default
 
 .PHONY: all-canister-native
 all-canister-native:
@@ -106,37 +112,38 @@ cpp-lint:
 	@echo "cpp-lint"
 	@echo "TO IMPLEMENT with clang-tidy"
 
-.PHONY: dfx-canisters-of-project-local
-dfx-canisters-of-project-local:
-	@$(eval CANISTER_WALLET := $(shell dfx identity get-wallet))
-	@$(eval CANISTER_CANDID_UI_LOCAL := $(shell dfx canister id __Candid_UI))
-	@$(eval CANISTER := $(shell dfx canister id $(CANISTER_NAME)))
+.PHONY: icp-canisters-of-project-local
+icp-canisters-of-project-local:
+	@$(eval CANISTER_CANDID_UI_LOCAL := $(shell icp network status --environment local --json | python -c "import json,sys; print(json.load(sys.stdin)['candid_ui_principal'])"))
+	@$(eval CANISTER := $(shell icp canister status $(CANISTER_NAME) --environment local --json | python -c "import json,sys; print(json.load(sys.stdin)['id'])"))
+	@$(eval GATEWAY_URL := $(shell icp network status --environment local --json | python -c "import json,sys; print(json.load(sys.stdin)['gateway_url'].rstrip('/'))"))
 
 	@echo '-------------------------------------------------'
-	@echo "NETWORK            : local"
-	@echo "cycles canister    : $(CANISTER_WALLET)"
+	@echo "ENVIRONMENT        : local"
 	@echo "Candid UI canister : $(CANISTER_CANDID_UI_LOCAL)"
 	@echo "canister           : $(CANISTER)"
 	@echo '-------------------------------------------------'
 	@echo 'View in browser at:'
-	@echo  "Candid UI of canister : http://localhost:8000?canisterId=$(CANISTER_CANDID_UI_LOCAL)&id=$(CANISTER)"
+	@echo  "Candid UI of canister : $(GATEWAY_URL)?canisterId=$(CANISTER_CANDID_UI_LOCAL)&id=$(CANISTER)"
 
-.PHONY: dfx-canister-call
-dfx-canister-call:
-	@dfx canister --network $(NETWORK) call --output $(CANISTER_OUTPUT) --type $(CANISTER_INPUT) $(CANISTER_NAME) $(CANISTER_METHOD) $(CANISTER_ARGUMENT)
+.PHONY: icp-canister-call
+icp-canister-call:
+	@icp canister call $(CANISTER_NAME) $(CANISTER_METHOD) $(CANISTER_ARGUMENT) --environment $(NETWORK) --output $(CANISTER_OUTPUT) --args-format $(CANISTER_INPUT)
 
-.PHONY: dfx-start-local
-dfx-start-local:
-	@dfx stop
-	@dfx start --clean
+# icp-cli networks are project-local, so run these from a canister directory
+.PHONY: icp-start-local
+icp-start-local:
+	-@icp network stop
+	@rm -rf .icp/cache
+	@icp network start
 
-.PHONY: dfx-stop-local
-dfx-stop-local:
-	@dfx stop
+.PHONY: icp-stop-local
+icp-stop-local:
+	@icp network stop
 
-.PHONY: clean-dfx
-clean-dfx:
-	rm -rf $(shell find . -name '.dfx' -type d)
+.PHONY: clean-icp
+clean-icp:
+	rm -rf $(shell find . -name '.icp' -type d)
 
 .PHONY: clean-build
 clean-build:
@@ -192,11 +199,11 @@ install-clang-ubuntu:
 	sudo ln --force -s /usr/bin/clang++-$(VERSION_CLANG) /usr/bin/clang++
 
 
-# This installs ~/bin/dfx
-# Make sure to source ~/.profile afterwards -> it adds ~/bin to the path if it exists
-.PHONY: install-dfx
-install-dfx:
-	DFXVM_INIT_YES=true sh -ci "$$(curl -fsSL https://sdk.dfinity.org/install.sh)"
+# icp-cli is the successor of the deprecated dfx.
+# It is distributed as an npm package & needs >= 1.2.0
+.PHONY: install-icp
+install-icp:
+	npm install -g @icp-sdk/icp-cli
 
 .PHONY: install-didc
 install-didc:

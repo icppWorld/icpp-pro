@@ -21,7 +21,12 @@ build-library-native
 CppProperties.json
 
 # Internet Computer
-.dfx
+# icp-cli: ONLY the cache is disposable. `.icp/data/` holds the mainnet
+# canister id mappings (the replacement for canister_ids.json) and MUST be
+# committed - losing it orphans the deployed canisters.
+# (`**/` so it also matches the per-canister .icp dirs, not just the repo
+#  root - a pattern containing a slash is anchored otherwise)
+**/.icp/cache/
 
 # C++
 null.d

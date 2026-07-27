@@ -16,7 +16,7 @@ import pytest
 
 from icpp.smoketest import call_canister_api
 
-DFX_JSON_PATH = Path(__file__).parent / "../dfx.json"
+ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
 CANISTER_NAME = "my_canister"
 
 
@@ -32,7 +32,7 @@ def test__user_override_wins_on_real_ic(network: str, principal: str) -> None:
     # Capture the id so we can cancel it in the finally block — keeps the
     # suite re-runnable even if an assertion below fails.
     response = call_canister_api(
-        dfx_json_path=DFX_JSON_PATH,
+        icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="start_user_timer",
         canister_argument="(1_000_000_000 : nat64)",
@@ -51,7 +51,7 @@ def test__user_override_wins_on_real_ic(network: str, principal: str) -> None:
         while time.time() < deadline:
             user_calls = _parse_nat64(
                 call_canister_api(
-                    dfx_json_path=DFX_JSON_PATH,
+                    icp_yaml_path=ICP_YAML_PATH,
                     canister_name=CANISTER_NAME,
                     canister_method="get_user_dispatcher_calls",
                     network=network,
@@ -64,7 +64,7 @@ def test__user_override_wins_on_real_ic(network: str, principal: str) -> None:
         # Now query the other two counters to confirm side-effect absence.
         icpp_calls = _parse_nat64(
             call_canister_api(
-                dfx_json_path=DFX_JSON_PATH,
+                icp_yaml_path=ICP_YAML_PATH,
                 canister_name=CANISTER_NAME,
                 canister_method="get_icpp_callback_calls",
                 network=network,
@@ -72,7 +72,7 @@ def test__user_override_wins_on_real_ic(network: str, principal: str) -> None:
         )
         icpp_timer_count = _parse_nat64(
             call_canister_api(
-                dfx_json_path=DFX_JSON_PATH,
+                icp_yaml_path=ICP_YAML_PATH,
                 canister_name=CANISTER_NAME,
                 canister_method="get_icpp_timer_count",
                 network=network,
@@ -93,7 +93,7 @@ def test__user_override_wins_on_real_ic(network: str, principal: str) -> None:
         # Always cancel via the rev0 IC_API::cancel_timer(id) public API
         # so the registry is empty and the suite is re-runnable.
         call_canister_api(
-            dfx_json_path=DFX_JSON_PATH,
+            icp_yaml_path=ICP_YAML_PATH,
             canister_name=CANISTER_NAME,
             canister_method="stop_user_timer",
             canister_argument=f"({timer_id} : nat64)",

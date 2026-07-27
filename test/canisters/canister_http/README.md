@@ -32,9 +32,14 @@ $ curl -X GET https://5ugrv-zqaaa-aaaag-acfna-cai.raw.icp0.io/counter
  
 
 # local network
-$ curl -X GET http://$(dfx canister id my_canister).raw.localhost:$(dfx info webserver-port)/counter
-# typically resolves to:
-$ curl -X GET http://bkyz2-fmaaa-aaaaa-qaaaq-cai.raw.localhost:4943/counter
+# The local network's gateway gets an ephemeral port (icp.yaml sets
+# `gateway.port: 0`), so read both the canister id and the port back from icp:
+$ CANISTER_ID=$(icp canister status my_canister --environment local --json | python -c "import json,sys; print(json.load(sys.stdin)['id'])")
+$ PORT=$(icp network status --environment local --json | python -c "import json,sys; print(json.load(sys.stdin)['gateway_url'].rstrip('/').rsplit(':',1)[-1])")
+$ curl -X GET http://$CANISTER_ID.raw.localhost:$PORT/counter
+# resolves to something like this - the port is ephemeral & differs every run,
+# so always derive it as above instead of copying this line:
+$ curl -X GET http://4caro-hl777-77775-aaaba-cai.raw.localhost:50698/counter
 ```
 
 ### HTML / Javascript: Fetch

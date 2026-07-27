@@ -100,7 +100,7 @@ icpp --version
 # test: `greet` project
 icpp init
 cd greet
-dfx identity use default
+icp identity default default
 ./demo.sh
 ./demo-c++17.sh
 
@@ -137,7 +137,7 @@ make pypi-upload
   ```
   cd src/icpp/canisters/greet
   icpp build-wasm
-  dfx deploy --ic
+  icp deploy --environment ic --yes
   ```
 - Release new docs
 - Announcement in OpenChat
@@ -146,5 +146,5 @@ make pypi-upload
     ```
     cd canisters/api_reference
     icpp build-wasm
-    dfx deploy --ic
+    icp deploy --environment ic --yes
     ```

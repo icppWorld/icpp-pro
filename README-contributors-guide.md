@@ -111,13 +111,30 @@ make install-icp
 icp --version
 ```
 
-The test suite deploys as - and asserts on - an identity named `default`.
-Unlike dfx, icp-cli does not create one for you:
+The test suite deploys as - and runs as - an identity named
+`icpp-pro-testing`. `make` creates it for you if it is not there yet:
 
 ```bash
-icp identity new default --storage plaintext
-icp identity default default
+icp identity new icpp-pro-testing --storage plaintext
 ```
+
+It is passed to every icp command as `--identity`, so **nothing switches your
+machine-wide active identity**. Running the tests cannot disturb the identity
+you use for mainnet work, and nothing another process does to that identity can
+disturb a test run.
+
+To run `pytest` by hand, name the identity yourself:
+
+```bash
+pytest -vv --network=local --identity icpp-pro-testing
+
+# or, once per shell:
+export ICPP_PRO_TEST_IDENTITY=icpp-pro-testing
+pytest -vv --network=local
+```
+
+Use `make all-canister-deploy-local-pytest ICPP_PRO_TEST_IDENTITY=<name>` to
+run the whole suite as a different identity.
 
 
 

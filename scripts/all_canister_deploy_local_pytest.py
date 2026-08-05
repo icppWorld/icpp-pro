@@ -24,9 +24,16 @@ from typing import List, Tuple
 
 import typer
 from icpp.run_shell_cmd import run_shell_cmd
+from icpp.smoketest import IDENTITY_ENV_VAR
 
 SCRIPTS_PATH = Path(__file__).parent
 ROOT_PATH = Path(__file__).parent.parent
+
+# The canisters are deployed with the identity the tests then run as, so that
+# the caller of a test IS the controller. It has to be named explicitly: the
+# machine-wide active identity is shared with every other process, which is
+# free to change it while a run is in flight. The Makefile exports it.
+TEST_IDENTITY = os.environ.get(IDENTITY_ENV_VAR, "")
 
 # Generous ceiling: a cold `icpp build-wasm` compiles the whole C++ tree.
 # It matters that this is explicit - `run_shell_cmd` defaults to 30s whenever
@@ -152,7 +159,12 @@ def test_canister(
             )
 
             log.append(f"-- deploy {name}")
-            run_step("icp deploy --environment local --yes", canister_path, log, stream)
+            run_step(
+                f"icp deploy --environment local --yes --identity {TEST_IDENTITY}",
+                canister_path,
+                log,
+                stream,
+            )
 
             # pytest runs from the canister directory: that is the icp project
             # root, which is how icp finds icp.yaml and this canister's network.
@@ -194,7 +206,10 @@ def test_canister(
 
                 log.append(f"-- deploy {name}")
                 run_step(
-                    "icp deploy --environment local --yes", canister_path, log, stream
+                    f"icp deploy --environment local --yes --identity {TEST_IDENTITY}",
+                    canister_path,
+                    log,
+                    stream,
                 )
 
                 log.append(f"-- pytest {test_api_path}")
@@ -218,6 +233,16 @@ def test_canister(
 
 def main() -> int:
     """Build, deploy & pytest every canister."""
+    if not TEST_IDENTITY:
+        typer.echo(
+            f"ERROR: ${IDENTITY_ENV_VAR} is not set.\n"
+            f"       It names the identity the canisters are deployed with and\n"
+            f"       the tests run as. Run this through the Makefile, which\n"
+            f"       exports it:\n\n"
+            f"         make all-canister-deploy-local-pytest\n"
+        )
+        return 1
+
     canister_paths = sorted(
         p
         for p in list((ROOT_PATH / "src/icpp/canisters").glob("*"))

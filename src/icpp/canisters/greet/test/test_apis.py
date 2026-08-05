@@ -2,8 +2,16 @@
 
 First deploy the canister, then run:
 
-$ pytest --network=[local/ic] test_apis.py
+$ pytest --network=[local/ic] --identity <name> test_apis.py
 
+`--identity` names the icp identity the tests call as. Instead of passing it
+every time, export it once:
+
+$ export ICPP_PRO_TEST_IDENTITY=<name>
+
+Deploy with that same identity, so the caller of a test is the controller.
+icpp-pro never uses the machine-wide active identity (`icp identity default`),
+because any other process can change it while the tests are running.
 """
 
 # pylint: disable=missing-function-docstring, unused-import, wildcard-import, unused-wildcard-import, line-too-long
@@ -50,7 +58,8 @@ def test__greet_0_static_lib(network: str) -> None:
 
 # Run this test with anonymous identity
 def test__greet_0_auth_err(identity_anonymous: Dict[str, str], network: str) -> None:
-    # double check the identity_anonymous fixture worked
+    # The identity_anonymous fixture makes every call in this test run as the
+    # anonymous identity, without naming it at the call site.
     assert identity_anonymous["identity"] == "anonymous"
     assert identity_anonymous["principal"] == "2vxsx-fae"
 
@@ -65,17 +74,17 @@ def test__greet_0_auth_err(identity_anonymous: Dict[str, str], network: str) -> 
     assert response == expected_response
 
 
-# Run this test with a logged in default identity
+# Run this test with the identity of the pytest session
 def test__greet_0_auth_ok(identity_default: Dict[str, str], network: str) -> None:
-    # double check the identity_anonymous fixture worked
-    assert identity_default["identity"] == "default"
-
+    # `identity=` names the caller for this one call. identity_default is the
+    # identity the session runs as, so the canister greets its principal.
     response = call_canister_api(
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="greet_0_auth",
         canister_argument="()",
         network=network,
+        identity=identity_default["identity"],
     )
     principal = identity_default["principal"]
     expected_response = (

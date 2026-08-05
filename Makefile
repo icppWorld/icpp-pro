@@ -78,15 +78,21 @@ all-tests: all-static all-canister-native all-canister-deploy-local-pytest
 # cpu_count/4 (CI runners have 3-4 vCPU -> 1 job, i.e. serial), because
 # icpp build-wasm is itself multi-threaded. Use JOBS=1 to force serial.
 JOBS ?=
-all-canister-deploy-local-pytest: icp-identity-default
+all-canister-deploy-local-pytest: icpp-pro-test-identity
 	@python -m scripts.all_canister_deploy_local_pytest $(if $(JOBS),--jobs $(JOBS),)
 
-# The tests deploy as - and assert on - the `default` identity. Unlike dfx,
-# icp-cli does not create one for you, so create it if it is not there yet.
-.PHONY: icp-identity-default
-icp-identity-default:
-	@icp identity list | grep -qw default || icp identity new default --storage plaintext
-	@icp identity default default
+# The identity the canisters are deployed with and the tests run as. It is
+# named explicitly and passed to every icp command as `--identity`; the
+# machine-wide active identity (`icp identity default`) is never read and never
+# changed, so running the tests cannot disturb the identity you use for
+# mainnet work - and nothing another process does to it can disturb a test run.
+ICPP_PRO_TEST_IDENTITY ?= icpp-pro-testing
+export ICPP_PRO_TEST_IDENTITY
+
+.PHONY: icpp-pro-test-identity
+icpp-pro-test-identity:
+	@icp identity list | grep -qw $(ICPP_PRO_TEST_IDENTITY) || \
+	  icp identity new $(ICPP_PRO_TEST_IDENTITY) --storage plaintext
 
 .PHONY: all-canister-native
 all-canister-native:

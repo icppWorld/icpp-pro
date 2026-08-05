@@ -13,10 +13,19 @@ environment per network you test against, e.g.:
         network: ic
 
 so that `pytest --network=local` and `pytest --network=ic` keep working.
+
+The identity every helper calls as is named explicitly, with
+`pytest --identity <name>` or by exporting ICPP_PRO_TEST_IDENTITY, and is
+passed to icp as `--identity <name>`. Pass `identity=` to override it for a
+single call. The machine-wide active identity (`icp identity default`) is never
+read and never written: it is shared with every other process on the machine,
+so using it would clobber the identity you use for mainnet work and leave a run
+exposed to anything that changes it mid-flight.
 """
 
 import json
 import re
+import shlex
 import subprocess
 import warnings
 from pathlib import Path
@@ -27,6 +36,10 @@ import yaml
 from icpp.run_shell_cmd import run_shell_cmd
 
 ICP = "icp"
+
+# Names the identity the tests run as, when `pytest --identity <name>` is not
+# given.
+IDENTITY_ENV_VAR = "ICPP_PRO_TEST_IDENTITY"
 
 # dfx's `--type` / `--output` values, mapped onto the icp-cli equivalents
 # (`--args-format` / `--output`). The icp-cli names are passed through, so
@@ -47,6 +60,68 @@ _OUTPUT_FORMATS = {
     "text": "text",
     "auto": "auto",
 }
+
+
+# The identity every icp command runs as. This state is deliberately
+# process-local: `icp identity default <name>` is machine-wide and persistent,
+# so using it to scope an identity to a test would mutate the developer's
+# machine - and any other process could change it again mid-run.
+_SESSION_IDENTITY: Optional[str] = None
+_IDENTITY_OVERRIDE: Optional[str] = None
+
+
+def set_session_identity(name: str) -> None:
+    """Pins the identity for this pytest process. Set once, from a fixture."""
+    global _SESSION_IDENTITY  # pylint: disable=global-statement
+    _SESSION_IDENTITY = name
+
+
+def set_identity_override(name: Optional[str]) -> None:
+    """Overrides the session identity for one test. `None` clears it."""
+    global _IDENTITY_OVERRIDE  # pylint: disable=global-statement
+    _IDENTITY_OVERRIDE = name
+
+
+def _available_identities() -> str:
+    """The output of `icp identity list`, to show in an error message."""
+    try:
+        return run_shell_cmd(
+            f"{ICP} identity list", capture_output=True, timeout_seconds=30
+        ).rstrip("\n")
+    except subprocess.CalledProcessError:
+        return "    (could not run `icp identity list`)"
+
+
+def no_identity_msg() -> str:
+    """The 'name your test identity' message, when none has been configured."""
+    return (
+        "\n\n"
+        "ERROR: no test identity configured.\n\n"
+        "icpp-pro never uses the machine-wide active identity\n"
+        "(`icp identity default`), because any other process can change it\n"
+        "while your tests are running.\n\n"
+        "Name the identity explicitly:\n\n"
+        "    pytest --network=local --identity <name>\n\n"
+        "or, once per project:\n\n"
+        f"    export {IDENTITY_ENV_VAR}=<name>\n\n"
+        "Create one with:\n\n"
+        "    icp identity new <name> --storage plaintext\n\n"
+        "(icpp-pro exports the key to sign locally, so the identity must not\n"
+        " be password protected.)\n\n"
+        "Available identities:\n"
+        f"{_available_identities()}\n"
+    )
+
+
+def _identity() -> str:
+    """The identity to run an icp command as.
+
+    Never reads `icp identity default` - see the comment on _SESSION_IDENTITY.
+    """
+    name = _IDENTITY_OVERRIDE or _SESSION_IDENTITY
+    if name is None:
+        pytest.fail(no_identity_msg())
+    return name
 
 
 def _icp_yaml(
@@ -202,6 +277,7 @@ def _candid_text(
     canister_name: str,
     network: str,
     timeout_seconds: Optional[int],
+    identity: str,
 ) -> Optional[str]:
     """Returns the canister's Candid interface, or None if it cannot be found.
 
@@ -229,6 +305,7 @@ def _candid_text(
                 f" --environment {network} ",
                 project_root,
                 timeout_seconds,
+                identity=identity,
             )
         except subprocess.CalledProcessError:
             did_text = None
@@ -255,13 +332,21 @@ def _run_icp(
     args: str,
     project_root: Optional[Path] = None,
     timeout_seconds: Optional[int] = None,
+    identity: Optional[str] = None,
 ) -> str:
     """Runs an icp command against a project & returns its captured output.
 
     Without a `project_root`, icp finds the project itself by walking up from
     the current working directory.
+
+    `identity` is appended as `--identity <name>`. Pass it only for
+    subcommands that accept it: `canister call`, `canister metadata`,
+    `canister status` and `deploy` do, `network ping` and `network status`
+    do not.
     """
     cmd = f"{ICP} {args} "
+    if identity is not None:
+        cmd += f"--identity {shlex.quote(identity)} "
     if project_root is not None:
         cmd += f"--project-root-override {str(project_root)} "
     # icp launches an interactive prompt when it is missing an argument. Close
@@ -285,9 +370,15 @@ def call_canister_api(
     query: Optional[bool] = None,
     quiet: str = "-qq",  # deprecated: dfx only, icp-cli has no verbosity flag
     timeout_seconds: Optional[int] = None,
+    identity: Optional[str] = None,
     dfx_json_path: Optional[Path] = None,  # deprecated alias of icp_yaml_path
 ) -> str:
     """Calls a canister method.
+
+    `identity` names the icp identity to call as. It defaults to the identity
+    of the pytest session (`pytest --identity <name>` or the
+    ICPP_PRO_TEST_IDENTITY environment variable), which the
+    `identity_anonymous` fixture temporarily overrides.
 
     `query` selects the request type:
 
@@ -304,6 +395,8 @@ def call_canister_api(
     """
     del quiet  # accepted for backwards compatibility, has no icp-cli equivalent
 
+    identity = identity or _identity()
+
     icp_yaml = _verify_canister_name(canister_name, icp_yaml_path, dfx_json_path)
     project_root = icp_yaml.parent
 
@@ -318,7 +411,7 @@ def call_canister_api(
 
     if query is None:
         did_text = _candid_text(
-            project_root, icp_yaml, canister_name, network, timeout_seconds
+            project_root, icp_yaml, canister_name, network, timeout_seconds, identity
         )
         query = bool(
             did_text is not None and _is_query_in_did(did_text, canister_method)
@@ -337,7 +430,7 @@ def call_canister_api(
         arg += " --query "
 
     try:
-        response = _run_icp(arg, project_root, timeout_seconds)
+        response = _run_icp(arg, project_root, timeout_seconds, identity=identity)
     except subprocess.CalledProcessError as e:
         if _is_not_deployed_error(e.output):
             pytest.exit(_not_deployed_msg(canister_name, network, canister_method))
@@ -356,6 +449,7 @@ def get_canister_url(
     network: str = "local",
     url_path: Optional[str] = None,
     timeout_seconds: Optional[int] = None,
+    identity: Optional[str] = None,
     dfx_json_path: Optional[Path] = None,  # deprecated alias of icp_yaml_path
 ) -> str:
     """THIS FUNCTION IS DEPRECATED. DO NOT USE...
@@ -372,6 +466,7 @@ def get_canister_url(
         canister_name=canister_name,
         network=network,
         timeout_seconds=timeout_seconds,
+        identity=identity,
     )
 
     if network == "ic":
@@ -403,6 +498,7 @@ def get_canister_url_with_headers(
     network: str = "local",
     url_path: Optional[str] = None,
     timeout_seconds: Optional[int] = None,
+    identity: Optional[str] = None,
     dfx_json_path: Optional[Path] = None,  # deprecated alias of icp_yaml_path
 ) -> Tuple[str, Optional[Dict[str, str]]]:
     """Returns the url + headers for calling a canister as a Web2.0 HTTP server"""
@@ -413,6 +509,7 @@ def get_canister_url_with_headers(
         canister_name=canister_name,
         network=network,
         timeout_seconds=timeout_seconds,
+        identity=identity,
     )
 
     # The `raw` subdomain bypasses response certification, which an icpp-pro
@@ -445,6 +542,7 @@ def get_canister_id(
     icp_yaml_path: Optional[Path] = None,
     network: str = "local",
     timeout_seconds: Optional[int] = None,
+    identity: Optional[str] = None,
     dfx_json_path: Optional[Path] = None,  # deprecated alias of icp_yaml_path
 ) -> str:
     """Returns the canister_id of a canister"""
@@ -471,6 +569,7 @@ def get_canister_id(
             f" canister status {canister_name} --environment {network} --json ",
             project_root,
             timeout_seconds,
+            identity=identity or _identity(),
         )
     except subprocess.CalledProcessError as e:
         if _is_not_deployed_error(e.output):
@@ -566,7 +665,14 @@ def network_status(
 
 
 def get_identity() -> str:
-    """Returns the name of the current icp identity."""
+    """Returns the name of the machine-wide active icp identity.
+
+    The test framework itself deliberately never calls this: the active
+    identity is machine-wide, so any other process can change it while a test
+    run is in flight. Tests run as the identity named by `pytest --identity`
+    or the ICPP_PRO_TEST_IDENTITY environment variable instead. Kept as a
+    read-only helper for scripts that genuinely want to report it.
+    """
     arg = f"{ICP} identity default "
     try:
         identity = run_shell_cmd(arg, capture_output=True, timeout_seconds=30)
@@ -577,18 +683,15 @@ def get_identity() -> str:
     return identity
 
 
-def set_identity(identity: str) -> None:
-    """Sets the icp identity."""
-    arg = f"{ICP} identity default {identity}"
-    try:
-        run_shell_cmd(arg)
-    except subprocess.CalledProcessError as e:
-        pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
+def get_principal(identity: Optional[str] = None) -> str:
+    """Returns the principal of an identity, without changing anything.
 
-
-def get_principal() -> str:
-    """Returns the principal of the current icp identity."""
-    arg = f"{ICP} identity principal "
+    Defaults to the identity of the pytest session. `icp identity principal`
+    is asked for it by name, so the machine-wide active identity is neither
+    read nor written.
+    """
+    name = identity or _identity()
+    arg = f"{ICP} identity principal --identity {shlex.quote(name)} "
     try:
         principal = run_shell_cmd(arg, capture_output=True, timeout_seconds=30)
         principal = principal.rstrip("\n")

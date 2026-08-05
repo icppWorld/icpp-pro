@@ -641,7 +641,8 @@ def test__roundtrip_principal(network: str, principal: str) -> None:
 def test__caller_is_anonymous_true(
     identity_anonymous: Dict[str, str], network: str
 ) -> None:
-    # double check the identity_anonymous fixture worked
+    # The identity_anonymous fixture makes every call in this test run as the
+    # anonymous identity, without naming it at the call site.
     assert identity_anonymous["identity"] == "anonymous"
     assert identity_anonymous["principal"] == "2vxsx-fae"
 
@@ -659,15 +660,15 @@ def test__caller_is_anonymous_true(
 def test__caller_is_anonymous_false(
     identity_default: Dict[str, str], network: str
 ) -> None:
-    # double check the identity_default fixture worked
-    assert identity_default["identity"] == "default"
-
+    # `identity=` names the caller for this one call. identity_default is the
+    # identity the session runs as, which is never anonymous.
     response = call_canister_api(
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="caller_is_anonymous",
         canister_argument="()",
         network=network,
+        identity=identity_default["identity"],
     )
     expected_response = "(false)"
     assert response == expected_response
@@ -676,12 +677,15 @@ def test__caller_is_anonymous_false(
 def test__caller_is_controller_true(
     identity_default: Dict[str, str], network: str
 ) -> None:
+    # The canister is deployed with the session identity, so that identity is
+    # its controller.
     response = call_canister_api(
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="caller_is_controller",
         canister_argument="()",
         network=network,
+        identity=identity_default["identity"],
     )
     expected_response = "(true)"
     assert response == expected_response
@@ -690,6 +694,7 @@ def test__caller_is_controller_true(
 def test__caller_is_controller_false(
     identity_anonymous: Dict[str, str], network: str
 ) -> None:
+    # Runs as anonymous, via the fixture - see test__caller_is_anonymous_true.
     response = call_canister_api(
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,

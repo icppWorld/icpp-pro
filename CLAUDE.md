@@ -51,11 +51,14 @@ cd test/canisters/canister_1
 icpp build-native
 ./build-native/mockic.exe
 
-# WASM build + deploy + pytest against local network:
+# WASM build + deploy + pytest against local network.
+# Deploy as the same identity the tests run as, so the caller of a test is the
+# canister's controller. `make` creates `icpp-pro-testing` if it is missing.
 cd test/canisters/canister_1
+export ICPP_PRO_TEST_IDENTITY=icpp-pro-testing
 icpp build-wasm
 icp network start --background
-icp deploy --environment local --yes
+icp deploy --environment local --yes --identity $ICPP_PRO_TEST_IDENTITY
 pytest --network=local
 ```
 
@@ -123,6 +126,15 @@ Tests run in two modes:
 
 Pytest fixtures from `conftest_base.py` provide: `network`, `identity`, `principal`, `identity_anonymous`, `identity_default`. Test conftest files import these with `from icpp.conftest_base import *`.
 
+**Tests must be told which identity to run as** — `pytest --identity <name>` or
+`export ICPP_PRO_TEST_IDENTITY=<name>`; there is no fallback. The name is passed to every
+icp command as `--identity`. icpp-pro never reads or writes the machine-wide active identity
+(`icp identity default`), because it is shared with every other process on the machine: using
+it would clobber the identity you use for mainnet work, and leave a run exposed to anything
+that changes it mid-flight. Deploy with the same identity the tests run as, so that the caller
+of a test is the canister's controller. This repo uses `icpp-pro-testing`, created by the
+Makefile.
+
 ## Version Management
 
-Version is single-sourced in `src/icpp/version.py`. Current: 5.3.0. Release scripts modify this file automatically.
+Version is single-sourced in `src/icpp/version.py`. Current: 6.0.0. Release scripts modify this file automatically.

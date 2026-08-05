@@ -100,7 +100,8 @@ icpp --version
 # test: `greet` project
 icpp init
 cd greet
-icp identity default default
+# The demo scripts create & use their own `greet-testing` identity, and never
+# touch your machine-wide active identity. Nothing to set up here.
 
 # Capture the output - see "Verifying the demo scripts" below for why
 sh ./demo.sh       2>&1 | tee /tmp/release-demo.log
@@ -150,12 +151,17 @@ Better than reading logs - run `pytest` yourself and look at its exit code:
 
 ```bash
 # from: release-test/greet
+export ICPP_PRO_TEST_IDENTITY=greet-testing   # created by demo.sh
+
 icp network stop; rm -rf .icp/cache; icp network start --background
-icp deploy --environment local --yes
+icp deploy --environment local --yes --identity $ICPP_PRO_TEST_IDENTITY
 
 pytest --network=local -q; echo "pytest exit code = $?"
 #  -> 10 passed / exit code = 0
 ```
+
+Deploy with the same identity the tests run as - `test__greet_0_auth_ok` asserts
+on the caller's principal.
 
 Note `echo $?` must be its **own** statement. Piping pytest into `tail`/`grep` and
 then echoing `$?` reports the exit code of the *pipe*, not of pytest.
@@ -169,6 +175,10 @@ really talking to the deployed canister:
 icp network stop
 pytest --network=local -q; echo "pytest exit code = $?"
 #  -> "The local network is not up" / "no tests ran" / exit code = 2
+
+# And that a missing identity is refused rather than guessed:
+env -u ICPP_PRO_TEST_IDENTITY pytest --network=local -q
+#  -> "ERROR: no test identity configured." / exit code = 2
 ```
 
 If that still reports passes, the tests are not reaching the canister and the green

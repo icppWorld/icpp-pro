@@ -13,6 +13,15 @@ on:
       - ".github/trigger.txt"
       - ".github/workflows/cicd-mac.yml"
 
+# A new push to the same branch makes the in-flight matrix irrelevant, and
+# GitHub does not cancel it for us. That is not just waste: the macOS runner
+# pool is small, so a superseded run keeps holding runners and the new one sits
+# queued behind it. `main` is excluded, because the release process pushes a
+# version commit there and needs that run to complete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   all-mac:
     name: all-mac

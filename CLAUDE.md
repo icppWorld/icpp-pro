@@ -51,11 +51,14 @@ cd test/canisters/canister_1
 icpp build-native
 ./build-native/mockic.exe
 
-# WASM build + deploy + pytest against local network:
+# WASM build + deploy + pytest against local network.
+# Deploy as the same identity the tests run as, so the caller of a test is the
+# canister's controller. `make` creates `icpp-pro-testing` if it is missing.
 cd test/canisters/canister_1
+export ICPP_PRO_TEST_IDENTITY=icpp-pro-testing
 icpp build-wasm
 icp network start --background
-icp deploy --environment local --yes
+icp deploy --environment local --yes --identity $ICPP_PRO_TEST_IDENTITY
 pytest --network=local
 ```
 

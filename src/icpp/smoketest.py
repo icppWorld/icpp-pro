@@ -664,23 +664,11 @@ def network_status(
     return response
 
 
-def get_identity() -> str:
-    """Returns the name of the machine-wide active icp identity.
-
-    The test framework itself deliberately never calls this: the active
-    identity is machine-wide, so any other process can change it while a test
-    run is in flight. Tests run as the identity named by `pytest --identity`
-    or the ICPP_PRO_TEST_IDENTITY environment variable instead. Kept as a
-    read-only helper for scripts that genuinely want to report it.
-    """
-    arg = f"{ICP} identity default "
-    try:
-        identity = run_shell_cmd(arg, capture_output=True, timeout_seconds=30)
-        identity = identity.rstrip("\n")
-    except subprocess.CalledProcessError as e:
-        pytest.fail(f"ERROR: command {arg} failed with error:\n{e.output}")
-
-    return identity
+# There is deliberately no `get_identity()`. It returned the machine-wide
+# active identity (`icp identity default`), which every other process on the
+# machine can change at any moment - so anything derived from it, including
+# `identity=get_identity()`, is a race. Run `icp identity default` in a shell
+# if you want to report it.
 
 
 def get_principal(identity: Optional[str] = None) -> str:

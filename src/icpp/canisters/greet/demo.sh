@@ -16,7 +16,9 @@
 # cannot disturb the identity you use for mainnet work.
 ICPP_PRO_TEST_IDENTITY=${ICPP_PRO_TEST_IDENTITY:-greet-testing}
 export ICPP_PRO_TEST_IDENTITY
-icp identity list | grep -qw "$ICPP_PRO_TEST_IDENTITY" || \
+# `icp identity principal` exits non-zero for an unknown name, which is an exact
+# check - unlike grepping `icp identity list`.
+icp identity principal --identity "$ICPP_PRO_TEST_IDENTITY" >/dev/null 2>&1 || \
   icp identity new "$ICPP_PRO_TEST_IDENTITY" --storage plaintext
 
 #######################################################################
@@ -48,15 +50,14 @@ icp deploy --environment local --yes --identity "$ICPP_PRO_TEST_IDENTITY"
 echo " "
 echo "--------------------------------------------------"
 echo "Running some manual tests with icp"
-ID="--environment local --identity $ICPP_PRO_TEST_IDENTITY"
-icp canister call greet greet_0 '()' $ID
-icp canister call greet greet_0_static_lib '()' $ID
-icp canister call greet greet_1 '()' $ID
-icp canister call greet greet_2 '("C++ Developer")' $ID
-icp canister call greet greet_3 '(record { "icpp version" = 1 : int; OS = "Linux" : text })' $ID
-icp canister call greet greet_4 '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })' $ID
-icp canister call greet greet_json '("{\"name\": \"AJ\"}")' $ID
-icp canister call greet greet_log_file '()' $ID
+icp canister call greet greet_0 '()' --environment local --identity "$ICPP_PRO_TEST_IDENTITY"
+icp canister call greet greet_0_static_lib '()' --environment local --identity "$ICPP_PRO_TEST_IDENTITY"
+icp canister call greet greet_1 '()' --environment local --identity "$ICPP_PRO_TEST_IDENTITY"
+icp canister call greet greet_2 '("C++ Developer")' --environment local --identity "$ICPP_PRO_TEST_IDENTITY"
+icp canister call greet greet_3 '(record { "icpp version" = 1 : int; OS = "Linux" : text })' --environment local --identity "$ICPP_PRO_TEST_IDENTITY"
+icp canister call greet greet_4 '(record { 6 = 42 : int; 9 = 43 : int }, record { 7 = 44 : int; 10 = 45 : int })' --environment local --identity "$ICPP_PRO_TEST_IDENTITY"
+icp canister call greet greet_json '("{\"name\": \"AJ\"}")' --environment local --identity "$ICPP_PRO_TEST_IDENTITY"
+icp canister call greet greet_log_file '()' --environment local --identity "$ICPP_PRO_TEST_IDENTITY"
 
 #######################################################################
 echo " "

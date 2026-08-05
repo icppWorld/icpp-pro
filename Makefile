@@ -89,10 +89,14 @@ all-canister-deploy-local-pytest: icpp-pro-test-identity
 ICPP_PRO_TEST_IDENTITY ?= icpp-pro-testing
 export ICPP_PRO_TEST_IDENTITY
 
+# `icp identity principal` exits non-zero for an unknown name, which is an
+# exact check. Grepping `icp identity list` is not: its lines carry the
+# principal too, and `grep -w` treats `-` as a word boundary, so a name like
+# `icpp-pro-testing-old` would match `icpp-pro-testing`.
 .PHONY: icpp-pro-test-identity
 icpp-pro-test-identity:
-	@icp identity list | grep -qw $(ICPP_PRO_TEST_IDENTITY) || \
-	  icp identity new $(ICPP_PRO_TEST_IDENTITY) --storage plaintext
+	@icp identity principal --identity "$(ICPP_PRO_TEST_IDENTITY)" >/dev/null 2>&1 || \
+	  icp identity new "$(ICPP_PRO_TEST_IDENTITY)" --storage plaintext
 
 .PHONY: all-canister-native
 all-canister-native:

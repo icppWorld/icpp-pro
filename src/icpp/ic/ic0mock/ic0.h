@@ -23,9 +23,9 @@ void ic0_msg_caller_copy(uintptr_t dst, uint32_t off, uint32_t size);
 
 uint32_t ic0_msg_reject_code();
 
-uint32_t ic0_msg_reject_ic0_msg_size();
+uint32_t ic0_msg_reject_msg_size();
 
-void ic0_msg_reject_ic0_msg_copy(uintptr_t dst, uint32_t off, uint32_t size);
+void ic0_msg_reject_msg_copy(uintptr_t dst, uint32_t off, uint32_t size);
 
 void ic0_msg_reply_data_append(uintptr_t src, uint32_t size);
 

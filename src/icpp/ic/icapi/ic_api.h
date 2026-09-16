@@ -53,6 +53,10 @@ public:
   // Multi-timer scheduler layered on ic0.global_timer_set. Returns a
   // non-zero id usable with cancel_timer.
   // docs start: set_timer
+  // The timer methods trap in query, inspect_message & canister_start
+  // entry points - ic0.global_timer_set is refused there by the IC. The
+  // guard uses the entry recorded by the most recent IC_API constructor;
+  // before any IC_API is constructed it is skipped.
   static uint64_t set_timer(uint64_t delay_ns, std::function<void()> cb);
   static uint64_t set_timer_recurring(uint64_t period_ns,
                                       std::function<void()> cb);
@@ -65,9 +69,12 @@ public:
   // Valid entry points: canister_init, canister_post_upgrade,
   // canister_pre_upgrade, canister_update, canister_heartbeat,
   // canister_global_timer, and reply / reject / cleanup callbacks. Not
-  // valid from canister_query — ic0.global_timer_set is not available in
-  // query context per the IC interface spec, and query mutations would be
-  // discarded anyway.
+  // valid from canister_query, canister_inspect_message or canister_start
+  // — ic0.global_timer_set is refused in those contexts per the IC
+  // interface spec (and query mutations would be discarded anyway); the
+  // timer methods enforce this with a clear trap. Caveat: a reply/reject
+  // callback executing within a composite query is also refused by the IC,
+  // which the entry model cannot detect - that case traps on the replica.
   //
   // Current-dispatch semantics: if called from inside a timer callback,
   // any due timer in the same dispatch batch that has NOT yet executed

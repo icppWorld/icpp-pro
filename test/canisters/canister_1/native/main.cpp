@@ -50,6 +50,56 @@ static void native_get_certificate_from_update() {
   (void)ic_api.get_data_certificate(); // must trap: only valid in a query
 }
 
+// Step-02b scenarios: entry-context retrofit of the pre-existing wrappers.
+// The constructor must only read what the replica provides per entry point,
+// so constructing IC_API in pre_upgrade / reject-callback / cleanup entries
+// (no msg_arg_data there) must not trap.
+static void native_ctor_pre_upgrade() {
+  IC_API ic_api(CanisterPreUpgrade{"native_ctor_pre_upgrade"}, false);
+  (void)ic_api.get_caller(); // caller IS available in G
+}
+
+static void native_ctor_reject_callback() {
+  IC_API ic_api(CanisterRejectCallback{"native_ctor_reject_callback"}, false);
+  ic_api.to_wire(); // Rt may reply
+}
+
+static void native_ctor_cleanup_callback() {
+  IC_API ic_api(CanisterCleanupCallback{"native_ctor_cleanup_callback"}, false);
+}
+
+// The IC provides msg_caller in heartbeat/timer entries - get_caller() must
+// return the real caller there, not a silent default principal.
+static void native_caller_in_heartbeat() {
+  IC_API ic_api(CanisterHeartbeat{"native_caller_in_heartbeat"}, false);
+  if (ic_api.get_caller().get_text() !=
+      "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae")
+    ICPP_HOOKS::trap("get_caller in heartbeat != mock caller");
+}
+
+// The timer family reaches ic0.global_timer_set, which the IC refuses in
+// query / inspect_message entries - the guards must trap.
+static void native_set_timer_from_query() {
+  IC_API ic_api(CanisterQuery{"native_set_timer_from_query"}, false);
+  (void)IC_API::set_timer(1000000000, []() {});
+}
+
+static void native_cancel_all_timers_from_inspect() {
+  IC_API ic_api(CanisterInspectMessage{"native_cancel_all_timers_from_inspect"},
+                false);
+  IC_API::cancel_all_timers();
+}
+
+// Positive control: the timer family keeps working from an update entry.
+static void native_timers_from_update() {
+  IC_API ic_api(CanisterUpdate{"native_timers_from_update"}, false);
+  uint64_t id = IC_API::set_timer(3600ULL * 1000000000ULL, []() {});
+  if (id == 0) ICPP_HOOKS::trap("set_timer returned id 0");
+  if (!IC_API::cancel_timer(id)) ICPP_HOOKS::trap("cancel_timer failed");
+  IC_API::cancel_all_timers();
+  ic_api.to_wire();
+}
+
 int main() {
   bool exit_on_fail = true;
   MockIC mockIC(exit_on_fail);
@@ -1313,6 +1363,33 @@ int main() {
   mockIC.run_trap_test("native_get_certificate_from_update",
                        native_get_certificate_from_update, "4449444c0000",
                        silent_on_trap, my_principal);
+
+  // ------------------------------------------------------------------------
+  // Entry-context retrofit of the pre-existing wrappers (step 02b)
+
+  // Constructing IC_API in entries without msg_arg_data must not trap
+  mockIC.run_test("native_ctor_pre_upgrade", native_ctor_pre_upgrade,
+                  "4449444c0000", "", silent_on_trap, my_principal);
+  mockIC.run_test("native_ctor_reject_callback", native_ctor_reject_callback,
+                  "4449444c0000", "4449444c0000", silent_on_trap, my_principal);
+  mockIC.run_test("native_ctor_cleanup_callback", native_ctor_cleanup_callback,
+                  "4449444c0000", "", silent_on_trap, my_principal);
+
+  // get_caller returns the real caller in heartbeat/timer entries
+  mockIC.run_test("native_caller_in_heartbeat", native_caller_in_heartbeat,
+                  "4449444c0000", "", silent_on_trap, my_principal);
+
+  // Timer-family guards: refused in query & inspect_message entries
+  mockIC.run_trap_test("native_set_timer_from_query",
+                       native_set_timer_from_query, "4449444c0000",
+                       silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_cancel_all_timers_from_inspect",
+                       native_cancel_all_timers_from_inspect, "4449444c0000",
+                       silent_on_trap, my_principal);
+
+  // Positive control: timers keep working from an update entry
+  mockIC.run_test("native_timers_from_update", native_timers_from_update,
+                  "4449444c0000", "4449444c0000", silent_on_trap, my_principal);
 
   // returns 1 if any tests failed
   return mockIC.test_summary();

@@ -135,7 +135,21 @@ This deploys `../icpp-demos/canisters/files` built with the **released**
 icpp-pro from PyPI, runs its full pytest (which writes state), rebuilds the
 same source with the **dev** tree, upgrades the canister in place, and runs
 the `run_after_upgrade`-marked tests. Options:
-`python -m scripts.upgrade_test --canister-dir <dir> --released-version X.Y.Z`.
+`python -m scripts.upgrade_test --canister-dir <dir> --released-version X.Y.Z
+--pytest-before "<cmd>" --pytest-after "<cmd>"`.
+
+For changes to IC_API / core headers, also run the same gate against the
+heaviest downstream consumer:
+
+```bash
+make upgrade-test-llama
+```
+
+This builds & deploys `../llama_cpp_canister` with the released icpp-pro,
+runs its model-free API suite (`test/test_canister_functions.py`: health,
+memory status, access control), upgrades in place with the dev tree, and
+re-runs the suite. Model-level verification stays with llama's own docker/CI
+path.
 
 ## Ceremony 4 — Verify siblings (tiered)
 

@@ -56,10 +56,22 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="icpp-pro version to upgrade FROM (default: latest PyPI release)",
     )
+    parser.add_argument(
+        "--pytest-before",
+        default="pytest -vv --network=local test",
+        help="pytest command to run against the released build (writes state)",
+    )
+    parser.add_argument(
+        "--pytest-after",
+        default="pytest -vv --network=local -m run_after_upgrade test",
+        help="pytest command to run after the in-place upgrade",
+    )
     return parser.parse_args()
 
 
-def upgrade_test(canister_dir: Path, released_version: str) -> int:
+def upgrade_test(
+    canister_dir: Path, released_version: str, pytest_before: str, pytest_after: str
+) -> int:
     """Deploys with the released icpp-pro, upgrades with the dev tree."""
     log: List[str] = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -71,6 +83,18 @@ def upgrade_test(canister_dir: Path, released_version: str) -> int:
             typer.echo(f"-- install the released icpp-pro ({pin}) in a venv")
             run_step(f'"{sys.executable}" -m venv "{venv}"', canister_dir, log, True)
             run_step(f'"{pip}" install --quiet "{pin}"', canister_dir, log, True)
+            # A canister project may need its own deps for the build (e.g.
+            # llama_cpp_canister's post_wasm optimizer needs binaryen). Its
+            # requirements.txt is installed last, so a project's own icpp-pro
+            # pin defines the released baseline being upgraded from.
+            if (canister_dir / "requirements.txt").exists():
+                typer.echo("-- install the canister project's requirements")
+                run_step(
+                    f'"{pip}" install --quiet -r requirements.txt',
+                    canister_dir,
+                    log,
+                    True,
+                )
             run_step(f'"{icpp_released}" --version', canister_dir, log, True)
             typer.echo("-- the dev icpp-pro it will be upgraded to")
             run_step("icpp --version", canister_dir, log, True)
@@ -89,8 +113,8 @@ def upgrade_test(canister_dir: Path, released_version: str) -> int:
                 log,
                 True,
             )
-            typer.echo("-- run the full pytest against the released build")
-            run_step("pytest -vv --network=local test", canister_dir, log, True)
+            typer.echo("-- run pytest against the released build")
+            run_step(pytest_before, canister_dir, log, True)
 
             typer.echo("-- rebuild with the DEV icpp-pro & upgrade in place")
             run_step("icpp build-wasm --to-compile all", canister_dir, log, True)
@@ -101,13 +125,8 @@ def upgrade_test(canister_dir: Path, released_version: str) -> int:
                 log,
                 True,
             )
-            typer.echo("-- verify state survived the upgrade")
-            run_step(
-                "pytest -vv --network=local -m run_after_upgrade test",
-                canister_dir,
-                log,
-                True,
-            )
+            typer.echo("-- verify behavior after the upgrade")
+            run_step(pytest_after, canister_dir, log, True)
         except StepError as e:
             typer.echo(f"❌ upgrade test FAILED at: {e}")
             return 1
@@ -136,7 +155,9 @@ def main() -> int:
         typer.echo(f"ERROR: {canister_dir} is not an icp project (no icp.yaml)")
         return 1
 
-    return upgrade_test(canister_dir, args.released_version)
+    return upgrade_test(
+        canister_dir, args.released_version, args.pytest_before, args.pytest_after
+    )
 
 
 if __name__ == "__main__":

@@ -18,7 +18,13 @@ import shutil
 import subprocess
 import sys
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# pylint's astroid cannot resolve concurrent.futures' lazy-loading module
+# layout on Python 3.14 and reports a false E0611 (no-name-in-module).
+from concurrent.futures import (  # pylint: disable=no-name-in-module
+    ThreadPoolExecutor,
+    as_completed,
+)
 from pathlib import Path
 from typing import List, Tuple
 

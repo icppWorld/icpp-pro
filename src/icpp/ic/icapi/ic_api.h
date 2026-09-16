@@ -108,6 +108,10 @@ public:
   // docs start: msg_cycles
   // Available in update, query, reply- & reject-callback entry points;
   // get_msg_cycles_refunded only in reply- & reject-callbacks.
+  // Query nuance: the IC provides these only in REPLICATED query execution.
+  // CanisterQuery cannot see the execution mode, so the guard admits it and
+  // a non-replicated query call traps on the IC itself - excluding query
+  // here would wrongly block the legitimate replicated case.
   __uint128_t get_msg_cycles_available();
   __uint128_t get_msg_cycles_refunded();
   // Accepts min(max_amount, available); returns the amount accepted.

@@ -20,7 +20,7 @@ ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
 CANISTER_NAME = "my_canister"
 
 
-def test__allowed_greet(network: str, principal: str) -> None:
+def test__allowed_greet(network: str) -> None:
     response = call_canister_api(
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
@@ -30,9 +30,11 @@ def test__allowed_greet(network: str, principal: str) -> None:
     assert response == '("Hello!")'
 
 
-def test__blocked_greet_is_refused(network: str, principal: str) -> None:
+def test__blocked_greet_is_refused(network: str) -> None:
     # The inspect hook never calls accept_message for this method name, so
-    # the ingress message is rejected before execution.
+    # the ingress message is rejected before execution. Assert the
+    # rejection-specific marker (IC0406 = canister rejected the message),
+    # not just any failed call.
     response = call_canister_api(
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
@@ -40,3 +42,4 @@ def test__blocked_greet_is_refused(network: str, principal: str) -> None:
         network=network,
     )
     assert response.startswith("Failed call to api")
+    assert "Canister rejected the message" in response

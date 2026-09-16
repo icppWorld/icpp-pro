@@ -466,6 +466,25 @@
       <a href="https://github.com/icppWorld/icpp-pro/pull/54">icpp-pro #54</a> &amp;
       <a href="https://github.com/icppWorld/icpp-docs/pull/3">icpp-docs #3</a>.</p>
     </div></li>
+    <li data-step="02c"><div>
+      <h3>Release icpp-pro 6.1.0</h3>
+      <p>Minor release (new IC_API capabilities from 02a; 02b's bug fixes ride
+      along), per README-release-guide.md: icpp-candid bumps to 6.1.0 in
+      lockstep, full testing matrix, upgrade gates, <code>siblings-verify-full</code>,
+      PyPI upload, sibling pin bumps, docs deploy. Must precede 02d: the demos
+      pre_upgrade example needs the constructor fix on the RELEASED side, or
+      the old wasm's pre_upgrade traps during the upgrade-test's in-place
+      upgrade.</p>
+    </div></li>
+    <li data-step="02d"><div>
+      <h3>pre/post_upgrade IC_API example in icpp-demos</h3>
+      <p>Add <code>canister_pre_upgrade</code> / <code>canister_post_upgrade</code>
+      hooks constructing <code>IC_API</code> to the icpp-demos <code>files</code>
+      canister (newly possible after 02b). Doubles as end-to-end deployed proof
+      of the G-entry fix: <code>make upgrade-test</code> then exercises the hook
+      on a real replica during its in-place upgrade. Only safe after 02c ships
+      the fix in the released icpp-pro.</p>
+    </div></li>
     <li data-step="03"><div>
       <h3>Breadth pass on introspection</h3>
       <p>Caller info, system introspection, subnet &amp; root key, environment variables,

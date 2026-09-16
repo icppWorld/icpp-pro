@@ -7,6 +7,7 @@
 #pragma once
 
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include "mock_ic_constants.h"
@@ -27,6 +28,36 @@ public:
 
   VecBytes get_msg_in() { return m_B_in; }
   VecBytes get_msg_out() { return m_B_out; }
+
+  // Mock state for 128-bit cycles, inspect message & certified data.
+  // Sticky, like ic0mock_set_time_override: NOT reset by run_test /
+  // run_trap_test. Tests set what a scenario needs and clear it on exit.
+  __uint128_t get_msg_cycles_available() { return m_msg_cycles_available; }
+  void set_msg_cycles_available(__uint128_t v) { m_msg_cycles_available = v; }
+  __uint128_t get_msg_cycles_refunded() { return m_msg_cycles_refunded; }
+  void set_msg_cycles_refunded(__uint128_t v) { m_msg_cycles_refunded = v; }
+  void add_cycles_balance(__uint128_t v) { m_cycles_balance += v; }
+  void sub_cycles_balance(__uint128_t v) { m_cycles_balance -= v; }
+  std::string get_msg_method_name() { return m_msg_method_name; }
+  void set_msg_method_name(const std::string &name) {
+    m_msg_method_name = name;
+  }
+  bool get_data_certificate_present() { return m_data_certificate_present; }
+  std::vector<uint8_t> get_data_certificate() { return m_data_certificate; }
+  void set_data_certificate(const std::vector<uint8_t> &cert) {
+    m_data_certificate = cert;
+    m_data_certificate_present = true;
+  }
+  void clear_data_certificate() {
+    m_data_certificate.clear();
+    m_data_certificate_present = false;
+  }
+  // What the canister stored via ic0.certified_data_set - so a native test
+  // can assert it.
+  std::vector<uint8_t> get_certified_data() { return m_certified_data; }
+  void set_certified_data(const std::vector<uint8_t> &data) {
+    m_certified_data = data;
+  }
 
   void msg_reply_data_append(uintptr_t src, uint32_t size);
 
@@ -59,6 +90,12 @@ private:
   CandidTypePrincipal m_caller;
   CandidTypePrincipal m_canister_self;
   __uint128_t m_cycles_balance{MOCKIC_INITIAL_CYCLES_BALANCE};
+  __uint128_t m_msg_cycles_available{0};
+  __uint128_t m_msg_cycles_refunded{0};
+  std::string m_msg_method_name;
+  std::vector<uint8_t> m_data_certificate;
+  bool m_data_certificate_present{false};
+  std::vector<uint8_t> m_certified_data;
   int m_tests_total;
   int m_tests_failed;
   bool m_exit_on_fail;

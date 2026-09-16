@@ -22,6 +22,9 @@ service: {
     "roundtrip_deprecated_ic_api_constructor" : () -> () query;
     "roundtrip_no_arguments" : () -> () query;
     "test_ic_api" : () -> (int) query;
+    "test_cycles" : () -> (int);
+    "test_certified_data_set" : () -> ();
+    "test_data_certificate" : () -> (int) query;
     "test_candid" : () -> (int) query;
     "test_vendors" : () -> (int) query;
     "test_getenv" : () -> (int) query;

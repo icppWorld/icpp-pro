@@ -24,6 +24,31 @@
 
 // ----------------------------------------------------------
 
+namespace {
+// The ic0 "size/copy" idiom: allocate from the size call, fill with the copy
+// call. Templated because the real ic0.h declares uint32_t pointers (wasm32)
+// while the mock declares uintptr_t (64-bit native).
+template <typename SizeFn, typename CopyFn>
+std::vector<uint8_t> read_size_copy(SizeFn size_fn, CopyFn copy_fn) {
+  std::vector<uint8_t> bytes(size_fn());
+  copy_fn(reinterpret_cast<uintptr_t>(bytes.data()), 0, (uint32_t)bytes.size());
+  return bytes;
+}
+
+// Entry-context guard: the replica only permits each system API in specific
+// entry points and traps otherwise. Trapping here gives the same outcome
+// with a clearer message, and makes native MockIC runs fail the same way
+// the IC does.
+void check_entry(CanisterBase entry, bool allowed, const char *method,
+                 const char *allowed_desc) {
+  if (!allowed) {
+    IC_API::trap(std::string(method) + " is not available in a " +
+                 entry.get_entry_type() +
+                 " entry point. Allowed entry points: " + allowed_desc + ".");
+  }
+}
+} // namespace
+
 IC_API::IC_API() : IC_API(CanisterQuery("-unknown-"), false) {}
 IC_API::IC_API(const bool &debug_print)
     : IC_API(CanisterQuery("-unknown-"), debug_print) {}
@@ -40,24 +65,18 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
 
   if (has_msg_context) {
     // Fill 'm_B_in' with the bytes of msg_arg_data
-    std::vector<uint8_t> bytes(ic0_msg_arg_data_size());
-    ic0_msg_arg_data_copy(reinterpret_cast<uintptr_t>(bytes.data()), 0,
-                          bytes.size());
+    std::vector<uint8_t> bytes =
+        read_size_copy(ic0_msg_arg_data_size, ic0_msg_arg_data_copy);
     m_B_in.store(bytes.data(), bytes.size());
 
     // Get the principal of caller
-    std::vector<uint8_t> bytes_caller(ic0_msg_caller_size());
-    ic0_msg_caller_copy(reinterpret_cast<uintptr_t>(bytes_caller.data()), 0,
-                        bytes_caller.size());
-    m_caller = CandidTypePrincipal(bytes_caller);
+    m_caller = CandidTypePrincipal(
+        read_size_copy(ic0_msg_caller_size, ic0_msg_caller_copy));
   }
 
   // Get  canister id
-  std::vector<uint8_t> bytes_canister_self(ic0_canister_self_size());
-  ic0_canister_self_copy(
-      reinterpret_cast<uintptr_t>(bytes_canister_self.data()), 0,
-      bytes_canister_self.size());
-  m_canister_self = CandidTypePrincipal(bytes_canister_self);
+  m_canister_self = CandidTypePrincipal(
+      read_size_copy(ic0_canister_self_size, ic0_canister_self_copy));
 
   if (m_debug_print) {
     debug_print("\n--");
@@ -107,6 +126,103 @@ __uint128_t IC_API::get_canister_self_cycle_balance() {
   __uint128_t cycles_balance;
   ic0_canister_cycle_balance128(reinterpret_cast<uintptr_t>(&cycles_balance));
   return cycles_balance;
+}
+
+__uint128_t IC_API::get_canister_liquid_cycle_balance() {
+  __uint128_t liquid_balance;
+  ic0_canister_liquid_cycle_balance128(
+      reinterpret_cast<uintptr_t>(&liquid_balance));
+  return liquid_balance;
+}
+
+__uint128_t IC_API::get_msg_cycles_available() {
+  check_entry(m_canister_entry,
+              m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Q() ||
+                  m_canister_entry.is_entry_Ry() ||
+                  m_canister_entry.is_entry_Rt(),
+              "IC_API::get_msg_cycles_available",
+              "update, query, reply & reject callbacks");
+  __uint128_t available;
+  ic0_msg_cycles_available128(reinterpret_cast<uintptr_t>(&available));
+  return available;
+}
+
+__uint128_t IC_API::get_msg_cycles_refunded() {
+  check_entry(m_canister_entry,
+              m_canister_entry.is_entry_Ry() || m_canister_entry.is_entry_Rt(),
+              "IC_API::get_msg_cycles_refunded", "reply & reject callbacks");
+  __uint128_t refunded;
+  ic0_msg_cycles_refunded128(reinterpret_cast<uintptr_t>(&refunded));
+  return refunded;
+}
+
+__uint128_t IC_API::accept_msg_cycles(__uint128_t max_amount) {
+  check_entry(
+      m_canister_entry,
+      m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Q() ||
+          m_canister_entry.is_entry_Ry() || m_canister_entry.is_entry_Rt(),
+      "IC_API::accept_msg_cycles", "update, query, reply & reject callbacks");
+  __uint128_t accepted;
+  ic0_msg_cycles_accept128((uint64_t)(max_amount >> 64), (uint64_t)max_amount,
+                           reinterpret_cast<uintptr_t>(&accepted));
+  return accepted;
+}
+
+__uint128_t IC_API::burn_cycles(__uint128_t amount) {
+  check_entry(m_canister_entry,
+              !m_canister_entry.is_entry_F() && !m_canister_entry.is_entry_s(),
+              "IC_API::burn_cycles",
+              "all except inspect_message & canister_start");
+  __uint128_t burned;
+  ic0_cycles_burn128((uint64_t)(amount >> 64), (uint64_t)amount,
+                     reinterpret_cast<uintptr_t>(&burned));
+  return burned;
+}
+
+std::string IC_API::get_msg_method_name() {
+  check_entry(m_canister_entry, m_canister_entry.is_entry_F(),
+              "IC_API::get_msg_method_name", "inspect_message");
+  std::vector<uint8_t> bytes =
+      read_size_copy(ic0_msg_method_name_size, ic0_msg_method_name_copy);
+  return std::string(bytes.begin(), bytes.end());
+}
+
+void IC_API::accept_message() {
+  check_entry(m_canister_entry, m_canister_entry.is_entry_F(),
+              "IC_API::accept_message", "inspect_message");
+  ic0_accept_message();
+}
+
+void IC_API::set_certified_data(const std::vector<uint8_t> &data) {
+  check_entry(
+      m_canister_entry,
+      m_canister_entry.is_entry_I() || m_canister_entry.is_entry_G() ||
+          m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Ry() ||
+          m_canister_entry.is_entry_Rt() || m_canister_entry.is_entry_T(),
+      "IC_API::set_certified_data",
+      "init, pre/post_upgrade, update, reply & reject callbacks, "
+      "heartbeat & timer");
+  // Fail fast with a clear message; the IC enforces the same limit.
+  if (data.size() > 32) {
+    trap("IC_API::set_certified_data: at most 32 bytes can be certified. "
+         "Certify a hash of your data instead.");
+  }
+  ic0_certified_data_set(reinterpret_cast<uintptr_t>(data.data()),
+                         (uint32_t)data.size());
+}
+
+bool IC_API::data_certificate_present() {
+  return ic0_data_certificate_present() == 1;
+}
+
+std::vector<uint8_t> IC_API::get_data_certificate() {
+  check_entry(m_canister_entry, m_canister_entry.is_entry_Q(),
+              "IC_API::get_data_certificate", "query");
+  if (!data_certificate_present()) {
+    trap("IC_API::get_data_certificate: no data certificate present. It is "
+         "only available in non-replicated query calls.");
+  }
+  return read_size_copy(ic0_data_certificate_size, ic0_data_certificate_copy);
 }
 
 void IC_API::debug_print(const std::string &s) {

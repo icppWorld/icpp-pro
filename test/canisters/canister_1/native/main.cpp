@@ -8,8 +8,47 @@
 #include "../src/my_canister.h"
 
 // The Mock IC
+#include "ic_api.h"
 #include "icpp_hooks.h"
 #include "mock_ic.h"
+
+// Native-only scenarios for the 128-bit cycles & certified-data APIs. Not
+// canister exports - they drive IC_API through entry points & mock state
+// that an ingress message cannot.
+static void native_cycles_accept_flow() {
+  IC_API ic_api(CanisterUpdate{"native_cycles_accept_flow"}, false);
+  if (ic_api.get_msg_cycles_available() != 5000)
+    ICPP_HOOKS::trap("available != 5000");
+  if (ic_api.accept_msg_cycles(2000) != 2000)
+    ICPP_HOOKS::trap("accepted != 2000");
+  if (ic_api.get_msg_cycles_available() != 3000)
+    ICPP_HOOKS::trap("available != 3000 after accept");
+  ic_api.to_wire();
+}
+
+static void native_refunded_in_reject_callback() {
+  IC_API ic_api(CanisterRejectCallback{"native_refunded_in_reject_callback"},
+                false);
+  if (ic_api.get_msg_cycles_refunded() != 750)
+    ICPP_HOOKS::trap("refunded != 750");
+  ic_api.to_wire();
+}
+
+static void native_refunded_from_update() {
+  IC_API ic_api(CanisterUpdate{"native_refunded_from_update"}, false);
+  (void)ic_api.get_msg_cycles_refunded(); // must trap: wrong entry point
+}
+
+static void native_certified_data_33_bytes() {
+  IC_API ic_api(CanisterUpdate{"native_certified_data_33_bytes"}, false);
+  std::vector<uint8_t> data(33, 0xab);
+  ic_api.set_certified_data(data); // must trap: max 32 bytes
+}
+
+static void native_get_certificate_from_update() {
+  IC_API ic_api(CanisterUpdate{"native_get_certificate_from_update"}, false);
+  (void)ic_api.get_data_certificate(); // must trap: only valid in a query
+}
 
 int main() {
   bool exit_on_fail = true;
@@ -1214,6 +1253,67 @@ int main() {
     ICPP_HOOKS::trap(std::string(__func__) + ": did not trap 2g");
   } catch (const std::exception &e) {
   }
+  // ------------------------------------------------------------------------
+  // 128-bit cycles & certified data (step 02 of the IC0-parity roadmap)
+
+  // '()' -> '(0 : int)' - ingress path: no cycles attached
+  mockIC.run_test("test_cycles", test_cycles, "4449444c0000",
+                  "4449444c00017c00", silent_on_trap, my_principal);
+
+  // Accept flow with cycles attached (mock msg-cycles state is sticky)
+  mockIC.set_msg_cycles_available(5000);
+  mockIC.run_test("native_cycles_accept_flow", native_cycles_accept_flow,
+                  "4449444c0000", "4449444c0000", silent_on_trap, my_principal);
+  mockIC.set_msg_cycles_available(0);
+
+  mockIC.set_msg_cycles_refunded(750);
+  mockIC.run_test("native_refunded_in_reject_callback",
+                  native_refunded_in_reject_callback, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+  mockIC.set_msg_cycles_refunded(0);
+
+  // Entry-context guard: refunded cycles only exist in reply/reject callbacks
+  mockIC.run_trap_test("native_refunded_from_update",
+                       native_refunded_from_update, "4449444c0000",
+                       silent_on_trap, my_principal);
+
+  // '()' -> '()'
+  mockIC.run_test("test_certified_data_set", test_certified_data_set,
+                  "4449444c0000", "4449444c0000", silent_on_trap, my_principal);
+  {
+    std::vector<uint8_t> expected(32);
+    for (size_t i = 0; i < expected.size(); ++i) {
+      expected[i] = (uint8_t)i;
+    }
+    if (mockIC.get_certified_data() != expected) {
+      std::cout << "\nTest: 'certified_data stored in mock' Failed\n";
+      return 1;
+    }
+    std::cout << "Test: certified_data stored in mock: Passed\n";
+  }
+
+  // The IC's 32-byte limit on certified data
+  mockIC.run_trap_test("native_certified_data_33_bytes",
+                       native_certified_data_33_bytes, "4449444c0000",
+                       silent_on_trap, my_principal);
+
+  // '()' -> '(1 : int)' - no data certificate in the mock by default
+  mockIC.run_test("test_data_certificate absent", test_data_certificate,
+                  "4449444c0000", "4449444c00017c01", silent_on_trap,
+                  my_principal);
+
+  // '()' -> '(0 : int)' - with a certificate installed in the mock
+  mockIC.set_data_certificate(std::vector<uint8_t>{0xde, 0xad, 0xbe, 0xef});
+  mockIC.run_test("test_data_certificate present", test_data_certificate,
+                  "4449444c0000", "4449444c00017c00", silent_on_trap,
+                  my_principal);
+  mockIC.clear_data_certificate();
+
+  // Entry-context guard: the certificate is only readable in a query
+  mockIC.run_trap_test("native_get_certificate_from_update",
+                       native_get_certificate_from_update, "4449444c0000",
+                       silent_on_trap, my_principal);
+
   // returns 1 if any tests failed
   return mockIC.test_summary();
 }

@@ -144,6 +144,10 @@
   ol.seq li.done .donetag { font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
     color: var(--good-text); }
+  ol.seq li.review::before { color: var(--serious); }
+  ol.seq li.review .reviewtag { font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--serious); }
   .callout h3, .card h3 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
   .callout p { color: var(--ink-2); margin: 8px 0 0; max-width: 70ch; }
   .callout p strong { color: var(--ink); }
@@ -179,7 +183,7 @@
               grid-template-columns: 44px 1fr; gap: 14px; padding: 14px 0;
               border-top: 1px solid var(--line); }
   ol.seq li::before {
-    content: counter(step, decimal-leading-zero);
+    content: attr(data-step);
     font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 20px;
     font-weight: 600; color: var(--accent); line-height: 1.3;
   }
@@ -221,36 +225,41 @@
 
 <section>
   <p class="kicker">Coverage</p>
-  <h2>26 of 71 current imports are bound</h2>
+  <h2>39 of 71 current imports are bound</h2>
   <p>The replica accepts <strong>77</strong> <code>ic0</code> imports. Setting aside the
   six that are deprecated 64-bit cycles variants or restricted to the cycles-minting
   canister leaves <strong>71 current functions</strong>. Motoko binds 63 of them.
-  icpp-pro binds 26. The 5 further declarations whose import names no longer existed
-  on the IC were removed on 2026-09-16 (sequencing step 01).</p>
+  icpp-pro binds 39: step 01 (merged 2026-09-16) removed the 5 dead pre-Genesis
+  declarations, and step 02a (<strong>in review</strong> on
+  <code>feature/ic0-step02</code>, PRs open in all three repos) adds the 13
+  imports for 128-bit cycles, ingress inspection &amp; certified data &mdash; the
+  counts below include 02a and become <code>main</code>-true when its PRs merge.</p>
 
   <div class="tiles">
     <div class="tile"><div class="v">71</div><div class="l">current ic0 functions</div></div>
-    <div class="tile good"><div class="v">26</div><div class="l">bound by icpp-pro (37%)</div></div>
-    <div class="tile"><div class="v">45</div><div class="l">missing</div></div>
+    <div class="tile good"><div class="v">39</div><div class="l">bound by icpp-pro (55%)</div></div>
+    <div class="tile"><div class="v">32</div><div class="l">missing</div></div>
     <div class="tile good"><div class="v">0</div><div class="l">broken declarations</div></div>
   </div>
 
-  <div class="meter" role="img" aria-label="Coverage: 26 bound, 45 missing">
-    <div class="seg-bound" style="flex:26" title="Bound &amp; valid: 26"></div>
-    <div class="seg-missing" style="flex:45" title="Missing: 45"></div>
+  <div class="meter" role="img" aria-label="Coverage: 39 bound, 32 missing">
+    <div class="seg-bound" style="flex:39" title="Bound &amp; valid: 39"></div>
+    <div class="seg-missing" style="flex:32" title="Missing: 32"></div>
   </div>
   <div class="legend">
-    <span class="k"><span class="dot" style="background:var(--good)"></span>bound &amp; valid <span class="n">26</span></span>
-    <span class="k"><span class="dot" style="background:var(--miss-fill)"></span>missing <span class="n">45</span></span>
+    <span class="k"><span class="dot" style="background:var(--good)"></span>bound &amp; valid <span class="n">39</span></span>
+    <span class="k"><span class="dot" style="background:var(--miss-fill)"></span>missing <span class="n">32</span></span>
   </div>
 
   <details>
-    <summary>The 26 imports icpp-pro binds today</summary>
+    <summary>The 39 imports icpp-pro binds today</summary>
     <div class="fnlist">
-      <span class="fn ok">msg_arg_data_size</span><span class="fn ok">msg_arg_data_copy</span><span class="fn ok">msg_caller_size</span><span class="fn ok">msg_caller_copy</span><span class="fn ok">msg_reject_code</span><span class="fn ok">msg_reject_msg_size</span><span class="fn ok">msg_reject_msg_copy</span><span class="fn ok">msg_reply</span><span class="fn ok">msg_reply_data_append</span><span class="fn ok">msg_reject</span><span class="fn ok">canister_self_size</span><span class="fn ok">canister_self_copy</span><span class="fn ok">canister_cycle_balance128</span><span class="fn ok">call_new</span><span class="fn ok">call_on_cleanup</span><span class="fn ok">call_data_append</span><span class="fn ok">call_perform</span><span class="fn ok">stable_size</span><span class="fn ok">stable_grow</span><span class="fn ok">stable_read</span><span class="fn ok">stable_write</span><span class="fn ok">time</span><span class="fn ok">global_timer_set</span><span class="fn ok">is_controller</span><span class="fn ok">debug_print</span><span class="fn ok">trap</span>
+      <span class="fn ok">msg_arg_data_size</span><span class="fn ok">msg_arg_data_copy</span><span class="fn ok">msg_caller_size</span><span class="fn ok">msg_caller_copy</span><span class="fn ok">msg_reject_code</span><span class="fn ok">msg_reject_msg_size</span><span class="fn ok">msg_reject_msg_copy</span><span class="fn ok">msg_reply</span><span class="fn ok">msg_reply_data_append</span><span class="fn ok">msg_reject</span><span class="fn ok">msg_method_name_size</span><span class="fn ok">msg_method_name_copy</span><span class="fn ok">accept_message</span><span class="fn ok">canister_self_size</span><span class="fn ok">canister_self_copy</span><span class="fn ok">canister_cycle_balance128</span><span class="fn ok">canister_liquid_cycle_balance128</span><span class="fn ok">msg_cycles_available128</span><span class="fn ok">msg_cycles_refunded128</span><span class="fn ok">msg_cycles_accept128</span><span class="fn ok">cycles_burn128</span><span class="fn ok">call_new</span><span class="fn ok">call_on_cleanup</span><span class="fn ok">call_data_append</span><span class="fn ok">call_cycles_add128</span><span class="fn ok">call_perform</span><span class="fn ok">certified_data_set</span><span class="fn ok">data_certificate_present</span><span class="fn ok">data_certificate_size</span><span class="fn ok">data_certificate_copy</span><span class="fn ok">stable_size</span><span class="fn ok">stable_grow</span><span class="fn ok">stable_read</span><span class="fn ok">stable_write</span><span class="fn ok">time</span><span class="fn ok">global_timer_set</span><span class="fn ok">is_controller</span><span class="fn ok">debug_print</span><span class="fn ok">trap</span>
     </div>
-    <p style="color:var(--ink-2); font-size:13.5px; max-width:70ch;">This covers basic
-    request/reply messaging, caller and self identity, reading the cycle balance, raw
+    <p style="color:var(--ink-2); font-size:13.5px; max-width:70ch;">This covers
+    request/reply messaging, ingress inspection, caller and self identity, the full
+    128-bit cycles family (<code>call_cycles_add128</code> is bound + mocked; its
+    IC_API wrapper arrives with the async call API), certified data, raw
     inter-canister call plumbing, 32-bit stable memory, time, the global timer,
     controller checks, and debugging.</p>
   </details>
@@ -290,7 +299,7 @@
 
 <section>
   <p class="kicker">The gap</p>
-  <h2>45 missing imports, by capability</h2>
+  <h2>32 missing imports, by capability</h2>
   <p>Grouped by what they unlock. Every group also needs a Mock&nbsp;IC implementation
   in <code>ic0mock/</code>, an <code>IC_API</code> wrapper, a test canister, and docs.</p>
 
@@ -301,32 +310,10 @@
     </thead>
     <tbody>
       <tr>
-        <td class="cap">Ingress inspection</td>
-        <td><span class="fn">accept_message</span><span class="fn">msg_method_name_size</span><span class="fn">msg_method_name_copy</span></td>
-        <td class="count">3</td>
-        <td class="note"><strong>Effectively broken today:</strong> icpp exports
-        <code>canister_inspect_message</code>, but without <code>accept_message</code> an
-        inspecting canister can only refuse ingress.</td>
-      </tr>
-      <tr>
-        <td class="cap">Cycles (128-bit)</td>
-        <td><span class="fn">msg_cycles_available128</span><span class="fn">msg_cycles_refunded128</span><span class="fn">msg_cycles_accept128</span><span class="fn">call_cycles_add128</span><span class="fn">cycles_burn128</span><span class="fn">canister_liquid_cycle_balance128</span></td>
-        <td class="count">6</td>
-        <td class="note">A canister can read its balance but cannot accept, attach, or
-        burn cycles. Replaces the broken funds declarations.</td>
-      </tr>
-      <tr>
         <td class="cap">Best-effort responses</td>
         <td><span class="fn">call_with_best_effort_response</span><span class="fn">msg_deadline</span></td>
         <td class="count">2</td>
         <td class="note">Bounded-wait inter-canister calls; supported by Motoko&nbsp;1.16.</td>
-      </tr>
-      <tr>
-        <td class="cap">Certified data</td>
-        <td><span class="fn">certified_data_set</span><span class="fn">data_certificate_present</span><span class="fn">data_certificate_size</span><span class="fn">data_certificate_copy</span></td>
-        <td class="count">4</td>
-        <td class="note">Required for certified variables and query responses clients
-        can verify against the IC root of trust.</td>
       </tr>
       <tr>
         <td class="cap">Caller info</td>
@@ -444,35 +431,54 @@
   <p class="kicker">Plan</p>
   <h2>Suggested sequencing</h2>
   <ol class="seq">
-    <li class="done"><div>
+    <li class="done" data-step="01"><div>
       <h3>Repair the header <span class="donetag">&#10003; done 2026-09-16</span></h3>
       <p>Deleted the five dead funds declarations, unmangled <code>ic0.h:84</code>
       (<code>stable_size</code> &rarr; <code>ic0_stable_size</code>), and fixed the
       mock's mismatched reject-msg declarations. Verified: clang-format, native
-      builds + mock runs (canister_1 142/142, canister_timers 20/20), wasm build.</p>
+      builds + mock runs (canister_1 142/142, canister_timers 20/20), wasm build.
+      Merged to <code>main</code>.</p>
     </div></li>
-    <li><div>
-      <h3>Small, self-contained, high-value wins</h3>
-      <p>Cycles (128-bit), ingress inspection, and certified data &mdash; each is a
-      handful of size/copy-style imports with an obvious <code>IC_API</code> surface and
-      immediate user value.</p>
+    <li class="review" data-step="02a"><div>
+      <h3>New APIs: cycles, inspection, certified data <span class="reviewtag">in review</span></h3>
+      <p>Branch <code>feature/ic0-step02</code>: 13 imports bound &mdash; 128-bit cycles
+      (incl. <code>call_cycles_add128</code> bind+mock only), ingress inspection with a
+      user-declared <code>canister_inspect_message</code> hook, and certified data. New
+      entry-context guards on all new IC_API methods; new <code>canister_inspect</code>
+      test canister; docs &amp; demos on the same branch in icpp-docs / icpp-demos.
+      Verified: all-static, native (canister_1 151/151, canister_inspect 7/7), full
+      all-tests, upgrade test released&rarr;dev, docs build. Awaiting merge of
+      <a href="https://github.com/icppWorld/icpp-pro/pull/53">icpp-pro #53</a>,
+      <a href="https://github.com/icppWorld/icpp-demos/pull/5">icpp-demos #5</a> &amp;
+      <a href="https://github.com/icppWorld/icpp-docs/pull/2">icpp-docs #2</a>.</p>
     </div></li>
-    <li><div>
+    <li data-step="02b"><div>
+      <h3>Existing APIs: context-guard retrofit</h3>
+      <p>Step 02a enforces the replica's permitted-entry-point matrix on all NEW
+      IC_API methods. Retrofit the pre-existing wrappers (constructor reads, timers,
+      &hellip;) the same way, audited per-function against the replica source
+      (<code>rs/embedders/&hellip;/system_api.rs</code>) &mdash; its own compatibility
+      assessment, trap tests, and upgrade-test run, because a mis-transcribed guard
+      there would break working canisters.</p>
+    </div></li>
+    <li data-step="03"><div>
       <h3>Breadth pass on introspection</h3>
       <p>Caller info, system introspection, subnet &amp; root key, environment variables,
       and cost estimation. Mechanically similar bindings; one pattern, ten wrappers.</p>
     </div></li>
-    <li><div>
+    <li data-step="04"><div>
       <h3>64-bit stable memory</h3>
       <p>Define a layout convention alongside ic-wasi-polyfill's stable-memory use, then
       expose <code>stable64_*</code> through <code>IC_API</code>.</p>
     </div></li>
-    <li><div>
+    <li data-step="05"><div>
       <h3>The async call API</h3>
       <p>The big lift: a real inter-canister call model for C++ (issue #21). Composite
       queries and best-effort responses (<code>call_with_best_effort_response</code>,
       <code>msg_deadline</code>) then layer on top, along with the
-      <code>canister_on_low_wasm_memory</code> export as an easy side quest.</p>
+      <code>canister_on_low_wasm_memory</code> export as an easy side quest.
+      <code>call_cycles_add128</code> is already bound &amp; mocked; give it its
+      IC_API home here.</p>
     </div></li>
   </ol>
 </section>
@@ -484,7 +490,9 @@
   icpp-pro&nbsp;6.0.0 (<code>src/icpp/ic/ic0/ic0.h</code>,
   <code>src/icpp/ic/canister/</code>, <code>src/icpp/ic/ic0mock/</code>).
   Lives in the repo at <code>todo/ic0-api-inventory.html</code>.
-  Updated 2026-09-16: sequencing step 01 (broken bindings) completed.
+  Updated 2026-09-16: step 01 (broken bindings) done; step 02 split into
+  02a-new-apis (in review: icpp-pro #53, icpp-demos #5, icpp-docs #2) and
+  02b-existing-apis (context-guard retrofit, pending).
 </footer>
 
 </div>

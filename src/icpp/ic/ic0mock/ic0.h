@@ -33,11 +33,31 @@ void ic0_msg_reply();
 
 void ic0_msg_reject(uintptr_t src, uint32_t size);
 
+uint32_t ic0_msg_method_name_size();
+
+void ic0_msg_method_name_copy(uintptr_t dst, uint32_t off, uint32_t size);
+
+void ic0_accept_message();
+
 uint32_t ic0_canister_self_size();
 
 void ic0_canister_self_copy(uintptr_t dst, uint32_t off, uint32_t size);
 
 void ic0_canister_cycle_balance128(uintptr_t dst);
+
+void ic0_canister_liquid_cycle_balance128(uintptr_t dst);
+
+void ic0_msg_cycles_available128(uintptr_t dst);
+
+void ic0_msg_cycles_refunded128(uintptr_t dst);
+
+void ic0_msg_cycles_accept128(uint64_t max_amount_high, uint64_t max_amount_low,
+                              uintptr_t dst);
+
+void ic0_cycles_burn128(uint64_t amount_high, uint64_t amount_low,
+                        uintptr_t dst);
+
+void ic0_call_cycles_add128(uint64_t amount_high, uint64_t amount_low);
 
 void ic0_call_new(uintptr_t callee_src, uint32_t callee_size,
                   uintptr_t name_src, uint32_t name_size, uintptr_t reply_fun,
@@ -56,6 +76,14 @@ uint32_t ic0_stable_grow(uint32_t new_pages);
 void ic0_stable_write(uint32_t off, uintptr_t src, uint32_t size);
 
 void ic0_stable_read(uintptr_t dst, uint32_t off, uint32_t size);
+
+void ic0_certified_data_set(uintptr_t src, uint32_t size);
+
+uint32_t ic0_data_certificate_present();
+
+uint32_t ic0_data_certificate_size();
+
+void ic0_data_certificate_copy(uintptr_t dst, uint32_t off, uint32_t size);
 
 uint64_t ic0_time();
 
@@ -92,6 +120,17 @@ void ic0mock_set_time_override(uint64_t time_ns);
 // assertion failure, so prefer either a runner-wide MockIC with
 // exit_on_fail=false, or explicit pre-assertion clears.
 void ic0mock_clear_time_override();
+
+// Whether ic0_accept_message has been called since the last clear. Like the
+// time override, this flag is sticky across run_test calls: an inspect-
+// message test clears it, invokes canister_inspect_message(), then asserts.
+bool ic0mock_accept_message_called();
+void ic0mock_clear_accept_message();
+
+// Cycles accumulated via ic0_call_cycles_add128 since the last clear (the
+// future async call API's plumbing). Same sticky/clear convention.
+__uint128_t ic0mock_call_cycles_added();
+void ic0mock_clear_call_cycles_added();
 
 #ifdef __cplusplus
 }

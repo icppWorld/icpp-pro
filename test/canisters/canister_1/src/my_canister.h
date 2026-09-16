@@ -10,6 +10,11 @@ void get_canister_info()
     WASM_SYMBOL_EXPORTED("canister_query get_canister_info");
 
 void test_ic_api() WASM_SYMBOL_EXPORTED("canister_query test_ic_api");
+void test_cycles() WASM_SYMBOL_EXPORTED("canister_update test_cycles");
+void test_certified_data_set()
+    WASM_SYMBOL_EXPORTED("canister_update test_certified_data_set");
+void test_data_certificate()
+    WASM_SYMBOL_EXPORTED("canister_query test_data_certificate");
 void test_candid() WASM_SYMBOL_EXPORTED("canister_query test_candid");
 void test_vendors() WASM_SYMBOL_EXPORTED("canister_query test_vendors");
 void test_getenv() WASM_SYMBOL_EXPORTED("canister_query test_getenv");

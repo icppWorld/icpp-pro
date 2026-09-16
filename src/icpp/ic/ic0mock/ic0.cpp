@@ -9,11 +9,29 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 #include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
+
+// Helpers & mock-only state for the 128-bit cycles + inspect-message APIs.
+// Convention (same as the replica): a 128-bit amount passed IN arrives as a
+// (high, low) uint64_t pair; an amount written OUT is 16 little-endian bytes
+// at dst - the in-memory layout of a little-endian __uint128_t.
+namespace {
+void write_u128(uintptr_t dst, __uint128_t value) {
+  memcpy(reinterpret_cast<uint8_t *>(dst), &value, sizeof(__uint128_t));
+}
+
+__uint128_t u128_from_parts(uint64_t high, uint64_t low) {
+  return (static_cast<__uint128_t>(high) << 64) | low;
+}
+
+bool g_mock_accept_message_called{false};
+__uint128_t g_mock_call_cycles_added{0};
+} // namespace
 
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
@@ -105,6 +123,23 @@ void ic0_msg_reject(uintptr_t src, uint32_t size) {
   std::cout << "...doing nothing..." << std::endl;
 }
 
+uint32_t ic0_msg_method_name_size() {
+  return (uint32_t)global_mockIC->get_msg_method_name().size();
+}
+
+void ic0_msg_method_name_copy(uintptr_t dst, uint32_t off, uint32_t size) {
+  std::string name = global_mockIC->get_msg_method_name();
+  memcpy(reinterpret_cast<uint8_t *>(dst), name.data() + off, size);
+}
+
+void ic0_accept_message() {
+  // The replica traps when accept_message is called more than once.
+  if (g_mock_accept_message_called) {
+    IC_API::trap("ic0.accept_message: the function was already called.");
+  }
+  g_mock_accept_message_called = true;
+}
+
 uint32_t ic0_canister_self_size() {
   CandidTypePrincipal canister_self = global_mockIC->get_canister_self();
   return (uint32_t)canister_self.get_v_bytes().size();
@@ -138,6 +173,45 @@ void ic0_canister_cycle_balance128(uintptr_t dst) {
   // Copy the __uint128_t value into the byte array
   memcpy(reinterpret_cast<uint8_t *>(dst), &canister_self_cycle_balance,
          sizeof(__uint128_t));
+}
+
+void ic0_canister_liquid_cycle_balance128(uintptr_t dst) {
+  // Mock simplification: the liquid balance equals the total balance (the
+  // mock has no freezing threshold or in-flight message reservations).
+  write_u128(dst, global_mockIC->get_canister_self_cycle_balance());
+}
+
+void ic0_msg_cycles_available128(uintptr_t dst) {
+  write_u128(dst, global_mockIC->get_msg_cycles_available());
+}
+
+void ic0_msg_cycles_refunded128(uintptr_t dst) {
+  write_u128(dst, global_mockIC->get_msg_cycles_refunded());
+}
+
+void ic0_msg_cycles_accept128(uint64_t max_amount_high, uint64_t max_amount_low,
+                              uintptr_t dst) {
+  // accepted = min(max_amount, available); moves from available to balance.
+  __uint128_t max_amount = u128_from_parts(max_amount_high, max_amount_low);
+  __uint128_t available = global_mockIC->get_msg_cycles_available();
+  __uint128_t accepted = std::min(max_amount, available);
+  global_mockIC->set_msg_cycles_available(available - accepted);
+  global_mockIC->add_cycles_balance(accepted);
+  write_u128(dst, accepted);
+}
+
+void ic0_cycles_burn128(uint64_t amount_high, uint64_t amount_low,
+                        uintptr_t dst) {
+  // Burns no more than the balance; writes the amount actually burned.
+  __uint128_t amount = u128_from_parts(amount_high, amount_low);
+  __uint128_t balance = global_mockIC->get_canister_self_cycle_balance();
+  __uint128_t burned = std::min(amount, balance);
+  global_mockIC->sub_cycles_balance(burned);
+  write_u128(dst, burned);
+}
+
+void ic0_call_cycles_add128(uint64_t amount_high, uint64_t amount_low) {
+  g_mock_call_cycles_added += u128_from_parts(amount_high, amount_low);
 }
 
 void ic0_call_new(uintptr_t callee_src, uint32_t callee_size,
@@ -184,6 +258,30 @@ void ic0_stable_write(uint32_t off, uintptr_t src, uint32_t size) {
 void ic0_stable_read(uintptr_t dst, uint32_t off, uint32_t size) {
   std::cout << "ic0mock ic0::stable_read" << std::endl;
   std::cout << "...doing nothing..." << std::endl;
+}
+
+void ic0_certified_data_set(uintptr_t src, uint32_t size) {
+  // The replica enforces CERTIFIED_DATA_MAX_LENGTH = 32.
+  if (size > 32) {
+    IC_API::trap("ic0.certified_data_set: payload too large (max 32 bytes). "
+                 "Try certifying just the hash of your data.");
+  }
+  const uint8_t *p_bytes = reinterpret_cast<const uint8_t *>(src);
+  global_mockIC->set_certified_data(
+      std::vector<uint8_t>(p_bytes, p_bytes + size));
+}
+
+uint32_t ic0_data_certificate_present() {
+  return global_mockIC->get_data_certificate_present() ? 1 : 0;
+}
+
+uint32_t ic0_data_certificate_size() {
+  return (uint32_t)global_mockIC->get_data_certificate().size();
+}
+
+void ic0_data_certificate_copy(uintptr_t dst, uint32_t off, uint32_t size) {
+  std::vector<uint8_t> cert = global_mockIC->get_data_certificate();
+  memcpy(reinterpret_cast<uint8_t *>(dst), cert.data() + off, size);
 }
 
 // Mock-IC-only state: last armed global-timer deadline, an invocation
@@ -240,6 +338,14 @@ void ic0mock_clear_time_override() {
   // would silently pin to 0 instead of returning wall-clock.
   g_mock_time_overridden = false;
 }
+
+bool ic0mock_accept_message_called() { return g_mock_accept_message_called; }
+
+void ic0mock_clear_accept_message() { g_mock_accept_message_called = false; }
+
+__uint128_t ic0mock_call_cycles_added() { return g_mock_call_cycles_added; }
+
+void ic0mock_clear_call_cycles_added() { g_mock_call_cycles_added = 0; }
 
 uint32_t ic0_is_controller(uintptr_t src, uint32_t size) {
   const uint8_t *p_bytes = reinterpret_cast<const uint8_t *>(src);

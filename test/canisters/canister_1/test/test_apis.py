@@ -51,6 +51,39 @@ def test__get_canister_info(network: str, principal: str) -> None:
 
 
 # ----------------------------------------------------------------------------------
+# 128-bit cycles & certified data
+def test__test_cycles(network: str, principal: str) -> None:
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_cycles",
+        network=network,
+    )
+    assert response == "(0 : int)"
+
+
+def test__test_certified_data_set(network: str, principal: str) -> None:
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_certified_data_set",
+        network=network,
+    )
+    assert response == "()"
+
+
+def test__test_data_certificate(network: str, principal: str) -> None:
+    # A deployed non-replicated query carries a data certificate
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_data_certificate",
+        network=network,
+    )
+    assert response == "(0 : int)"
+
+
+# ----------------------------------------------------------------------------------
 # Run all unit tests for vendor libraries
 def test__test_vendors(network: str, principal: str) -> None:
     response = call_canister_api(

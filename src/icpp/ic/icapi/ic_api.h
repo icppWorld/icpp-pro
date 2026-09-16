@@ -104,6 +104,40 @@ public:
   __uint128_t get_canister_self_cycle_balance();
   bool is_controller(const CandidTypePrincipal &principal);
 
+  // 128-bit cycles attached to the current message.
+  // docs start: msg_cycles
+  // Available in update, query, reply- & reject-callback entry points;
+  // get_msg_cycles_refunded only in reply- & reject-callbacks.
+  __uint128_t get_msg_cycles_available();
+  __uint128_t get_msg_cycles_refunded();
+  // Accepts min(max_amount, available); returns the amount accepted.
+  __uint128_t accept_msg_cycles(__uint128_t max_amount); // docs end: msg_cycles
+
+  // docs start: burn_cycles
+  // Burns up to `amount` cycles from the canister's own balance; returns the
+  // amount actually burned. Not available in inspect_message.
+  __uint128_t burn_cycles(__uint128_t amount); // docs end: burn_cycles
+
+  // docs start: liquid_cycle_balance
+  // The cycles spendable without the canister dropping below its freezing
+  // threshold (<= get_canister_self_cycle_balance()).
+  __uint128_t
+  get_canister_liquid_cycle_balance(); // docs end: liquid_cycle_balance
+
+  // Ingress message inspection. Only available in a canister_inspect_message
+  // entry point (IC_API constructed with CanisterInspectMessage). The
+  // message is rejected unless accept_message() is called exactly once.
+  // docs start: inspect_message
+  std::string get_msg_method_name();
+  void accept_message(); // docs end: inspect_message
+
+  // Certified data: at most 32 bytes, set in update-like entry points; the
+  // certificate is only present in a (non-replicated) query call.
+  // docs start: certified_data
+  void set_certified_data(const std::vector<uint8_t> &data);
+  bool data_certificate_present();
+  std::vector<uint8_t> get_data_certificate(); // docs end: certified_data
+
   // Receive things from the wire in candid format
   // docs start: from_wire
   void from_wire();

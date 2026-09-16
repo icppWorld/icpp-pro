@@ -175,20 +175,30 @@ For every user-facing capability:
 
 ## Ceremony 6 — Track & commit
 
-1. Update `todo/ic0-api-inventory.html`: coverage counts, callouts, sequencing
-   check-offs — and republish its artifact (same URL, listed in
-   `todo/artifacts.md`).
-2. New shareable pages go in `todo/` and get a row in `todo/artifacts.md`.
-3. Commits: single-line message, no description body, no `Co-Authored-By`
+1. The roadmap lives in TWO synchronized places: the file
+   `todo/ic0-api-inventory.html` and its published Claude artifact (same URL
+   every time, recorded in `todo/artifacts.md`). Every roadmap edit updates
+   the file AND republishes the artifact in the same sitting — never one
+   without the other.
+2. Roadmap statuses reflect **merge state, not commit state**:
+   - Work on a feature branch / open PR marks an item **in progress** or
+     **in review** (with the PR links) — never "done".
+   - **done** is set only after every PR of the feature has merged, as a
+     small roadmap-only commit on `main` plus the artifact republish.
+   - When an item is split, the parts keep the parent's identity (e.g.
+     `02a-new-apis` / `02b-existing-apis`) instead of being renumbered, so
+     history and references stay stable.
+3. New shareable pages go in `todo/` and get a row in `todo/artifacts.md`.
+4. Commits: single-line message, no description body, no `Co-Authored-By`
    trailers, never `--no-verify`. One commit per repo, on the shared
    `feature/<slug>` branch (see Branching & PRs). Push only when the
    maintainer says so.
-4. PRs: one per changed repo from the same branch name, cross-referencing the
+5. PRs: one per changed repo from the same branch name, cross-referencing the
    icpp-pro PR; merge icpp-pro first, llama_cpp_canister last.
-5. CodeRabbit pass: evaluate and resolve every CodeRabbit finding on each PR
+6. CodeRabbit pass: evaluate and resolve every CodeRabbit finding on each PR
    (`icpp-pro-coderabbit` skill) — fix or rebut with reasoning, re-run the
    affected tests for any fix, push to the same branch.
-6. Every PR needs a manual maintainer approval before it merges (see
+7. Every PR needs a manual maintainer approval before it merges (see
    Branching & PRs).
 
 ## Ceremony 7 — Release

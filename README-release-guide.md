@@ -184,6 +184,29 @@ env -u ICPP_PRO_TEST_IDENTITY pytest --network=local -q
 If that still reports passes, the tests are not reaching the canister and the green
 run above was meaningless.
 
+## Upgrade test (backward-compatibility gate)
+
+A canister built & deployed with the **previous** icpp-pro release from PyPI
+must upgrade in place to the release candidate, with all state surviving — no
+data-structure migration, no source changes (see README-feature-guide.md).
+
+```bash
+# from: icpp-pro, in the dev conda env (the "dev" side of the upgrade)
+make upgrade-test
+#  -> "✅ upgrade test passed: released ➜ dev upgrade is clean"
+```
+
+## Verify the sibling repos
+
+Mandatory at release: the full trio (icpp-docs build, icpp-demos test suite,
+llama_cpp_canister native + docker wasm tests — the docker leg is hours).
+
+```bash
+# from: icpp-pro
+make check-sibling-pins
+make siblings-verify-full
+```
+
 ## Upload icpp-candid to TestPyPI & PyPI
 
 ```bash
@@ -212,7 +235,19 @@ make pypi-upload
   icpp build-wasm
   icp deploy --environment ic --yes
   ```
-- Release new docs
+- Bump the sibling version pins to the released version, then verify with
+  `make check-sibling-pins` until green:
+  - `icpp-demos/requirements.txt` — `icpp-pro>=X.Y.Z`
+  - `llama_cpp_canister/requirements.txt` — `icpp-pro==X.Y.Z` **and**
+    `llama_cpp_canister/docker/docker-compose.yml` — both the
+    `icpp: &icpp "X.Y.Z"` anchor and the
+    `name: &base_name "llama-cpp-canister-build:icpp-X.Y.Z"` literal.
+    The wasm hash changes with an icpp-pro bump: follow the llama repo's own
+    release process (`.claude/skills/llama_cpp_canister-release`).
+- Release new docs (the `icpp-docs` repo):
+  - Update the version label in `mkdocs.yml` nav, `docs/index.md`, and add the
+    release to `docs/release-notes.md`
+  - `make site-build` and `make icp-deploy` (from icpp-docs)
 - Announcement in OpenChat
 - Update icpp-demos
   - Redeploy canister of api-reference

@@ -4,6 +4,7 @@ Usage:
     python -m tests.scripts.check_wasm_imports build/test_canister_api.wat
 
 """
+
 import sys
 import argparse
 import pathlib

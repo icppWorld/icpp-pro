@@ -112,9 +112,11 @@ Every canister supports two build targets configured in `icpp.toml`:
 
 ## Code Quality
 
-- **Python formatting:** black 23.12.1
-- **Python linting:** pylint 2.13.9
-- **Python type checking:** mypy 1.8.0 (strict mode)
+- **Python formatting:** black 26.3.1
+- **Python linting:** pylint 3.3.4
+- **Python type checking:** mypy 1.13.0 (strict mode)
+- Linter pins live in `pyproject.toml` and are kept identical across
+  icpp-demos and llama_cpp_canister — verified by `make check-sibling-pins`
 - **C++ formatting:** clang-format from wasi-sdk
 - **Pre-commit hook:** `cp pre-commit-mac .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`
 
@@ -137,4 +139,21 @@ Makefile.
 
 ## Version Management
 
-Version is single-sourced in `src/icpp/version.py`. Current: 6.0.0. Release scripts modify this file automatically.
+Version is single-sourced in `src/icpp/version.py`. The bump is a manual edit,
+done in lockstep with the nested icpp-candid repo (same version number, always)
+per README-release-guide.md. `make check-sibling-pins` verifies the version and
+linter pins across icpp-pro, icpp-candid, icpp-demos, and llama_cpp_canister.
+
+## Feature Development Process
+
+**README-feature-guide.md is the canonical process** for planning,
+implementing, testing, and releasing features — including the
+backward-compatibility rule (additive only; canisters built with the previous
+release must upgrade as-is, enforced by `make upgrade-test`) and the tiered
+sibling-repo verification (`make siblings-verify-api` / `siblings-verify-full`).
+The skills `icpp-pro-new-feature`, `icpp-pro-verify-siblings`, and
+`icpp-pro-release` (`.claude/skills/`) wrap the ceremonies.
+
+The `todo/` folder is the living roadmap: `todo/ic0-api-inventory.html` tracks
+the IC0-parity project, `todo/artifacts.md` indexes the published artifact
+pages. Keep both current as features land (Ceremony 6).

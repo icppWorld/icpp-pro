@@ -102,6 +102,42 @@ icpp-pro-test-identity:
 all-canister-native:
 	@python -m scripts.all_canister_native
 
+###########################################################################
+# Multi-repo ceremonies - see README-feature-guide.md
+#
+# The sibling repos live next to icpp-pro, as prescribed by
+# README-contributors-guide.md. Override when your layout differs, e.g.
+# `make siblings-verify-api SIBLING_ICPP_DEMOS=~/work/icpp-demos`.
+SIBLING_ICPP_DEMOS ?= ../icpp-demos
+SIBLING_ICPP_DOCS ?= ../icpp-docs
+SIBLING_LLAMA_CPP_CANISTER ?= ../llama_cpp_canister
+
+# Verifies version & linter pins are in sync across all the repos.
+.PHONY: check-sibling-pins
+check-sibling-pins:
+	@python -m scripts.check_sibling_pins
+
+# Backward-compatibility gate: a canister built & deployed with the released
+# icpp-pro must upgrade in place to a build from this dev tree, state intact.
+.PHONY: upgrade-test
+upgrade-test: icpp-pro-test-identity
+	@python -m scripts.upgrade_test
+
+# The tier to run after changes to the public surface (headers, IC_API,
+# conftest_base, smoketest): cheap docs build, the demos suite, and the
+# llama_cpp_canister native tests.
+.PHONY: siblings-verify-api
+siblings-verify-api:
+	$(MAKE) -C $(SIBLING_ICPP_DOCS) mkdocs-build
+	$(MAKE) -C $(SIBLING_ICPP_DEMOS) all-tests
+	$(MAKE) -C $(SIBLING_LLAMA_CPP_CANISTER) test-llm-native
+
+# The release tier: everything above plus the wasm-hash-sensitive
+# llama_cpp_canister docker build & prebuilt-wasm test (heavy: docker + models).
+.PHONY: siblings-verify-full
+siblings-verify-full: siblings-verify-api
+	$(MAKE) -C $(SIBLING_LLAMA_CPP_CANISTER) docker-build-wasm test-llm-wasm-prebuilt
+
 .PHONY: all-static
 all-static: \
 	cpp-format cpp-lint \
@@ -172,7 +208,7 @@ python-clean:
 	find . -name '*.pyo' -exec rm -f {} +
 	find . -name '*~' -exec rm -f  {} +
 
-PYTHON_DIRS ?= test src/icpp
+PYTHON_DIRS ?= test src/icpp scripts
 
 .PHONY: python-format
 python-format:

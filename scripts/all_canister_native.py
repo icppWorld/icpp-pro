@@ -7,8 +7,8 @@ import subprocess
 import typer
 from icpp.run_shell_cmd import run_shell_cmd
 
-
 ROOT_PATH = Path(__file__).parent.parent
+
 
 def main() -> int:
     """build-native and run mockic.exe"""
@@ -31,18 +31,31 @@ def main() -> int:
             except subprocess.CalledProcessError as e:
                 typer.echo("--\nSomething did not pass")
                 return e.returncode
-            
+
             # For greet canister, also test build-library-native
             if canister_path.name == "greet":
                 try:
-                    typer.echo(f"--\nBuild all libraries for the greet canister with config {config}")
-                    run_shell_cmd(f"icpp build-library-native --config {config} ", cwd=canister_path)
+                    typer.echo(
+                        f"--\nBuild all libraries for the greet canister "
+                        f"with config {config}"
+                    )
+                    run_shell_cmd(
+                        f"icpp build-library-native --config {config} ",
+                        cwd=canister_path,
+                    )
 
-                    typer.echo(f"--\nBuild libhello for the greet canister with config {config}")
-                    run_shell_cmd(f"icpp build-library-native --config {config} libhello", cwd=canister_path)
-                    
+                    typer.echo(
+                        f"--\nBuild libhello for the greet canister with config {config}"
+                    )
+                    run_shell_cmd(
+                        f"icpp build-library-native --config {config} libhello",
+                        cwd=canister_path,
+                    )
+
                     typer.echo(f"--\nicpp build-native with config {config}")
-                    run_shell_cmd("icpp build-native --to-compile mine-no-lib", cwd=canister_path)
+                    run_shell_cmd(
+                        "icpp build-native --to-compile mine-no-lib", cwd=canister_path
+                    )
 
                     typer.echo("--\nRun mockic.exe")
                     executable_path = os.path.join("build-native", "mockic.exe")

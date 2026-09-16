@@ -1,6 +1,5 @@
 """Utility to get file names that match a glob string pattern from the root folder"""
 
-
 import pathlib
 from typing import List
 

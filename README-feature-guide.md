@@ -55,6 +55,13 @@ what makes cross-repo work trackable and the PRs easy to relate.
   preemptively in repos the feature does not touch.
 - One PR per repo, all from the same branch name. Cross-reference the icpp-pro
   PR from each sibling PR.
+- **After a PR is created, every CodeRabbit finding on it is evaluated and
+  resolved before the maintainer review.** CodeRabbit reviews each PR on
+  GitHub automatically; work through its findings with the
+  `icpp-pro-coderabbit` skill: fix the legitimate ones (commit to the same
+  branch — CodeRabbit re-reviews incrementally), and reply on the thread with
+  the reasoning for anything assessed as a false positive. A PR is ready for
+  the maintainer only when no CodeRabbit finding is left unaddressed.
 - **Every PR requires a manual approval by the maintainer before merging** —
   no self-merges, no auto-merge, in every repo. An AI agent never merges a PR
   on its own; it asks and waits for the approval.
@@ -177,8 +184,12 @@ For every user-facing capability:
    `feature/<slug>` branch (see Branching & PRs). Push only when the
    maintainer says so.
 4. PRs: one per changed repo from the same branch name, cross-referencing the
-   icpp-pro PR; merge icpp-pro first, llama_cpp_canister last. Every PR needs
-   a manual maintainer approval before it merges (see Branching & PRs).
+   icpp-pro PR; merge icpp-pro first, llama_cpp_canister last.
+5. CodeRabbit pass: evaluate and resolve every CodeRabbit finding on each PR
+   (`icpp-pro-coderabbit` skill) — fix or rebut with reasoning, re-run the
+   affected tests for any fix, push to the same branch.
+6. Every PR needs a manual maintainer approval before it merges (see
+   Branching & PRs).
 
 ## Ceremony 7 — Release
 

@@ -60,3 +60,5 @@ Then run the sibling tier that matches the change — see the
 - PRs: one per changed repo from the same branch name, cross-referencing the
   icpp-pro PR. Merge order: icpp-pro → icpp-demos → icpp-docs →
   llama_cpp_canister.
+- Every PR must receive a MANUAL approval from the maintainer before merging.
+  Never merge a PR yourself — ask the user for the approval and wait for it.

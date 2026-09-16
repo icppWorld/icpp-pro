@@ -230,10 +230,8 @@
   six that are deprecated 64-bit cycles variants or restricted to the cycles-minting
   canister leaves <strong>71 current functions</strong>. Motoko binds 63 of them.
   icpp-pro binds 39: step 01 (merged 2026-09-16) removed the 5 dead pre-Genesis
-  declarations, and step 02a (<strong>in review</strong> on
-  <code>feature/ic0-step02</code>, PRs open in all three repos) adds the 13
-  imports for 128-bit cycles, ingress inspection &amp; certified data &mdash; the
-  counts below include 02a and become <code>main</code>-true when its PRs merge.</p>
+  declarations, and step 02a (merged 2026-09-16) added the 13 imports for
+  128-bit cycles, ingress inspection &amp; certified data.</p>
 
   <div class="tiles">
     <div class="tile"><div class="v">71</div><div class="l">current ic0 functions</div></div>
@@ -439,18 +437,19 @@
       builds + mock runs (canister_1 142/142, canister_timers 20/20), wasm build.
       Merged to <code>main</code>.</p>
     </div></li>
-    <li class="review" data-step="02a"><div>
-      <h3>New APIs: cycles, inspection, certified data <span class="reviewtag">in review</span></h3>
+    <li class="done" data-step="02a"><div>
+      <h3>New APIs: cycles, inspection, certified data <span class="donetag">&#10003; done 2026-09-16</span></h3>
       <p>Branch <code>feature/ic0-step02</code>: 13 imports bound &mdash; 128-bit cycles
       (incl. <code>call_cycles_add128</code> bind+mock only), ingress inspection with a
       user-declared <code>canister_inspect_message</code> hook, and certified data. New
       entry-context guards on all new IC_API methods; new <code>canister_inspect</code>
       test canister; docs &amp; demos on the same branch in icpp-docs / icpp-demos.
       Verified: all-static, native (canister_1 151/151, canister_inspect 7/7), full
-      all-tests, upgrade test released&rarr;dev, docs build. Awaiting merge of
+      all-tests, upgrade test released&rarr;dev, docs build. Merged 2026-09-16:
       <a href="https://github.com/icppWorld/icpp-pro/pull/53">icpp-pro #53</a>,
       <a href="https://github.com/icppWorld/icpp-demos/pull/5">icpp-demos #5</a> &amp;
-      <a href="https://github.com/icppWorld/icpp-docs/pull/2">icpp-docs #2</a>.</p>
+      <a href="https://github.com/icppWorld/icpp-docs/pull/2">icpp-docs #2</a>
+      (CodeRabbit: 2 findings fixed, 2 rebutted &amp; accepted as learnings).</p>
     </div></li>
     <li data-step="02b"><div>
       <h3>Existing APIs: context-guard retrofit</h3>
@@ -491,8 +490,8 @@
   <code>src/icpp/ic/canister/</code>, <code>src/icpp/ic/ic0mock/</code>).
   Lives in the repo at <code>todo/ic0-api-inventory.html</code>.
   Updated 2026-09-16: step 01 (broken bindings) done; step 02 split into
-  02a-new-apis (in review: icpp-pro #53, icpp-demos #5, icpp-docs #2) and
-  02b-existing-apis (context-guard retrofit, pending).
+  02a-new-apis (merged 2026-09-16: icpp-pro #53, icpp-demos #5, icpp-docs #2)
+  and 02b-existing-apis (context-guard retrofit, next up).
 </footer>
 
 </div>

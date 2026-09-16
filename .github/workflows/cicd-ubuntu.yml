@@ -13,6 +13,13 @@ on:
       - ".github/trigger.txt"
       - ".github/workflows/cicd-ubuntu.yml"
 
+# Cancel a superseded run - see the comment in cicd-mac.yml. `main` is
+# excluded, because the release process needs each version commit's run to
+# complete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   all-ubuntu:
     name: all-ubuntu

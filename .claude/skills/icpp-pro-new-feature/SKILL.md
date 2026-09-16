@@ -21,8 +21,14 @@ order. This skill is the checklist; the guide is the source of truth.
   for the C++ API, the candid wire encoding, and deployed-canister state.
   Default must be additive — a canister built with the previous release
   upgrades as-is. Breaking needs explicit user sign-off + migration plan.
+- The plan MUST name the **branch**: `feature/<short-kebab-slug>`, used with
+  the EXACT same name in every repo the feature touches, plus the expected
+  repo list.
 
 ## 2. Implement (guide Ceremony 2) — five layers, always together
+
+First: `git checkout -b feature/<slug>` in icpp-pro — never work on `main`.
+Create the same branch in a sibling repo only at the moment it needs a change.
 
 1. ic0 binding: `src/icpp/ic/ic0/ic0.h` (`ic0_<name>`, `uint32_t` pointers).
 2. Mock: `src/icpp/ic/ic0mock/ic0.h` (`uintptr_t` pointers) + real MockIC
@@ -49,5 +55,8 @@ Then run the sibling tier that matches the change — see the
 
 - Update `todo/ic0-api-inventory.html` (counts, check-offs) and republish its
   artifact to the SAME url; log new artifacts in `todo/artifacts.md`.
-- Commit per repo: single-line message, no trailers, no `--no-verify`.
-  Push only when the user asks.
+- Commit per repo on the shared `feature/<slug>` branch: single-line message,
+  no trailers, no `--no-verify`. Push only when the user asks.
+- PRs: one per changed repo from the same branch name, cross-referencing the
+  icpp-pro PR. Merge order: icpp-pro → icpp-demos → icpp-docs →
+  llama_cpp_canister.

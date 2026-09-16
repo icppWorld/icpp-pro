@@ -41,6 +41,26 @@ Breaking is the rare exception: it requires explicit maintainer sign-off in
 the plan, a documented migration path, and a `migrating-to-X.Y.Z.md` page in
 icpp-docs. The gate that enforces the rule is `make upgrade-test` (Ceremony 3).
 
+## Branching & PRs
+
+Feature work never happens on `main`. One feature = one branch name, and that
+**exact same branch name is used in every repo the feature touches** — that is
+what makes cross-repo work trackable and the PRs easy to relate.
+
+- Name: `feature/<short-kebab-slug>`, e.g. `feature/cycles128`. Pick it once,
+  in the plan (Ceremony 1).
+- Create it in icpp-pro when implementation starts:
+  `git checkout -b feature/<slug>`. Create the same branch in a sibling repo
+  lazily — at the moment that repo actually needs a change — never
+  preemptively in repos the feature does not touch.
+- One PR per repo, all from the same branch name. Cross-reference the icpp-pro
+  PR from each sibling PR.
+- Merge order: **icpp-pro first** (the siblings build against it), then
+  icpp-demos, then icpp-docs (its includes read the other two), then
+  llama_cpp_canister.
+- Exception: the release ceremony pushes the version-bump commit directly to
+  `main`, as prescribed by README-release-guide.md.
+
 ## Ceremony 1 — Plan
 
 1. Start from the roadmap: `todo/ic0-api-inventory.html` tracks the IC0-parity
@@ -48,14 +68,19 @@ icpp-docs. The gate that enforces the rule is `make upgrade-test` (Ceremony 3).
 2. Explore first: how does Motoko do it (`../dfinity/motoko`), what does the
    replica accept (`../dfinity/ic/rs/embedders/src/wasm_utils/validation.rs`),
    what exists in icpp-pro already.
-3. Write the plan with two mandatory sections:
+3. Write the plan with three mandatory sections:
    - **Definition of Done** (see Ceremony 2 — all five layers).
    - **Compatibility assessment**: classify the change additive vs breaking
      for (a) the C++ API, (b) the candid wire encoding, (c) deployed-canister
      state. The default answer to "can existing canisters upgrade as-is?"
      must be **yes**; anything else needs explicit sign-off.
+   - **Branch name**: the `feature/<slug>` used in every repo the feature
+     touches (see Branching & PRs), plus the list of repos expected to change.
 
 ## Ceremony 2 — Implement
+
+Start on the branch: `git checkout -b feature/<slug>` in icpp-pro; the same
+name in each sibling repo at the moment it needs a change.
 
 Definition of Done for a new IC capability — five layers, always together:
 
@@ -145,8 +170,11 @@ For every user-facing capability:
    `todo/artifacts.md`).
 2. New shareable pages go in `todo/` and get a row in `todo/artifacts.md`.
 3. Commits: single-line message, no description body, no `Co-Authored-By`
-   trailers, never `--no-verify`. One commit per repo. Push only when the
+   trailers, never `--no-verify`. One commit per repo, on the shared
+   `feature/<slug>` branch (see Branching & PRs). Push only when the
    maintainer says so.
+4. PRs: one per changed repo from the same branch name, cross-referencing the
+   icpp-pro PR; merge icpp-pro first, llama_cpp_canister last.
 
 ## Ceremony 7 — Release
 

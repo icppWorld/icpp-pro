@@ -451,14 +451,20 @@
       <a href="https://github.com/icppWorld/icpp-docs/pull/2">icpp-docs #2</a>
       (CodeRabbit: 2 findings fixed, 2 rebutted &amp; accepted as learnings).</p>
     </div></li>
-    <li data-step="02b"><div>
-      <h3>Existing APIs: context-guard retrofit</h3>
-      <p>Step 02a enforces the replica's permitted-entry-point matrix on all NEW
-      IC_API methods. Retrofit the pre-existing wrappers (constructor reads, timers,
-      &hellip;) the same way, audited per-function against the replica source
-      (<code>rs/embedders/&hellip;/system_api.rs</code>) &mdash; its own compatibility
-      assessment, trap tests, and upgrade-test run, because a mis-transcribed guard
-      there would break working canisters.</p>
+    <li class="review" data-step="02b"><div>
+      <h3>Existing APIs: context-guard retrofit <span class="reviewtag">in review</span></h3>
+      <p>Branch <code>feature/ic0-step02b</code>: pre-existing wrappers retrofitted
+      per the replica audit &mdash; constructor reads only what each entry provides
+      (fixes real traps in pre_upgrade / reject / cleanup entries),
+      <code>get_caller()</code> fixed in heartbeat/timer entries, timer-family
+      guards (query / inspect_message / start), process-global current-entry
+      context for the static methods. New <code>make upgrade-test-llama</code>
+      gate: released&rarr;dev upgrade of llama_cpp_canister with its model-free
+      API suite &mdash; ran green. Verified: all-static, natives (canister_1
+      158/158, timers 20/20, override 4/4, inspect 7/7), full all-tests 8/8,
+      both upgrade gates, docs build, demos suite 6/6. Awaiting merge of
+      <a href="https://github.com/icppWorld/icpp-pro/pull/54">icpp-pro #54</a> &amp;
+      <a href="https://github.com/icppWorld/icpp-docs/pull/3">icpp-docs #3</a>.</p>
     </div></li>
     <li data-step="03"><div>
       <h3>Breadth pass on introspection</h3>
@@ -491,7 +497,7 @@
   Lives in the repo at <code>todo/ic0-api-inventory.html</code>.
   Updated 2026-09-16: step 01 (broken bindings) done; step 02 split into
   02a-new-apis (merged 2026-09-16: icpp-pro #53, icpp-demos #5, icpp-docs #2)
-  and 02b-existing-apis (context-guard retrofit, next up).
+  and 02b-existing-apis (in review: icpp-pro #54, icpp-docs #3).
 </footer>
 
 </div>

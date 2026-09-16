@@ -125,7 +125,12 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
   }
 }
 
-IC_API::~IC_API() {}
+IC_API::~IC_API() {
+  // The recorded entry must not outlive this instance: an invocation that
+  // never constructs an IC_API would otherwise inherit a stale entry and
+  // its guards could falsely trap correct code.
+  clear_current_entry();
+}
 
 void IC_API::debug_print(const char *message) {
 

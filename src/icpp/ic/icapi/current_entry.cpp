@@ -12,6 +12,8 @@ void set_current_entry(const CanisterBase &entry) {
   g_current_entry_set = true;
 }
 
+void clear_current_entry() { g_current_entry_set = false; }
+
 CanisterBase *current_entry() {
   if (!g_current_entry_set) {
     return nullptr;

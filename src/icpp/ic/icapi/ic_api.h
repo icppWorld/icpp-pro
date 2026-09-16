@@ -55,8 +55,8 @@ public:
   // docs start: set_timer
   // The timer methods trap in query, inspect_message & canister_start
   // entry points - ic0.global_timer_set is refused there by the IC. The
-  // guard uses the entry recorded by the most recent IC_API constructor;
-  // before any IC_API is constructed it is skipped.
+  // guard uses the entry recorded by the live IC_API instance (cleared
+  // when it destructs); while no IC_API is alive the guard is skipped.
   static uint64_t set_timer(uint64_t delay_ns, std::function<void()> cb);
   static uint64_t set_timer_recurring(uint64_t period_ns,
                                       std::function<void()> cb);

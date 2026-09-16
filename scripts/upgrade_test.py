@@ -13,9 +13,15 @@ and re-verify them after an upgrade via the `run_after_upgrade` marker):
 3. Rebuild the same source with the dev icpp (this environment); redeploy with
    `--mode upgrade`; run the `run_after_upgrade`-marked tests.
 
-Prerequisites: the contributors-guide setup with the demos extras
-(`make install-python-w-demos`), wasi-sdk, and icp-cli. The deploy identity
-comes from ${ICPP_PRO_TEST_IDENTITY}; the Makefile exports it.
+Prerequisites: the contributors-guide setup with the target project's extras
+(`make install-python-w-demos` for the default canister,
+`make install-python-w-llama_cpp_canister` for `make upgrade-test-llama`),
+wasi-sdk, and icp-cli. The pytest phases deliberately run in the DEV
+environment - that is the dev side of the gate - while the throwaway venv
+only supplies the RELEASED icpp build toolchain (plus the project's own
+requirements.txt, for build-time hooks like a post_wasm optimizer). The
+deploy identity comes from ${ICPP_PRO_TEST_IDENTITY}; the Makefile exports
+it.
 
 Usage:
     make upgrade-test

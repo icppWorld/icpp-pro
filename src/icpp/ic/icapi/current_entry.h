@@ -19,6 +19,12 @@
 
 void set_current_entry(const CanisterBase &entry);
 
-// nullptr until the first set_current_entry(); afterwards, the entry of
-// the current (or most recent) invocation.
+// Clears the recorded entry. Called by the IC_API destructor, so the entry
+// never outlives the IC_API instance that recorded it - an invocation that
+// does not construct an IC_API must not inherit a stale entry from the
+// previous invocation (a stale guard could falsely trap correct code).
+void clear_current_entry();
+
+// nullptr while no IC_API instance is alive; otherwise the entry of the
+// current invocation.
 CanisterBase *current_entry();

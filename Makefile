@@ -127,6 +127,8 @@ upgrade-test: icpp-pro-test-identity
 # llama_cpp_canister with the released icpp-pro, run its model-free API
 # suite, upgrade in place with the dev tree, run the suite again.
 # (Model-level verification stays with llama's own docker/CI path.)
+# Prerequisite: `make install-python-w-llama_cpp_canister` - the pytest
+# phases run in the dev environment, which needs llama's deps.
 .PHONY: upgrade-test-llama
 upgrade-test-llama: icpp-pro-test-identity
 	$(MAKE) -C $(SIBLING_LLAMA_CPP_CANISTER) build-info-cpp-wasm

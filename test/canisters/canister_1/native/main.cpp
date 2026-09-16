@@ -90,6 +90,16 @@ static void native_cancel_all_timers_from_inspect() {
   IC_API::cancel_all_timers();
 }
 
+// A destroyed IC_API must not leave its entry behind: code that constructs
+// no IC_API (run right after a query-entry test) skips the guard instead of
+// taking a stale query-only trap.
+static void native_timers_without_ic_api() {
+  uint64_t id = IC_API::set_timer(3600ULL * 1000000000ULL, []() {});
+  if (id == 0) ICPP_HOOKS::trap("set_timer returned id 0");
+  if (!IC_API::cancel_timer(id)) ICPP_HOOKS::trap("cancel_timer failed");
+  IC_API::cancel_all_timers();
+}
+
 // Positive control: the timer family keeps working from an update entry.
 static void native_timers_from_update() {
   IC_API ic_api(CanisterUpdate{"native_timers_from_update"}, false);
@@ -1386,6 +1396,10 @@ int main() {
   mockIC.run_trap_test("native_cancel_all_timers_from_inspect",
                        native_cancel_all_timers_from_inspect, "4449444c0000",
                        silent_on_trap, my_principal);
+
+  // No stale entry after the inspect-entry IC_API above was destroyed
+  mockIC.run_test("native_timers_without_ic_api", native_timers_without_ic_api,
+                  "4449444c0000", "", silent_on_trap, my_principal);
 
   // Positive control: timers keep working from an update entry
   mockIC.run_test("native_timers_from_update", native_timers_from_update,

@@ -23,9 +23,9 @@ void ic0_msg_caller_copy(uintptr_t dst, uint32_t off, uint32_t size);
 
 uint32_t ic0_msg_reject_code();
 
-uint32_t ic0_msg_reject_ic0_msg_size();
+uint32_t ic0_msg_reject_msg_size();
 
-void ic0_msg_reject_ic0_msg_copy(uintptr_t dst, uint32_t off, uint32_t size);
+void ic0_msg_reject_msg_copy(uintptr_t dst, uint32_t off, uint32_t size);
 
 void ic0_msg_reply_data_append(uintptr_t src, uint32_t size);
 
@@ -33,17 +33,10 @@ void ic0_msg_reply();
 
 void ic0_msg_reject(uintptr_t src, uint32_t size);
 
-uint64_t ic0_msg_funds_available(uintptr_t src, uint32_t size);
-
-uint64_t ic0_msg_funds_refunded(uintptr_t src, uint32_t size);
-
-void ic0_msg_funds_accept(uintptr_t src, uint32_t size, uint64_t amount);
-
 uint32_t ic0_canister_self_size();
 
 void ic0_canister_self_copy(uintptr_t dst, uint32_t off, uint32_t size);
 
-uint64_t ic0_canister_balance(uintptr_t src, uint32_t size);
 void ic0_canister_cycle_balance128(uintptr_t dst);
 
 void ic0_call_new(uintptr_t callee_src, uint32_t callee_size,
@@ -54,8 +47,6 @@ void ic0_call_new(uintptr_t callee_src, uint32_t callee_size,
 void ic0_call_on_cleanup(uintptr_t fun, uint32_t env);
 
 void ic0_call_data_append(uintptr_t src, uint32_t size);
-
-void ic0_call_funds_add(uintptr_t src, uint32_t size, uint64_t amount);
 
 uint32_t ic0_call_perform();
 uint32_t ic0_stable_size();

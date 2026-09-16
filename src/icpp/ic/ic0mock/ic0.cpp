@@ -105,23 +105,6 @@ void ic0_msg_reject(uintptr_t src, uint32_t size) {
   std::cout << "...doing nothing..." << std::endl;
 }
 
-uint64_t ic0_msg_funds_available(uintptr_t src, uint32_t size) {
-  std::cout << "ic0mock ic0::msg_funds_available" << std::endl;
-  std::cout << "...PATCH-PATCH- Returning 0..." << std::endl;
-  return 0;
-}
-
-uint64_t ic0_msg_funds_refunded(uintptr_t src, uint32_t size) {
-  std::cout << "ic0mock ic0::msg_funds_refunded" << std::endl;
-  std::cout << "...PATCH-PATCH- Returning 0..." << std::endl;
-  return 0;
-}
-
-void ic0_msg_funds_accept(uintptr_t src, uint32_t size, uint64_t amount) {
-  std::cout << "ic0mock ic0::msg_funds_accept" << std::endl;
-  std::cout << "...doing nothing..." << std::endl;
-}
-
 uint32_t ic0_canister_self_size() {
   CandidTypePrincipal canister_self = global_mockIC->get_canister_self();
   return (uint32_t)canister_self.get_v_bytes().size();
@@ -148,12 +131,6 @@ void ic0_canister_self_copy(uintptr_t dst, uint32_t off, uint32_t size) {
             bytes + off);
 }
 
-uint64_t ic0_canister_balance(uintptr_t src, uint32_t size) {
-  std::cout << "ic0mock ic0::canister_balance" << std::endl;
-  std::cout << "...PATCH-PATCH- Returning 0..." << std::endl;
-  return 0;
-}
-
 void ic0_canister_cycle_balance128(uintptr_t dst) {
   __uint128_t canister_self_cycle_balance =
       global_mockIC->get_canister_self_cycle_balance();
@@ -178,11 +155,6 @@ void ic0_call_on_cleanup(uintptr_t fun, uint32_t env) {
 
 void ic0_call_data_append(uintptr_t src, uint32_t size) {
   std::cout << "ic0mock ic0::call_data_append" << std::endl;
-  std::cout << "...doing nothing..." << std::endl;
-}
-
-void ic0_call_funds_add(uintptr_t src, uint32_t size, uint64_t amount) {
-  std::cout << "ic0mock ic0::call_funds_add" << std::endl;
   std::cout << "...doing nothing..." << std::endl;
 }
 

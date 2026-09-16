@@ -46,23 +46,11 @@ void ic0_msg_reply() WASM_SYMBOL_IMPORTED("ic0", "msg_reply");
 void ic0_msg_reject(uint32_t src, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "msg_reject");
 
-uint64_t ic0_msg_funds_available(uint32_t src, uint32_t size)
-    WASM_SYMBOL_IMPORTED("ic0", "msg_funds_available");
-
-uint64_t ic0_msg_funds_refunded(uint32_t src, uint32_t size)
-    WASM_SYMBOL_IMPORTED("ic0", "msg_funds_refunded");
-
-void ic0_msg_funds_accept(uint32_t src, uint32_t size, uint64_t amount)
-    WASM_SYMBOL_IMPORTED("ic0", "msg_funds_accept");
-
 uint32_t ic0_canister_self_size()
     WASM_SYMBOL_IMPORTED("ic0", "canister_self_size");
 
 void ic0_canister_self_copy(uint32_t dst, uint32_t off, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "canister_self_copy");
-
-uint64_t ic0_canister_balance(uint32_t src, uint32_t size)
-    WASM_SYMBOL_IMPORTED("ic0", "canister_balance");
 
 void ic0_canister_cycle_balance128(uint32_t dst)
     WASM_SYMBOL_IMPORTED("ic0", "canister_cycle_balance128");
@@ -78,11 +66,9 @@ void ic0_call_on_cleanup(uint32_t fun, uint32_t env)
 void ic0_call_data_append(uint32_t src, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "call_data_append");
 
-void ic0_call_funds_add(uint32_t src, uint32_t size, uint64_t amount)
-    WASM_SYMBOL_IMPORTED("ic0", "call_funds_add");
+uint32_t ic0_call_perform() WASM_SYMBOL_IMPORTED("ic0", "call_perform");
 
-uint32_t ic0_call_perform() WASM_SYMBOL_IMPORTED("ic0", "call_perform") uint32_t
-    stable_size() WASM_SYMBOL_IMPORTED("ic0", "stable_size");
+uint32_t ic0_stable_size() WASM_SYMBOL_IMPORTED("ic0", "stable_size");
 
 uint32_t ic0_stable_grow(uint32_t new_pages)
     WASM_SYMBOL_IMPORTED("ic0", "stable_grow");

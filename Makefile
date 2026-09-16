@@ -123,6 +123,17 @@ check-sibling-pins:
 upgrade-test: icpp-pro-test-identity
 	@python -m scripts.upgrade_test
 
+# Same gate against the heaviest downstream consumer: build & deploy
+# llama_cpp_canister with the released icpp-pro, run its model-free API
+# suite, upgrade in place with the dev tree, run the suite again.
+# (Model-level verification stays with llama's own docker/CI path.)
+# Prerequisite: `make install-python-w-llama_cpp_canister` - the pytest
+# phases run in the dev environment, which needs llama's deps.
+.PHONY: upgrade-test-llama
+upgrade-test-llama: icpp-pro-test-identity
+	$(MAKE) -C $(SIBLING_LLAMA_CPP_CANISTER) build-info-cpp-wasm
+	@python -m scripts.upgrade_test --canister-dir $(SIBLING_LLAMA_CPP_CANISTER) --pytest-before "pytest -vv --network=local test/test_canister_functions.py" --pytest-after "pytest -vv --network=local test/test_canister_functions.py"
+
 # The tier to run after changes to the public surface (headers, IC_API,
 # conftest_base, smoketest): cheap docs build, the demos suite, and the
 # llama_cpp_canister native tests.

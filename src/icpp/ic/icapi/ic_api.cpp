@@ -19,6 +19,7 @@
 #include <limits.h>
 #include <string>
 
+#include "current_entry.h"
 #include "ic0.h"
 #include "ic_timers.h"
 
@@ -47,6 +48,22 @@ void check_entry(CanisterBase entry, bool allowed, const char *method,
                  " entry point. Allowed entry points: " + allowed_desc + ".");
   }
 }
+
+// Same guard for IC_API's static methods, which have no instance: they
+// consult the process-global current entry. When no IC_API has been
+// constructed yet, current_entry() is nullptr and the guard is skipped
+// (permissive fallback - never stricter than before).
+void check_timer_entry(const char *method) {
+  CanisterBase *entry = current_entry();
+  if (entry != nullptr &&
+      (entry->is_entry_Q() || entry->is_entry_F() || entry->is_entry_s())) {
+    IC_API::trap(std::string(method) + " is not available in a " +
+                 entry->get_entry_type() +
+                 " entry point - ic0.global_timer_set is refused there. "
+                 "Allowed entry points: init, pre/post_upgrade, update, "
+                 "reply & reject callbacks, cleanup, heartbeat & timer.");
+  }
+}
 } // namespace
 
 IC_API::IC_API() : IC_API(CanisterQuery("-unknown-"), false) {}
@@ -55,44 +72,65 @@ IC_API::IC_API(const bool &debug_print)
 
 IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
     : m_canister_entry(canister_entry), m_debug_print(dbug) {
+  // Record the entry point for IC_API's static methods (timers, time),
+  // which have no instance and consult current_entry() for their guards.
+  set_current_entry(m_canister_entry);
+
   // Always start with a clean type table registry in the registry singleton
   CandidSerializeTypeTableRegistry::get_instance().clear();
 
-  // ic0.msg_arg_data_* and ic0.msg_caller_* are not available in T (timer /
-  // heartbeat) entries — the IC traps if we call them. Skip both sections
-  // for those entries; m_B_in stays empty and m_caller stays default.
-  const bool has_msg_context = !m_canister_entry.is_entry_T();
+  // Read only what the replica provides in this entry point - calling a
+  // size/copy pair in a refused context traps on the IC:
+  // - msg_arg_data: only init/post_upgrade (I), update (U), query (Q),
+  //   reply callback (Ry) and inspect_message (F) carry an argument payload.
+  //   NOT pre_upgrade (G), reject callback (Rt), cleanup (C), timer/
+  //   heartbeat (T) or start (s).
+  // - msg_caller: everywhere except start - including T, where the IC
+  //   reports the system/management caller.
+  // - canister_self: everywhere except start.
+  const bool has_arg_data =
+      m_canister_entry.is_entry_I() || m_canister_entry.is_entry_U() ||
+      m_canister_entry.is_entry_Q() || m_canister_entry.is_entry_Ry() ||
+      m_canister_entry.is_entry_F();
+  const bool has_caller = !m_canister_entry.is_entry_s();
 
-  if (has_msg_context) {
+  if (has_arg_data) {
     // Fill 'm_B_in' with the bytes of msg_arg_data
     std::vector<uint8_t> bytes =
         read_size_copy(ic0_msg_arg_data_size, ic0_msg_arg_data_copy);
     m_B_in.store(bytes.data(), bytes.size());
+  }
 
+  if (has_caller) {
     // Get the principal of caller
     m_caller = CandidTypePrincipal(
         read_size_copy(ic0_msg_caller_size, ic0_msg_caller_copy));
-  }
 
-  // Get  canister id
-  m_canister_self = CandidTypePrincipal(
-      read_size_copy(ic0_canister_self_size, ic0_canister_self_copy));
+    // Get  canister id
+    m_canister_self = CandidTypePrincipal(
+        read_size_copy(ic0_canister_self_size, ic0_canister_self_copy));
+  }
 
   if (m_debug_print) {
     debug_print("\n--");
-    if (has_msg_context) {
+    if (has_caller) {
       debug_print("IC_API caller's principal       :" + m_caller.get_text());
+      debug_print("IC_API canister_self's principal:" +
+                  m_canister_self.get_text());
     }
-    debug_print("IC_API canister_self's principal:" +
-                m_canister_self.get_text());
-    if (has_msg_context) {
+    if (has_arg_data) {
       debug_print("IC_API received these bytes over the wire:");
       m_B_in.debug_print();
     }
   }
 }
 
-IC_API::~IC_API() {}
+IC_API::~IC_API() {
+  // The recorded entry must not outlive this instance: an invocation that
+  // never constructs an IC_API would otherwise inherit a stale entry and
+  // its guards could falsely trap correct code.
+  clear_current_entry();
+}
 
 void IC_API::debug_print(const char *message) {
 
@@ -123,6 +161,9 @@ CandidTypePrincipal IC_API::get_caller() { return m_caller; }
 CandidTypePrincipal IC_API::get_canister_self() { return m_canister_self; }
 
 __uint128_t IC_API::get_canister_self_cycle_balance() {
+  check_entry(m_canister_entry, !m_canister_entry.is_entry_s(),
+              "IC_API::get_canister_self_cycle_balance",
+              "all except canister_start");
   __uint128_t cycles_balance;
   ic0_canister_cycle_balance128(reinterpret_cast<uintptr_t>(&cycles_balance));
   return cycles_balance;
@@ -235,22 +276,34 @@ void IC_API::trap(const char *message) {
 
 void IC_API::trap(const std::string &s) { IC_API::trap(s.c_str()); }
 
-uint64_t IC_API::time() { return ic0_time(); }
+uint64_t IC_API::time() {
+  CanisterBase *entry = current_entry();
+  if (entry != nullptr && entry->is_entry_s()) {
+    trap("IC_API::time is not available in a CanisterStart entry point.");
+  }
+  return ic0_time();
+}
 
 uint64_t IC_API::set_timer(uint64_t delay_ns, std::function<void()> cb) {
+  check_timer_entry("IC_API::set_timer");
   return IcTimers::instance().add_one_shot(delay_ns, std::move(cb));
 }
 
 uint64_t IC_API::set_timer_recurring(uint64_t period_ns,
                                      std::function<void()> cb) {
+  check_timer_entry("IC_API::set_timer_recurring");
   return IcTimers::instance().add_recurring(period_ns, std::move(cb));
 }
 
 bool IC_API::cancel_timer(uint64_t id) {
+  check_timer_entry("IC_API::cancel_timer");
   return IcTimers::instance().cancel(id);
 }
 
-void IC_API::cancel_all_timers() { IcTimers::instance().clear(); }
+void IC_API::cancel_all_timers() {
+  check_timer_entry("IC_API::cancel_all_timers");
+  IcTimers::instance().clear();
+}
 
 // DeSerialize the byte stream received over the wire
 void IC_API::from_wire(CandidArgs A) {
@@ -439,10 +492,6 @@ void IC_API::to_wire(const CandidArgs &args_out) {
   // Only can call msg_reply if entry is `U Q Ry Rt`
   if (m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Q() ||
       m_canister_entry.is_entry_Ry() || m_canister_entry.is_entry_Rt()) {
-    // If the method did not yet call to_wire, do it automatic without content
-    if (!m_called_to_wire) {
-      to_wire();
-    }
     // Send it out over the wire
     msg_reply();
   }

@@ -508,6 +508,51 @@
   </ol>
 </section>
 
+<section>
+  <p class="kicker">Next phase</p>
+  <h2>CDK feature parity beyond ic0</h2>
+  <p>The sequencing above tracks raw <code>ic0</code> import coverage. This list
+  tracks capabilities the <strong>Motoko and Rust CDKs</strong> expose that
+  icpp-pro does not &mdash; management-canister features and library surface
+  that sit on top of the bindings. Each entry names what it depends on from the
+  phase above.</p>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Prerequisite &middot; needs step 05</span>
+      <h3>HTTPS outcalls</h3>
+      <p>The classic <code>http_request</code> management call. icpp-pro has
+      <em>none</em> today:
+      <code>test/canisters/canister_http/src/http_outcalls.cpp</code> is a stub
+      that returns <code>"TODO"</code>, and the <code>http_request</code> in that
+      canister's <code>.did</code> is the <em>incoming</em> HTTP-gateway
+      interface, not an outcall. Blocked on the async inter-canister call API
+      (step 05), since an outcall is a call to the management canister. Both
+      Motoko and Rust have had this for years.</p>
+    </div>
+    <div class="card">
+      <span class="tag">Shipped on the IC 2026-09-18</span>
+      <h3>Flexible HTTPS outcalls</h3>
+      <p>The new <code>flexible_http_request</code> management method replaces
+      the dual-mode <code>http_request</code>. A <code>replication</code> record
+      (<code>min_responses</code>, <code>max_responses</code>,
+      <code>total_requests</code>) lets a canister pick the cost / latency /
+      trust trade-off per call and reconcile the individual node responses
+      itself, instead of forcing byte-for-byte consensus through a transform
+      function &mdash; which is what breaks on APIs returning timestamps, prices
+      or model output. Needs typed result variants (timeout, too_many_rejects,
+      responses_too_large, out_of_cycles), pay-as-you-go cycles, and an optional
+      per-node transform. Sizes its committee with
+      <code>ic0.subnet_self_node_count</code> &mdash; already on the missing-imports
+      list above (step 03).
+      <strong>The Rust CDK has it; Motoko support is still only planned</strong>,
+      so this is where icpp-pro can reach Rust parity and lead Motoko.
+      <a href="https://forum.dfinity.org/t/flexible-https-outcalls/75694">Forum
+      announcement</a>.</p>
+    </div>
+  </div>
+</section>
+
 <footer>
   Compiled 2026-09-16 from the replica import whitelist
   (<code>dfinity/ic&nbsp;rs/embedders/src/wasm_utils/validation.rs</code>), Motoko&nbsp;1.16.1
@@ -517,7 +562,9 @@
   Lives in the repo at <code>todo/ic0-api-inventory.html</code>.
   Updated 2026-09-16: step 01 (broken bindings) done; step 02 split into
   02a-new-apis (merged 2026-09-16: icpp-pro #53, icpp-demos #5, icpp-docs #2)
-  and 02b-existing-apis (in review: icpp-pro #54, icpp-docs #3).
+  and 02b-existing-apis (merged 2026-09-16: icpp-pro #54, icpp-docs #3).
+  Updated 2026-09-18: added the &ldquo;CDK feature parity beyond ic0&rdquo;
+  next-phase list, seeded with HTTPS outcalls &amp; flexible HTTPS outcalls.
 </footer>
 
 </div>

@@ -40,29 +40,38 @@ BUILD_PATH = Path(__file__).parent / ".."
 
 
 def test__fix_globals_limit_artifacts(network: str, principal: str) -> None:
-    """The built-in globals-limit fix left the right artifacts behind.
+    """The built-in fix and the hook each kept their own backup.
 
     This canister is built twice, once per config, and `--to-compile all`
     wipes build/ each time, so the two cases are cleanly separated:
 
-      * icpp.toml        - fix on + post_wasm_function. The hook itself
-                           asserts the ordering contract at BUILD time (it
-                           raises, failing the build, if it does not already
-                           see a fixed wasm), so here we only confirm the
-                           backup exists and differs from the fixed wasm.
-      * icpp-no-fix.toml - fix_globals_limit = false and no hook. The step
-                           must have been skipped entirely, so no backup.
+      * icpp.toml        - fix on + post_wasm_function. The hook asserts the
+                           ordering contract at BUILD time (it raises, failing
+                           the build, if it does not already see a fixed
+                           wasm). Here we prove the two backups coexist: the
+                           built-in `_before_opt_internal` holds the
+                           PRE-optimize wasm, the hook's own `_before_opt`
+                           holds the POST-fix wasm it received. Before the
+                           suffixes were split these were one file, and the
+                           hook's copy silently destroyed ours.
+      * icpp-no-fix.toml - fix_globals_limit = false and no hook. Neither
+                           backup may exist.
     """
     wasm_path = (BUILD_PATH / "build/my_canister.wasm").resolve()
-    backup_path = (BUILD_PATH / "build/my_canister_before_opt.wasm").resolve()
+    internal_backup = (
+        BUILD_PATH / "build/my_canister_before_opt_internal.wasm"
+    ).resolve()
+    hook_backup = (BUILD_PATH / "build/my_canister_before_opt.wasm").resolve()
 
     assert wasm_path.is_file(), f"no wasm at {wasm_path}"
 
-    if backup_path.is_file():
-        # fix_globals_limit = true: the backup is the pre-optimize wasm, so it
-        # must differ from the wasm that was actually deployed.
-        assert backup_path.read_bytes() != wasm_path.read_bytes()
+    if internal_backup.is_file():
+        # fix_globals_limit = true, so the hook ran too.
+        assert hook_backup.is_file(), "the hook's own backup is missing"
+        # They are different files holding different stages.
+        assert internal_backup.read_bytes() != hook_backup.read_bytes()
+        # Ours is the pre-optimize wasm, so it differs from what was deployed.
+        assert internal_backup.read_bytes() != wasm_path.read_bytes()
     else:
-        # fix_globals_limit = false: the step never ran, so it never wrote a
-        # backup. Anything else means the opt-out is not honoured.
-        assert not backup_path.exists()
+        # fix_globals_limit = false and no hook: no backups at all.
+        assert not hook_backup.exists()

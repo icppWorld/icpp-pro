@@ -13,7 +13,7 @@ from pathlib import Path
 
 from icpp_binaryen import GlobalsFixReport
 
-from icpp.fix_globals_step import run_fix_globals_limit
+from icpp.fix_globals_step import BACKUP_SUFFIX, run_fix_globals_limit
 
 # The IC rejects a module with more than this many defined globals (IC0505).
 IC_GLOBALS_LIMIT = 1000
@@ -24,7 +24,7 @@ def _fix_a_copy(wasm: Path, tmp_path: Path) -> tuple[Path, Path, GlobalsFixRepor
     work = tmp_path / wasm.name
     shutil.copy(wasm, work)
     report = run_fix_globals_limit(work)
-    backup = work.with_name(work.stem + "_before_opt" + work.suffix)
+    backup = work.with_name(work.stem + BACKUP_SUFFIX + work.suffix)
     return work, backup, report
 
 
@@ -55,37 +55,30 @@ def test__writes_a_backup_identical_to_the_input(
     assert work.read_bytes() != many_globals_wasm.read_bytes()
 
 
-def test__second_run_clobbers_the_backup_which_is_why_it_runs_once(
+def test__does_not_collide_with_a_hooks_own_backup(
     many_globals_wasm: Path, tmp_path: Path
 ) -> None:
-    """Characterizes the hazard that makes `fix_globals_limit = false` exist.
+    """The built-in backup and a hook's own `_before_opt` both survive.
 
-    Applying the fix twice is semantically a no-op - the second run reports
-    the same globals count - but it is NOT harmless: it copies the
-    ALREADY-FIXED wasm over the _before_opt backup, silently destroying the
-    name section the backup exists to preserve.
-
-    icpp-pro therefore applies the step exactly once per build, and a project
-    whose own post_wasm_function already runs the fix must opt out with
-    `fix_globals_limit = false`.
-
-    Note what is deliberately NOT asserted: that the wasm bytes move on the
-    second run. They do on a large real module (llama's artifact was measured
-    changing on run 2 and converging on run 3), but this small fixture reaches
-    a fixed point immediately. Byte-stability across a re-run is therefore
-    artifact-dependent and must not be relied on; the backup damage is
-    universal.
+    A post_wasm_function conventionally saves the wasm it received as
+    `<stem>_before_opt.wasm`. The built-in step deliberately uses a different
+    name, so the two do not fight over one file: before the suffixes were
+    split, the hook's copy landed on top of ours and replaced the
+    pre-optimize wasm with already-fixed bytes - silently losing the name
+    section the backup exists for, while leaving a file in place so nothing
+    looked wrong.
     """
-    work, backup, first = _fix_a_copy(many_globals_wasm, tmp_path)
-    after_first = work.read_bytes()
+    work, internal_backup, _ = _fix_a_copy(many_globals_wasm, tmp_path)
 
-    second = run_fix_globals_limit(work)
+    # A hook that saves what it was handed, the conventional way.
+    hook_backup = work.with_name(work.stem + "_before_opt" + work.suffix)
+    shutil.copy(work, hook_backup)
 
-    # Semantically a no-op...
-    assert second.globals_after == first.globals_after
-    # ...yet the backup no longer holds the pre-optimize wasm.
-    assert backup.read_bytes() != many_globals_wasm.read_bytes()
-    assert backup.read_bytes() == after_first
+    assert internal_backup != hook_backup
+    # Ours still holds the PRE-optimize wasm...
+    assert internal_backup.read_bytes() == many_globals_wasm.read_bytes()
+    # ...and the hook's holds the POST-fix wasm it actually received.
+    assert hook_backup.read_bytes() == work.read_bytes()
 
 
 def test__llama_real_artifact(llama_before_opt_wasm: Path, tmp_path: Path) -> None:

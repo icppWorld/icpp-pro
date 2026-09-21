@@ -18,6 +18,14 @@ on:
     tags:
       - "v*"
 
+# Least privilege for every job that does not override it. Without an explicit
+# map the build job would inherit the repository/organisation GITHUB_TOKEN
+# default, which may grant writes. The publish job's own map overrides this
+# (an explicit map sets every omitted permission to none); downloading an
+# artifact from the same run needs no extra scope.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

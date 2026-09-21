@@ -363,4 +363,4 @@ pypi-build:
 
 .PHONY: pypi-install
 pypi-install:
-	pip install icpp-pro
+	python -m pip install icpp-pro

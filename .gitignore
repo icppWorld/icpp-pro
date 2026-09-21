@@ -34,6 +34,11 @@ null.d
 *.observed.filtered
 *.wasm
 *.wat
+# ...except the committed test fixture: a 20 KB wasm with 1001 exported
+# globals, just over the IC's limit. It is an INPUT to the unit tests, not a
+# build artifact, and committing it keeps the suite free of a wat2wasm
+# dependency. Regenerate with test/unit/fixtures/generate_many_globals.py.
+!test/unit/fixtures/many_globals.wasm
 a.out
 *.exe
 build-native-unit/

@@ -28,7 +28,12 @@ def many_globals_wasm() -> Path:
     Regenerate with test/unit/fixtures/generate_many_globals.py.
     """
     path = FIXTURES_DIR / "many_globals.wasm"
-    assert path.is_file(), f"missing fixture {path}"
+    assert path.is_file(), (
+        f"missing fixture {path}\n"
+        f"It is committed, so this usually means it was not added to git "
+        f"(.gitignore has a *.wasm rule with an explicit exception for it).\n"
+        f"Regenerate with: python {FIXTURES_DIR / 'generate_many_globals.py'}"
+    )
     return path
 
 

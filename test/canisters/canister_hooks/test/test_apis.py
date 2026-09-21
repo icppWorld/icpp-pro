@@ -62,16 +62,26 @@ def test__fix_globals_limit_artifacts(network: str, principal: str) -> None:
         BUILD_PATH / "build/my_canister_before_opt_internal.wasm"
     ).resolve()
     hook_backup = (BUILD_PATH / "build/my_canister_before_opt.wasm").resolve()
+    hook_marker = (BUILD_PATH / "build/post_wasm_function_ran.marker").resolve()
 
     assert wasm_path.is_file(), f"no wasm at {wasm_path}"
 
-    if internal_backup.is_file():
-        # fix_globals_limit = true, so the hook ran too.
+    # The marker says which config produced this build, so each branch can
+    # assert the FULL expected state. Inferring the mode from the backups
+    # themselves would let a wrongly-enabled fix in icpp-no-fix.toml satisfy
+    # the fix-is-on branch and pass.
+    if hook_marker.is_file():
+        # icpp.toml: fix on + hook.
+        assert internal_backup.is_file(), "the built-in backup is missing"
         assert hook_backup.is_file(), "the hook's own backup is missing"
-        # They are different files holding different stages.
+        # Two files, two stages - they must not be the same bytes.
         assert internal_backup.read_bytes() != hook_backup.read_bytes()
         # Ours is the pre-optimize wasm, so it differs from what was deployed.
         assert internal_backup.read_bytes() != wasm_path.read_bytes()
     else:
-        # fix_globals_limit = false and no hook: no backups at all.
+        # icpp-no-fix.toml: fix_globals_limit = false and no hook, so the step
+        # must have been skipped entirely - no backup of either kind.
+        assert (
+            not internal_backup.exists()
+        ), "fix_globals_limit = false but the built-in step still ran"
         assert not hook_backup.exists()

@@ -69,9 +69,15 @@ summary:
 ###########################################################################
 # CI/CD - Phony Makefile targets
 #
+# A sequential recipe, not a prerequisite list: with `make -j` prerequisites
+# run in parallel, so the cheap checks would no longer gate the expensive
+# ones and a broken build would still compile eight canisters before failing.
 .PHONY: all-tests
-all-tests: all-static python-test all-canister-native all-canister-deploy-local-pytest 
-	
+all-tests:
+	$(MAKE) all-static
+	$(MAKE) python-test
+	$(MAKE) all-canister-native
+	$(MAKE) all-canister-deploy-local-pytest
 .PHONY: all-canister-deploy-local-pytest
 # JOBS = how many canisters to build & test concurrently. Each canister has its
 # own local network on an ephemeral port, so they do not collide. The default is

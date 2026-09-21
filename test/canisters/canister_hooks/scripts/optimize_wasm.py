@@ -51,6 +51,13 @@ def main() -> None:
     ).resolve()
     shutil.copy(wasm_path, hook_backup)
 
+    # Independent evidence of WHICH config built this, so the pytest can be
+    # strict in both directions instead of inferring the mode from the very
+    # artifacts it is trying to verify.
+    (build_path / "post_wasm_function_ran.marker").write_text(
+        "scripts.optimize_wasm.main\n", encoding="utf-8"
+    )
+
     print(f"post_wasm_function: the built-in fix already ran on {wasm_path}")
     print(f"post_wasm_function: its backup is {internal_backup}")
     print(f"post_wasm_function: this hook also saved {hook_backup}")

@@ -350,24 +350,17 @@ install-wabt:
 	sudo apt-get update && sudo apt-get install wabt
 
 ###########################################################################
-# Building and publishing the pypi package
+# Building the pypi package.
+#
+# Publishing is CI-only: pushing a `vX.Y.Z` tag runs .github/workflows/
+# release.yml, which builds and publishes to PyPI with trusted publishing
+# (OIDC). There is no API token, no .pypirc and no upload target here - see
+# README-release-guide.md.
 .PHONY: pypi-build
 pypi-build:
 	rm -rf dist
 	python -m build
 
-.PHONY: testpypi-upload
-testpypi-upload:
-	twine upload --config-file .pypirc -r testpypi dist/*
-
-.PHONY: testpypi-install
-testpypi-install:
-	pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ icpp
-
-.PHONY: pypi-upload
-pypi-upload:
-	twine upload --config-file .pypirc dist/*
-
 .PHONY: pypi-install
 pypi-install:
-	pip install icpp
+	python -m pip install icpp-pro

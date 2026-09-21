@@ -53,7 +53,7 @@ dependencies = [
     # globals limit (install error IC0505) by default. Wheels exist for macOS
     # (universal2) and linux x86_64 (glibc >= 2.35) only - there is no
     # arm64-linux wheel and no sdist.
-    "icpp-binaryen>=116.0.0",
+    "icpp-binaryen>=116.0.1",
     'icpp-pro-is-not-supported-on-windows; platform_system == "Windows"',
     "typer[all]>=0.9.0",
     "tomli",

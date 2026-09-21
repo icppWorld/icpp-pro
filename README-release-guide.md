@@ -253,8 +253,8 @@ republishing the previous version.
 
 ### One-time setup (maintainer)
 
-Already done for both projects; recorded here for when a new package is added
-or a publisher has to be re-created.
+Required once per project, before the first tag-triggered release can publish
+(and again if a publisher ever has to be re-created).
 
 On PyPI (pypi.org → project → Manage → Publishing → add a GitHub publisher):
 

@@ -56,10 +56,11 @@ Then run the sibling tier that matches the change — see the
 - The roadmap = `todo/ic0-api-inventory.html` AND its published Claude
   artifact (same URL, see `todo/artifacts.md`). Every edit updates BOTH in
   the same sitting — never the file without republishing the artifact.
+  `todo/` is git-ignored, so the artifact is the only shareable copy.
 - Statuses reflect merge state: an open PR marks an item "in review" (link
-  the PRs), NEVER "done". "done" happens only after all PRs merged, via a
-  roadmap-only commit on main + republish. Split items keep the parent id
-  (02a/02b), no renumbering.
+  the PRs), NEVER "done". "done" happens only after all PRs merged — edit
+  the local file and republish (no commit; `todo/` is not tracked). Split
+  items keep the parent id (02a/02b), no renumbering.
 - Commit per repo on the shared `feature/<slug>` branch: single-line message,
   no trailers, no `--no-verify`. Push only when the user asks.
 - PRs: one per changed repo from the same branch name, cross-referencing the

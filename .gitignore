@@ -157,3 +157,8 @@ venv.bak/
 # Scratch / task-todo notes for AI agents & humans. Deliberately local-only:
 # they capture in-flight plans and findings, not repo state.
 TMP-*
+
+# Roadmap & scratch artifact pages. Local-only for the same reason: they are
+# working notes, and the shareable copy of anything worth keeping is the
+# published artifact, not a file in this repo.
+todo/

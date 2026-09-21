@@ -157,3 +157,8 @@ The skills `icpp-pro-new-feature`, `icpp-pro-verify-siblings`, and
 The `todo/` folder is the living roadmap: `todo/ic0-api-inventory.html` tracks
 the IC0-parity project, `todo/artifacts.md` indexes the published artifact
 pages. Keep both current as features land (Ceremony 6).
+
+`todo/` is **git-ignored** — it holds working notes, not repo state. The
+shareable copy of the roadmap is its published artifact, so republishing is
+what makes a roadmap change visible to anyone else; never assume a teammate
+can see the local file.

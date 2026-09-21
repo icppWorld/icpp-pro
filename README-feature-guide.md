@@ -193,12 +193,15 @@ For every user-facing capability:
    `todo/ic0-api-inventory.html` and its published Claude artifact (same URL
    every time, recorded in `todo/artifacts.md`). Every roadmap edit updates
    the file AND republishes the artifact in the same sitting — never one
-   without the other.
+   without the other. `todo/` is **git-ignored**: the file is a local working
+   copy and the artifact is the shareable one, so a roadmap change nobody
+   republished is a change nobody else can see.
 2. Roadmap statuses reflect **merge state, not commit state**:
    - Work on a feature branch / open PR marks an item **in progress** or
      **in review** (with the PR links) — never "done".
-   - **done** is set only after every PR of the feature has merged, as a
-     small roadmap-only commit on `main` plus the artifact republish.
+   - **done** is set only after every PR of the feature has merged, by
+     editing the local file and republishing the artifact (there is no
+     roadmap commit — `todo/` is not tracked).
    - When an item is split, the parts keep the parent's identity (e.g.
      `02a-new-apis` / `02b-existing-apis`) instead of being renumbered, so
      history and references stay stable.

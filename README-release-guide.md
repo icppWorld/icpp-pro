@@ -268,11 +268,13 @@ required — it exists to scope the OIDC claim).
 
 ## Follow up steps
 
-- Redeploy greet canister to IC
+- Redeploy greet canister to IC. Name the identity that controls the canister
+  on mainnet - the machine-wide active identity is usually `anonymous`, which
+  cannot deploy:
   ```
   cd src/icpp/canisters/greet
   icpp build-wasm
-  icp deploy --environment ic --yes
+  icp deploy --environment ic --yes --identity <your-mainnet-identity>
   ```
 - Bump the sibling version pins to the released version, then verify with
   `make check-sibling-pins` until green:
@@ -293,5 +295,5 @@ required — it exists to scope the OIDC claim).
     ```
     cd canisters/api_reference
     icpp build-wasm
-    icp deploy --environment ic --yes
+    icp deploy --environment ic --yes --identity <your-mainnet-identity>
     ```

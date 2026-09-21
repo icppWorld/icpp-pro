@@ -48,6 +48,12 @@ classifiers = [
 ]
 dependencies = [
     "icpp-candid>=6.1.0",
+    # Bundles Binaryen; `icpp build-wasm` runs its fix_globals_limit() as a
+    # standard post-link step, so a canister cannot trip the IC's 1000-defined-
+    # globals limit (install error IC0505) by default. Wheels exist for macOS
+    # (universal2) and linux x86_64 (glibc >= 2.35) only - there is no
+    # arm64-linux wheel and no sdist.
+    "icpp-binaryen>=116.0.0",
     'icpp-pro-is-not-supported-on-windows; platform_system == "Windows"',
     "typer[all]>=0.9.0",
     "tomli",
@@ -76,6 +82,10 @@ dev = [
     "mkdocs==1.5.3",
     "types-requests==2.31.0.10",
     "types-PyYAML==6.0.12.20240917",
+    # wat2wasm, used only to REGENERATE test/unit/fixtures/many_globals.wasm
+    # (which is committed, so the test suite itself does not need it).
+    # Kept here so pylint/mypy can resolve the generator's import.
+    "wasmtime",
 ]
 
 [project.urls]

@@ -70,7 +70,7 @@ summary:
 # CI/CD - Phony Makefile targets
 #
 .PHONY: all-tests
-all-tests: all-static all-canister-native all-canister-deploy-local-pytest 
+all-tests: all-static python-test all-canister-native all-canister-deploy-local-pytest 
 	
 .PHONY: all-canister-deploy-local-pytest
 # JOBS = how many canisters to build & test concurrently. Each canister has its
@@ -232,6 +232,15 @@ python-lint:
 	@echo "---"
 	@echo "python-lint"
 	python -m pylint --jobs=0 --rcfile=.pylintrc $(PYTHON_DIRS)
+
+# The fast signal: unit tests that need no canister build. Deliberately
+# ordered before the build/deploy stages in all-tests, so a broken wiring
+# fails in seconds instead of after every canister has been compiled.
+.PHONY: python-test
+python-test:
+	@echo "---"
+	@echo "python-test"
+	python -m pytest test/unit
 
 .PHONY: python-type
 python-type:

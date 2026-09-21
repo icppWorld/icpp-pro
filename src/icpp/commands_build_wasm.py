@@ -27,6 +27,7 @@ from icpp.options_build import (
 )
 from icpp.commands_build_library import build_library
 from icpp.call_function_from_name import call_function
+from icpp.fix_globals_step import FixGlobalsError, run_fix_globals_limit
 
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
@@ -257,6 +258,23 @@ def build_wasm(
         run_shell_cmd(cmd, cwd=build_path)
 
         # ----------------------------------------------------------------------
+        # Built-in globals-limit fix (IC0505).
+        #
+        # Runs AFTER wasi2ic, because that is the artifact whose globals count,
+        # and BEFORE the user's post_wasm_function, so a project doing custom
+        # passes receives an already-valid wasm as its input. That ordering is
+        # a documented contract - do not reorder these two blocks.
+
+        if icpp_toml.build_wasm["fix_globals_limit"]:
+            wasm_path = (
+                build_path / f"{icpp_toml.build_wasm['canister']}.wasm"
+            ).resolve()
+            typer.echo("--")
+            typer.echo("Applying the built-in globals-limit fix (IC0505):")
+            report = run_fix_globals_limit(wasm_path)
+            typer.echo(report.summary())
+
+        # ----------------------------------------------------------------------
         # Call optional user provided function
 
         post_wasm_function = icpp_toml.build_wasm["post_wasm_function"]
@@ -345,6 +363,9 @@ def build_wasm(
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=build_path)
 
+    except FixGlobalsError as e:
+        typer.echo(f"ERROR: {e}")
+        sys.exit(1)
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
     except Exception as e:  # pylint: disable=broad-except

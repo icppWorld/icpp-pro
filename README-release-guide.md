@@ -23,7 +23,8 @@ We follow the version naming convention for python packages ([pep-0440](https://
 
 ### Version Number
 
-- In both repos, update the version number in: `src/icpp/version.py`
+- Update the version number in both repos: `icpp-pro/src/icpp/version.py` and
+  `icpp-candid/src/icpp_candid/version.py`
 - In icpp-pro repo, update the icpp-candid dependency in `pyproject.toml`:
   ```toml
   dependencies = [
@@ -81,10 +82,8 @@ cd ../release-test
 pip install dist/icpp_candid-x.y.z-py3-none-any.whl
 pip install dist/icpp_pro-x.y.z-py3-none-any.whl
 
-# Option 2: icpp-pro from local wheel & icpp-candid from testPyPI
-pip install --extra-index-url https://test.pypi.org/simple/ --no-cache dist/icpp_pro-x.y.z-py3-none-any.whl
-
-# Option 3: icpp-pro from local wheel & icpp-candid from PyPI
+# Option 2: icpp-pro from local wheel & icpp-candid from PyPI
+# (only works once icpp-candid x.y.z is published - see "Tag & publish")
 pip install --no-cache dist/icpp_pro-x.y.z-py3-none-any.whl
 
 # Verify packages installed
@@ -207,25 +206,65 @@ make check-sibling-pins
 make siblings-verify-full
 ```
 
-## Upload icpp-candid to TestPyPI & PyPI
+## Tag & publish
+
+Publishing is **CI-only**. Pushing a `vX.Y.Z` tag runs that repo's
+`.github/workflows/release.yml`, which builds the distributions and uploads
+them to PyPI with [trusted publishing](https://docs.pypi.org/trusted-publishers/)
+(OIDC). There is no API token, no `.pypirc`, and nothing is ever uploaded from
+a laptop.
+
+Tag **icpp-candid first**: icpp-pro pins `icpp-candid>=X.Y.Z`, and icpp-pro's
+release workflow refuses to publish until that exact version is on PyPI.
 
 ```bash
+# 1. icpp-candid
 cd icpp-candid
-# check content of .pypirc
-
-make testpypi-upload
-make pypi-upload
+git checkout main && git pull
+git tag vx.y.z
+git push origin vx.y.z
 ```
 
-## Upload icpp-pro to TestPyPI & PyPI
+Watch the run to completion — **a red leg means nothing was published**:
 
 ```bash
-cd icpp-pro
-# check content of .pypirc
-
-make testpypi-upload
-make pypi-upload
+gh run watch -R icppWorld/icpp-candid $(gh run list -R icppWorld/icpp-candid --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 ```
+
+Confirm it is really on PyPI before continuing:
+
+```bash
+pip download icpp-candid==x.y.z --no-deps -d /tmp/candid-check
+```
+
+```bash
+# 2. icpp-pro
+cd ..
+git checkout main && git pull
+git tag vx.y.z
+git push origin vx.y.z
+```
+
+Watch that run the same way (`-R icppWorld/icpp-pro`).
+
+The tag must point at a commit whose `version.py` already says `x.y.z` — both
+workflows assert this and fail the release on a mismatch, rather than quietly
+republishing the previous version.
+
+### One-time setup (maintainer)
+
+Already done for both projects; recorded here for when a new package is added
+or a publisher has to be re-created.
+
+On PyPI (pypi.org → project → Manage → Publishing → add a GitHub publisher):
+
+| PyPI project  | Owner       | Repository    | Workflow name | Environment |
+|---------------|-------------|---------------|---------------|-------------|
+| `icpp-candid` | `icppWorld` | `icpp-candid` | `release.yml` | `pypi`      |
+| `icpp-pro`    | `icppWorld` | `icpp-pro`    | `release.yml` | `pypi`      |
+
+On GitHub: each repo needs an environment named `pypi` (no protection rules
+required — it exists to scope the OIDC claim).
 
 ## Follow up steps
 

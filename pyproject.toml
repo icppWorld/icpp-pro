@@ -73,7 +73,6 @@ dev = [
     "pylint==3.3.4",
     "mypy==1.13.0",
     "build==1.2.2",
-    "twine==6.0.1",
     "mkdocs==1.5.3",
     "types-requests==2.31.0.10",
     "types-PyYAML==6.0.12.20240917",

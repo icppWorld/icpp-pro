@@ -47,7 +47,7 @@ classifiers = [
     "Operating System :: MacOS",
 ]
 dependencies = [
-    "icpp-candid>=6.1.0",
+    "icpp-candid>=6.2.0",
     # Bundles Binaryen; `icpp build-wasm` runs its fix_globals_limit() as a
     # standard post-link step, so a canister cannot trip the IC's 1000-defined-
     # globals limit (install error IC0505) by default. Wheels exist for macOS

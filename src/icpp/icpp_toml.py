@@ -65,6 +65,12 @@ def read_build_wasm_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
 
     d["post_wasm_function"] = d_in.get("post_wasm_function", None)
 
+    # The built-in globals-limit fix (IC0505), on by default. A project that
+    # already runs the fix in its own post_wasm_function sets this to false,
+    # so it is not applied twice - a second run changes the wasm bytes and
+    # overwrites the _before_opt backup with already-fixed bytes.
+    d["fix_globals_limit"] = d_in.get("fix_globals_limit", True)
+
     icpp_toml_path_dir = icpp_toml_path.parent.resolve()
     d["cpp_include_dirs"] = [icpp_toml_path_dir, icpp_toml_path_dir / "src"]
     d["c_include_dirs"] = [icpp_toml_path_dir, icpp_toml_path_dir / "src"]

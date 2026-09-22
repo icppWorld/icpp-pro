@@ -12,7 +12,11 @@ Checked:
     - llama_cpp_canister/requirements.txt icpp-pro==X.Y.Z
     - llama_cpp_canister/docker/docker-compose.yml (both the &icpp anchor and
       the image name literal)
-(4) black / pylint / mypy pins are identical across icpp-pro (pyproject.toml),
+(4) icpp-pro's icpp-binaryen pin matches the icpp-binaryen checkout. Note the
+    asymmetry with icpp-candid: icpp-candid is always the SAME version as
+    icpp-pro, whereas icpp-binaryen's major component IS the bundled Binaryen
+    version (116), so it tracks its own version.py, not icpp-pro's.
+(5) black / pylint / mypy pins are identical across icpp-pro (pyproject.toml),
     icpp-demos (requirements.txt) and llama_cpp_canister
     (scripts/requirements.txt)
 
@@ -42,6 +46,7 @@ DEMOS_REQUIREMENTS = REPOS_PATH / "icpp-demos/requirements.txt"
 LLAMA_REQUIREMENTS = REPOS_PATH / "llama_cpp_canister/requirements.txt"
 LLAMA_SCRIPTS_REQUIREMENTS = REPOS_PATH / "llama_cpp_canister/scripts/requirements.txt"
 LLAMA_DOCKER_COMPOSE = REPOS_PATH / "llama_cpp_canister/docker/docker-compose.yml"
+BINARYEN_VERSION_PY = REPOS_PATH / "icpp-binaryen/src/icpp_binaryen/version.py"
 
 LINTERS = ["black", "pylint", "mypy"]
 
@@ -89,6 +94,18 @@ def main() -> int:
         extract(PYPROJECT, r'"icpp-candid>=([^"]+)"', failures),
         failures,
     )
+    # icpp-binaryen is NOT version-locked to icpp-pro - its expected value is
+    # its own version.py.
+    binaryen_version = extract(
+        BINARYEN_VERSION_PY, r'__version__ = "([^"]+)"', failures
+    )
+    check(
+        "icpp-pro pyproject.toml icpp-binaryen pin",
+        binaryen_version,
+        extract(PYPROJECT, r'"icpp-binaryen>=([^"]+)"', failures),
+        failures,
+    )
+
     check(
         "icpp-demos requirements.txt icpp-pro pin",
         version,

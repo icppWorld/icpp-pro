@@ -89,10 +89,12 @@ def upgrade_test(
             typer.echo(f"-- install the released icpp-pro ({pin}) in a venv")
             run_step(f'"{sys.executable}" -m venv "{venv}"', canister_dir, log, True)
             run_step(f'"{pip}" install --quiet "{pin}"', canister_dir, log, True)
-            # A canister project may need its own deps for the build (e.g.
-            # llama_cpp_canister's post_wasm optimizer needs binaryen). Its
-            # requirements.txt is installed last, so a project's own icpp-pro
-            # pin defines the released baseline being upgraded from.
+            # A canister project may need its own deps for the build (e.g. a
+            # post_wasm_function's imports). icpp-binaryen, which powers the
+            # built-in globals-limit fix, now comes in as an icpp-pro
+            # dependency rather than a per-project one. The project's
+            # requirements.txt is installed last, so its own icpp-pro pin
+            # defines the released baseline being upgraded from.
             if (canister_dir / "requirements.txt").exists():
                 typer.echo("-- install the canister project's requirements")
                 run_step(

@@ -10,6 +10,10 @@ on:
       # orchestration), so changes there must re-run the matrix
       - "scripts/**"
       - "Makefile"
+      # a dependency pin change alters what actually gets built and installed,
+      # so it must re-run the matrix (an arch-broken wheel from a pinned
+      # dependency is exactly the kind of failure only this matrix sees)
+      - "pyproject.toml"
       - ".github/trigger.txt"
       - ".github/workflows/cicd-mac.yml"
 

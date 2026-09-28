@@ -167,3 +167,12 @@ TMP-*
 # working notes, and the shareable copy of anything worth keeping is the
 # published artifact, not a file in this repo.
 todo/
+
+# Cross-agent handoff documents. Local-only: one Claude Code session writes a
+# task here for the session that owns another repo, which reports back in the
+# same file. In-flight coordination, never repo state.
+_handoff/
+
+# The IC identity to deploy this repo to mainnet as. Per developer, per
+# machine - which is exactly why it is not committed.
+.icp-identity

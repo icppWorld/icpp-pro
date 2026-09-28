@@ -172,8 +172,39 @@ path for that repo, and treat docs + demos as the local tier.
 
 Each sibling manages its own test identity (`icpp-demos-testing`,
 `llama-cpp-testing`); nothing ever touches the machine-wide active identity.
-Sibling deps install into the dev env with `make install-python-w-demos` /
-`make install-python-w-llama_cpp_canister`.
+
+### The environment these tiers run in
+
+**This is load-bearing, not housekeeping.** `siblings-verify-api` shells out to
+the sibling repos, and each one runs whatever `icpp` is on the `PATH`. The tier
+only tells you something about the code you are developing if the environment
+is running an **editable install of this working tree**.
+
+It is easy for it not to be. Every sibling's `requirements.txt` pins icpp-pro
+from PyPI:
+
+| Sibling            | Pin                  | Effect on an editable dev install              |
+|--------------------|----------------------|------------------------------------------------|
+| icpp-demos         | `icpp-pro>=X.Y.Z`    | harmless while the dev version satisfies it    |
+| llama_cpp_canister | `icpp-pro==X.Y.Z`    | **replaces it** unless the versions match exactly |
+
+So the order of installation decides what gets tested. The
+`install-python-w-*` targets install the sibling's `requirements.txt` **first**
+and let the editable install overwrite it afterwards; they then run
+`make verify-dev-install`, which asserts `icpp` and `icpp_candid` import from
+this tree. `siblings-verify-api` depends on that check, so a clobbered
+environment fails loudly instead of quietly verifying the released icpp-pro.
+
+Pick the env for the tier, per README-contributors-guide.md:
+
+| Tier                                   | conda env                     | Prepare with                                 |
+|----------------------------------------|-------------------------------|----------------------------------------------|
+| Ceremony 3 (icpp-pro's own tests)      | `icpp-pro`                    | `make install-python`                        |
+| `siblings-verify-api` (docs + demos)   | `icpp-pro-w-demos`            | `make install-python-w-demos`                |
+| llama legs, `make upgrade-test-llama`  | `icpp_pro_w_llama_cpp_canister` | `make install-python-w-llama_cpp_canister` |
+
+If you ever hand-install a sibling's requirements, re-run
+`make verify-dev-install` before trusting the result.
 
 ## Ceremony 5 — Document
 

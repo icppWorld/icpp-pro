@@ -17,7 +17,9 @@ proves nothing about the code being developed. This check turns that into a
 loud error.
 """
 
+import shutil
 import sys
+import sysconfig
 from pathlib import Path
 
 ROOT_PATH = Path(__file__).parent.parent.resolve()
@@ -41,6 +43,23 @@ def installed_location(package: str) -> Path | None:
     return Path(module_file).resolve().parent
 
 
+def icpp_on_path_failure() -> str | None:
+    """Why the `icpp` on PATH is not this interpreter's, or None when it is.
+
+    The imports above only prove what THIS interpreter sees. The siblings run
+    the `icpp` executable found on PATH, which is only the same install when it
+    is the console script in this interpreter's own scripts directory.
+    """
+    found = shutil.which("icpp")
+    if found is None:
+        return "icpp: no executable on PATH"
+    actual = Path(found).resolve()
+    expected = (Path(sysconfig.get_path("scripts")) / "icpp").resolve()
+    if actual != expected:
+        return f"icpp: PATH runs {actual}\n      expected {expected}"
+    return None
+
+
 def main() -> int:
     """Verify every package resolves into this working tree."""
     failures = []
@@ -54,6 +73,12 @@ def main() -> int:
             )
         else:
             print(f"  ✅ {package}: editable, this tree")
+
+    path_failure = icpp_on_path_failure()
+    if path_failure is None:
+        print("  ✅ icpp on PATH: this interpreter's")
+    else:
+        failures.append(path_failure)
 
     if failures:
         print("\n❌ the environment is NOT running this working tree:")

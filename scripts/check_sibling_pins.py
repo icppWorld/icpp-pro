@@ -17,8 +17,8 @@ Checked:
     icpp-pro, whereas icpp-binaryen's major component IS the bundled Binaryen
     version (116), so it tracks its own version.py, not icpp-pro's.
 (5) black / pylint / mypy pins are identical across icpp-pro (pyproject.toml),
-    icpp-demos (requirements.txt) and llama_cpp_canister
-    (scripts/requirements.txt)
+    icpp-candid (pyproject.toml), icpp-demos (requirements.txt) and
+    llama_cpp_canister (scripts/requirements.txt)
 
 A failure during a release is informative, not fatal: the release guide bumps
 icpp-pro/icpp-candid first, and this checker names every sibling file that
@@ -42,6 +42,7 @@ REPOS_PATH = ROOT_PATH.parent
 VERSION_PY = ROOT_PATH / "src/icpp/version.py"
 CANDID_VERSION_PY = ROOT_PATH / "icpp-candid/src/icpp_candid/version.py"
 PYPROJECT = ROOT_PATH / "pyproject.toml"
+CANDID_PYPROJECT = ROOT_PATH / "icpp-candid/pyproject.toml"
 DEMOS_REQUIREMENTS = REPOS_PATH / "icpp-demos/requirements.txt"
 LLAMA_REQUIREMENTS = REPOS_PATH / "llama_cpp_canister/requirements.txt"
 LLAMA_SCRIPTS_REQUIREMENTS = REPOS_PATH / "llama_cpp_canister/scripts/requirements.txt"
@@ -137,6 +138,12 @@ def main() -> int:
 
     for tool in LINTERS:
         reference = extract(PYPROJECT, rf'"{tool}==([^"]+)"', failures)
+        check(
+            f"icpp-candid {tool} pin",
+            reference,
+            extract(CANDID_PYPROJECT, rf'"{tool}==([^"]+)"', failures),
+            failures,
+        )
         check(
             f"icpp-demos {tool} pin",
             reference,

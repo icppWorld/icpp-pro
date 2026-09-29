@@ -268,14 +268,12 @@ required — it exists to scope the OIDC claim).
 
 ## Follow up steps
 
-- Redeploy greet canister to IC. Name the identity that controls the canister
-  on mainnet - the machine-wide active identity is usually `anonymous`, which
-  cannot deploy. The name is in `.icp-identity` at the repo root (git-ignored,
-  one line, per developer - see README-contributors-guide.md):
+- Redeploy greet canister to IC, as the identity that controls it on mainnet.
+  The machine-wide active identity is usually `anonymous`, which cannot deploy,
+  so the name comes from `.icp-identity` at the repo root (git-ignored, one
+  line, per developer - see README-contributors-guide.md):
   ```
-  cd src/icpp/canisters/greet
-  icpp build-wasm
-  icp deploy --environment ic --yes --identity $(awk 'NF && substr($1,1,1) != "#" {print $1; exit}' ../../../../.icp-identity)
+  make greet-deploy-ic
   ```
 - Bump the sibling version pins to the released version, then verify with
   `make check-sibling-pins` until green:
@@ -293,9 +291,7 @@ required — it exists to scope the OIDC claim).
 - Announcement in OpenChat
 - Update icpp-demos
   - Redeploy canister of api-reference, as the identity in icpp-demos'
-    own `.icp-identity`:
+    own `.icp-identity` (from icpp-demos):
     ```
-    cd canisters/api_reference
-    icpp build-wasm
-    icp deploy --environment ic --yes --identity $(awk 'NF && substr($1,1,1) != "#" {print $1; exit}' ../../.icp-identity)
+    make api-reference-deploy-ic
     ```

@@ -71,7 +71,14 @@ make install-python-w-icpp-llm
 # (-) When developing icpp-pro, icpp-candid & llama_cpp_canister
 make install-python-w-llama_cpp_canister
 
-# Verify all packages are correctly installed in editable mode
+# Verify all packages are correctly installed in editable mode.
+# Do not skip this: each sibling's requirements.txt pins icpp-pro from PyPI, so
+# a hand-installed requirements file can replace the editable install with a
+# released wheel - after which the sibling verification tiers silently test the
+# RELEASED icpp-pro instead of your working tree.
+make verify-dev-install
+#  -> ✅ dev install verified: icpp-pro & icpp-candid are this working tree
+
 % pip list
 icpp-candid        4.2.2       /Users/arjaan/icppWorld/repos/icpp-pro/icpp-candid
 icpp-pro           4.2.2       /Users/arjaan/icppWorld/repos/icpp-pro
@@ -87,6 +94,30 @@ rust             version: 1.79.0
 # Activate command completion
 icpp --install-completion
 ```
+
+### The mainnet deploy identity: `.icp-identity`
+
+Deploying anything to the IC needs an identity that controls the canister. The
+machine-wide active identity (`icp identity default`) is deliberately never
+used - it is usually `anonymous`, which cannot deploy, and it is shared with
+every other process on the machine.
+
+Instead, put the name of your identity in `.icp-identity` at the repo root. The
+file is git-ignored, because the right name differs per developer:
+
+```bash
+icp identity list                 # find or create the name
+echo "my-mainnet-identity" > .icp-identity
+```
+
+The first non-comment, non-blank line is the name. Tooling reads it and passes
+it as `icp --identity`; a missing or empty file fails with a clear message
+rather than silently deploying as `anonymous`. The sibling repos that deploy
+(icpp-demos, icpp-docs) each carry their own `.icp-identity`.
+
+This is separate from the **test** identity. Tests take their identity from
+`pytest --identity <name>` or `$ICPP_PRO_TEST_IDENTITY` (default
+`icpp-pro-testing`, created by the Makefile) and never deploy to mainnet.
 
 ### Install wasi-sdk & rust
 

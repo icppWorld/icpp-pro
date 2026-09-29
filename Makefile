@@ -140,11 +140,17 @@ upgrade-test-llama: icpp-pro-test-identity
 	$(MAKE) -C $(SIBLING_LLAMA_CPP_CANISTER) build-info-cpp-wasm
 	@python -m scripts.upgrade_test --canister-dir $(SIBLING_LLAMA_CPP_CANISTER) --pytest-before "pytest -vv --network=local test/test_canister_functions.py" --pytest-after "pytest -vv --network=local test/test_canister_functions.py"
 
+# Sibling verification runs whatever `icpp` is on the PATH, so it only means
+# something when that is this working tree. See scripts/verify_dev_install.py.
+.PHONY: verify-dev-install
+verify-dev-install:
+	@python -m scripts.verify_dev_install
+
 # The tier to run after changes to the public surface (headers, IC_API,
 # conftest_base, smoketest): cheap docs build, the demos suite, and the
 # llama_cpp_canister native tests.
 .PHONY: siblings-verify-api
-siblings-verify-api:
+siblings-verify-api: verify-dev-install
 	$(MAKE) -C $(SIBLING_ICPP_DOCS) mkdocs-build
 	$(MAKE) -C $(SIBLING_ICPP_DEMOS) all-tests
 	$(MAKE) -C $(SIBLING_LLAMA_CPP_CANISTER) test-llm-native
@@ -305,6 +311,14 @@ install-jp-mac:
 install-homebrew-mac:
 	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
+# Bootstrapping pip is its own target because the install-python-w-* targets
+# must install a sibling's requirements BEFORE the editable installs, and that
+# needs a working pip first.
+.PHONY: install-python-bootstrap
+install-python-bootstrap:
+	python -m ensurepip --upgrade
+	python -m pip install --upgrade pip
+
 .PHONY: install-python
 install-python:
 	# Use `python -m pip` rather than `pip`. On GitHub macOS runners the
@@ -326,32 +340,41 @@ install-python:
 
 .PHONY: install-python-w-demos
 install-python-w-demos:
-	# See the install-python comment above for `ensurepip` and `python -m pip`.
-	python -m ensurepip --upgrade
-	python -m pip install --upgrade pip
-	cd icpp-candid && rm -rf src/*.egg-info && python -m pip install -e ".[dev]"
-	rm -rf src/*.egg-info
-	python -m pip install -e ".[dev]"
+	# Order matters. icpp-demos pins `icpp-pro>=X.Y.Z` from PyPI.
+	# Installing it FIRST and letting the editable install overwrite it is what
+	# keeps `icpp` pointing at this working tree; the other order leaves the
+	# released wheel in place and every sibling verification then silently
+	# tests the RELEASED icpp-pro instead of the code being developed.
+	$(MAKE) install-python-bootstrap
 	cd ../icpp-demos && python -m pip install -r requirements.txt
+	$(MAKE) install-python
+	$(MAKE) verify-dev-install
 
 
 .PHONY: install-python-w-icpp-llm
 install-python-w-icpp-llm:
-	python -m ensurepip --upgrade
-	python -m pip install --upgrade pip
-	cd icpp-candid && rm -rf src/*.egg-info && python -m pip install -e ".[dev]"
-	rm -rf src/*.egg-info
-	python -m pip install -e ".[dev]"
+	# Order matters. That sibling pins icpp-pro from PyPI.
+	# Installing it FIRST and letting the editable install overwrite it is what
+	# keeps `icpp` pointing at this working tree; the other order leaves the
+	# released wheel in place and every sibling verification then silently
+	# tests the RELEASED icpp-pro instead of the code being developed.
+	$(MAKE) install-python-bootstrap
 	cd ../icpp_llm && python -m pip install -r requirements.txt
+	$(MAKE) install-python
+	$(MAKE) verify-dev-install
 
 .PHONY: install-python-w-llama_cpp_canister
 install-python-w-llama_cpp_canister:
-	python -m ensurepip --upgrade
-	python -m pip install --upgrade pip
-	cd icpp-candid && rm -rf src/*.egg-info && python -m pip install -e ".[dev]"
-	rm -rf src/*.egg-info
-	python -m pip install -e ".[dev]"
+	# Order matters. llama pins `icpp-pro==X.Y.Z` EXACTLY, so pip downgrades the dev tree to
+	# that released version unless the two happen to match.
+	# Installing it FIRST and letting the editable install overwrite it is what
+	# keeps `icpp` pointing at this working tree; the other order leaves the
+	# released wheel in place and every sibling verification then silently
+	# tests the RELEASED icpp-pro instead of the code being developed.
+	$(MAKE) install-python-bootstrap
 	cd ../llama_cpp_canister && python -m pip install -r requirements.txt
+	$(MAKE) install-python
+	$(MAKE) verify-dev-install
 
 # .PHONY:install-rust
 # install-rust:

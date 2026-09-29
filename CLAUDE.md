@@ -116,7 +116,7 @@ Every canister supports two build targets configured in `icpp.toml`:
 - **Python linting:** pylint 3.3.4
 - **Python type checking:** mypy 1.13.0 (strict mode)
 - Linter pins live in `pyproject.toml` and are kept identical across
-  icpp-demos and llama_cpp_canister — verified by `make check-sibling-pins`
+  icpp-candid, icpp-demos and llama_cpp_canister — verified by `make check-sibling-pins`
 - **C++ formatting:** clang-format from wasi-sdk
 - **Pre-commit hook:** `cp pre-commit-mac .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`
 

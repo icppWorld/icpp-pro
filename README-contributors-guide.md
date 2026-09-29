@@ -18,7 +18,7 @@ git clone https://github.com/icppWorld/icpp-pro
 cd icpp-pro
 git clone https://github.com/icppWorld/icpp-candid
 
-# When developing icpp-pro AND icpp_llm, llama_cpp_canister
+# When developing icpp-pro AND icpp-demos, llama_cpp_canister
 # clone those repos as siblings of icpp-pro
 ```
 
@@ -32,9 +32,6 @@ conda activate icpp-pro
 # (-) When developing icpp-pro, icpp-candid & icpp-demos
 conda create --name icpp-pro-w-demos python=3.11
 conda activate icpp-pro-w-demos
-# (-) When developing icpp-pro, icpp-candid & icpp-llm
-conda create --name icpp-pro-w-icpp-llm python=3.11
-conda activate icpp-pro-w-icpp-llm
 # (-) When developing icpp-pro, icpp-candid & llama_cpp_canister
 conda create --name icpp_pro_w_llama_cpp_canister python=3.11
 conda activate icpp_pro_w_llama_cpp_canister
@@ -44,7 +41,6 @@ conda activate icpp_pro_w_llama_cpp_canister
 # `./icpp-pro`
 # `./icpp-pro/icpp-candid`
 # `./icpp-demos`
-# `./icpp_llm`
 # `./llama_cpp_canister`
 # `./llama_cpp_canister/src/llama_cpp_onicai_fork`
 
@@ -66,8 +62,6 @@ cd icpp-pro
 make install-python
 # (-) When developing icpp-pro, icpp-candid & icpp-demos
 make install-python-w-demos
-# (-) When developing icpp-pro, icpp-candid & icpp-llm
-make install-python-w-icpp-llm
 # (-) When developing icpp-pro, icpp-candid & llama_cpp_canister
 make install-python-w-llama_cpp_canister
 
@@ -110,10 +104,13 @@ icp identity list                 # find or create the name
 echo "my-mainnet-identity" > .icp-identity
 ```
 
-The first non-comment, non-blank line is the name. Tooling reads it and passes
-it as `icp --identity`; a missing or empty file fails with a clear message
-rather than silently deploying as `anonymous`. The sibling repos that deploy
-(icpp-demos, icpp-docs) each carry their own `.icp-identity`.
+The first non-comment, non-blank line is the name. The mainnet deploy targets
+(`make greet-deploy-ic` here, `make api-reference-deploy-ic` in icpp-demos,
+`make icp-deploy` in icpp-docs) read it and pass it as `icp --identity`; a
+missing or empty file fails with a clear message rather than silently
+deploying as `anonymous`. Override it for one run with `IDENTITY=<name>`. The
+sibling repos that deploy (icpp-demos, icpp-docs) each carry their own
+`.icp-identity`.
 
 This is separate from the **test** identity. Tests take their identity from
 `pytest --identity <name>` or `$ICPP_PRO_TEST_IDENTITY` (default

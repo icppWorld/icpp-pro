@@ -104,6 +104,27 @@ icpp-pro-test-identity:
 	@icp identity principal --identity "$(ICPP_PRO_TEST_IDENTITY)" >/dev/null 2>&1 || \
 	  icp identity new "$(ICPP_PRO_TEST_IDENTITY)" --storage plaintext
 
+# The identity to deploy to mainnet as. It must control the greet canister.
+# Read from `.icp-identity`, which is per developer and never committed. Override
+# with `make greet-deploy-ic IDENTITY=foo`. This is NOT the test identity above.
+# ("\043" is octal for the comment character: a literal one here would start
+#  a Makefile comment and swallow the rest of the $(shell ...) call.)
+IDENTITY ?= $(shell awk 'NF && substr($$1,1,1) != "\043" {print $$1; exit}' .icp-identity 2>/dev/null)
+
+# Fail early and clearly rather than letting `icp deploy --identity ""` run.
+.PHONY: require-identity
+require-identity:
+	@test -n "$(IDENTITY)" || { \
+	  echo "ERROR: no deploy identity configured."; \
+	  echo "Put the name of your IC identity on a line in .icp-identity"; \
+	  echo "(the file is git-ignored). Your identities:"; \
+	  icp identity list 2>/dev/null | sed 's/^/    /'; \
+	  exit 1; }
+
+.PHONY: greet-deploy-ic
+greet-deploy-ic: require-identity
+	cd src/icpp/canisters/greet && icpp build-wasm && icp deploy --environment ic --yes --identity $(IDENTITY)
+
 .PHONY: all-canister-native
 all-canister-native:
 	@python -m scripts.all_canister_native
@@ -350,18 +371,6 @@ install-python-w-demos:
 	$(MAKE) install-python
 	$(MAKE) verify-dev-install
 
-
-.PHONY: install-python-w-icpp-llm
-install-python-w-icpp-llm:
-	# Order matters. That sibling pins icpp-pro from PyPI.
-	# Installing it FIRST and letting the editable install overwrite it is what
-	# keeps `icpp` pointing at this working tree; the other order leaves the
-	# released wheel in place and every sibling verification then silently
-	# tests the RELEASED icpp-pro instead of the code being developed.
-	$(MAKE) install-python-bootstrap
-	cd ../icpp_llm && python -m pip install -r requirements.txt
-	$(MAKE) install-python
-	$(MAKE) verify-dev-install
 
 .PHONY: install-python-w-llama_cpp_canister
 install-python-w-llama_cpp_canister:

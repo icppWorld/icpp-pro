@@ -1,0 +1,15 @@
+type UpgradeRecord = record {
+    init_count : nat64;
+    pre_upgrade_count : nat64;
+    post_upgrade_count : nat64;
+    init_caller : text;
+    pre_upgrade_caller : text;
+    post_upgrade_caller : text;
+    init_self : text;
+    pre_upgrade_self : text;
+    post_upgrade_self : text;
+};
+
+service : {
+    "get_upgrade_record" : () -> (UpgradeRecord) query;
+};

@@ -13,6 +13,11 @@ and re-verify them after an upgrade via the `run_after_upgrade` marker):
 3. Rebuild the same source with the dev icpp (this environment); redeploy with
    `--mode upgrade`; run the `run_after_upgrade`-marked tests.
 
+`make upgrade-test` also runs this flow against test/canisters/canister_upgrade,
+whose canister_pre_upgrade & canister_post_upgrade hooks construct an IC_API
+and record that they ran. That canister needs a released version >= 6.1.0:
+older releases trap in pre_upgrade, which is the bug it guards against.
+
 Prerequisites: the contributors-guide setup with the target project's extras
 (`make install-python-w-demos` for the default canister,
 `make install-python-w-llama_cpp_canister` for `make upgrade-test-llama`),

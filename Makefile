@@ -146,8 +146,18 @@ check-sibling-pins:
 
 # Backward-compatibility gate: a canister built & deployed with the released
 # icpp-pro must upgrade in place to a build from this dev tree, state intact.
+# canister_upgrade runs first: it needs no sibling repo and fails fast.
 .PHONY: upgrade-test
-upgrade-test: icpp-pro-test-identity
+upgrade-test: upgrade-test-canister-upgrade upgrade-test-demos-files
+
+# The released wasm's canister_pre_upgrade runs on a real replica here - the
+# one path CI's dev->dev upgrade cannot cover. Needs a release >= 6.1.0.
+.PHONY: upgrade-test-canister-upgrade
+upgrade-test-canister-upgrade: icpp-pro-test-identity
+	@python -m scripts.upgrade_test --canister-dir test/canisters/canister_upgrade --pytest-before "pytest -vv --network=local test/test_apis.py" --pytest-after "pytest -vv --network=local test/test_after_upgrade.py"
+
+.PHONY: upgrade-test-demos-files
+upgrade-test-demos-files: icpp-pro-test-identity
 	@python -m scripts.upgrade_test
 
 # Same gate against the heaviest downstream consumer: build & deploy

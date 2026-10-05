@@ -15,7 +15,7 @@ icpp-pro, then run the target from the icpp-pro repo root:
 | Internal only                                                | nothing (icpp-pro tests suffice)|
 | Public surface (headers, IC_API, conftest_base, smoketest)   | `make siblings-verify-api`      |
 | Build machinery / toolchain / anything wasm-affecting        | `make siblings-verify-api` + `make -C ../llama_cpp_canister docker-build-wasm test-llm-wasm-prebuilt` |
-| Release                                                      | `make siblings-verify-full`     |
+| Release (before tagging)                                     | `make siblings-verify-api`      |
 
 What the targets do:
 
@@ -25,7 +25,9 @@ What the targets do:
   an x86_64 host (ggml `arch/x86/` sources are hard-coded in its icpp.toml);
   on an arm64 Mac it fails at link time — rely on llama's CI for that leg.
 - `siblings-verify-full` = the above + llama docker wasm build & prebuilt
-  pytest (heavy: docker + models; used at release).
+  pytest (heavy: docker + models). Run it after the release, once llama's
+  pin is bumped: before that, its docker build installs the previous
+  icpp-pro from PyPI.
 
 Also useful:
 

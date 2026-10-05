@@ -20,8 +20,9 @@ of truth. The gates and follow-ups to not skip:
 3. `make upgrade-test` — a canister deployed with the previous PyPI release
    must upgrade in place to the release candidate, state intact. This gate is
    mandatory at release.
-4. `make siblings-verify-full` — the full trio including the llama docker
-   wasm build (hours; plan for it).
+4. `make siblings-verify-api` — docs, demos and llama native against the dev
+   install. NOT `siblings-verify-full`: before the release, llama's docker
+   build can only install the previous icpp-pro from PyPI.
 5. The release guide's own testing matrix (python 3.11-3.14, wheel installs,
    demo scripts with the grep-based log verification, the definitive pytest).
 
@@ -50,6 +51,8 @@ until green:
   the `name: &base_name ...icpp-X.Y.Z` literal). The wasm hash changes — the
   llama repo has its own release process
   (`llama_cpp_canister/.claude/skills/llama_cpp_canister-release`).
+  With the pin bumped, run `make siblings-verify-full` — the llama docker
+  wasm leg against the published release (hours; plan for it).
 - `icpp-docs`: `mkdocs.yml` nav version label, `docs/index.md`,
   `docs/release-notes.md`; then `make -C ../icpp-docs site-build` and
   `make -C ../icpp-docs icp-deploy`.

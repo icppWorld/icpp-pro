@@ -158,12 +158,15 @@ path.
 | Internal only (no public header / API / build change)       | nothing beyond Ceremony 3       |
 | Public surface: headers, `IC_API`, `conftest_base`, `smoketest` | `make siblings-verify-api`  |
 | Build machinery, toolchain versions, anything wasm-affecting | `make siblings-verify-api` **plus** `make -C ../llama_cpp_canister docker-build-wasm test-llm-wasm-prebuilt` |
-| Release                                                      | `make siblings-verify-full`     |
+| Release (before tagging)                                     | `make siblings-verify-api`      |
 
 `make siblings-verify-api` = icpp-docs `mkdocs-build` (cheap — a moved include
 marker fails loudly) + icpp-demos `all-tests` + llama_cpp_canister
 `test-llm-native`. `make siblings-verify-full` adds the wasm-hash-sensitive
-llama docker build + prebuilt-wasm pytest (heavy: docker + models).
+llama docker build + prebuilt-wasm pytest (heavy: docker + models). It runs
+after the llama_cpp_canister pin bump. Before the release, llama's docker
+build can only install the previous icpp-pro from PyPI (its `docker-compose.yml`
+pins the version), so it would not exercise the release at all.
 
 Host caveat: llama's `test-llm-native` needs an x86_64 host (its `icpp.toml`
 hard-codes ggml `arch/x86/` sources — see the note there). On an arm64 Mac
@@ -256,7 +259,8 @@ gates added by this guide:
 
 - `make check-sibling-pins` — before and after the sibling pin bumps.
 - `make upgrade-test` — the released → release-candidate upgrade must be clean.
-- `make siblings-verify-full` — the full trio, mandatory.
+- `make siblings-verify-api` — the trio against the dev install, mandatory.
+- `make siblings-verify-full` — after the llama pin bump, against the release.
 - Sibling pin bumps (exact locations are in the release guide follow-ups):
   icpp-demos `requirements.txt`, llama_cpp_canister `requirements.txt` +
   `docker/docker-compose.yml` (two spots), icpp-docs version labels.

@@ -17,7 +17,7 @@ All repos are cloned as siblings, per the contributors guide:
 | Repo                 | What it is                            | Couples to icpp-pro via                                                     |
 |----------------------|---------------------------------------|-----------------------------------------------------------------------------|
 | `icpp-pro`           | The CDK (this repo)                   | —                                                                            |
-| `icpp-pro/icpp-candid` | C++ Candid library, nested clone    | Same version number, always; `pyproject.toml` pin `icpp-candid>=X.Y.Z`       |
+| `icpp-pro/icpp-candid` | C++ Candid library, nested clone    | Same version number, always; `pyproject.toml` pin `icpp-candid==X.Y.Z`       |
 | `icpp-demos`         | Example canisters                     | PyPI `icpp-pro>=X.Y.Z` in `requirements.txt`; test identity `icpp-demos-testing` |
 | `icpp-docs`          | MkDocs site → https://docs.icpp.world | `{%include%}`s icpp-pro & icpp-demos **source files by relative path**, anchored on `// docs start:` / `// docs end:` markers |
 | `llama_cpp_canister` | llama.cpp as a C++ canister           | PyPI `icpp-pro==X.Y.Z` in `requirements.txt` AND `docker/docker-compose.yml`; wasm-hash sensitive; test identity `llama-cpp-testing` |

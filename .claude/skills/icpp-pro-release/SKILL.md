@@ -15,7 +15,7 @@ of truth. The gates and follow-ups to not skip:
 1. `make check-sibling-pins` — see what will need bumping.
 2. Version bump, same version in both repos: `icpp-pro/src/icpp/version.py`
    and `icpp-candid/src/icpp_candid/version.py`, plus the
-   `icpp-candid>=X.Y.Z` pin in icpp-pro's `pyproject.toml`. Push icpp-candid
+   `icpp-candid==X.Y.Z` pin in icpp-pro's `pyproject.toml`. Push icpp-candid
    first (icpp-pro CI needs it).
 3. `make upgrade-test` — a canister deployed with the previous PyPI release
    must upgrade in place to the release candidate, state intact. This gate is

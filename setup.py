@@ -4,6 +4,7 @@ See:
 https://packaging.python.org/guides/distributing-packages-using-setuptools/
 https://github.com/pypa/sampleproject
 """
+
 import sys
 import pathlib
 from setuptools import setup, find_packages  # type: ignore
@@ -71,6 +72,7 @@ setup(
             "ic/*/*.cpp",
             "ic/*/*.h",
             "ic/*/*.hpp",
+            "cargo_locks/*.Cargo.lock",
             "py.typed",
         ],
     },

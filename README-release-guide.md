@@ -28,7 +28,7 @@ We follow the version naming convention for python packages ([pep-0440](https://
 - In icpp-pro repo, update the icpp-candid dependency in `pyproject.toml`:
   ```toml
   dependencies = [
-    "icpp-candid>=x.y.z",    # Update to match the new version
+    "icpp-candid==x.y.z",    # Update to match the new version
   ```
 - Push `icpp-candid` first, because the cicd of `icpp-pro` depends on that
 - Push `icpp-pro`
@@ -214,7 +214,7 @@ them to PyPI with [trusted publishing](https://docs.pypi.org/trusted-publishers/
 (OIDC). There is no API token, no `.pypirc`, and nothing is ever uploaded from
 a laptop.
 
-Tag **icpp-candid first**: icpp-pro pins `icpp-candid>=X.Y.Z`, and icpp-pro's
+Tag **icpp-candid first**: icpp-pro pins `icpp-candid==X.Y.Z`, and icpp-pro's
 release workflow refuses to publish until that exact version is on PyPI.
 
 ```bash

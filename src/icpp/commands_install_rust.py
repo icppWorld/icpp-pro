@@ -2,7 +2,9 @@
 
 import sys
 import platform
+import shutil
 import subprocess
+from pathlib import Path
 import typer
 from icpp.__main__ import app
 from icpp import config_default
@@ -15,6 +17,11 @@ OS_PROCESSOR = platform.processor()
 
 LOG_FILE = config_default.ICPP_LOGS / "install_rust.log"
 TIMEOUT_SECONDS = 1000
+
+# Both tools are pinned by git commit, but neither commit pins its crates.io
+# dependencies, so without these lockfiles the build resolves whatever is newest
+# and the wasm hash drifts. Regenerate them when bumping either commit.
+CARGO_LOCKS = Path(__file__).parent / "cargo_locks"
 
 
 def install_rustup(nstep: int, num_steps: int) -> None:
@@ -70,8 +77,12 @@ def install_wasi2ic(nstep: int, num_steps: int) -> None:
         timeout_seconds=TIMEOUT_SECONDS,
     )
 
+    shutil.copyfile(
+        CARGO_LOCKS / "wasi2ic.Cargo.lock",
+        config_default.RUST_COMPILER_ROOT / "wasi2ic" / "Cargo.lock",
+    )
     cmd = (
-        f"{config_default.CARGO} install "
+        f"{config_default.CARGO} install --locked "
         f" --path {config_default.RUST_COMPILER_ROOT / 'wasi2ic'} "
     )
     run_shell_cmd_with_log(
@@ -110,7 +121,11 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
         timeout_seconds=TIMEOUT_SECONDS,
     )
 
-    cmd = f"{config_default.CARGO} build --release --target wasm32-wasip1 "
+    shutil.copyfile(
+        CARGO_LOCKS / "ic-wasi-polyfill.Cargo.lock",
+        config_default.RUST_COMPILER_ROOT / "ic-wasi-polyfill" / "Cargo.lock",
+    )
+    cmd = f"{config_default.CARGO} build --locked --release --target wasm32-wasip1 "
 
     #
     # The 'transient' feature use the transient file system implementation.

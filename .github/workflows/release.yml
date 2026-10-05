@@ -9,7 +9,7 @@ name: release
 #   workflow `release.yml`, environment `pypi`.
 # - GitHub environment `pypi` on this repo.
 #
-# icpp-candid must be published FIRST: icpp-pro pins `icpp-candid>=X.Y.Z` and
+# icpp-candid must be published FIRST: icpp-pro pins `icpp-candid==X.Y.Z` and
 # the build job below refuses to continue until that exact version is on PyPI.
 # See README-release-guide.md for the full ceremony.
 

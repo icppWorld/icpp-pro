@@ -92,7 +92,7 @@ def main() -> int:
     check(
         "icpp-pro pyproject.toml icpp-candid pin",
         version,
-        extract(PYPROJECT, r'"icpp-candid>=([^"]+)"', failures),
+        extract(PYPROJECT, r'"icpp-candid==([^"]+)"', failures),
         failures,
     )
     # icpp-binaryen is NOT version-locked to icpp-pro - its expected value is
@@ -103,7 +103,7 @@ def main() -> int:
     check(
         "icpp-pro pyproject.toml icpp-binaryen pin",
         binaryen_version,
-        extract(PYPROJECT, r'"icpp-binaryen>=([^"]+)"', failures),
+        extract(PYPROJECT, r'"icpp-binaryen==([^"]+)"', failures),
         failures,
     )
 

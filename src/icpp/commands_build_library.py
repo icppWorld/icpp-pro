@@ -1,11 +1,11 @@
 """Handles 'icpp build-library'"""
 
 # pylint: disable = too-many-statements
+import functools
 import os
 import sys
 import subprocess
 import shutil
-import concurrent.futures
 from typing import Annotated, Optional
 from pathlib import Path
 import typer
@@ -14,7 +14,7 @@ from icpp import __version__
 from icpp.__main__ import app
 
 from icpp import config_default
-from icpp.run_shell_cmd import run_shell_cmd
+from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
 
 from icpp.decorators import requires_wasi_sdk, requires_rust, requires_native_compiler
 from icpp.options_build import (
@@ -156,13 +156,14 @@ def build_library(
                             f"Compiling C++ files for library: {library['lib_name']}"
                         )
                         typer.echo(f"Compile command: {cpp_compile_cmd_mine}")
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            executor.map(
-                                lambda file, cpp_compile_cmd=cpp_compile_cmd_mine, build_path=build_path: cpp_compile_file_mine(  # pylint: disable=line-too-long
-                                    file, cpp_compile_cmd, build_path
-                                ),
-                                cpp_files_list,
-                            )
+                        run_in_parallel(
+                            functools.partial(
+                                cpp_compile_file_mine,
+                                cpp_compile_cmd=cpp_compile_cmd_mine,
+                                path=build_path,
+                            ),
+                            cpp_files_list,
+                        )
                     else:
                         cmd = f"{cpp_compile_cmd_mine} -c {cpp_files}"
 
@@ -182,13 +183,14 @@ def build_library(
                             f"Compiling C files for library: {library['lib_name']}"
                         )
                         typer.echo(f"Compile command: {c_compile_cmd_mine}")
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            executor.map(
-                                lambda file, c_compile_cmd=c_compile_cmd_mine, build_path=build_path: c_compile_file_mine(  # pylint: disable=line-too-long
-                                    file, c_compile_cmd, build_path
-                                ),
-                                c_files_list,
-                            )
+                        run_in_parallel(
+                            functools.partial(
+                                c_compile_file_mine,
+                                c_compile_cmd=c_compile_cmd_mine,
+                                path=build_path,
+                            ),
+                            c_files_list,
+                        )
                     else:
                         cmd = f"{c_compile_cmd_mine} -c {c_files}"
 

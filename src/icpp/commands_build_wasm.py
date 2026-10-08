@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 import subprocess
 import shutil
-import concurrent.futures
 from typing import Annotated
 import typer
 
@@ -15,7 +14,7 @@ from icpp.__main__ import app
 
 from icpp import config_default
 from icpp.icpp_pro_message import icpp_pro_message
-from icpp.run_shell_cmd import run_shell_cmd
+from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
 
 from icpp.decorators import requires_wasi_sdk, requires_rust, requires_native_compiler
 from icpp.options_build import (
@@ -185,8 +184,7 @@ def build_wasm(
                 typer.echo("--")
                 typer.echo("Compiling your C++ files:")
                 typer.echo(f"Compile command: {cpp_compile_cmd_mine()}")
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    executor.map(cpp_compile_file_mine, cpp_files_list)
+                run_in_parallel(cpp_compile_file_mine, cpp_files_list)
             else:
                 cmd = f"{cpp_compile_cmd_mine()} -c {cpp_files}"
 
@@ -202,8 +200,7 @@ def build_wasm(
                 typer.echo("--")
                 typer.echo("Compiling your C files:")
                 typer.echo(f"Compile command: {c_compile_cmd_mine()}")
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    executor.map(c_compile_file_mine, c_files_list)
+                run_in_parallel(c_compile_file_mine, c_files_list)
             else:
                 cmd = f"{c_compile_cmd_mine()} -c {c_files}"
 

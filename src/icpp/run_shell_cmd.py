@@ -1,9 +1,12 @@
 """Utility to run 'cmd' from python as a subprocess"""
 
+import concurrent.futures
 import subprocess
 import re
 from pathlib import Path
-from typing import Optional, Union
+from typing import Callable, Iterable, Optional, TypeVar, Union
+
+T = TypeVar("T")
 
 
 def escape_ansi(line: Optional[str]) -> Optional[str]:
@@ -179,3 +182,14 @@ def run_shell_cmd(
                     stderr=escape_ansi(p_2.stderr),  # type: ignore
                 )
     return capture_stdout
+
+
+def run_in_parallel(func: Callable[[T], object], items: Iterable[T]) -> None:
+    """Calls func on every item in parallel threads; re-raises the first failure.
+
+    Every call runs to completion before this returns or raises.
+    """
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Consuming the results is what surfaces a worker's exception;
+        # executor.map alone would silently drop it.
+        list(executor.map(func, items))

@@ -213,6 +213,44 @@ int unit_test_candid() {
     }
   }
 
+  { // A variant's fields go on the wire sorted by id (hash), whatever the
+    // append order. Hash order is noul, score, choice: append in another order.
+    // Verified with an independent decoder (icp-py-core's icp_candid.decode):
+    // '(vec { variant { choice }; variant { noul }; variant { score } })'
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+
+    CandidTypeVariant v_template;
+    v_template.append("choice", CandidTypeNull{});
+    v_template.append("score", CandidTypeNull{});
+    v_template.append("noul", CandidTypeNull{});
+
+    std::vector<std::string> labels = {"choice", "noul", "score"};
+
+    CandidArgs A;
+    A.append(CandidTypeVecVariant{v_template, labels});
+
+    std::string s = CandidSerialize(A).as_hex_string();
+    if (s !=
+        "4449444c046b03d8b1a8c8047fd2e6e5c6077fe1febe850c7f6b006b03d8b1a8c8047fd2e6e5c6077fe1febe850c7f6d02010303020001")
+      IC_API::trap(std::string(__func__) + ": vec_variant 2");
+  }
+
+  { // An implicit variant field id is the previously appended id + 1, even
+    // though the fields are kept sorted by id
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+
+    CandidTypeVariant v;
+    v.append(CandidTypeNull{});
+    if (v.get_field_ids() != std::vector<uint32_t>{0})
+      IC_API::trap(std::string(__func__) + ": variant implicit id 1");
+
+    v.append(uint32_t(100), CandidTypeNull{});
+    v.append(uint32_t(5), CandidTypeNull{});
+    v.append(CandidTypeNull{});
+    if (v.get_field_ids() != std::vector<uint32_t>{0, 5, 6, 100})
+      IC_API::trap(std::string(__func__) + ": variant implicit id 2");
+  }
+
   // Verify CandidTypePrincipal (https://internetcomputer.org/docs/current/references/id-encoding-spec#decode)
   {
     CandidSerializeTypeTableRegistry::get_instance().clear();

@@ -260,7 +260,8 @@ gates added by this guide:
 - `make check-sibling-pins` — before and after the sibling pin bumps.
 - `make upgrade-test` — the released → release-candidate upgrade must be clean.
 - `make siblings-verify-api` — the trio against the dev install, mandatory.
-- `make siblings-verify-full` — after the llama pin bump, against the release.
+- `make siblings-verify-full` — after the llama pin bump; its Docker /
+  prebuilt-WASM leg checks the published release.
 - Sibling pin bumps (exact locations are in the release guide follow-ups):
   icpp-demos `requirements.txt`, llama_cpp_canister `requirements.txt` +
   `docker/docker-compose.yml` (two spots), icpp-docs version labels.

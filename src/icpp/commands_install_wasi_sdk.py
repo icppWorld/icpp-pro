@@ -7,6 +7,8 @@ from pathlib import Path
 import math
 import tarfile
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import enlighten  # type: ignore
 import typer
 from icpp.__main__ import app
@@ -118,6 +120,11 @@ def install_wasi_sdk() -> None:
         use_progress_bar = True
 
         with requests.Session() as s:
+            # Retries a dropped connection or a server hiccup before giving up.
+            retries = Retry(
+                total=3, backoff_factor=5, status_forcelist=[429, 500, 502, 503, 504]
+            )
+            s.mount("https://", HTTPAdapter(max_retries=retries))
             r = s.get(WASI_SDK_URL, stream=use_progress_bar)
             if r.status_code != 200:
                 typer.echo(

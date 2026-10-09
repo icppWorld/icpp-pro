@@ -19,6 +19,9 @@ OS_PROCESSOR = platform.processor()
 
 LOG_FILE = config_default.ICPP_LOGS / "install_rust.log"
 RUSTUP_INIT_URL = "https://sh.rustup.rs"
+# Retries for steps that can hit a transient network error, such as a reset
+# connection during a git clone.
+NETWORK_RETRIES = 3
 TIMEOUT_SECONDS = 1000
 
 # Both tools are pinned by git commit, but neither commit pins its crates.io
@@ -37,7 +40,7 @@ def install_rustup(nstep: int, num_steps: int) -> None:
     with tempfile.TemporaryDirectory() as tmp_dir:
         rustup_init = shlex.quote(str(Path(tmp_dir) / "rustup-init.sh"))
         cmd = (
-            f'curl --proto "=https" --tlsv1.2 -sSf --retry 3 '
+            f'curl --proto "=https" --tlsv1.2 -sSf --retry {NETWORK_RETRIES} '
             f"-o {rustup_init} {RUSTUP_INIT_URL} "
         )
         run_shell_cmd_with_log(LOG_FILE, "w", cmd, timeout_seconds=TIMEOUT_SECONDS)
@@ -79,6 +82,7 @@ def install_wasi2ic(nstep: int, num_steps: int) -> None:
         cmd,
         cwd=config_default.RUST_COMPILER_ROOT,
         timeout_seconds=TIMEOUT_SECONDS,
+        retries=NETWORK_RETRIES,
     )
 
     cmd = f"git switch --detach {__version_wasi2ic__} "
@@ -122,6 +126,7 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
         cmd,
         cwd=config_default.RUST_COMPILER_ROOT,
         timeout_seconds=TIMEOUT_SECONDS,
+        retries=NETWORK_RETRIES,
     )
 
     cmd = f"git switch --detach {__version_ic_wasi_polyfill__} "

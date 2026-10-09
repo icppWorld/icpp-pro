@@ -197,14 +197,19 @@ make upgrade-test
 
 ## Verify the sibling repos
 
-Mandatory at release: the full trio (icpp-docs build, icpp-demos test suite,
-llama_cpp_canister native + docker wasm tests — the docker leg is hours).
+Mandatory before tagging: icpp-docs build, icpp-demos test suite and
+llama_cpp_canister native tests, all against the dev install.
 
 ```bash
 # from: icpp-pro
 make check-sibling-pins
-make siblings-verify-full
+make siblings-verify-api
 ```
+
+The llama docker wasm leg (`make siblings-verify-full`, hours) runs
+after the llama_cpp_canister pin bump. Before the release, llama's docker
+build can only install the previous icpp-pro from PyPI (its `docker-compose.yml`
+pins the version), so it would not exercise the release at all.
 
 ## Tag & publish
 
@@ -284,6 +289,8 @@ required — it exists to scope the OIDC claim).
     `name: &base_name "llama-cpp-canister-build:icpp-X.Y.Z"` literal.
     The wasm hash changes with an icpp-pro bump: follow the llama repo's own
     release process (`.claude/skills/llama_cpp_canister-release`).
+    With the pin bumped, run the docker wasm leg against the published release:
+    `make siblings-verify-full` (from icpp-pro; hours).
 - Release new docs (the `icpp-docs` repo):
   - Update the version label in `mkdocs.yml` nav, `docs/index.md`, and add the
     release to `docs/release-notes.md`

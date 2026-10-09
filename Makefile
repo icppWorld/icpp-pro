@@ -186,8 +186,9 @@ siblings-verify-api: verify-dev-install
 	$(MAKE) -C $(SIBLING_ICPP_DEMOS) all-tests
 	$(MAKE) -C $(SIBLING_LLAMA_CPP_CANISTER) test-llm-native
 
-# The release tier: everything above plus the wasm-hash-sensitive
-# llama_cpp_canister docker build & prebuilt-wasm test (heavy: docker + models).
+# Everything above plus the wasm-hash-sensitive llama_cpp_canister docker
+# build & prebuilt-wasm test (heavy: docker + models). Run it after a release,
+# once llama's pin is bumped: its docker build installs icpp-pro from PyPI.
 .PHONY: siblings-verify-full
 siblings-verify-full: siblings-verify-api
 	$(MAKE) -C $(SIBLING_LLAMA_CPP_CANISTER) docker-build-wasm test-llm-wasm-prebuilt

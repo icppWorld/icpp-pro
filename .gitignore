@@ -176,3 +176,7 @@ _handoff/
 # The IC identity to deploy this repo to mainnet as. Per developer, per
 # machine - which is exactly why it is not committed.
 .icp-identity
+
+# Written by the canister_upgrade native test run; it removes the file itself,
+# but a crashed run can leave it behind.
+test/canisters/canister_upgrade/upgrade_record.txt

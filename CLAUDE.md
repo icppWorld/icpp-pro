@@ -86,7 +86,9 @@ pytest --network=local
   - `icapi/` - IC API C++ wrappers
   - `pro/` - Pro features
 - `src/icpp/canisters/greet/` - Template canister (used by `icpp init`)
-- `test/canisters/` - Integration test canisters (canister_1, canister_flags, canister_http, etc.)
+- `test/canisters/` - Integration test canisters (canister_1, canister_flags, canister_http, etc.).
+  `canister_upgrade` is upgraded in place by `make all-tests` and `make upgrade-test`,
+  guarding IC_API in `canister_pre_upgrade` / `canister_post_upgrade`
 - `scripts/` - CI orchestration (all_canister_native.py, all_canister_deploy_local_pytest.py)
 - `icpp-candid/` - Nested dependency repo (C++ Candid library, separate PyPI package)
 

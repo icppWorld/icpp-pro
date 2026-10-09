@@ -4,6 +4,7 @@ import sys
 import platform
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 import typer
 from icpp.__main__ import app
@@ -16,6 +17,7 @@ OS_SYSTEM = platform.system()
 OS_PROCESSOR = platform.processor()
 
 LOG_FILE = config_default.ICPP_LOGS / "install_rust.log"
+RUSTUP_INIT_URL = "https://sh.rustup.rs"
 TIMEOUT_SECONDS = 1000
 
 # Both tools are pinned by git commit, but neither commit pins its crates.io
@@ -28,16 +30,26 @@ def install_rustup(nstep: int, num_steps: int) -> None:
     """Installs rustup into user's icpp folder"""
     typer.echo(f"- {nstep}/{num_steps} Installing rustup (be patient...)")
 
-    cmd = (
-        f'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | '
-        f'sh -s -- --no-modify-path -y --default-toolchain="{__version_rust__}" '
-    )
+    # Download first, then run: piped as `curl | sh`, a failed download hands sh
+    # an empty script, which exits 0, and the install fails a step later on a
+    # rustup that is not there.
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        rustup_init = Path(tmp_dir) / "rustup-init.sh"
+        cmd = (
+            f'curl --proto "=https" --tlsv1.2 -sSf --retry 3 '
+            f'-o "{rustup_init}" {RUSTUP_INIT_URL} '
+        )
+        run_shell_cmd_with_log(LOG_FILE, "w", cmd, timeout_seconds=TIMEOUT_SECONDS)
 
-    # Note: in config_default.py, we defined the environment variables for
-    #       CARGO_TARGET_DIR, CARGO_HOME, RUSTUP_HOME
-    #       which ensures that rust is installed in the correct folder (~/.icpp/rust)
-    #
-    run_shell_cmd_with_log(LOG_FILE, "w", cmd, timeout_seconds=TIMEOUT_SECONDS)
+        # Note: in config_default.py, we defined the environment variables for
+        #       CARGO_TARGET_DIR, CARGO_HOME, RUSTUP_HOME
+        #       which ensures that rust is installed in the correct folder (~/.icpp/rust)
+        #
+        cmd = (
+            f'sh "{rustup_init}" --no-modify-path -y '
+            f'--default-toolchain="{__version_rust__}" '
+        )
+        run_shell_cmd_with_log(LOG_FILE, "a", cmd, timeout_seconds=TIMEOUT_SECONDS)
 
 
 def install_wasm32_wasip1(nstep: int, num_steps: int) -> None:

@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 import math
 import tarfile
+import time
 import requests
 import enlighten  # type: ignore
 import typer
@@ -63,7 +64,61 @@ WASI_SDK_URL = (
 )
 
 
+# Retries for a transient network error, such as a connection that drops
+# mid-download. The first pause is RETRY_PAUSE_SECONDS; it doubles every attempt.
+DOWNLOAD_RETRIES = 3
+RETRY_PAUSE_SECONDS = 5
+
 ICPP_ROOT_UNTAR_DIR = config_default.WASI_SDK_ROOT / f"{get_wasi_sdk_untar_dir_name()}"
+
+
+def download_wasi_sdk(fpath: Path) -> None:
+    """Downloads the wasi-sdk tar ball into fpath, overwriting a partial one.
+
+    Raises a requests.RequestException on a network error or an HTTP error
+    status, including one that drops the connection mid-download.
+    """
+    with requests.Session() as s:
+        r = s.get(WASI_SDK_URL, stream=True, timeout=60)
+        r.raise_for_status()
+
+        # https://stackoverflow.com/a/63832993/5480536
+        progress_bar_manager = enlighten.get_manager()
+        dlen = int(r.headers.get("Content-Length", "0")) or None
+
+        with (
+            progress_bar_manager.counter(
+                color="cyan",
+                total=dlen and math.ceil(dlen / 2**20),
+                unit="MiB",
+                leave=False,
+            ) as ctr,
+            open(fpath, "wb", buffering=2**24) as f,
+        ):
+            for chunk in r.iter_content(chunk_size=2**20):
+                f.write(chunk)
+                ctr.update()
+
+        progress_bar_manager.stop()
+
+
+def download_wasi_sdk_with_retries(fpath: Path) -> None:
+    """Downloads the wasi-sdk tar ball, retrying a transient network error.
+
+    A client error such as a 404 is permanent and raises right away.
+    """
+    for attempt in range(DOWNLOAD_RETRIES + 1):
+        try:
+            download_wasi_sdk(fpath)
+            return
+        except requests.RequestException as e:
+            status = e.response.status_code if e.response is not None else None
+            permanent = status is not None and 400 <= status < 500 and status != 429
+            if permanent or attempt == DOWNLOAD_RETRIES:
+                raise
+            pause = RETRY_PAUSE_SECONDS * 2**attempt
+            typer.echo(f"  Download failed ({e}), retrying in {pause} s...")
+            time.sleep(pause)
 
 
 @app.command()
@@ -115,45 +170,9 @@ def install_wasi_sdk() -> None:
         nstep = 1
         ################################################################################
         # Download the tar.gz file
-        use_progress_bar = True
-
-        with requests.Session() as s:
-            r = s.get(WASI_SDK_URL, stream=use_progress_bar)
-            if r.status_code != 200:
-                typer.echo(
-                    f"Tried to fetch wasi-sdk from GitHub, but response status code is "
-                    f"{r.status_code}. Please retry later..."
-                )
-                typer.echo(f"url = {WASI_SDK_URL}")
-                sys.exit(1)
-
-            typer.echo(f"- {nstep}/{num_steps} Downloading wasi-sdk: {WASI_SDK_URL}")
-            # typer.echo(f"Saving tar ball as  : {fpath}")
-
-            config_default.WASI_SDK_ROOT.mkdir(parents=True, exist_ok=True)
-            if not use_progress_bar:
-                with open(fpath, "wb") as f:
-                    f.write(r.content)
-            else:
-                # https://stackoverflow.com/a/63832993/5480536
-                progress_bar_manager = enlighten.get_manager()
-                dlen = int(r.headers.get("Content-Length", "0")) or None
-
-                with (
-                    progress_bar_manager.counter(
-                        color="cyan",
-                        total=dlen and math.ceil(dlen / 2**20),
-                        unit="MiB",
-                        leave=False,
-                    ) as ctr,
-                    open(fpath, "wb", buffering=2**24) as f,
-                ):
-                    for chunk in r.iter_content(chunk_size=2**20):
-                        # print(chunk[-16:].hex().upper())
-                        f.write(chunk)
-                        ctr.update()
-
-                progress_bar_manager.stop()
+        typer.echo(f"- {nstep}/{num_steps} Downloading wasi-sdk: {WASI_SDK_URL}")
+        config_default.WASI_SDK_ROOT.mkdir(parents=True, exist_ok=True)
+        download_wasi_sdk_with_retries(fpath)
 
         ################################################################################
         # Unzip the tar.gz file

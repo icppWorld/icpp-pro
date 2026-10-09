@@ -2,6 +2,7 @@
 
 import sys
 import platform
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -34,10 +35,10 @@ def install_rustup(nstep: int, num_steps: int) -> None:
     # an empty script, which exits 0, and the install fails a step later on a
     # rustup that is not there.
     with tempfile.TemporaryDirectory() as tmp_dir:
-        rustup_init = Path(tmp_dir) / "rustup-init.sh"
+        rustup_init = shlex.quote(str(Path(tmp_dir) / "rustup-init.sh"))
         cmd = (
             f'curl --proto "=https" --tlsv1.2 -sSf --retry 3 '
-            f'-o "{rustup_init}" {RUSTUP_INIT_URL} '
+            f"-o {rustup_init} {RUSTUP_INIT_URL} "
         )
         run_shell_cmd_with_log(LOG_FILE, "w", cmd, timeout_seconds=TIMEOUT_SECONDS)
 
@@ -46,7 +47,7 @@ def install_rustup(nstep: int, num_steps: int) -> None:
         #       which ensures that rust is installed in the correct folder (~/.icpp/rust)
         #
         cmd = (
-            f'sh "{rustup_init}" --no-modify-path -y '
+            f"sh {rustup_init} --no-modify-path -y "
             f'--default-toolchain="{__version_rust__}" '
         )
         run_shell_cmd_with_log(LOG_FILE, "a", cmd, timeout_seconds=TIMEOUT_SECONDS)

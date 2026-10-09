@@ -8,6 +8,7 @@
 #include "../src/my_canister.h"
 
 // The Mock IC
+#include "ic0.h"
 #include "ic_api.h"
 #include "icpp_hooks.h"
 #include "mock_ic.h"
@@ -108,6 +109,76 @@ static void native_timers_from_update() {
   if (!IC_API::cancel_timer(id)) ICPP_HOOKS::trap("cancel_timer failed");
   IC_API::cancel_all_timers();
   ic_api.to_wire();
+}
+
+// Step-02e scenarios: the Mock IC refuses ic0 calls where the replica does,
+// so the step-02b constructor tests above fail natively if the constructor
+// ever reads msg_arg_data again in an entry that has none. These call the
+// ic0 functions directly to prove that the mock's refusal itself fires.
+static void native_arg_data_size_in_pre_upgrade() {
+  IC_API ic_api(CanisterPreUpgrade{"native_arg_data_size_in_pre_upgrade"},
+                false);
+  (void)ic0_msg_arg_data_size(); // must trap
+}
+
+static void native_arg_data_copy_in_pre_upgrade() {
+  IC_API ic_api(CanisterPreUpgrade{"native_arg_data_copy_in_pre_upgrade"},
+                false);
+  uint8_t bytes[6];
+  ic0_msg_arg_data_copy(reinterpret_cast<uintptr_t>(bytes), 0,
+                        sizeof(bytes)); // must trap
+}
+
+static void native_arg_data_size_in_reject_callback() {
+  IC_API ic_api(
+      CanisterRejectCallback{"native_arg_data_size_in_reject_callback"}, false);
+  (void)ic0_msg_arg_data_size(); // must trap
+}
+
+static void native_arg_data_size_in_cleanup_callback() {
+  IC_API ic_api(
+      CanisterCleanupCallback{"native_arg_data_size_in_cleanup_callback"},
+      false);
+  (void)ic0_msg_arg_data_size(); // must trap
+}
+
+static void native_arg_data_size_in_heartbeat() {
+  IC_API ic_api(CanisterHeartbeat{"native_arg_data_size_in_heartbeat"}, false);
+  (void)ic0_msg_arg_data_size(); // must trap
+}
+
+static void native_caller_size_in_start() {
+  IC_API ic_api(CanisterStart{"native_caller_size_in_start"}, false);
+  (void)ic0_msg_caller_size(); // must trap
+}
+
+static void native_canister_self_size_in_start() {
+  IC_API ic_api(CanisterStart{"native_canister_self_size_in_start"}, false);
+  (void)ic0_canister_self_size(); // must trap
+}
+
+// Positive controls: the same calls where the replica permits them.
+static void native_arg_data_size_in_update() {
+  IC_API ic_api(CanisterUpdate{"native_arg_data_size_in_update"}, false);
+  if (ic0_msg_arg_data_size() != 6)
+    ICPP_HOOKS::trap("msg_arg_data_size in update != 6");
+  ic_api.to_wire();
+}
+
+static void native_caller_size_in_pre_upgrade() {
+  IC_API ic_api(CanisterPreUpgrade{"native_caller_size_in_pre_upgrade"}, false);
+  if (ic0_msg_caller_size() == 0)
+    ICPP_HOOKS::trap("msg_caller_size in pre_upgrade == 0");
+}
+
+static void native_arg_data_size_without_ic_api() {
+  if (ic0_msg_arg_data_size() != 6)
+    ICPP_HOOKS::trap("msg_arg_data_size without IC_API != 6");
+}
+
+// canister_start has neither caller nor self: the constructor must skip both.
+static void native_ctor_start() {
+  IC_API ic_api(CanisterStart{"native_ctor_start"}, false);
 }
 
 int main() {
@@ -1404,6 +1475,47 @@ int main() {
   // Positive control: timers keep working from an update entry
   mockIC.run_test("native_timers_from_update", native_timers_from_update,
                   "4449444c0000", "4449444c0000", silent_on_trap, my_principal);
+
+  // ------------------------------------------------------------------------
+  // The Mock IC refuses ic0 calls where the replica does (step 02e)
+
+  // msg_arg_data is refused in pre_upgrade, reject, cleanup & heartbeat
+  mockIC.run_trap_test("native_arg_data_size_in_pre_upgrade",
+                       native_arg_data_size_in_pre_upgrade, "4449444c0000",
+                       silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_arg_data_copy_in_pre_upgrade",
+                       native_arg_data_copy_in_pre_upgrade, "4449444c0000",
+                       silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_arg_data_size_in_reject_callback",
+                       native_arg_data_size_in_reject_callback, "4449444c0000",
+                       silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_arg_data_size_in_cleanup_callback",
+                       native_arg_data_size_in_cleanup_callback, "4449444c0000",
+                       silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_arg_data_size_in_heartbeat",
+                       native_arg_data_size_in_heartbeat, "4449444c0000",
+                       silent_on_trap, my_principal);
+
+  // msg_caller & canister_self are refused in canister_start
+  mockIC.run_trap_test("native_caller_size_in_start",
+                       native_caller_size_in_start, "4449444c0000",
+                       silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_canister_self_size_in_start",
+                       native_canister_self_size_in_start, "4449444c0000",
+                       silent_on_trap, my_principal);
+
+  // Positive controls
+  mockIC.run_test("native_arg_data_size_in_update",
+                  native_arg_data_size_in_update, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+  mockIC.run_test("native_caller_size_in_pre_upgrade",
+                  native_caller_size_in_pre_upgrade, "4449444c0000", "",
+                  silent_on_trap, my_principal);
+  mockIC.run_test("native_arg_data_size_without_ic_api",
+                  native_arg_data_size_without_ic_api, "4449444c0000", "",
+                  silent_on_trap, my_principal);
+  mockIC.run_test("native_ctor_start", native_ctor_start, "4449444c0000", "",
+                  silent_on_trap, my_principal);
 
   // returns 1 if any tests failed
   return mockIC.test_summary();

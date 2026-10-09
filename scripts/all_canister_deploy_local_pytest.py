@@ -149,6 +149,8 @@ def test_canister(
     notify(f">>>> {name}: started")
     log: List[str] = [f"==== {name}"]
     test_api_path = canister_path / "test/test_apis.py"
+    # A canister opts in to an in-place upgrade by having these tests
+    after_upgrade_path = canister_path / "test/test_after_upgrade.py"
     configs = [file.name for file in canister_path.glob("*.toml")]
 
     try:
@@ -181,6 +183,28 @@ def test_canister(
                 log,
                 stream,
             )
+
+            # Upgrade in place with the same build, which runs the canister's
+            # own canister_pre_upgrade & canister_post_upgrade on a real
+            # replica. The tests assert that the hooks actually ran, so an
+            # upgrade that was skipped cannot pass for one that worked.
+            if after_upgrade_path.exists():
+                log.append(f"-- upgrade {name} in place")
+                run_step(
+                    f"icp deploy --environment local --yes --mode upgrade "
+                    f"--identity {TEST_IDENTITY}",
+                    canister_path,
+                    log,
+                    stream,
+                )
+
+                log.append(f"-- pytest {after_upgrade_path}")
+                run_step(
+                    f"pytest -vv --network=local {after_upgrade_path}",
+                    canister_path,
+                    log,
+                    stream,
+                )
 
             network_stop(canister_path)
 

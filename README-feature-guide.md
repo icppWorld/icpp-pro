@@ -131,10 +131,21 @@ wire format, and always at release:
 make upgrade-test
 ```
 
-This deploys `../icpp-demos/canisters/files` built with the **released**
-icpp-pro from PyPI, runs its full pytest (which writes state), rebuilds the
-same source with the **dev** tree, upgrades the canister in place, and runs
-the `run_after_upgrade`-marked tests. Options:
+This runs the same flow against two canisters:
+
+- `test/canisters/canister_upgrade` (`make upgrade-test-canister-upgrade`):
+  its `canister_pre_upgrade` & `canister_post_upgrade` construct an IC_API and
+  count their runs, so the **released** wasm's pre_upgrade runs on a real
+  replica. The tests assert the counts: an upgrade that was skipped fails
+  instead of passing.
+- `../icpp-demos/canisters/files` (`make upgrade-test-demos-files`): built
+  with the **released** icpp-pro from PyPI, runs its full pytest (which writes
+  state), rebuilds the same source with the **dev** tree, upgrades the
+  canister in place, and runs the `run_after_upgrade`-marked tests.
+
+`make all-tests` (and so CI) also upgrades `canister_upgrade` in place with the
+**dev** build: `all-canister-deploy-local-pytest` upgrades every canister that
+has a `test/test_after_upgrade.py` and runs those tests. Options:
 `python -m scripts.upgrade_test --canister-dir <dir> --released-version X.Y.Z
 --pytest-before "<cmd>" --pytest-after "<cmd>"`.
 

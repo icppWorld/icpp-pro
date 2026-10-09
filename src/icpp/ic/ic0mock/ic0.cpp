@@ -4,6 +4,7 @@
 #include "ic0.h"
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
+#include "current_entry.h"
 #include "ic_api.h"
 
 #include <algorithm>
@@ -31,6 +32,34 @@ __uint128_t u128_from_parts(uint64_t high, uint64_t low) {
 
 bool g_mock_accept_message_called{false};
 __uint128_t g_mock_call_cycles_added{0};
+
+// The replica refuses some ic0 calls depending on the entry point it is
+// executing (dfinity/ic rs/embedders/src/wasmtime_embedder/system_api.rs).
+// The mock enforces the same rules, so that code which would trap on the IC
+// also traps in a native run. The entry point is the one recorded by the
+// live IC_API instance; with none alive (raw ic0 test code) nothing is
+// enforced.
+bool mock_arg_data_permitted() {
+  // An allow-list, like the replica: init/post_upgrade (I), update (U),
+  // query (Q), reply callback (Ry) & inspect_message (F).
+  CanisterBase *entry = current_entry();
+  return entry == nullptr || entry->is_entry_I() || entry->is_entry_U() ||
+         entry->is_entry_Q() || entry->is_entry_Ry() || entry->is_entry_F();
+}
+
+bool mock_caller_or_self_permitted() {
+  // Refused only in canister_start (s).
+  CanisterBase *entry = current_entry();
+  return entry == nullptr || !entry->is_entry_s();
+}
+
+void mock_refuse_unless(bool permitted, const char *api) {
+  if (permitted) return;
+  IC_API::trap(std::string("\"") + api + "\" cannot be executed in " +
+               current_entry()->get_entry_type() +
+               " mode (the Mock IC enforces the replica's permitted entry "
+               "points)");
+}
 } // namespace
 
 #include "candid_type.h"
@@ -41,10 +70,12 @@ __uint128_t g_mock_call_cycles_added{0};
 // See:
 // https://smartcontracts.org/docs/interface-spec/index.html#system-api-imports
 uint32_t ic0_msg_arg_data_size() {
+  mock_refuse_unless(mock_arg_data_permitted(), "ic0_msg_arg_data_size");
   return (uint32_t)global_mockIC->vec_in().size();
 }
 
 void ic0_msg_arg_data_copy(uintptr_t dst, uint32_t off, uint32_t size) {
+  mock_refuse_unless(mock_arg_data_permitted(), "ic0_msg_arg_data_copy");
   // See: https://stackoverflow.com/q/34291377/5480536
   // for an explanation of the uintptr_t conversion over (void *)
 
@@ -66,11 +97,13 @@ void ic0_msg_arg_data_copy(uintptr_t dst, uint32_t off, uint32_t size) {
 }
 
 uint32_t ic0_msg_caller_size() {
+  mock_refuse_unless(mock_caller_or_self_permitted(), "ic0_msg_caller_size");
   CandidTypePrincipal caller = global_mockIC->get_caller();
   return (uint32_t)caller.get_v_bytes().size();
 }
 
 void ic0_msg_caller_copy(uintptr_t dst, uint32_t off, uint32_t size) {
+  mock_refuse_unless(mock_caller_or_self_permitted(), "ic0_msg_caller_copy");
   CandidTypePrincipal caller = global_mockIC->get_caller();
 
   if (size != (uint32_t)caller.get_v_bytes().size()) {
@@ -141,11 +174,13 @@ void ic0_accept_message() {
 }
 
 uint32_t ic0_canister_self_size() {
+  mock_refuse_unless(mock_caller_or_self_permitted(), "ic0_canister_self_size");
   CandidTypePrincipal canister_self = global_mockIC->get_canister_self();
   return (uint32_t)canister_self.get_v_bytes().size();
 }
 
 void ic0_canister_self_copy(uintptr_t dst, uint32_t off, uint32_t size) {
+  mock_refuse_unless(mock_caller_or_self_permitted(), "ic0_canister_self_copy");
   CandidTypePrincipal canister_self = global_mockIC->get_canister_self();
 
   if (size != (uint32_t)canister_self.get_v_bytes().vec_uint8_t().size()) {

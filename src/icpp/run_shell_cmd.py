@@ -3,10 +3,14 @@
 import concurrent.futures
 import subprocess
 import re
+import time
 from pathlib import Path
 from typing import Callable, Iterable, Optional, TypeVar, Union
 
 T = TypeVar("T")
+
+# The first pause before retrying a failed command; it doubles every attempt.
+RETRY_PAUSE_SECONDS = 5
 
 
 def escape_ansi(line: Optional[str]) -> Optional[str]:
@@ -40,17 +44,33 @@ def run_shell_cmd_with_log(
     cmd: str,
     cwd: Optional[Path] = None,
     timeout_seconds: Optional[int] = None,
+    retries: int = 0,
 ) -> None:
-    """Opens a log file with mode ["w"/"a"],runs the command; writes/appends output"""
+    """Opens a log file with mode ["w"/"a"],runs the command; writes/appends output
+
+    With retries > 0, a failed command is run again after a growing pause, for
+    commands that can hit a transient network error. Each failure is logged.
+    """
     with open(log_file, mode, encoding="utf-8") as file:
-        file.write("\n$ ")
-        file.write(cmd)
-        file.write("\n")
-        cmd_output = run_shell_cmd(
-            cmd, capture_output=True, cwd=cwd, timeout_seconds=timeout_seconds
-        )
-        file.write(cmd_output)
-        file.write("\n")
+        for attempt in range(retries + 1):
+            file.write("\n$ ")
+            file.write(cmd)
+            file.write("\n")
+            try:
+                cmd_output = run_shell_cmd(
+                    cmd, capture_output=True, cwd=cwd, timeout_seconds=timeout_seconds
+                )
+            except subprocess.CalledProcessError as e:
+                file.write(str(e.output))
+                file.write("\n")
+                if attempt == retries:
+                    raise
+                file.flush()
+                time.sleep(RETRY_PAUSE_SECONDS * 2**attempt)
+                continue
+            file.write(cmd_output)
+            file.write("\n")
+            return
 
 
 def run_shell_cmd(

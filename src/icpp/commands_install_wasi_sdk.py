@@ -83,10 +83,12 @@ def download_wasi_sdk(fpath: Path) -> None:
         r.raise_for_status()
 
         # https://stackoverflow.com/a/63832993/5480536
-        progress_bar_manager = enlighten.get_manager()
         dlen = int(r.headers.get("Content-Length", "0")) or None
 
+        # The manager stops on every exit, so a download that fails mid-body
+        # does not leave its progress bar active while the next attempt runs.
         with (
+            enlighten.get_manager() as progress_bar_manager,
             progress_bar_manager.counter(
                 color="cyan",
                 total=dlen and math.ceil(dlen / 2**20),
@@ -98,8 +100,6 @@ def download_wasi_sdk(fpath: Path) -> None:
             for chunk in r.iter_content(chunk_size=2**20):
                 f.write(chunk)
                 ctr.update()
-
-        progress_bar_manager.stop()
 
 
 def download_wasi_sdk_with_retries(fpath: Path) -> None:

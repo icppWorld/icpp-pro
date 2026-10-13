@@ -4,8 +4,10 @@ Regression: a connection that dropped during the download, including midway
 through the streamed body, failed `icpp install-wasi-sdk` on the first try.
 """
 
+from collections.abc import Iterator
 from pathlib import Path
 
+import enlighten  # type: ignore
 import pytest
 import requests
 
@@ -70,3 +72,45 @@ def test__raises_once_the_retries_are_used_up(
             tmp_path / "sdk.tar.gz"
         )
     assert len(calls) == retries + 1
+
+
+class DroppedResponse:
+    """A streamed response whose connection drops after the first chunk."""
+
+    headers = {"Content-Length": str(2**21)}
+
+    def raise_for_status(self) -> None:
+        """The status is fine; the body is not."""
+
+    def iter_content(self, chunk_size: int) -> Iterator[bytes]:
+        """Yields one chunk, then drops the connection."""
+        yield b"x" * chunk_size
+        raise requests.exceptions.ChunkedEncodingError()
+
+
+def test__a_dropped_download_stops_its_progress_bar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A failed attempt must not leave its progress bar running into the retry."""
+    stopped: list[bool] = []
+    real_get_manager = enlighten.get_manager
+
+    def get_manager() -> enlighten.Manager:
+        manager = real_get_manager()
+        stop = manager.stop
+
+        def record_stop() -> None:
+            stopped.append(True)
+            stop()
+
+        monkeypatch.setattr(manager, "stop", record_stop)
+        return manager
+
+    monkeypatch.setattr(enlighten, "get_manager", get_manager)
+    monkeypatch.setattr(
+        requests.Session, "get", lambda *args, **kwargs: DroppedResponse()
+    )
+
+    with pytest.raises(requests.exceptions.ChunkedEncodingError):
+        commands_install_wasi_sdk.download_wasi_sdk(tmp_path / "sdk.tar.gz")
+    assert stopped

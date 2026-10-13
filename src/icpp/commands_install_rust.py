@@ -41,6 +41,7 @@ def install_rustup(nstep: int, num_steps: int) -> None:
         rustup_init = shlex.quote(str(Path(tmp_dir) / "rustup-init.sh"))
         cmd = (
             f'curl --proto "=https" --tlsv1.2 -sSf --retry {NETWORK_RETRIES} '
+            "--retry-connrefused "
             f"-o {rustup_init} {RUSTUP_INIT_URL} "
         )
         run_shell_cmd_with_log(LOG_FILE, "w", cmd, timeout_seconds=TIMEOUT_SECONDS)

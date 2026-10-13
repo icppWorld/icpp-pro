@@ -21,6 +21,8 @@ def test__fails_when_the_download_fails(
 ) -> None:
     """Nothing listens on port 9, so curl fails and the step must too."""
     monkeypatch.setattr(commands_install_rust, "LOG_FILE", tmp_path / "install.log")
+    # Refused connections are retried with backoff; skip the wait here.
+    monkeypatch.setattr(commands_install_rust, "NETWORK_RETRIES", 0)
     monkeypatch.setattr(
         commands_install_rust, "RUSTUP_INIT_URL", "https://127.0.0.1:9/rustup-init"
     )
@@ -28,3 +30,4 @@ def test__fails_when_the_download_fails(
     with pytest.raises(subprocess.CalledProcessError) as excinfo:
         commands_install_rust.install_rustup(1, 1)
     assert "curl" in str(excinfo.value.cmd)
+    assert "--retry-connrefused" in str(excinfo.value.cmd)

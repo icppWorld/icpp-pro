@@ -94,12 +94,21 @@ void ic0_call_on_cleanup(uint32_t fun, uint32_t env)
 void ic0_call_data_append(uint32_t src, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "call_data_append");
 
-// Only valid between call_new and call_perform. No IC_API wrapper yet - that
-// belongs to the future async inter-canister call API.
+// Only valid between call_new and call_perform. IC_API: IC_Call::with_cycles.
 void ic0_call_cycles_add128(uint64_t amount_high, uint64_t amount_low)
     WASM_SYMBOL_IMPORTED("ic0", "call_cycles_add128");
 
+// Only valid between call_new and call_perform: makes the call a best-effort
+// (bounded wait) call, which the IC may reject with SYS_UNKNOWN after
+// timeout_seconds (capped at 300).
+void ic0_call_with_best_effort_response(uint32_t timeout_seconds)
+    WASM_SYMBOL_IMPORTED("ic0", "call_with_best_effort_response");
+
 uint32_t ic0_call_perform() WASM_SYMBOL_IMPORTED("ic0", "call_perform");
+
+// The deadline of a best-effort call in ns since the epoch, 0 for a
+// guaranteed-response call. Available in update, query, reply & reject.
+uint64_t ic0_msg_deadline() WASM_SYMBOL_IMPORTED("ic0", "msg_deadline");
 
 uint32_t ic0_stable_size() WASM_SYMBOL_IMPORTED("ic0", "stable_size");
 

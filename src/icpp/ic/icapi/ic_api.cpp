@@ -83,6 +83,11 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
   // Record the entry point for IC_API's static methods (timers, time),
   // which have no instance and consult current_entry() for their guards.
   set_current_entry(m_canister_entry);
+  register_api(this);
+
+  // An upgrade while calls are in flight would run their callbacks against
+  // the new code, with the heap of this version gone.
+  if (m_canister_entry.is_entry_G()) icpp_check_no_calls_in_flight();
 
   // Always start with a clean type table registry in the registry singleton
   CandidSerializeTypeTableRegistry::get_instance().clear();
@@ -138,6 +143,35 @@ IC_API::~IC_API() {
   // never constructs an IC_API would otherwise inherit a stale entry and
   // its guards could falsely trap correct code.
   clear_current_entry();
+  unregister_api(this);
+}
+
+void IC_API::async_attach(const CanisterBase &entry) {
+  m_canister_entry = entry;
+  set_current_entry(m_canister_entry);
+  set_live_api(this);
+}
+
+uint32_t IC_API::calls_in_flight() { return ::calls_in_flight(); }
+
+uint64_t IC_API::get_msg_deadline() {
+  check_entry(m_canister_entry, entry_contexts::msg_deadline(m_canister_entry),
+              "IC_API::get_msg_deadline",
+              "update, query, reply & reject callbacks");
+  return ic0_msg_deadline();
+}
+
+void icpp_check_no_calls_in_flight() {
+  uint32_t n = calls_in_flight();
+  // A stopped canister has no open call contexts: always allow it, so a
+  // miscounted call can never block the upgrade for good.
+  if (n > 0 && ic0_canister_status() == 1) {
+    IC_API::trap(
+        "canister_pre_upgrade: " + std::to_string(n) +
+        " inter-canister call(s) in flight. Their callbacks would run against "
+        "the new code. Stop the canister (icp canister stop) or wait for the "
+        "calls to finish, then upgrade.");
+  }
 }
 
 void IC_API::debug_print(const char *message) {

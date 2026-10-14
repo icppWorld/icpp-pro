@@ -250,6 +250,25 @@ public:
   static SignCost cost_vetkd_derive_key(const std::string &key_name,
                                         VetKdCurve curve); // docs end: cost
 
+  // docs start: calls_in_flight
+  // The inter-canister calls this canister has performed whose callback has
+  // not run yet. While it is non-zero, canister_pre_upgrade traps: the
+  // callbacks would run against the new code. Stop the canister first.
+  static uint32_t calls_in_flight();
+
+  // The deadline of a best-effort (bounded wait) call in ns since the epoch,
+  // 0 for a guaranteed-response call. Available in update, query, reply &
+  // reject callbacks.
+  uint64_t get_msg_deadline(); // docs end: calls_in_flight
+
+#if defined(__cpp_impl_coroutine)
+  // docs start: yield_fresh_budget
+  // co_await ic_api.yield_fresh_budget() continues the coroutine in a new
+  // message, with a fresh instruction limit, by calling the canister itself.
+  // See ic_async.h. Not available in C++17.
+  class IC_Yield yield_fresh_budget(); // docs end: yield_fresh_budget
+#endif
+
   // Receive things from the wire in candid format
   // docs start: from_wire
   void from_wire();
@@ -423,6 +442,11 @@ public:
   }
 
 private:
+  // ic_async.cpp re-attaches this instance when an awaited call resumes in a
+  // reply or reject callback: the entry becomes that callback.
+  friend struct IC_AsyncAccess;
+  void async_attach(const CanisterBase &entry);
+
   CanisterBase m_canister_entry;
   bool m_debug_print{false};
   VecBytes m_B_in;
@@ -475,3 +499,5 @@ private:
     }
   }
 };
+
+#include "ic_async.h"

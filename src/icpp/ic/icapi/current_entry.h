@@ -28,3 +28,29 @@ void clear_current_entry();
 // nullptr while no IC_API instance is alive; otherwise the entry of the
 // current invocation.
 CanisterBase *current_entry();
+
+// ---------------------------------------------------------------------------
+// Inter-canister calls (ic_async.h).
+//
+// The IC_API of the current message. An awaited call resumes in a reply or
+// reject callback - a new message - and re-attaches the IC_API that lives in
+// the coroutine frame, so its entry guards see the callback entry point.
+// The pointer is only valid within the message that set it: suspending at a
+// co_await clears it. Every constructed IC_API stays registered until its
+// destructor runs, so a callback only re-attaches an instance that still
+// exists.
+class IC_API;
+void register_api(IC_API *api);   // IC_API constructor: also makes it live
+void unregister_api(IC_API *api); // IC_API destructor
+void set_live_api(IC_API *api);   // nullptr to clear
+IC_API *live_api();
+bool is_registered_api(IC_API *api);
+
+// The calls this canister has performed whose callback has not run yet.
+// canister_pre_upgrade refuses to upgrade while it is non-zero.
+uint32_t calls_in_flight();
+void add_calls_in_flight(int32_t delta);
+
+// Traps when calls are in flight and the canister is running (ic_api.cpp).
+// The IC_API constructor runs it in canister_pre_upgrade.
+void icpp_check_no_calls_in_flight();

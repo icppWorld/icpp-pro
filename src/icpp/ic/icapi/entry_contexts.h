@@ -22,4 +22,11 @@ bool root_key(CanisterBase &entry);
 // update, query, reply & reject callbacks, cleanup and inspect_message.
 bool caller_info(CanisterBase &entry);
 
+// update, reply & reject callbacks, heartbeat & timer: where call_new and the
+// rest of the call API are available. (Composite queries are not supported.)
+bool call(CanisterBase &entry);
+
+// update, query, reply & reject callbacks.
+bool msg_deadline(CanisterBase &entry);
+
 } // namespace entry_contexts

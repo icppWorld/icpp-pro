@@ -69,19 +69,22 @@ jobs:
 
       # icpp-pro is useless to users until its icpp-candid dependency can
       # resolve. Fail here - loudly and before anything is published - rather
-      # than shipping a release whose install breaks. PyPI's index can lag a
-      # few seconds behind an upload, hence the retries.
+      # than shipping a release whose install breaks. PyPI's CDN can serve a
+      # stale index for minutes after an upload (6.4.0, 6.5.0 and 6.6.0 all
+      # failed a 100 s window), hence 10 minutes of retries, and
+      # --no-cache-dir so pip never reuses an index page it fetched earlier.
       - name: verify icpp-candid ${{ steps.version.outputs.version }} is on PyPI
         run: |
           VER="${{ steps.version.outputs.version }}"
-          for attempt in 1 2 3 4 5; do
-            if pip download "icpp-candid==$VER" --no-deps -d /tmp/candid-check >/dev/null 2>&1; then
+          for attempt in $(seq 1 20); do
+            if pip download "icpp-candid==$VER" --no-deps --no-cache-dir -d /tmp/candid-check > /tmp/candid-check.log 2>&1; then
               echo "icpp-candid $VER is available on PyPI"
               exit 0
             fi
-            echo "attempt $attempt: icpp-candid $VER not on PyPI yet, retrying in 20s"
-            sleep 20
+            echo "attempt $attempt/20: icpp-candid $VER not on PyPI yet, retrying in 30s"
+            sleep 30
           done
+          cat /tmp/candid-check.log
           echo "::error::icpp-candid $VER is not on PyPI. Tag and release icpp-candid first, then re-run this workflow."
           exit 1
 

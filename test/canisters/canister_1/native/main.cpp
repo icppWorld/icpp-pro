@@ -268,6 +268,51 @@ static void native_caller_info_signer_size_in_heartbeat() {
   (void)ic0_msg_caller_info_signer_size(); // must trap
 }
 
+// Step-03b scenarios: environment variables.
+static void native_env_vars() {
+  IC_API ic_api(CanisterUpdate{"native_env_vars"}, false);
+  std::map<std::string, std::string> expected{{"A_NAME", "a value"},
+                                              {"B_EMPTY", ""}};
+  if (IC_API::get_env_vars() != expected)
+    ICPP_HOOKS::trap("get_env_vars != the mock's variables");
+  if (IC_API::get_env_var("A_NAME") != std::optional<std::string>("a value"))
+    ICPP_HOOKS::trap("get_env_var(A_NAME) != a value");
+  if (IC_API::get_env_var("B_EMPTY") != std::optional<std::string>(""))
+    ICPP_HOOKS::trap("get_env_var(B_EMPTY) is not an empty value");
+  if (IC_API::get_env_var("NOT_SET").has_value())
+    ICPP_HOOKS::trap("get_env_var(NOT_SET) has a value");
+  ic_api.to_wire();
+}
+
+static void native_env_vars_in_start() {
+  IC_API ic_api(CanisterStart{"native_env_vars_in_start"}, false);
+  (void)IC_API::get_env_vars(); // must trap
+}
+
+static void native_env_var_count_in_start() {
+  IC_API ic_api(CanisterStart{"native_env_var_count_in_start"}, false);
+  (void)ic0_env_var_count(); // must trap: the mock refuses it too
+}
+
+static void native_env_var_name_size_out_of_range() {
+  IC_API ic_api(CanisterUpdate{"native_env_var_name_size_out_of_range"}, false);
+  (void)ic0_env_var_name_size(2); // must trap: 2 variables
+}
+
+static void native_env_var_value_size_not_set() {
+  IC_API ic_api(CanisterUpdate{"native_env_var_value_size_not_set"}, false);
+  std::string name{"NOT_SET"};
+  (void)ic0_env_var_value_size(reinterpret_cast<uintptr_t>(name.data()),
+                               (uint32_t)name.size()); // must trap
+}
+
+static void native_env_var_name_not_utf8() {
+  IC_API ic_api(CanisterUpdate{"native_env_var_name_not_utf8"}, false);
+  std::string name{"\xff"};
+  (void)ic0_env_var_name_exists(reinterpret_cast<uintptr_t>(name.data()),
+                                (uint32_t)name.size()); // must trap
+}
+
 int main() {
   bool exit_on_fail = true;
   MockIC mockIC(exit_on_fail);
@@ -1671,6 +1716,29 @@ int main() {
   mockIC.run_trap_test("native_caller_info_signer_size_in_heartbeat",
                        native_caller_info_signer_size_in_heartbeat,
                        "4449444c0000", silent_on_trap, my_principal);
+
+  // ------------------------------------------------------------------------
+  // Environment variables (step 03b)
+
+  mockIC.set_env_var("B_EMPTY", "");
+  mockIC.set_env_var("A_NAME", "a value");
+  mockIC.run_test("native_env_vars", native_env_vars, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_env_var_name_size_out_of_range",
+                       native_env_var_name_size_out_of_range, "4449444c0000",
+                       silent_on_trap, my_principal);
+  mockIC.clear_env_vars();
+  mockIC.run_trap_test("native_env_vars_in_start", native_env_vars_in_start,
+                       "4449444c0000", silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_env_var_count_in_start",
+                       native_env_var_count_in_start, "4449444c0000",
+                       silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_env_var_value_size_not_set",
+                       native_env_var_value_size_not_set, "4449444c0000",
+                       silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_env_var_name_not_utf8",
+                       native_env_var_name_not_utf8, "4449444c0000",
+                       silent_on_trap, my_principal);
 
   // returns 1 if any tests failed
   return mockIC.test_summary();

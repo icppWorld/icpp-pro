@@ -205,6 +205,15 @@ public:
   std::optional<CandidTypePrincipal>
   get_caller_info_signer(); // docs end: caller_info
 
+  // docs start: env_var
+  // The canister's environment variables, set with the canister settings
+  // (icp.yaml: settings.environment_variables). get_env_var returns no value
+  // when the name is not set. Not available in canister_start. In a wasm
+  // build, getenv() sees them too.
+  static std::map<std::string, std::string> get_env_vars();
+  static std::optional<std::string>
+  get_env_var(const std::string &name); // docs end: env_var
+
   // Receive things from the wire in candid format
   // docs start: from_wire
   void from_wire();

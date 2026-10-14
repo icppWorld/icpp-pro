@@ -167,6 +167,28 @@ uint32_t ic0_root_key_size() WASM_SYMBOL_IMPORTED("ic0", "root_key_size");
 void ic0_root_key_copy(uint32_t dst, uint32_t off, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "root_key_copy");
 
+// Environment variables, set with the canister settings. Names are sorted, and
+// an index past env_var_count, a name that is not UTF-8, or (for value_size /
+// value_copy) a name that is not set, traps. Not available in canister_start.
+uint32_t ic0_env_var_count() WASM_SYMBOL_IMPORTED("ic0", "env_var_count");
+
+uint32_t ic0_env_var_name_size(uint32_t index)
+    WASM_SYMBOL_IMPORTED("ic0", "env_var_name_size");
+
+void ic0_env_var_name_copy(uint32_t index, uint32_t dst, uint32_t off,
+                           uint32_t size)
+    WASM_SYMBOL_IMPORTED("ic0", "env_var_name_copy");
+
+uint32_t ic0_env_var_name_exists(uint32_t name_src, uint32_t name_size)
+    WASM_SYMBOL_IMPORTED("ic0", "env_var_name_exists");
+
+uint32_t ic0_env_var_value_size(uint32_t name_src, uint32_t name_size)
+    WASM_SYMBOL_IMPORTED("ic0", "env_var_value_size");
+
+void ic0_env_var_value_copy(uint32_t name_src, uint32_t name_size, uint32_t dst,
+                            uint32_t off, uint32_t size)
+    WASM_SYMBOL_IMPORTED("ic0", "env_var_value_copy");
+
 uint64_t ic0_time() WASM_SYMBOL_IMPORTED("ic0", "time");
 
 uint64_t ic0_global_timer_set(uint64_t timestamp_ns)

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -82,6 +83,15 @@ public:
     m_caller_info_signer.clear();
   }
 
+  // Mock state for the canister's environment variables, which on the IC are
+  // set with the canister settings. Sticky too; a std::map keeps the names
+  // sorted, the order in which ic0_env_var_name reports them.
+  std::map<std::string, std::string> get_env_vars() { return m_env_vars; }
+  void set_env_var(const std::string &name, const std::string &value) {
+    m_env_vars[name] = value;
+  }
+  void clear_env_vars() { m_env_vars.clear(); }
+
   void msg_reply_data_append(uintptr_t src, uint32_t size);
 
   int assert_candid_out(const std::string &candid_out_expected);
@@ -125,6 +135,7 @@ private:
   uint32_t m_subnet_node_count{MOCKIC_SUBNET_NODE_COUNT};
   std::vector<uint8_t> m_caller_info_data;
   std::vector<uint8_t> m_caller_info_signer;
+  std::map<std::string, std::string> m_env_vars;
   int m_tests_total;
   int m_tests_failed;
   bool m_exit_on_fail;

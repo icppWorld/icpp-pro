@@ -13,6 +13,10 @@ canisters:
       steps:
         - type: pre-built
           path: build/my_canister.wasm
+    # Read by test_env_var, through IC_API::get_env_var & getenv()
+    settings:
+      environment_variables:
+        ICPP_TEST_GREETING: "hello from icp.yaml"
 
 networks:
   # A project-local replica, started with `icp network start`. icp-cli runs one

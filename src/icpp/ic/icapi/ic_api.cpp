@@ -54,6 +54,13 @@ void check_entry(CanisterBase entry, bool allowed, const char *method,
 // consult the process-global current entry. When no IC_API has been
 // constructed yet, current_entry() is nullptr and the guard is skipped
 // (permissive fallback - never stricter than before).
+// The same guard for a static method permitted by an entry_contexts rule.
+void check_current_entry(bool (*rule)(CanisterBase &), const char *method,
+                         const char *allowed_desc) {
+  CanisterBase *entry = current_entry();
+  if (entry != nullptr) check_entry(*entry, rule(*entry), method, allowed_desc);
+}
+
 void check_timer_entry(const char *method) {
   CanisterBase *entry = current_entry();
   if (entry != nullptr &&
@@ -330,6 +337,37 @@ std::optional<CandidTypePrincipal> IC_API::get_caller_info_signer() {
                                                ic0_msg_caller_info_signer_copy);
   if (signer.empty()) return std::nullopt;
   return CandidTypePrincipal(signer);
+}
+
+std::map<std::string, std::string> IC_API::get_env_vars() {
+  check_current_entry(entry_contexts::all_except_start, "IC_API::get_env_vars",
+                      "all except canister_start");
+  std::map<std::string, std::string> env_vars;
+  for (uint32_t i = 0; i < ic0_env_var_count(); ++i) {
+    std::vector<uint8_t> name =
+        read_size_copy([i]() { return ic0_env_var_name_size(i); },
+                       [i](uintptr_t dst, uint32_t off, uint32_t size) {
+                         ic0_env_var_name_copy(i, dst, off, size);
+                       });
+    std::string name_str(name.begin(), name.end());
+    env_vars[name_str] = *get_env_var(name_str);
+  }
+  return env_vars;
+}
+
+std::optional<std::string> IC_API::get_env_var(const std::string &name) {
+  check_current_entry(entry_contexts::all_except_start, "IC_API::get_env_var",
+                      "all except canister_start");
+  uintptr_t src = reinterpret_cast<uintptr_t>(name.data());
+  uint32_t size = (uint32_t)name.size();
+  // The value calls trap on a name that is not set, so check first.
+  if (ic0_env_var_name_exists(src, size) == 0) return std::nullopt;
+  std::vector<uint8_t> value = read_size_copy(
+      [src, size]() { return ic0_env_var_value_size(src, size); },
+      [src, size](uintptr_t dst, uint32_t off, uint32_t len) {
+        ic0_env_var_value_copy(src, size, dst, off, len);
+      });
+  return std::string(value.begin(), value.end());
 }
 
 void IC_API::debug_print(const std::string &s) {

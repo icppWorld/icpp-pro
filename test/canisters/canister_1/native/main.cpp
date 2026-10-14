@@ -313,6 +313,40 @@ static void native_env_var_name_not_utf8() {
                                 (uint32_t)name.size()); // must trap
 }
 
+// Step-03c scenarios: cycle costs.
+static void native_cost_values() {
+  IC_API ic_api(CanisterUpdate{"native_cost_values"}, false);
+  if (IC_API::cost_call(10, 100) !=
+      MOCKIC_COST_CALL_BASE + 110 * MOCKIC_COST_CALL_PER_BYTE)
+    ICPP_HOOKS::trap("cost_call != the mock formula");
+  if (IC_API::cost_create_canister() != MOCKIC_COST_CREATE_CANISTER)
+    ICPP_HOOKS::trap("cost_create_canister != the mock fee");
+  if (IC_API::cost_http_request(100, 1000) !=
+      MOCKIC_COST_HTTP_REQUEST_BASE +
+          100 * MOCKIC_COST_HTTP_REQUEST_PER_REQUEST_BYTE +
+          1000 * MOCKIC_COST_HTTP_REQUEST_PER_RESPONSE_BYTE)
+    ICPP_HOOKS::trap("cost_http_request != the mock formula");
+  if (IC_API::cost_sign_with_schnorr("key_1",
+                                     IC_API::SchnorrAlgorithm::Bip340Secp256k1)
+          .cycles != MOCKIC_COST_SIGN_KEY_1)
+    ICPP_HOOKS::trap("cost_sign_with_schnorr(key_1) != the mock fee");
+  if (IC_API::cost_vetkd_derive_key("dfx_test_key",
+                                    IC_API::VetKdCurve::Bls12_381_G2)
+          .cycles != MOCKIC_COST_SIGN_TEST_KEY)
+    ICPP_HOOKS::trap("cost_vetkd_derive_key(dfx_test_key) != the mock fee");
+  if (IC_API::cost_sign_with_ecdsa("key_1", static_cast<IC_API::EcdsaCurve>(1))
+          .error != IC_API::SignCostError::InvalidCurveOrAlgorithm)
+    ICPP_HOOKS::trap("ecdsa curve 1 is not an invalid curve");
+  ic_api.to_wire();
+}
+
+static void native_cost_in_start() {
+  IC_API ic_api(CanisterStart{"native_cost_in_start"}, false);
+  // Permitted in canister_start, unlike most of the system API
+  if (IC_API::cost_create_canister() == 0)
+    ICPP_HOOKS::trap("cost_create_canister is 0");
+}
+
 int main() {
   bool exit_on_fail = true;
   MockIC mockIC(exit_on_fail);
@@ -1739,6 +1773,17 @@ int main() {
   mockIC.run_trap_test("native_env_var_name_not_utf8",
                        native_env_var_name_not_utf8, "4449444c0000",
                        silent_on_trap, my_principal);
+
+  // ------------------------------------------------------------------------
+  // Cycle costs (step 03c)
+
+  // '()' -> '(0 : int)'
+  mockIC.run_test("test_cost", test_cost, "4449444c0000", "4449444c00017c00",
+                  silent_on_trap, my_principal);
+  mockIC.run_test("native_cost_values", native_cost_values, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+  mockIC.run_test("native_cost_in_start", native_cost_in_start, "4449444c0000",
+                  "", silent_on_trap, my_principal);
 
   // returns 1 if any tests failed
   return mockIC.test_summary();

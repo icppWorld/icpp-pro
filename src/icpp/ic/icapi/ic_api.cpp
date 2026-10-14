@@ -370,6 +370,60 @@ std::optional<std::string> IC_API::get_env_var(const std::string &name) {
   return std::string(value.begin(), value.end());
 }
 
+__uint128_t IC_API::cost_call(uint64_t method_name_size,
+                              uint64_t payload_size) {
+  __uint128_t cycles;
+  ic0_cost_call(method_name_size, payload_size,
+                reinterpret_cast<uintptr_t>(&cycles));
+  return cycles;
+}
+
+__uint128_t IC_API::cost_create_canister() {
+  __uint128_t cycles;
+  ic0_cost_create_canister(reinterpret_cast<uintptr_t>(&cycles));
+  return cycles;
+}
+
+__uint128_t IC_API::cost_http_request(uint64_t request_size,
+                                      uint64_t max_response_bytes) {
+  __uint128_t cycles;
+  ic0_cost_http_request(request_size, max_response_bytes,
+                        reinterpret_cast<uintptr_t>(&cycles));
+  return cycles;
+}
+
+namespace {
+// The three sign & derive cost calls share their shape: key name, a curve or
+// algorithm, the cycles at dst on success.
+template <typename CostFn>
+IC_API::SignCost sign_cost(CostFn cost_fn, const std::string &key_name,
+                           uint32_t curve) {
+  __uint128_t cycles{0};
+  uint32_t error = cost_fn(reinterpret_cast<uintptr_t>(key_name.data()),
+                           (uint32_t)key_name.size(), curve,
+                           reinterpret_cast<uintptr_t>(&cycles));
+  return IC_API::SignCost{static_cast<IC_API::SignCostError>(error), cycles};
+}
+} // namespace
+
+IC_API::SignCost IC_API::cost_sign_with_ecdsa(const std::string &key_name,
+                                              EcdsaCurve curve) {
+  return sign_cost(ic0_cost_sign_with_ecdsa, key_name,
+                   static_cast<uint32_t>(curve));
+}
+
+IC_API::SignCost IC_API::cost_sign_with_schnorr(const std::string &key_name,
+                                                SchnorrAlgorithm algorithm) {
+  return sign_cost(ic0_cost_sign_with_schnorr, key_name,
+                   static_cast<uint32_t>(algorithm));
+}
+
+IC_API::SignCost IC_API::cost_vetkd_derive_key(const std::string &key_name,
+                                               VetKdCurve curve) {
+  return sign_cost(ic0_cost_vetkd_derive_key, key_name,
+                   static_cast<uint32_t>(curve));
+}
+
 void IC_API::debug_print(const std::string &s) {
   IC_API::debug_print(s.c_str());
 }

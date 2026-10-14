@@ -189,6 +189,31 @@ void ic0_env_var_value_copy(uint32_t name_src, uint32_t name_size, uint32_t dst,
                             uint32_t off, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "env_var_value_copy");
 
+// Cycle costs, written as 16 little-endian bytes at dst. The sign & derive
+// calls return 0 on success, 1 for an unknown curve or algorithm, 2 for an
+// unknown key name; dst is only written on success. Available everywhere.
+void ic0_cost_call(uint64_t method_name_size, uint64_t payload_size,
+                   uint32_t dst) WASM_SYMBOL_IMPORTED("ic0", "cost_call");
+
+void ic0_cost_create_canister(uint32_t dst)
+    WASM_SYMBOL_IMPORTED("ic0", "cost_create_canister");
+
+void ic0_cost_http_request(uint64_t request_size, uint64_t max_res_bytes,
+                           uint32_t dst)
+    WASM_SYMBOL_IMPORTED("ic0", "cost_http_request");
+
+uint32_t ic0_cost_sign_with_ecdsa(uint32_t src, uint32_t size,
+                                  uint32_t ecdsa_curve, uint32_t dst)
+    WASM_SYMBOL_IMPORTED("ic0", "cost_sign_with_ecdsa");
+
+uint32_t ic0_cost_sign_with_schnorr(uint32_t src, uint32_t size,
+                                    uint32_t algorithm, uint32_t dst)
+    WASM_SYMBOL_IMPORTED("ic0", "cost_sign_with_schnorr");
+
+uint32_t ic0_cost_vetkd_derive_key(uint32_t src, uint32_t size,
+                                   uint32_t vetkd_curve, uint32_t dst)
+    WASM_SYMBOL_IMPORTED("ic0", "cost_vetkd_derive_key");
+
 uint64_t ic0_time() WASM_SYMBOL_IMPORTED("ic0", "time");
 
 uint64_t ic0_global_timer_set(uint64_t timestamp_ns)

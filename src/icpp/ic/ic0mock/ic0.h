@@ -126,6 +126,23 @@ uint32_t ic0_env_var_value_size(uintptr_t name_src, uint32_t name_size);
 void ic0_env_var_value_copy(uintptr_t name_src, uint32_t name_size,
                             uintptr_t dst, uint32_t off, uint32_t size);
 
+void ic0_cost_call(uint64_t method_name_size, uint64_t payload_size,
+                   uintptr_t dst);
+
+void ic0_cost_create_canister(uintptr_t dst);
+
+void ic0_cost_http_request(uint64_t request_size, uint64_t max_res_bytes,
+                           uintptr_t dst);
+
+uint32_t ic0_cost_sign_with_ecdsa(uintptr_t src, uint32_t size,
+                                  uint32_t ecdsa_curve, uintptr_t dst);
+
+uint32_t ic0_cost_sign_with_schnorr(uintptr_t src, uint32_t size,
+                                    uint32_t algorithm, uintptr_t dst);
+
+uint32_t ic0_cost_vetkd_derive_key(uintptr_t src, uint32_t size,
+                                   uint32_t vetkd_curve, uintptr_t dst);
+
 uint64_t ic0_time();
 
 uint64_t ic0_global_timer_set(uint64_t timestamp_ns);

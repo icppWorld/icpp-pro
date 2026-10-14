@@ -165,6 +165,16 @@ def test__test_env_var_settings_update(network: str, identity: str) -> None:
     assert response == "(null, null)"
 
 
+def test__test_cost(network: str, principal: str) -> None:
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_cost",
+        network=network,
+    )
+    assert response == "(0 : int)"
+
+
 # ----------------------------------------------------------------------------------
 # Run all unit tests for vendor libraries
 def test__test_vendors(network: str, principal: str) -> None:

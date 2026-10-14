@@ -214,6 +214,42 @@ public:
   static std::optional<std::string>
   get_env_var(const std::string &name); // docs end: env_var
 
+  // docs start: cost
+  // The cycles an operation costs right now, so a canister can attach or
+  // reserve enough. cost_call is what a canister needs above its freezing
+  // threshold to make the call, including reservations for the largest
+  // response; the actual call can cost less, never more. cost_http_request
+  // takes the summed byte length of url, headers, body & transform, and the
+  // max_response_bytes of the request (2,000,000 when not set). Available in
+  // every entry point.
+  static __uint128_t cost_call(uint64_t method_name_size,
+                               uint64_t payload_size);
+  static __uint128_t cost_create_canister();
+  static __uint128_t cost_http_request(uint64_t request_size,
+                                       uint64_t max_response_bytes);
+
+  // The cost of a threshold signature or vetKD key derivation, for a key
+  // name (e.g. "key_1", "test_key_1") and a curve or algorithm. error tells
+  // when the curve/algorithm or the key name is not known; cycles is then 0.
+  enum class EcdsaCurve : uint32_t { Secp256k1 = 0 };
+  enum class SchnorrAlgorithm : uint32_t { Bip340Secp256k1 = 0, Ed25519 = 1 };
+  enum class VetKdCurve : uint32_t { Bls12_381_G2 = 0 };
+  enum class SignCostError : uint32_t {
+    None = 0,
+    InvalidCurveOrAlgorithm = 1,
+    InvalidKeyName = 2
+  };
+  struct SignCost {
+    SignCostError error;
+    __uint128_t cycles;
+  };
+  static SignCost cost_sign_with_ecdsa(const std::string &key_name,
+                                       EcdsaCurve curve);
+  static SignCost cost_sign_with_schnorr(const std::string &key_name,
+                                         SchnorrAlgorithm algorithm);
+  static SignCost cost_vetkd_derive_key(const std::string &key_name,
+                                        VetKdCurve curve); // docs end: cost
+
   // Receive things from the wire in candid format
   // docs start: from_wire
   void from_wire();

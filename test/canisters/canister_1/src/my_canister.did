@@ -29,6 +29,7 @@ service: {
     "test_introspection_query" : () -> (int) query;
     "test_env_var" : (text) -> (opt text, opt text) query;
     "test_env_var_count" : () -> (nat64) query;
+    "test_cost" : () -> (int) query;
     "test_candid" : () -> (int) query;
     "test_vendors" : () -> (int) query;
     "test_getenv" : () -> (int) query;

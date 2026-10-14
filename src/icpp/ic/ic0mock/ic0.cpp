@@ -139,6 +139,25 @@ std::vector<uint8_t> mock_env_var_name_at(uint32_t index, const char *api) {
   return std::vector<uint8_t>(name.begin(), name.end());
 }
 
+// The cost of a threshold signature or vetKD key derivation: 1 for an
+// unknown curve or algorithm (curve >= curve_count), 2 for an unknown key
+// name, else 0 with the cycles at dst.
+uint32_t mock_sign_cost(uintptr_t src, uint32_t size, uint32_t curve,
+                        uint32_t curve_count, uintptr_t dst) {
+  if (curve >= curve_count) return 1;
+  std::string key_name(reinterpret_cast<const char *>(src), size);
+  __uint128_t cycles;
+  if (key_name == "key_1") {
+    cycles = MOCKIC_COST_SIGN_KEY_1;
+  } else if (key_name == "test_key_1" || key_name == "dfx_test_key") {
+    cycles = MOCKIC_COST_SIGN_TEST_KEY;
+  } else {
+    return 2;
+  }
+  write_u128(dst, cycles);
+  return 0;
+}
+
 std::vector<uint8_t> bytes_from_hex(std::string_view hex) {
   std::vector<uint8_t> bytes;
   for (size_t i = 0; i + 1 < hex.size(); i += 2) {
@@ -555,6 +574,41 @@ void ic0_env_var_value_copy(uintptr_t name_src, uint32_t name_size,
                      "ic0_env_var_value_copy");
   mock_copy(mock_env_var_value(name_src, name_size, "ic0_env_var_value_copy"),
             dst, off, size, "ic0_env_var_value_copy");
+}
+
+void ic0_cost_call(uint64_t method_name_size, uint64_t payload_size,
+                   uintptr_t dst) {
+  write_u128(dst, (__uint128_t)MOCKIC_COST_CALL_BASE +
+                      (__uint128_t)MOCKIC_COST_CALL_PER_BYTE *
+                          (method_name_size + payload_size));
+}
+
+void ic0_cost_create_canister(uintptr_t dst) {
+  write_u128(dst, MOCKIC_COST_CREATE_CANISTER);
+}
+
+void ic0_cost_http_request(uint64_t request_size, uint64_t max_res_bytes,
+                           uintptr_t dst) {
+  write_u128(dst, (__uint128_t)MOCKIC_COST_HTTP_REQUEST_BASE +
+                      (__uint128_t)MOCKIC_COST_HTTP_REQUEST_PER_REQUEST_BYTE *
+                          request_size +
+                      (__uint128_t)MOCKIC_COST_HTTP_REQUEST_PER_RESPONSE_BYTE *
+                          max_res_bytes);
+}
+
+uint32_t ic0_cost_sign_with_ecdsa(uintptr_t src, uint32_t size,
+                                  uint32_t ecdsa_curve, uintptr_t dst) {
+  return mock_sign_cost(src, size, ecdsa_curve, 1, dst); // secp256k1
+}
+
+uint32_t ic0_cost_sign_with_schnorr(uintptr_t src, uint32_t size,
+                                    uint32_t algorithm, uintptr_t dst) {
+  return mock_sign_cost(src, size, algorithm, 2, dst); // bip340, ed25519
+}
+
+uint32_t ic0_cost_vetkd_derive_key(uintptr_t src, uint32_t size,
+                                   uint32_t vetkd_curve, uintptr_t dst) {
+  return mock_sign_cost(src, size, vetkd_curve, 1, dst); // bls12_381_g2
 }
 
 uint64_t ic0_time() {

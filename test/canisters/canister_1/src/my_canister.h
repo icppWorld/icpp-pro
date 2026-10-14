@@ -22,6 +22,7 @@ void test_introspection_query()
 void test_env_var() WASM_SYMBOL_EXPORTED("canister_query test_env_var");
 void test_env_var_count()
     WASM_SYMBOL_EXPORTED("canister_query test_env_var_count");
+void test_cost() WASM_SYMBOL_EXPORTED("canister_query test_cost");
 void test_candid() WASM_SYMBOL_EXPORTED("canister_query test_candid");
 void test_vendors() WASM_SYMBOL_EXPORTED("canister_query test_vendors");
 void test_getenv() WASM_SYMBOL_EXPORTED("canister_query test_getenv");

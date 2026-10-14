@@ -59,6 +59,29 @@ public:
     m_certified_data = data;
   }
 
+  // Mock state for system introspection, subnet & caller info. Sticky too.
+  uint64_t get_canister_version() { return m_canister_version; }
+  void set_canister_version(uint64_t v) { m_canister_version = v; }
+  uint32_t get_canister_status() { return m_canister_status; }
+  void set_canister_status(uint32_t v) { m_canister_status = v; }
+  // A CanisterQuery is a non-replicated query call unless set otherwise; an
+  // update calling a query method makes it replicated on the IC.
+  bool get_query_replicated() { return m_query_replicated; }
+  void set_query_replicated(bool v) { m_query_replicated = v; }
+  uint32_t get_subnet_node_count() { return m_subnet_node_count; }
+  void set_subnet_node_count(uint32_t v) { m_subnet_node_count = v; }
+  std::vector<uint8_t> get_caller_info_data() { return m_caller_info_data; }
+  std::vector<uint8_t> get_caller_info_signer() { return m_caller_info_signer; }
+  void set_caller_info(const std::vector<uint8_t> &data,
+                       const std::vector<uint8_t> &signer) {
+    m_caller_info_data = data;
+    m_caller_info_signer = signer;
+  }
+  void clear_caller_info() {
+    m_caller_info_data.clear();
+    m_caller_info_signer.clear();
+  }
+
   void msg_reply_data_append(uintptr_t src, uint32_t size);
 
   int assert_candid_out(const std::string &candid_out_expected);
@@ -96,6 +119,12 @@ private:
   std::vector<uint8_t> m_data_certificate;
   bool m_data_certificate_present{false};
   std::vector<uint8_t> m_certified_data;
+  uint64_t m_canister_version{MOCKIC_INITIAL_CANISTER_VERSION};
+  uint32_t m_canister_status{MOCKIC_CANISTER_STATUS_RUNNING};
+  bool m_query_replicated{false};
+  uint32_t m_subnet_node_count{MOCKIC_SUBNET_NODE_COUNT};
+  std::vector<uint8_t> m_caller_info_data;
+  std::vector<uint8_t> m_caller_info_signer;
   int m_tests_total;
   int m_tests_failed;
   bool m_exit_on_fail;

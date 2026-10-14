@@ -5,6 +5,7 @@
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
 #include "current_entry.h"
+#include "entry_contexts.h"
 #include "ic_api.h"
 
 #include <algorithm>
@@ -47,10 +48,15 @@ bool mock_arg_data_permitted() {
          entry->is_entry_Q() || entry->is_entry_Ry() || entry->is_entry_F();
 }
 
+// For the rules shared with the IC_API guards (entry_contexts.h).
+bool mock_permitted(bool (*rule)(CanisterBase &)) {
+  CanisterBase *entry = current_entry();
+  return entry == nullptr || rule(*entry);
+}
+
 bool mock_caller_or_self_permitted() {
   // Refused only in canister_start (s).
-  CanisterBase *entry = current_entry();
-  return entry == nullptr || !entry->is_entry_s();
+  return mock_permitted(entry_contexts::all_except_start);
 }
 
 void mock_refuse_unless(bool permitted, const char *api) {
@@ -59,6 +65,32 @@ void mock_refuse_unless(bool permitted, const char *api) {
                current_entry()->get_entry_type() +
                " mode (the Mock IC enforces the replica's permitted entry "
                "points)");
+}
+
+// The copy half of an ic0 size/copy pair: like the replica, trap when the
+// requested range runs past the end of the value.
+void mock_copy(const std::vector<uint8_t> &value, uintptr_t dst, uint32_t off,
+               uint32_t size, const char *api) {
+  if ((uint64_t)off + size > value.size()) {
+    IC_API::trap(std::string("\"") + api + "\": offset + size (" +
+                 std::to_string((uint64_t)off + size) +
+                 ") exceeds the length of the value (" +
+                 std::to_string(value.size()) + ")");
+  }
+  memcpy(reinterpret_cast<uint8_t *>(dst), value.data() + off, size);
+}
+
+std::vector<uint8_t> principal_bytes(std::string_view text) {
+  return CandidTypePrincipal(std::string(text)).get_v_bytes().vec_uint8_t();
+}
+
+std::vector<uint8_t> bytes_from_hex(std::string_view hex) {
+  std::vector<uint8_t> bytes;
+  for (size_t i = 0; i + 1 < hex.size(); i += 2) {
+    bytes.push_back(
+        (uint8_t)std::stoi(std::string(hex.substr(i, 2)), nullptr, 16));
+  }
+  return bytes;
 }
 } // namespace
 
@@ -331,6 +363,100 @@ uint64_t g_mock_global_timer_set_call_count{0};
 bool g_mock_time_overridden{false};
 uint64_t g_mock_time_override_ns{0};
 } // namespace
+
+uint32_t ic0_msg_caller_info_data_size() {
+  mock_refuse_unless(mock_permitted(entry_contexts::caller_info),
+                     "ic0_msg_caller_info_data_size");
+  return (uint32_t)global_mockIC->get_caller_info_data().size();
+}
+
+void ic0_msg_caller_info_data_copy(uintptr_t dst, uint32_t off, uint32_t size) {
+  mock_refuse_unless(mock_permitted(entry_contexts::caller_info),
+                     "ic0_msg_caller_info_data_copy");
+  mock_copy(global_mockIC->get_caller_info_data(), dst, off, size,
+            "ic0_msg_caller_info_data_copy");
+}
+
+uint32_t ic0_msg_caller_info_signer_size() {
+  mock_refuse_unless(mock_permitted(entry_contexts::caller_info),
+                     "ic0_msg_caller_info_signer_size");
+  return (uint32_t)global_mockIC->get_caller_info_signer().size();
+}
+
+void ic0_msg_caller_info_signer_copy(uintptr_t dst, uint32_t off,
+                                     uint32_t size) {
+  mock_refuse_unless(mock_permitted(entry_contexts::caller_info),
+                     "ic0_msg_caller_info_signer_copy");
+  mock_copy(global_mockIC->get_caller_info_signer(), dst, off, size,
+            "ic0_msg_caller_info_signer_copy");
+}
+
+uint64_t ic0_canister_version() {
+  mock_refuse_unless(mock_permitted(entry_contexts::all_except_start),
+                     "ic0_canister_version");
+  return global_mockIC->get_canister_version();
+}
+
+uint32_t ic0_canister_status() {
+  mock_refuse_unless(mock_permitted(entry_contexts::all_except_start),
+                     "ic0_canister_status");
+  return global_mockIC->get_canister_status();
+}
+
+uint32_t ic0_in_replicated_execution() {
+  // Permitted everywhere. A query call and inspect_message run on a single
+  // node; everything else, and a query called by an update, is replicated.
+  CanisterBase *entry = current_entry();
+  if (entry == nullptr) return 1;
+  if (entry->is_entry_F()) return 0;
+  if (entry->is_entry_Q()) return global_mockIC->get_query_replicated() ? 1 : 0;
+  return 1;
+}
+
+uint64_t ic0_performance_counter(uint32_t counter_type) {
+  // Permitted everywhere. A native run cannot count wasm instructions; the
+  // mock returns steady-clock nanoseconds instead, so the value increases
+  // and the difference of two readings profiles the code in between.
+  if (counter_type > 1) {
+    IC_API::trap("ic0_performance_counter: unknown counter type " +
+                 std::to_string(counter_type));
+  }
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
+
+uint32_t ic0_subnet_self_size() {
+  mock_refuse_unless(mock_permitted(entry_contexts::all_except_start),
+                     "ic0_subnet_self_size");
+  return (uint32_t)principal_bytes(MOCKIC_SUBNET_SELF).size();
+}
+
+void ic0_subnet_self_copy(uintptr_t dst, uint32_t off, uint32_t size) {
+  mock_refuse_unless(mock_permitted(entry_contexts::all_except_start),
+                     "ic0_subnet_self_copy");
+  mock_copy(principal_bytes(MOCKIC_SUBNET_SELF), dst, off, size,
+            "ic0_subnet_self_copy");
+}
+
+uint32_t ic0_subnet_self_node_count() {
+  mock_refuse_unless(mock_permitted(entry_contexts::all_except_start),
+                     "ic0_subnet_self_node_count");
+  return global_mockIC->get_subnet_node_count();
+}
+
+uint32_t ic0_root_key_size() {
+  mock_refuse_unless(mock_permitted(entry_contexts::root_key),
+                     "ic0_root_key_size");
+  return (uint32_t)bytes_from_hex(MOCKIC_ROOT_KEY_HEX).size();
+}
+
+void ic0_root_key_copy(uintptr_t dst, uint32_t off, uint32_t size) {
+  mock_refuse_unless(mock_permitted(entry_contexts::root_key),
+                     "ic0_root_key_copy");
+  mock_copy(bytes_from_hex(MOCKIC_ROOT_KEY_HEX), dst, off, size,
+            "ic0_root_key_copy");
+}
 
 uint64_t ic0_time() {
   if (g_mock_time_overridden) {

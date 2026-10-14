@@ -13,6 +13,7 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <typeinfo>
@@ -148,6 +149,61 @@ public:
   void set_certified_data(const std::vector<uint8_t> &data);
   bool data_certificate_present();
   std::vector<uint8_t> get_data_certificate(); // docs end: certified_data
+
+  // docs start: canister_version
+  // Incremented on every code install, upgrade & settings change. Not
+  // available in canister_start.
+  uint64_t get_canister_version(); // docs end: canister_version
+
+  // docs start: canister_status
+  // Not available in canister_start. In canister_post_upgrade, Stopped tells
+  // that the canister was fully stopped before the upgrade.
+  enum class CanisterStatus : uint32_t {
+    Running = 1,
+    Stopping = 2,
+    Stopped = 3
+  };
+  CanisterStatus get_canister_status(); // docs end: canister_status
+
+  // docs start: in_replicated_execution
+  // False in a query call & in inspect_message, which run on a single node.
+  // Available in every entry point.
+  static bool in_replicated_execution(); // docs end: in_replicated_execution
+
+  // docs start: performance_counter
+  // Instructions executed so far in the current message (Instructions), or
+  // in the whole call context (CallContextInstructions). Available in every
+  // entry point. The Mock IC cannot count wasm instructions; it returns an
+  // increasing nanosecond count, so the difference of two readings still
+  // profiles the code in between.
+  enum class PerformanceCounterType : uint32_t {
+    Instructions = 0,
+    CallContextInstructions = 1
+  };
+  static uint64_t performance_counter(
+      PerformanceCounterType type = PerformanceCounterType::Instructions);
+  // docs end: performance_counter
+
+  // docs start: subnet
+  // The subnet this canister runs on, and its number of nodes. Not available
+  // in canister_start.
+  CandidTypePrincipal get_subnet_self();
+  uint32_t get_subnet_node_count(); // docs end: subnet
+
+  // docs start: root_key
+  // The IC root public key (DER-encoded BLS12-381, 133 bytes on mainnet), to
+  // verify certificates. Not available in a query call (non-replicated),
+  // inspect_message or canister_start.
+  std::vector<uint8_t> get_root_key(); // docs end: root_key
+
+  // docs start: caller_info
+  // Extra information about a caller authenticated by a canister signature,
+  // and the canister that signed it. Empty data & no signer for every other
+  // caller. Available in update, query, reply & reject callbacks, cleanup &
+  // inspect_message.
+  std::vector<uint8_t> get_caller_info_data();
+  std::optional<CandidTypePrincipal>
+  get_caller_info_signer(); // docs end: caller_info
 
   // Receive things from the wire in candid format
   // docs start: from_wire

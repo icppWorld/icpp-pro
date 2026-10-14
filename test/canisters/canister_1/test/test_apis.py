@@ -84,6 +84,28 @@ def test__test_data_certificate(network: str, principal: str) -> None:
 
 
 # ----------------------------------------------------------------------------------
+# System introspection, subnet, root key & caller info
+def test__test_introspection(network: str, principal: str) -> None:
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_introspection",
+        network=network,
+    )
+    assert response == "(0 : int)"
+
+
+def test__test_introspection_query(network: str, principal: str) -> None:
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_introspection_query",
+        network=network,
+    )
+    assert response == "(0 : int)"
+
+
+# ----------------------------------------------------------------------------------
 # Run all unit tests for vendor libraries
 def test__test_vendors(network: str, principal: str) -> None:
     response = call_canister_api(

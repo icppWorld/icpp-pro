@@ -126,6 +126,47 @@ uint32_t ic0_data_certificate_size()
 void ic0_data_certificate_copy(uint32_t dst, uint32_t off, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "data_certificate_copy");
 
+// Caller info: non-empty only for a caller authenticated by a canister
+// signature. Not available in init, pre/post_upgrade, start & system tasks.
+uint32_t ic0_msg_caller_info_data_size()
+    WASM_SYMBOL_IMPORTED("ic0", "msg_caller_info_data_size");
+
+void ic0_msg_caller_info_data_copy(uint32_t dst, uint32_t off, uint32_t size)
+    WASM_SYMBOL_IMPORTED("ic0", "msg_caller_info_data_copy");
+
+uint32_t ic0_msg_caller_info_signer_size()
+    WASM_SYMBOL_IMPORTED("ic0", "msg_caller_info_signer_size");
+
+void ic0_msg_caller_info_signer_copy(uint32_t dst, uint32_t off, uint32_t size)
+    WASM_SYMBOL_IMPORTED("ic0", "msg_caller_info_signer_copy");
+
+// System introspection. canister_status: 1 running, 2 stopping, 3 stopped.
+// performance_counter: 0 instructions in this message execution, 1 in the
+// call context; any other type traps.
+uint64_t ic0_canister_version() WASM_SYMBOL_IMPORTED("ic0", "canister_version");
+
+uint32_t ic0_canister_status() WASM_SYMBOL_IMPORTED("ic0", "canister_status");
+
+uint32_t ic0_in_replicated_execution()
+    WASM_SYMBOL_IMPORTED("ic0", "in_replicated_execution");
+
+uint64_t ic0_performance_counter(uint32_t counter_type)
+    WASM_SYMBOL_IMPORTED("ic0", "performance_counter");
+
+// Subnet & root key. root_key is refused in a non-replicated query.
+uint32_t ic0_subnet_self_size() WASM_SYMBOL_IMPORTED("ic0", "subnet_self_size");
+
+void ic0_subnet_self_copy(uint32_t dst, uint32_t off, uint32_t size)
+    WASM_SYMBOL_IMPORTED("ic0", "subnet_self_copy");
+
+uint32_t ic0_subnet_self_node_count()
+    WASM_SYMBOL_IMPORTED("ic0", "subnet_self_node_count");
+
+uint32_t ic0_root_key_size() WASM_SYMBOL_IMPORTED("ic0", "root_key_size");
+
+void ic0_root_key_copy(uint32_t dst, uint32_t off, uint32_t size)
+    WASM_SYMBOL_IMPORTED("ic0", "root_key_copy");
+
 uint64_t ic0_time() WASM_SYMBOL_IMPORTED("ic0", "time");
 
 uint64_t ic0_global_timer_set(uint64_t timestamp_ns)

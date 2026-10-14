@@ -20,6 +20,7 @@
 #include <string>
 
 #include "current_entry.h"
+#include "entry_contexts.h"
 #include "ic0.h"
 #include "ic_timers.h"
 
@@ -264,6 +265,71 @@ std::vector<uint8_t> IC_API::get_data_certificate() {
          "only available in non-replicated query calls.");
   }
   return read_size_copy(ic0_data_certificate_size, ic0_data_certificate_copy);
+}
+
+uint64_t IC_API::get_canister_version() {
+  check_entry(m_canister_entry,
+              entry_contexts::all_except_start(m_canister_entry),
+              "IC_API::get_canister_version", "all except canister_start");
+  return ic0_canister_version();
+}
+
+IC_API::CanisterStatus IC_API::get_canister_status() {
+  check_entry(m_canister_entry,
+              entry_contexts::all_except_start(m_canister_entry),
+              "IC_API::get_canister_status", "all except canister_start");
+  return static_cast<CanisterStatus>(ic0_canister_status());
+}
+
+bool IC_API::in_replicated_execution() {
+  return ic0_in_replicated_execution() == 1;
+}
+
+uint64_t IC_API::performance_counter(PerformanceCounterType type) {
+  return ic0_performance_counter(static_cast<uint32_t>(type));
+}
+
+CandidTypePrincipal IC_API::get_subnet_self() {
+  check_entry(m_canister_entry,
+              entry_contexts::all_except_start(m_canister_entry),
+              "IC_API::get_subnet_self", "all except canister_start");
+  return CandidTypePrincipal(
+      read_size_copy(ic0_subnet_self_size, ic0_subnet_self_copy));
+}
+
+uint32_t IC_API::get_subnet_node_count() {
+  check_entry(m_canister_entry,
+              entry_contexts::all_except_start(m_canister_entry),
+              "IC_API::get_subnet_node_count", "all except canister_start");
+  return ic0_subnet_self_node_count();
+}
+
+std::vector<uint8_t> IC_API::get_root_key() {
+  check_entry(m_canister_entry, entry_contexts::root_key(m_canister_entry),
+              "IC_API::get_root_key",
+              "init, pre/post_upgrade, update, a replicated query, reply & "
+              "reject callbacks, cleanup, heartbeat & timer");
+  return read_size_copy(ic0_root_key_size, ic0_root_key_copy);
+}
+
+std::vector<uint8_t> IC_API::get_caller_info_data() {
+  check_entry(m_canister_entry, entry_contexts::caller_info(m_canister_entry),
+              "IC_API::get_caller_info_data",
+              "update, query, reply & reject callbacks, cleanup & "
+              "inspect_message");
+  return read_size_copy(ic0_msg_caller_info_data_size,
+                        ic0_msg_caller_info_data_copy);
+}
+
+std::optional<CandidTypePrincipal> IC_API::get_caller_info_signer() {
+  check_entry(m_canister_entry, entry_contexts::caller_info(m_canister_entry),
+              "IC_API::get_caller_info_signer",
+              "update, query, reply & reject callbacks, cleanup & "
+              "inspect_message");
+  std::vector<uint8_t> signer = read_size_copy(ic0_msg_caller_info_signer_size,
+                                               ic0_msg_caller_info_signer_copy);
+  if (signer.empty()) return std::nullopt;
+  return CandidTypePrincipal(signer);
 }
 
 void IC_API::debug_print(const std::string &s) {

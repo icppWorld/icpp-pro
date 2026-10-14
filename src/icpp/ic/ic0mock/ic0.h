@@ -85,6 +85,33 @@ uint32_t ic0_data_certificate_size();
 
 void ic0_data_certificate_copy(uintptr_t dst, uint32_t off, uint32_t size);
 
+uint32_t ic0_msg_caller_info_data_size();
+
+void ic0_msg_caller_info_data_copy(uintptr_t dst, uint32_t off, uint32_t size);
+
+uint32_t ic0_msg_caller_info_signer_size();
+
+void ic0_msg_caller_info_signer_copy(uintptr_t dst, uint32_t off,
+                                     uint32_t size);
+
+uint64_t ic0_canister_version();
+
+uint32_t ic0_canister_status();
+
+uint32_t ic0_in_replicated_execution();
+
+uint64_t ic0_performance_counter(uint32_t counter_type);
+
+uint32_t ic0_subnet_self_size();
+
+void ic0_subnet_self_copy(uintptr_t dst, uint32_t off, uint32_t size);
+
+uint32_t ic0_subnet_self_node_count();
+
+uint32_t ic0_root_key_size();
+
+void ic0_root_key_copy(uintptr_t dst, uint32_t off, uint32_t size);
+
 uint64_t ic0_time();
 
 uint64_t ic0_global_timer_set(uint64_t timestamp_ns);

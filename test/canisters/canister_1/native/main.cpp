@@ -181,6 +181,93 @@ static void native_ctor_start() {
   IC_API ic_api(CanisterStart{"native_ctor_start"}, false);
 }
 
+// Step-03a scenarios: system introspection, subnet, root key & caller info.
+static void native_root_key_in_query() {
+  IC_API ic_api(CanisterQuery{"native_root_key_in_query"}, false);
+  (void)ic_api.get_root_key(); // must trap: a query call is non-replicated
+}
+
+static void native_root_key_size_in_query() {
+  IC_API ic_api(CanisterQuery{"native_root_key_size_in_query"}, false);
+  (void)ic0_root_key_size(); // must trap: the mock refuses it too
+}
+
+static void native_root_key_in_replicated_query() {
+  IC_API ic_api(CanisterQuery{"native_root_key_in_replicated_query"}, false);
+  if (!IC_API::in_replicated_execution())
+    ICPP_HOOKS::trap("query set to replicated is not replicated");
+  if (ic_api.get_root_key().size() != 133)
+    ICPP_HOOKS::trap("root key size != 133");
+  ic_api.to_wire();
+}
+
+static void native_root_key_copy_out_of_range() {
+  IC_API ic_api(CanisterUpdate{"native_root_key_copy_out_of_range"}, false);
+  uint8_t bytes[50];
+  ic0_root_key_copy(reinterpret_cast<uintptr_t>(bytes), 100,
+                    sizeof(bytes)); // must trap: 150 > 133
+}
+
+static void native_subnet_self_size_in_start() {
+  IC_API ic_api(CanisterStart{"native_subnet_self_size_in_start"}, false);
+  (void)ic0_subnet_self_size(); // must trap
+}
+
+static void native_canister_version_in_start() {
+  IC_API ic_api(CanisterStart{"native_canister_version_in_start"}, false);
+  (void)ic_api.get_canister_version(); // must trap
+}
+
+static void native_subnet_self() {
+  IC_API ic_api(CanisterUpdate{"native_subnet_self"}, false);
+  if (ic_api.get_subnet_self().get_text() != MOCKIC_SUBNET_SELF)
+    ICPP_HOOKS::trap("subnet_self != MOCKIC_SUBNET_SELF");
+  if (ic_api.get_subnet_node_count() != 34)
+    ICPP_HOOKS::trap("subnet node count != 34");
+  ic_api.to_wire();
+}
+
+static void native_canister_stopping() {
+  IC_API ic_api(CanisterPostUpgrade{"native_canister_stopping"}, false);
+  if (ic_api.get_canister_status() != IC_API::CanisterStatus::Stopping)
+    ICPP_HOOKS::trap("canister status != Stopping");
+  if (ic_api.get_canister_version() != 7)
+    ICPP_HOOKS::trap("canister version != 7");
+}
+
+static void native_in_replicated_in_inspect() {
+  IC_API ic_api(CanisterInspectMessage{"native_in_replicated_in_inspect"},
+                false);
+  if (IC_API::in_replicated_execution())
+    ICPP_HOOKS::trap("inspect_message is replicated");
+}
+
+static void native_performance_counter_bad_type() {
+  IC_API ic_api(CanisterUpdate{"native_performance_counter_bad_type"}, false);
+  (void)ic0_performance_counter(2); // must trap: unknown counter type
+}
+
+static void native_caller_info() {
+  IC_API ic_api(CanisterUpdate{"native_caller_info"}, false);
+  if (ic_api.get_caller_info_data() != std::vector<uint8_t>{0xca, 0xfe})
+    ICPP_HOOKS::trap("caller info data != cafe");
+  std::optional<CandidTypePrincipal> signer = ic_api.get_caller_info_signer();
+  if (!signer.has_value() || signer->get_text() != MOCKIC_CANISTER_SELF)
+    ICPP_HOOKS::trap("caller info signer != MOCKIC_CANISTER_SELF");
+  ic_api.to_wire();
+}
+
+static void native_caller_info_in_init() {
+  IC_API ic_api(CanisterInit{"native_caller_info_in_init"}, false);
+  (void)ic_api.get_caller_info_data(); // must trap
+}
+
+static void native_caller_info_signer_size_in_heartbeat() {
+  IC_API ic_api(
+      CanisterHeartbeat{"native_caller_info_signer_size_in_heartbeat"}, false);
+  (void)ic0_msg_caller_info_signer_size(); // must trap
+}
+
 int main() {
   bool exit_on_fail = true;
   MockIC mockIC(exit_on_fail);
@@ -1516,6 +1603,74 @@ int main() {
                   silent_on_trap, my_principal);
   mockIC.run_test("native_ctor_start", native_ctor_start, "4449444c0000", "",
                   silent_on_trap, my_principal);
+
+  // ------------------------------------------------------------------------
+  // System introspection, subnet, root key & caller info (step 03a)
+
+  // '()' -> '(0 : int)'
+  mockIC.run_test("test_introspection", test_introspection, "4449444c0000",
+                  "4449444c00017c00", silent_on_trap, my_principal);
+  mockIC.run_test("test_introspection_query", test_introspection_query,
+                  "4449444c0000", "4449444c00017c00", silent_on_trap,
+                  my_principal);
+
+  // root_key is refused in a query call, by IC_API & by the mock...
+  mockIC.run_trap_test("native_root_key_in_query", native_root_key_in_query,
+                       "4449444c0000", silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_root_key_size_in_query",
+                       native_root_key_size_in_query, "4449444c0000",
+                       silent_on_trap, my_principal);
+  // ...but permitted in a query executed as a replicated call
+  mockIC.set_query_replicated(true);
+  mockIC.run_test("native_root_key_in_replicated_query",
+                  native_root_key_in_replicated_query, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+  mockIC.set_query_replicated(false);
+  mockIC.run_trap_test("native_root_key_copy_out_of_range",
+                       native_root_key_copy_out_of_range, "4449444c0000",
+                       silent_on_trap, my_principal);
+
+  // Refused in canister_start
+  mockIC.run_trap_test("native_subnet_self_size_in_start",
+                       native_subnet_self_size_in_start, "4449444c0000",
+                       silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_canister_version_in_start",
+                       native_canister_version_in_start, "4449444c0000",
+                       silent_on_trap, my_principal);
+
+  // Values from the mock state
+  mockIC.set_subnet_node_count(34);
+  mockIC.run_test("native_subnet_self", native_subnet_self, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+  mockIC.set_subnet_node_count(MOCKIC_SUBNET_NODE_COUNT);
+
+  mockIC.set_canister_status(2);
+  mockIC.set_canister_version(7);
+  mockIC.run_test("native_canister_stopping", native_canister_stopping,
+                  "4449444c0000", "", silent_on_trap, my_principal);
+  mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_RUNNING);
+  mockIC.set_canister_version(MOCKIC_INITIAL_CANISTER_VERSION);
+
+  mockIC.run_test("native_in_replicated_in_inspect",
+                  native_in_replicated_in_inspect, "4449444c0000", "",
+                  silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_performance_counter_bad_type",
+                       native_performance_counter_bad_type, "4449444c0000",
+                       silent_on_trap, my_principal);
+
+  // Caller info of a canister-signature caller
+  mockIC.set_caller_info(std::vector<uint8_t>{0xca, 0xfe},
+                         CandidTypePrincipal(std::string(MOCKIC_CANISTER_SELF))
+                             .get_v_bytes()
+                             .vec_uint8_t());
+  mockIC.run_test("native_caller_info", native_caller_info, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+  mockIC.clear_caller_info();
+  mockIC.run_trap_test("native_caller_info_in_init", native_caller_info_in_init,
+                       "4449444c0000", silent_on_trap, my_principal);
+  mockIC.run_trap_test("native_caller_info_signer_size_in_heartbeat",
+                       native_caller_info_signer_size_in_heartbeat,
+                       "4449444c0000", silent_on_trap, my_principal);
 
   // returns 1 if any tests failed
   return mockIC.test_summary();

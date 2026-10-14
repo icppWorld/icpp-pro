@@ -25,6 +25,8 @@ service: {
     "test_cycles" : () -> (int);
     "test_certified_data_set" : () -> ();
     "test_data_certificate" : () -> (int) query;
+    "test_introspection" : () -> (int);
+    "test_introspection_query" : () -> (int) query;
     "test_candid" : () -> (int) query;
     "test_vendors" : () -> (int) query;
     "test_getenv" : () -> (int) query;

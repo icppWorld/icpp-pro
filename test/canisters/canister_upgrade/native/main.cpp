@@ -39,6 +39,8 @@ static void native_record_after_install() {
   expect(r.post_upgrade_count == 0, "post_upgrade_count == 0");
   expect(r.init_caller == MY_PRINCIPAL, "init_caller == my principal");
   expect(r.init_self == MOCKIC_CANISTER_SELF, "init_self == canister self");
+  expect(r.init_version == MOCKIC_INITIAL_CANISTER_VERSION,
+         "init_version == the mock's canister version");
 }
 
 // After an upgrade: both upgrade hooks ran once, init did not run again
@@ -55,6 +57,10 @@ static void native_record_after_upgrade() {
          "pre_upgrade_self == canister self");
   expect(r.post_upgrade_self == MOCKIC_CANISTER_SELF,
          "post_upgrade_self == canister self");
+  expect(r.pre_upgrade_version == MOCKIC_INITIAL_CANISTER_VERSION,
+         "pre_upgrade_version == the version before the upgrade");
+  expect(r.post_upgrade_version == r.pre_upgrade_version + 1,
+         "post_upgrade_version == pre_upgrade_version + 1");
 }
 
 int main() {
@@ -79,6 +85,8 @@ int main() {
   // Upgrade
   mockIC.run_test("canister_pre_upgrade", canister_pre_upgrade, no_args, "",
                   silent_on_trap, MY_PRINCIPAL);
+  // The IC counts the upgrade between the two hooks
+  mockIC.set_canister_version(MOCKIC_INITIAL_CANISTER_VERSION + 1);
   mockIC.run_test("canister_post_upgrade", canister_post_upgrade, no_args, "",
                   silent_on_trap, MY_PRINCIPAL);
   mockIC.run_test("native_record_after_upgrade", native_record_after_upgrade,
@@ -87,6 +95,7 @@ int main() {
                   silent_on_trap, MY_PRINCIPAL);
 
   // Leave no state behind in the working directory
+  mockIC.set_canister_version(MOCKIC_INITIAL_CANISTER_VERSION);
   std::remove(UPGRADE_RECORD_PATH);
 
   // returns 1 if any tests failed

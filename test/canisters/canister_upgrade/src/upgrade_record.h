@@ -17,6 +17,11 @@ struct UpgradeRecord {
   std::string init_self;
   std::string pre_upgrade_self;
   std::string post_upgrade_self;
+  // The canister version each hook saw: pre_upgrade runs before the IC
+  // increments it for the upgrade, post_upgrade after.
+  uint64_t init_version{0};
+  uint64_t pre_upgrade_version{0};
+  uint64_t post_upgrade_version{0};
 };
 
 inline constexpr const char *UPGRADE_RECORD_PATH = "upgrade_record.txt";

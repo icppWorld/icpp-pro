@@ -31,6 +31,9 @@ UpgradeRecord load_record() {
   record.init_self = kv["init_self"];
   record.pre_upgrade_self = kv["pre_upgrade_self"];
   record.post_upgrade_self = kv["post_upgrade_self"];
+  record.init_version = count("init_version");
+  record.pre_upgrade_version = count("pre_upgrade_version");
+  record.post_upgrade_version = count("post_upgrade_version");
   return record;
 }
 
@@ -44,7 +47,10 @@ void save_record(const UpgradeRecord &record) {
        << "post_upgrade_caller=" << record.post_upgrade_caller << "\n"
        << "init_self=" << record.init_self << "\n"
        << "pre_upgrade_self=" << record.pre_upgrade_self << "\n"
-       << "post_upgrade_self=" << record.post_upgrade_self << "\n";
+       << "post_upgrade_self=" << record.post_upgrade_self << "\n"
+       << "init_version=" << record.init_version << "\n"
+       << "pre_upgrade_version=" << record.pre_upgrade_version << "\n"
+       << "post_upgrade_version=" << record.post_upgrade_version << "\n";
   file.close();
   if (!file)
     IC_API::trap(std::string("Failed to write ") + UPGRADE_RECORD_PATH);

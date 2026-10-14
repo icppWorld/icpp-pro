@@ -10,7 +10,7 @@ place and run test/test_after_upgrade.py to check the upgrade hooks.
 
 # pylint: disable=missing-function-docstring
 
-from .upgrade_record import get_upgrade_record
+from .upgrade_record import get_upgrade_record, number
 
 
 def test__record_after_install(network: str, principal: str) -> None:
@@ -21,3 +21,5 @@ def test__record_after_install(network: str, principal: str) -> None:
     # The deploying identity is the caller of canister_init
     assert record["init_caller"] == principal
     assert record["init_self"] != ""
+    # An installed canister has been through at least one code install
+    assert number(record, "init_version") >= 1

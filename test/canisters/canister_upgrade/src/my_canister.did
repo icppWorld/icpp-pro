@@ -8,6 +8,9 @@ type UpgradeRecord = record {
     init_self : text;
     pre_upgrade_self : text;
     post_upgrade_self : text;
+    init_version : nat64;
+    pre_upgrade_version : nat64;
+    post_upgrade_version : nat64;
 };
 
 service : {

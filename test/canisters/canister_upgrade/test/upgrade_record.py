@@ -12,7 +12,14 @@ ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
 # Canister in the icp.yaml file we want to test
 CANISTER_NAME = "my_canister"
 
-COUNTS = ["init_count", "pre_upgrade_count", "post_upgrade_count"]
+COUNTS = [
+    "init_count",
+    "pre_upgrade_count",
+    "post_upgrade_count",
+    "init_version",
+    "pre_upgrade_version",
+    "post_upgrade_version",
+]
 TEXTS = [
     "init_caller",
     "pre_upgrade_caller",
@@ -21,6 +28,13 @@ TEXTS = [
     "pre_upgrade_self",
     "post_upgrade_self",
 ]
+
+
+def number(record: Dict[str, Union[int, str]], field: str) -> int:
+    """A numeric field of the record, typed for arithmetic & comparisons."""
+    value = record[field]
+    assert isinstance(value, int), f"{field} is not a number: {value!r}"
+    return value
 
 
 def get_upgrade_record(network: str) -> Dict[str, Union[int, str]]:

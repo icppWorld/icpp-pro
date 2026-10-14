@@ -6,8 +6,9 @@
 // canister_pre_upgrade. The trap aborted the upgrade, so any canister that
 // constructed an IC_API in pre_upgrade could never be upgraded again.
 //
-// Each hook counts its runs and records the caller & canister id it saw; the
-// tests assert those after a fresh install and again after an upgrade.
+// Each hook counts its runs and records the caller, canister id & canister
+// version it saw; the tests assert those after a fresh install and again
+// after an upgrade.
 
 #include "my_canister.h"
 
@@ -22,6 +23,7 @@ void canister_init() {
   record.init_count += 1;
   record.init_caller = ic_api.get_caller().get_text();
   record.init_self = ic_api.get_canister_self().get_text();
+  record.init_version = ic_api.get_canister_version();
   save_record(record);
 }
 
@@ -31,6 +33,7 @@ void canister_pre_upgrade() {
   record.pre_upgrade_count += 1;
   record.pre_upgrade_caller = ic_api.get_caller().get_text();
   record.pre_upgrade_self = ic_api.get_canister_self().get_text();
+  record.pre_upgrade_version = ic_api.get_canister_version();
   save_record(record);
 }
 
@@ -40,6 +43,7 @@ void canister_post_upgrade() {
   record.post_upgrade_count += 1;
   record.post_upgrade_caller = ic_api.get_caller().get_text();
   record.post_upgrade_self = ic_api.get_canister_self().get_text();
+  record.post_upgrade_version = ic_api.get_canister_version();
   save_record(record);
 }
 
@@ -59,5 +63,10 @@ void get_upgrade_record() {
   r_out.append("init_self", CandidTypeText{record.init_self});
   r_out.append("pre_upgrade_self", CandidTypeText{record.pre_upgrade_self});
   r_out.append("post_upgrade_self", CandidTypeText{record.post_upgrade_self});
+  r_out.append("init_version", CandidTypeNat64{record.init_version});
+  r_out.append("pre_upgrade_version",
+               CandidTypeNat64{record.pre_upgrade_version});
+  r_out.append("post_upgrade_version",
+               CandidTypeNat64{record.post_upgrade_version});
   ic_api.to_wire(r_out);
 }

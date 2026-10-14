@@ -12,7 +12,7 @@ constructing IC_API in pre_upgrade does not trap on a real replica.
 
 # pylint: disable=missing-function-docstring
 
-from .upgrade_record import get_upgrade_record
+from .upgrade_record import get_upgrade_record, number
 
 
 def test__record_after_upgrade(network: str, principal: str) -> None:
@@ -30,3 +30,8 @@ def test__record_after_upgrade(network: str, principal: str) -> None:
     assert record["init_self"] != ""
     assert record["pre_upgrade_self"] == record["init_self"]
     assert record["post_upgrade_self"] == record["init_self"]
+    # pre_upgrade runs on the old code, before the IC counts the upgrade;
+    # post_upgrade runs on the new code, after it
+    pre_upgrade_version = number(record, "pre_upgrade_version")
+    assert pre_upgrade_version >= number(record, "init_version")
+    assert number(record, "post_upgrade_version") == pre_upgrade_version + 1

@@ -179,12 +179,36 @@ verify-dev-install:
 
 # The tier to run after changes to the public surface (headers, IC_API,
 # conftest_base, smoketest): cheap docs build, the demos suite, and the
-# llama_cpp_canister native tests.
+# llama_cpp_canister native tests. The three are independent, so they run in
+# parallel: the gate takes as long as the slowest (llama), not their sum.
 .PHONY: siblings-verify-api
-siblings-verify-api: verify-dev-install
-	$(MAKE) -C $(SIBLING_ICPP_DOCS) mkdocs-build
-	$(MAKE) -C $(SIBLING_ICPP_DEMOS) all-tests
-	$(MAKE) -C $(SIBLING_LLAMA_CPP_CANISTER) test-llm-native
+siblings-verify-api:
+	$(MAKE) -j3 siblings-verify-docs siblings-verify-demos siblings-verify-llama
+
+# Each step writes its output to its own log, so the parallel steps do not
+# interleave (make 3.81, the macOS default, has no --output-sync). A failed
+# step prints the end of its log.
+SIBLINGS_LOG_DIR ?= .siblings-verify-logs
+
+# $(call sibling_step,<name>,<repo dir>,<make targets>)
+define sibling_step
+	@mkdir -p $(SIBLINGS_LOG_DIR)
+	@echo ">>>> $(1): started, log in $(SIBLINGS_LOG_DIR)/$(1).log"
+	@$(MAKE) -C $(2) $(3) > $(SIBLINGS_LOG_DIR)/$(1).log 2>&1 \
+	  && echo ">>>> $(1): passed" \
+	  || { echo ">>>> $(1): FAILED, the end of $(SIBLINGS_LOG_DIR)/$(1).log:"; \
+	       tail -n 40 $(SIBLINGS_LOG_DIR)/$(1).log; exit 1; }
+endef
+
+.PHONY: siblings-verify-docs siblings-verify-demos siblings-verify-llama
+siblings-verify-docs: verify-dev-install
+	$(call sibling_step,icpp-docs,$(SIBLING_ICPP_DOCS),mkdocs-build)
+
+siblings-verify-demos: verify-dev-install
+	$(call sibling_step,icpp-demos,$(SIBLING_ICPP_DEMOS),all-tests)
+
+siblings-verify-llama: verify-dev-install
+	$(call sibling_step,llama_cpp_canister,$(SIBLING_LLAMA_CPP_CANISTER),test-llm-native)
 
 # Everything above plus the wasm-hash-sensitive llama_cpp_canister docker
 # build & prebuilt-wasm test (heavy: docker + models). Run it after a release,

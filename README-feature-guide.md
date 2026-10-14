@@ -173,7 +173,9 @@ path.
 
 `make siblings-verify-api` = icpp-docs `mkdocs-build` (cheap — a moved include
 marker fails loudly) + icpp-demos `all-tests` + llama_cpp_canister
-`test-llm-native`. `make siblings-verify-full` adds the wasm-hash-sensitive
+`test-llm-native`, run in parallel; each writes its output to
+`.siblings-verify-logs/<repo>.log`, and a failed one prints the end of its log.
+`make siblings-verify-full` adds the wasm-hash-sensitive
 llama docker build + prebuilt-wasm pytest (heavy: docker + models). It runs
 after the llama_cpp_canister pin bump. Before the release, llama's docker
 build can only install the previous icpp-pro from PyPI (its `docker-compose.yml`

@@ -180,3 +180,4 @@ _handoff/
 # Written by the canister_upgrade native test run; it removes the file itself,
 # but a crashed run can leave it behind.
 test/canisters/canister_upgrade/upgrade_record.txt
+.siblings-verify-logs/

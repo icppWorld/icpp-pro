@@ -142,7 +142,8 @@ public:
   // Cycles to send along. The callee accepts what it wants; the rest comes
   // back as cycles_refunded.
   IC_Call &with_cycles(__uint128_t cycles);
-  // Bounded-wait calls only.
+  // Bounded-wait calls only. The IC caps the timeout at 300 s. A timeout of
+  // 0 is valid, and almost always ends in a SysUnknown reject.
   IC_Call &change_timeout(uint32_t seconds);
 
   // Performs the call without waiting for, or receiving, a response.

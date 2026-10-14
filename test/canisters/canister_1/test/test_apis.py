@@ -12,7 +12,9 @@ from pathlib import Path
 from typing import Dict
 import json
 import pytest
+from icpp.run_shell_cmd import run_shell_cmd
 from icpp.smoketest import (
+    ICP,
     call_canister_api,
     dict_to_candid_text,
     flatten_candid_text,
@@ -103,6 +105,64 @@ def test__test_introspection_query(network: str, principal: str) -> None:
         network=network,
     )
     assert response == "(0 : int)"
+
+
+def call_test_env_var(network: str, name: str) -> str:
+    return call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_env_var",
+        canister_argument=f'("{name}")',
+        network=network,
+    )
+
+
+def update_env_var(network: str, identity: str, flag: str) -> None:
+    run_shell_cmd(
+        f"{ICP} canister settings update {CANISTER_NAME} {flag} "
+        f"--environment {network} --identity {identity} "
+        f"--project-root-override {ICP_YAML_PATH.parent.resolve()} < /dev/null",
+        capture_output=True,
+    )
+
+
+def test__test_env_var(network: str, principal: str) -> None:
+    # Set in icp.yaml: IC_API & getenv() both see it
+    response = call_test_env_var(network, "ICPP_TEST_GREETING")
+    expected = '(opt "hello from icp.yaml", opt "hello from icp.yaml")'
+    assert response == expected
+
+    # Set by icp-cli on deploy
+    response = call_test_env_var(network, f"PUBLIC_CANISTER_ID:{CANISTER_NAME}")
+    canister_id = get_canister_id(
+        canister_name=CANISTER_NAME, icp_yaml_path=ICP_YAML_PATH, network=network
+    )
+    assert response == f'(opt "{canister_id}", opt "{canister_id}")'
+
+    response = call_test_env_var(network, "ICPP_TEST_NOT_SET")
+    assert response == "(null, null)"
+
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_env_var_count",
+        network=network,
+    )
+    assert response.startswith("(") and int(response.split()[0][1:]) >= 2
+
+
+def test__test_env_var_settings_update(network: str, identity: str) -> None:
+    # A settings change is seen by the next message, also by getenv()
+    update_env_var(network, identity, "--add-environment-variable ICPP_TEST_ADDED=1")
+    try:
+        response = call_test_env_var(network, "ICPP_TEST_ADDED")
+        assert response == '(opt "1", opt "1")'
+    finally:
+        update_env_var(
+            network, identity, "--remove-environment-variable ICPP_TEST_ADDED"
+        )
+    response = call_test_env_var(network, "ICPP_TEST_ADDED")
+    assert response == "(null, null)"
 
 
 # ----------------------------------------------------------------------------------

@@ -6,12 +6,14 @@
 #include "candid_type_all_includes.h"
 #include "current_entry.h"
 #include "entry_contexts.h"
+#include "global.h"
 #include "ic_api.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <iterator>
 
 #include <chrono>
 #include <iomanip>
@@ -82,6 +84,59 @@ void mock_copy(const std::vector<uint8_t> &value, uintptr_t dst, uint32_t off,
 
 std::vector<uint8_t> principal_bytes(std::string_view text) {
   return CandidTypePrincipal(std::string(text)).get_v_bytes().vec_uint8_t();
+}
+
+// Like the replica, an env var name that is not UTF-8 traps. Checks the
+// byte structure (lead byte + continuation bytes).
+bool is_utf8(const std::string &s) {
+  for (size_t i = 0; i < s.size();) {
+    uint8_t c = (uint8_t)s[i];
+    size_t n = c < 0x80             ? 0
+               : (c & 0xE0) == 0xC0 ? 1
+               : (c & 0xF0) == 0xE0 ? 2
+               : (c & 0xF8) == 0xF0 ? 3
+                                    : 4;
+    if (n == 4 || i + n >= s.size()) return false;
+    for (size_t k = 1; k <= n; ++k) {
+      if (((uint8_t)s[i + k] & 0xC0) != 0x80) return false;
+    }
+    i += n + 1;
+  }
+  return true;
+}
+
+// The env var name an ic0_env_var_* call passes in; traps if not UTF-8.
+std::string mock_env_var_name(uintptr_t src, uint32_t size, const char *api) {
+  std::string name(reinterpret_cast<const char *>(src), size);
+  if (!is_utf8(name)) {
+    IC_API::trap(std::string("\"") + api + "\": name is not valid UTF-8");
+  }
+  return name;
+}
+
+// The value of a set env var; traps if the name is not set.
+std::vector<uint8_t> mock_env_var_value(uintptr_t src, uint32_t size,
+                                        const char *api) {
+  std::string name = mock_env_var_name(src, size, api);
+  auto env_vars = global_mockIC->get_env_vars();
+  auto it = env_vars.find(name);
+  if (it == env_vars.end()) {
+    IC_API::trap(std::string("\"") + api + "\": no environment variable \"" +
+                 name + "\"");
+  }
+  return std::vector<uint8_t>(it->second.begin(), it->second.end());
+}
+
+// The name at an index; traps if the index is out of range.
+std::vector<uint8_t> mock_env_var_name_at(uint32_t index, const char *api) {
+  auto env_vars = global_mockIC->get_env_vars();
+  if (index >= env_vars.size()) {
+    IC_API::trap(std::string("\"") + api + "\": index " +
+                 std::to_string(index) + " is out of range (" +
+                 std::to_string(env_vars.size()) + " environment variables)");
+  }
+  const std::string &name = std::next(env_vars.begin(), index)->first;
+  return std::vector<uint8_t>(name.begin(), name.end());
 }
 
 std::vector<uint8_t> bytes_from_hex(std::string_view hex) {
@@ -456,6 +511,50 @@ void ic0_root_key_copy(uintptr_t dst, uint32_t off, uint32_t size) {
                      "ic0_root_key_copy");
   mock_copy(bytes_from_hex(MOCKIC_ROOT_KEY_HEX), dst, off, size,
             "ic0_root_key_copy");
+}
+
+uint32_t ic0_env_var_count() {
+  mock_refuse_unless(mock_permitted(entry_contexts::all_except_start),
+                     "ic0_env_var_count");
+  return (uint32_t)global_mockIC->get_env_vars().size();
+}
+
+uint32_t ic0_env_var_name_size(uint32_t index) {
+  mock_refuse_unless(mock_permitted(entry_contexts::all_except_start),
+                     "ic0_env_var_name_size");
+  return (uint32_t)mock_env_var_name_at(index, "ic0_env_var_name_size").size();
+}
+
+void ic0_env_var_name_copy(uint32_t index, uintptr_t dst, uint32_t off,
+                           uint32_t size) {
+  mock_refuse_unless(mock_permitted(entry_contexts::all_except_start),
+                     "ic0_env_var_name_copy");
+  mock_copy(mock_env_var_name_at(index, "ic0_env_var_name_copy"), dst, off,
+            size, "ic0_env_var_name_copy");
+}
+
+uint32_t ic0_env_var_name_exists(uintptr_t name_src, uint32_t name_size) {
+  mock_refuse_unless(mock_permitted(entry_contexts::all_except_start),
+                     "ic0_env_var_name_exists");
+  std::string name =
+      mock_env_var_name(name_src, name_size, "ic0_env_var_name_exists");
+  return (uint32_t)global_mockIC->get_env_vars().count(name);
+}
+
+uint32_t ic0_env_var_value_size(uintptr_t name_src, uint32_t name_size) {
+  mock_refuse_unless(mock_permitted(entry_contexts::all_except_start),
+                     "ic0_env_var_value_size");
+  return (uint32_t)mock_env_var_value(name_src, name_size,
+                                      "ic0_env_var_value_size")
+      .size();
+}
+
+void ic0_env_var_value_copy(uintptr_t name_src, uint32_t name_size,
+                            uintptr_t dst, uint32_t off, uint32_t size) {
+  mock_refuse_unless(mock_permitted(entry_contexts::all_except_start),
+                     "ic0_env_var_value_copy");
+  mock_copy(mock_env_var_value(name_src, name_size, "ic0_env_var_value_copy"),
+            dst, off, size, "ic0_env_var_value_copy");
 }
 
 uint64_t ic0_time() {

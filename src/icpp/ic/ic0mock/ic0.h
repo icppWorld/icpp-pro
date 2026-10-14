@@ -112,6 +112,20 @@ uint32_t ic0_root_key_size();
 
 void ic0_root_key_copy(uintptr_t dst, uint32_t off, uint32_t size);
 
+uint32_t ic0_env_var_count();
+
+uint32_t ic0_env_var_name_size(uint32_t index);
+
+void ic0_env_var_name_copy(uint32_t index, uintptr_t dst, uint32_t off,
+                           uint32_t size);
+
+uint32_t ic0_env_var_name_exists(uintptr_t name_src, uint32_t name_size);
+
+uint32_t ic0_env_var_value_size(uintptr_t name_src, uint32_t name_size);
+
+void ic0_env_var_value_copy(uintptr_t name_src, uint32_t name_size,
+                            uintptr_t dst, uint32_t off, uint32_t size);
+
 uint64_t ic0_time();
 
 uint64_t ic0_global_timer_set(uint64_t timestamp_ns);

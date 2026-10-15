@@ -156,9 +156,12 @@ extern "C" void icpp_call_callback(uintptr_t env) {
     set_live_ic_api(nullptr);
   }
 
-  // The coroutine may finish here and free its frame - and with it *state
-  std::coroutine_handle<> handle = state->handle;
-  handle.resume();
+  // The coroutine may finish here and free its frame. The state is not in
+  // the frame: delete it once the coroutine no longer needs it. If the code
+  // after the co_await traps, this line is never reached, and the cleanup
+  // callback deletes the state instead.
+  state->handle.resume();
+  delete state;
 
   clear_current_entry();
   set_live_ic_api(nullptr);
@@ -180,8 +183,8 @@ extern "C" void icpp_call_cleanup(uintptr_t env) {
     IC_AsyncAccess::attach(*state->ic_api, entry);
   }
 
-  std::coroutine_handle<> handle = state->handle;
-  handle.destroy();
+  state->handle.destroy();
+  delete state;
 
   clear_current_entry();
   set_live_ic_api(nullptr);
@@ -264,6 +267,10 @@ IC_CallAwaiter IC_Call::operator co_await() const {
 // ---------------------------------------------------------------------------
 // IC_CallAwaiter
 
+IC_CallAwaiter::~IC_CallAwaiter() {
+  if (!m_performed) delete m_state;
+}
+
 bool IC_CallAwaiter::await_suspend(std::coroutine_handle<> handle) {
   check_call_entry("IC_Call");
 
@@ -271,14 +278,14 @@ bool IC_CallAwaiter::await_suspend(std::coroutine_handle<> handle) {
   // error: no callback will ever run.
   if (auto error = check_liquid_balance(m_call.m_method, m_call.m_args,
                                         m_call.m_cycles)) {
-    m_state.error = error;
+    m_state->error = error;
     return false;
   }
 
-  m_state.handle = handle;
-  m_state.ic_api = live_ic_api();
-  m_state.method = m_call.m_method;
-  uintptr_t env = reinterpret_cast<uintptr_t>(&m_state);
+  m_state->handle = handle;
+  m_state->ic_api = live_ic_api();
+  m_state->method = m_call.m_method;
+  uintptr_t env = reinterpret_cast<uintptr_t>(m_state);
   uint32_t rc = perform(m_call.m_callee, m_call.m_method, m_call.m_args,
                         m_call.m_cycles, m_call.m_timeout_seconds,
                         reinterpret_cast<uintptr_t>(&icpp_call_callback), env,
@@ -287,13 +294,14 @@ bool IC_CallAwaiter::await_suspend(std::coroutine_handle<> handle) {
     IC_CallError error;
     error.kind = IC_CallError::Kind::CallPerformFailed;
     error.perform_code = rc;
-    m_state.error = error;
+    m_state->error = error;
     return false;
   }
 
   // Suspend: the entry function returns, which commits this message. The
   // IC_API stays in the coroutine frame, but is not live in other messages.
-  m_state.counted = true;
+  m_performed = true;
+  m_state->counted = true;
   add_calls_in_flight(1);
   clear_current_entry();
   set_live_ic_api(nullptr);
@@ -301,8 +309,8 @@ bool IC_CallAwaiter::await_suspend(std::coroutine_handle<> handle) {
 }
 
 IC_CallResult<IC_CallReply> IC_CallAwaiter::await_resume() {
-  if (m_state.error.has_value()) return *m_state.error;
-  return std::move(m_state.reply);
+  if (m_state->error.has_value()) return *m_state->error;
+  return std::move(m_state->reply);
 }
 
 // ---------------------------------------------------------------------------

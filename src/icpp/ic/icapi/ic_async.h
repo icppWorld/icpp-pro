@@ -214,8 +214,7 @@ private:
 // ---------------------------------------------------------------------------
 // Implementation details
 
-// The state of one awaited call. It lives in the coroutine frame, and its
-// address is the env of the callbacks.
+// The state of one awaited call. Its address is the env of the callbacks.
 struct IC_CallState {
   std::coroutine_handle<> handle;
   IC_API *ic_api{nullptr};
@@ -228,13 +227,22 @@ struct IC_CallState {
 class IC_CallAwaiter {
 public:
   explicit IC_CallAwaiter(IC_Call call) : m_call(std::move(call)) {}
+  IC_CallAwaiter(const IC_CallAwaiter &) = delete;
+  IC_CallAwaiter &operator=(const IC_CallAwaiter &) = delete;
+  ~IC_CallAwaiter();
   bool await_ready() const noexcept { return false; }
   bool await_suspend(std::coroutine_handle<> handle);
   IC_CallResult<IC_CallReply> await_resume();
 
 private:
   IC_Call m_call;
-  IC_CallState m_state;
+  // On the heap, not in the awaiter: once the call is performed, the state
+  // belongs to the callbacks. The reply/reject callback deletes it after the
+  // coroutine resumed, the cleanup callback after it destroyed the
+  // coroutine. So the state outlives this awaiter, which is gone by the time
+  // the cleanup runs after a trap in the code that follows the co_await.
+  IC_CallState *m_state{new IC_CallState};
+  bool m_performed{false}; // the callbacks own m_state
 };
 
 class IC_Yield::Awaiter {

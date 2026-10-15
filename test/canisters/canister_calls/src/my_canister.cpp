@@ -217,6 +217,60 @@ IC_Async call_bounded_async() {
 }
 void call_bounded() { call_bounded_async(); }
 
+// Two calls, one after the other: callee.greet(name), then a call to the
+// canister itself with that reply: '(callee, "C++")' -> '("Hello, Hello, C++!!")'
+IC_Async call_sequence_async() {
+  IC_API ic_api(CanisterUpdate{"call_sequence"}, false);
+  std::string callee_text, name;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  args.append(CandidTypeText{&name});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+
+  std::string first, second;
+  IC_CallResult<IC_CallReply> r1 =
+      co_await IC_Call::bounded_wait(callee, "greet")
+          .with_arg(CandidTypeText{name});
+  r1->decode(CandidTypeText{&first});
+  IC_CallResult<IC_CallReply> r2 =
+      co_await IC_Call::bounded_wait(ic_api.get_canister_self(), "greet")
+          .with_arg(CandidTypeText{first});
+  r2->decode(CandidTypeText{&second});
+  ic_api.to_wire(CandidTypeText{second});
+}
+void call_sequence() { call_sequence_async(); }
+
+// A chain of calls: calls hops[0].call_chain(hops[1..], name), and each
+// callee calls the next before it replies. A hop may be any canister,
+// including one earlier in the chain:
+// '(vec {b; c}, "C++")' on a -> '("a > b > c: Hello, C++!")'
+IC_Async call_chain_async() {
+  IC_API ic_api(CanisterUpdate{"call_chain"}, false);
+  std::vector<std::string> hops;
+  std::string name;
+  CandidArgs args;
+  args.append(CandidTypeVecPrincipal{&hops});
+  args.append(CandidTypeText{&name});
+  ic_api.from_wire(args);
+  std::string me = ic_api.get_canister_self().get_text();
+  if (hops.empty()) {
+    ic_api.to_wire(CandidTypeText{me + ": Hello, " + name + "!"});
+    co_return;
+  }
+
+  CandidArgs next;
+  next.append(CandidTypeVecPrincipal{
+      std::vector<std::string>(hops.begin() + 1, hops.end())});
+  next.append(CandidTypeText{name});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(CandidTypePrincipal{hops[0]}, "call_chain")
+          .with_args(next);
+  std::string rest;
+  r->decode(CandidTypeText{&rest});
+  ic_api.to_wire(CandidTypeText{me + " > " + rest});
+}
+void call_chain() { call_chain_async(); }
+
 // A call without a response: '(callee)' -> '(true)'
 void call_oneway() {
   IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);

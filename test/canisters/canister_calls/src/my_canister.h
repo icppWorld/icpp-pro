@@ -2,8 +2,8 @@
 
 #include "wasm_symbol.h"
 
-// The same wasm is deployed twice, as canister_a and canister_b, so the
-// tests can make calls between two canisters. Every method is available on
+// The same wasm is deployed three times, as canister_a, canister_b and
+// canister_c, so the tests can make calls between canisters. Every method is available on
 // both: the "callee" methods are called by the "caller" methods.
 
 // Callee methods
@@ -23,6 +23,8 @@ void call_then_trap() WASM_SYMBOL_EXPORTED("canister_update call_then_trap");
 void call_with_cycles()
     WASM_SYMBOL_EXPORTED("canister_update call_with_cycles");
 void call_bounded() WASM_SYMBOL_EXPORTED("canister_update call_bounded");
+void call_sequence() WASM_SYMBOL_EXPORTED("canister_update call_sequence");
+void call_chain() WASM_SYMBOL_EXPORTED("canister_update call_chain");
 void call_oneway() WASM_SYMBOL_EXPORTED("canister_update call_oneway");
 void yield_loop() WASM_SYMBOL_EXPORTED("canister_update yield_loop");
 void budget_probe() WASM_SYMBOL_EXPORTED("canister_update budget_probe");

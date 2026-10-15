@@ -7,8 +7,9 @@
 # Candid interface travels with it, in the `icp:public candid:service` custom
 # section that `icpp build-wasm` writes into the wasm.
 
-# The same wasm is deployed twice, so the tests can make calls between two
-# canisters: canister_a calls canister_b, and either calls itself.
+# The same wasm is deployed three times, so the tests can make calls between
+# canisters: canister_a calls canister_b, any of them calls itself, and a
+# chain of calls runs canister_a > canister_b > canister_c.
 canisters:
   - name: canister_a
     build:
@@ -16,6 +17,11 @@ canisters:
         - type: pre-built
           path: build/my_canister.wasm
   - name: canister_b
+    build:
+      steps:
+        - type: pre-built
+          path: build/my_canister.wasm
+  - name: canister_c
     build:
       steps:
         - type: pre-built

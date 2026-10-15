@@ -71,6 +71,16 @@ int run_text_test(MockIC &mockIC, const std::string &name, void (*fn)(),
   return 0;
 }
 
+// Candid hex of the arguments of call_chain: (vec principal, text)
+std::string chain_args(const std::vector<std::string> &hops,
+                       const std::string &name) {
+  CandidArgs args;
+  args.append(CandidTypeVecPrincipal{hops});
+  args.append(CandidTypeText{name});
+  VecBytes bytes = CandidSerialize(args).get_B();
+  return bytes.as_hex_string();
+}
+
 // '()' -> trap while calls are in flight (the IC_API constructor path)
 void native_pre_upgrade_with_ic_api() {
   IC_API ic_api(CanisterPreUpgrade{"native_pre_upgrade_with_ic_api"}, false);
@@ -92,6 +102,7 @@ int main() {
   mockIC.register_method("accept_half", accept_half);
   mockIC.register_method("slow", slow);
   mockIC.register_method("hold", hold);
+  mockIC.register_method("call_chain", call_chain);
 
   // A call to the canister itself, and to canister B
   mockIC.run_test("call_greet self", call_greet, GREET_SELF, OUT_HELLO,
@@ -140,6 +151,23 @@ int main() {
   run_text_test(mockIC, "call_bounded self", call_bounded,
                 "4449444c0003687979010a0000000000c0115a01013c00000003000000",
                 "replied", my_principal);
+
+  // Two calls, one after the other
+  run_text_test(mockIC, "call_sequence self", call_sequence, GREET_SELF,
+                "Hello, Hello, C++!!", my_principal);
+  mockIC.expect_call(CANISTER_B, "greet",
+                     MockIC::MockResponse::reply(OUT_HI_B));
+  run_text_test(mockIC, "call_sequence B", call_sequence, GREET_B,
+                "Hello, Hi from B!", my_principal);
+
+  // A chain of calls: each callee calls the next before it replies
+  const std::string self{MOCKIC_CANISTER_SELF};
+  run_text_test(mockIC, "call_chain self > self > self", call_chain,
+                chain_args({self, self}, "C++"),
+                self + " > " + self + " > " + self + ": Hello, C++!",
+                my_principal);
+  run_text_test(mockIC, "call_chain end", call_chain, chain_args({}, "C++"),
+                self + ": Hello, C++!", my_principal);
 
   // A oneway call: performed, no response
   mockIC.run_test("call_oneway self", call_oneway, P_SELF, "4449444c00017e01",

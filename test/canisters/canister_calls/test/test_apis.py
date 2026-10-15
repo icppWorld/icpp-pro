@@ -1,7 +1,7 @@
 """Test inter-canister calls (ic_async.h)
 
-The same wasm is deployed as canister_a and canister_b. First deploy both,
-then run:
+The same wasm is deployed as canister_a, canister_b and canister_c. First
+deploy all three, then run:
 
 $ pytest --network=local
 """
@@ -105,6 +105,38 @@ def test__call_with_cycles(network: str) -> None:
         f'(principal "{b}", 1_000_000 : nat64)',
     )
     assert response == "(500_000 : nat64, 500_000 : nat64)"
+
+
+def test__call_sequence(network: str) -> None:
+    # Two calls, one after the other: canister_b.greet, then canister_a.greet
+    b = principal(network, "canister_b")
+    response = call(network, "canister_a", "call_sequence", f'(principal "{b}", "C++")')
+    assert response == '("Hello, Hello, C++!!")'
+
+
+def test__call_chain_a_b_c(network: str) -> None:
+    # A chain: canister_b calls canister_c before it replies to canister_a
+    a, b, c = (principal(network, f"canister_{x}") for x in "abc")
+    response = call(
+        network,
+        "canister_a",
+        "call_chain",
+        f'(vec {{principal "{b}"; principal "{c}"}}, "C++")',
+    )
+    assert f'"{a} > {b} > {c}: Hello, C++!"' in flatten_candid_text(response)
+
+
+def test__call_chain_a_b_a(network: str) -> None:
+    # A call back into the caller: canister_b calls canister_a, while
+    # canister_a is waiting for canister_b
+    a, b = (principal(network, f"canister_{x}") for x in "ab")
+    response = call(
+        network,
+        "canister_a",
+        "call_chain",
+        f'(vec {{principal "{b}"; principal "{a}"}}, "C++")',
+    )
+    assert f'"{a} > {b} > {a}: Hello, C++!"' in flatten_candid_text(response)
 
 
 def test__call_oneway(network: str) -> None:

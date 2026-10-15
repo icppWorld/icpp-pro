@@ -15,6 +15,8 @@ service : {
   "call_then_trap" : (principal) -> ();
   "call_with_cycles" : (principal, nat64) -> (nat64, nat64);
   "call_bounded" : (principal, nat32, nat32) -> (text);
+  "call_sequence" : (principal, text) -> (text);
+  "call_chain" : (vec principal, text) -> (text);
   "call_oneway" : (principal) -> (bool);
   "yield_loop" : (nat32) -> (text);
   "budget_probe" : (nat32) -> (vec nat64, vec nat64);

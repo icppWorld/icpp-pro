@@ -278,6 +278,11 @@ def run_jobs(network: str, reload: bool) -> Tuple[int, List[int]]:
         thread.start()
     for thread in threads:
         thread.join(timeout=900)
+    # A job that failed or did not finish must fail the test, not count as a
+    # wrong result: that would pass the test without reload for the wrong
+    # reason
+    assert not any(thread.is_alive() for thread in threads), "jobs did not finish"
+    assert set(results) == set(jobs), f"jobs failed: {set(jobs) - set(results)}"
     right = sum(1 for job in jobs if results.get(job) == lcg(1000 + job, n))
     log_text = call(network, "canister_a", "get_run_log")
     log = [int(x.split(":")[0]) for x in log_text.split("{")[1].split(";") if ":" in x]

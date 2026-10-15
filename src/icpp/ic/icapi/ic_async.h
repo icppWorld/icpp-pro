@@ -173,6 +173,8 @@ public:
 
 private:
   friend class IC_CallAwaiter;
+  // Every IC_Call comes from bounded_wait or unbounded_wait
+  IC_Call() = default;
   static IC_Call make(const CandidTypePrincipal &callee,
                       const std::string &method,
                       std::optional<uint32_t> timeout_seconds);

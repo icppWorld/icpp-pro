@@ -83,7 +83,6 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
   // Record the entry point for IC_API's static methods (timers, time),
   // which have no instance and consult current_entry() for their guards.
   set_current_entry(m_canister_entry);
-  register_ic_api(this);
 
   // An upgrade while calls are in flight would run their callbacks against
   // the new code, with the heap of this version gone.
@@ -136,6 +135,10 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
       m_B_in.debug_print();
     }
   }
+
+  // Registered last: a constructor that traps (in a native build, it throws)
+  // never runs the destructor, so it must not leave a pointer behind.
+  register_ic_api(this);
 }
 
 IC_API::~IC_API() {

@@ -190,20 +190,25 @@ extern "C" void icpp_call_cleanup(uintptr_t env) {
 // ---------------------------------------------------------------------------
 // IC_Call
 
-IC_Call IC_Call::bounded_wait(const CandidTypePrincipal &callee,
-                              const std::string &method) {
-  IC_Call call = unbounded_wait(callee, method);
-  call.m_timeout_seconds = BOUNDED_WAIT_TIMEOUT_SECONDS;
-  return call;
-}
-
-IC_Call IC_Call::unbounded_wait(const CandidTypePrincipal &callee,
-                                const std::string &method) {
+IC_Call IC_Call::make(const CandidTypePrincipal &callee,
+                      const std::string &method,
+                      std::optional<uint32_t> timeout_seconds) {
   IC_Call call;
   call.m_callee = callee.get_v_bytes().vec_uint8_t();
   call.m_method = method;
   call.m_args = empty_args();
+  call.m_timeout_seconds = timeout_seconds;
   return call;
+}
+
+IC_Call IC_Call::bounded_wait(const CandidTypePrincipal &callee,
+                              const std::string &method) {
+  return make(callee, method, BOUNDED_WAIT_TIMEOUT_SECONDS);
+}
+
+IC_Call IC_Call::unbounded_wait(const CandidTypePrincipal &callee,
+                                const std::string &method) {
+  return make(callee, method, std::nullopt);
 }
 
 IC_Call &IC_Call::with_arg(CandidType arg) {

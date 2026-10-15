@@ -122,6 +122,21 @@ private:
 
 class IC_CallAwaiter;
 
+#if defined(ICPP_ALLOW_UNBOUNDED_WAIT)
+#define ICPP_UNBOUNDED_WAIT_WARNING
+#else
+#define ICPP_UNBOUNDED_WAIT_WARNING                                            \
+  __attribute__((diagnose_if(                                                  \
+      true,                                                                    \
+      "IC_Call::unbounded_wait: while this call is in flight, the canister "   \
+      "can't be stopped or upgraded, and a callee that never responds blocks " \
+      "that forever. Use IC_Call::bounded_wait unless you trust the callee. "  \
+      "To turn off this warning, add \"-DICPP_ALLOW_UNBOUNDED_WAIT\" to "      \
+      "cpp_compile_flags in both the [build-wasm] and [build-native] "         \
+      "sections of icpp.toml.",                                                \
+      "warning")))
+#endif
+
 // A call to a method of a canister, possibly the canister itself.
 class IC_Call {
 public:
@@ -132,8 +147,13 @@ public:
                               const std::string &method);
   // A guaranteed-response call: the reply or reject always arrives, however
   // long the callee takes.
-  static IC_Call unbounded_wait(const CandidTypePrincipal &callee,
-                                const std::string &method);
+  // WARNING: while it is in flight, the canister can't be stopped, so it can't
+  // be upgraded. A callee that never responds blocks that forever. Use it only
+  // for a callee you trust. Calling it gives a compiler warning, unless
+  // ICPP_ALLOW_UNBOUNDED_WAIT is defined.
+  static IC_Call
+  unbounded_wait(const CandidTypePrincipal &callee,
+                 const std::string &method) ICPP_UNBOUNDED_WAIT_WARNING;
 
   // The argument. Without one, the call sends no arguments: ().
   IC_Call &with_arg(CandidType arg);
@@ -153,6 +173,9 @@ public:
 
 private:
   friend class IC_CallAwaiter;
+  static IC_Call make(const CandidTypePrincipal &callee,
+                      const std::string &method,
+                      std::optional<uint32_t> timeout_seconds);
   std::vector<uint8_t> m_callee;
   std::string m_method;
   std::vector<uint8_t> m_args;

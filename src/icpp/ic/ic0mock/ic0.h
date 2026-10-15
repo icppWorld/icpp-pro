@@ -59,16 +59,21 @@ void ic0_cycles_burn128(uint64_t amount_high, uint64_t amount_low,
 
 void ic0_call_cycles_add128(uint64_t amount_high, uint64_t amount_low);
 
+// env is uintptr_t in the mock (a native pointer), uint32_t on wasm32.
 void ic0_call_new(uintptr_t callee_src, uint32_t callee_size,
                   uintptr_t name_src, uint32_t name_size, uintptr_t reply_fun,
-                  uint32_t reply_env, uintptr_t reject_fun,
-                  uint32_t reject_env);
+                  uintptr_t reply_env, uintptr_t reject_fun,
+                  uintptr_t reject_env);
 
-void ic0_call_on_cleanup(uintptr_t fun, uint32_t env);
+void ic0_call_on_cleanup(uintptr_t fun, uintptr_t env);
 
 void ic0_call_data_append(uintptr_t src, uint32_t size);
 
+void ic0_call_with_best_effort_response(uint32_t timeout_seconds);
+
 uint32_t ic0_call_perform();
+
+uint64_t ic0_msg_deadline();
 uint32_t ic0_stable_size();
 
 uint32_t ic0_stable_grow(uint32_t new_pages);

@@ -18,4 +18,14 @@ bool caller_info(CanisterBase &entry) {
          entry.is_entry_Rt() || entry.is_entry_C() || entry.is_entry_F();
 }
 
+bool call(CanisterBase &entry) {
+  return entry.is_entry_U() || entry.is_entry_Ry() || entry.is_entry_Rt() ||
+         entry.is_entry_T();
+}
+
+bool msg_deadline(CanisterBase &entry) {
+  return entry.is_entry_U() || entry.is_entry_Q() || entry.is_entry_Ry() ||
+         entry.is_entry_Rt();
+}
+
 } // namespace entry_contexts

@@ -6,9 +6,13 @@
 
 #pragma once
 
+#include <cstdint>
+#include <deque>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "mock_ic_constants.h"
@@ -92,6 +96,57 @@ public:
   }
   void clear_env_vars() { m_env_vars.clear(); }
 
+  // -------------------------------------------------------------------------
+  // Inter-canister calls (ic_async.h).
+  //
+  // A performed call is queued. After the tested entry point returns,
+  // run_test & run_trap_test deliver the queued calls one by one, like the
+  // IC: a call to the canister itself runs the method registered under its
+  // name, a call to another canister gets the response set with expect_call,
+  // and the response runs the caller's callback. Unlike the IC, the Mock IC
+  // does not roll back the state changes of a trapped message.
+
+  // The response of another canister to a call.
+  struct MockResponse {
+    bool is_reply{true};
+    std::string reply_hex;        // the Candid reply, as didc encode hex
+    __uint128_t accept_cycles{0}; // accepted of the cycles sent along
+    uint32_t reject_code{0};      // IC_RejectCode
+    std::string reject_message;
+    static MockResponse reply(const std::string &hex, __uint128_t accept = 0);
+    static MockResponse reject(uint32_t code, const std::string &message);
+    // A best-effort call whose deadline expired: rejected with SYS_UNKNOWN
+    static MockResponse timeout();
+  };
+
+  // A method of this canister, so a call to the canister itself can run it.
+  void register_method(const std::string &name, void (*fn)());
+  // The response of canister `callee` (principal text) to `method`. Sticky.
+  void expect_call(const std::string &callee, const std::string &method,
+                   const MockResponse &response);
+  void clear_expected_calls() { m_expected.clear(); }
+  // The result of the next ic0.call_perform (0: performed).
+  void set_next_call_perform_rc(uint32_t rc) { m_next_perform_rc = rc; }
+  // false: keep calls queued after an entry point, until drain().
+  void set_auto_drain(bool auto_drain) { m_auto_drain = auto_drain; }
+  // Delivers the queued calls & responses until none are left.
+  void drain();
+  size_t pending_calls() { return m_events.size(); }
+
+  // For the ic0 mock functions
+  void call_new(const std::vector<uint8_t> &callee, const std::string &method,
+                uintptr_t fun, uintptr_t env);
+  void call_data_append(const uint8_t *src, uint32_t size);
+  void call_cycles_add(__uint128_t cycles);
+  void call_on_cleanup(uintptr_t fun, uintptr_t env);
+  void call_with_best_effort_response(uint32_t timeout_seconds);
+  uint32_t call_perform();
+  void msg_reply();
+  void msg_reject(const std::string &message);
+  uint32_t get_msg_reject_code() { return m_msg_reject_code; }
+  std::string get_msg_reject_message() { return m_msg_reject_message; }
+  uint64_t get_msg_deadline() { return m_msg_deadline; }
+
   void msg_reply_data_append(uintptr_t src, uint32_t size);
 
   int assert_candid_out(const std::string &candid_out_expected);
@@ -136,6 +191,58 @@ private:
   std::vector<uint8_t> m_caller_info_data;
   std::vector<uint8_t> m_caller_info_signer;
   std::map<std::string, std::string> m_env_vars;
+  // Inter-canister calls
+  struct PendingCall {
+    std::vector<uint8_t> callee;
+    std::string method;
+    std::vector<uint8_t> args;
+    __uint128_t cycles{0};
+    uintptr_t fun{0};
+    uintptr_t env{0};
+    uintptr_t cleanup_fun{0};
+    uintptr_t cleanup_env{0};
+    std::optional<uint32_t> timeout_seconds;
+    size_t origin{0}; // the call context that made the call
+  };
+  // A call context: the root one of a test, or one per delivered call
+  struct CallContext {
+    CandidTypePrincipal caller;
+    std::string method;
+    bool done{false};
+    VecBytes reply;
+    int outstanding{0}; // performed calls without a response yet
+    int from_call{-1};  // the call it answers
+    __uint128_t cycles_available{0};
+    uint64_t deadline{0}; // of the call it answers: 0 unless bounded-wait
+  };
+  struct Event {
+    bool is_response{false};
+    size_t call{0};
+    bool is_reply{true};
+    std::vector<uint8_t> reply;
+    uint32_t reject_code{0};
+    std::string reject_message;
+    __uint128_t refund{0};
+  };
+  void start_root_context(const std::string &method);
+  void deliver_request(size_t call);
+  void deliver_response(const Event &event);
+  void respond(size_t context, bool is_reply, const std::vector<uint8_t> &reply,
+               uint32_t reject_code, const std::string &reject_message);
+  std::vector<PendingCall> m_calls;
+  std::vector<CallContext> m_contexts;
+  std::deque<Event> m_events;
+  size_t m_current_context{0};
+  size_t m_root_context{0};
+  PendingCall m_building;
+  std::map<std::string, void (*)()> m_methods;
+  std::map<std::pair<std::string, std::string>, MockResponse> m_expected;
+  uint32_t m_next_perform_rc{0};
+  bool m_auto_drain{true};
+  uint32_t m_msg_reject_code{0};
+  std::string m_msg_reject_message;
+  uint64_t m_msg_deadline{0};
+
   int m_tests_total;
   int m_tests_failed;
   bool m_exit_on_fail;

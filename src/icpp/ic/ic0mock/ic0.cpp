@@ -227,21 +227,18 @@ void ic0_msg_caller_copy(uintptr_t dst, uint32_t off, uint32_t size) {
   std::copy(caller_bytes.begin(), caller_bytes.end(), bytes + off);
 }
 
-uint32_t ic0_msg_reject_code() {
-  std::cout << "ic0mock ic0::msg_reject_code" << std::endl;
-  std::cout << "...PATCH-PATCH- Returning 0..." << std::endl;
-  return 0;
-}
+// The reject code & message of the response being delivered (0 & empty
+// outside a reject callback)
+uint32_t ic0_msg_reject_code() { return global_mockIC->get_msg_reject_code(); }
 
 uint32_t ic0_msg_reject_msg_size() {
-  std::cout << "ic0mock ic0::msg_reject_msg_size" << std::endl;
-  std::cout << "...PATCH-PATCH- Returning 0..." << std::endl;
-  return 0;
+  return (uint32_t)global_mockIC->get_msg_reject_message().size();
 }
 
 void ic0_msg_reject_msg_copy(uintptr_t dst, uint32_t off, uint32_t size) {
-  std::cout << "ic0mock ic0::msg_reject_msg_copy" << std::endl;
-  std::cout << "...doing nothing..." << std::endl;
+  std::string message = global_mockIC->get_msg_reject_message();
+  std::vector<uint8_t> bytes(message.begin(), message.end());
+  mock_copy(bytes, dst, off, size, "ic0_msg_reject_msg_copy");
 }
 
 void ic0_msg_reply_data_append(uintptr_t src, uint32_t size) {
@@ -255,11 +252,12 @@ void ic0_msg_reply() {
   global_mockIC->get_msg_out().debug_print();
 #endif // ICPP_VERBOSE
   global_mockIC->get_msg_out().trap_if_vec_does_not_start_with_DIDL();
+  global_mockIC->msg_reply();
 }
 
 void ic0_msg_reject(uintptr_t src, uint32_t size) {
-  std::cout << "ic0mock ic0::msg_reject" << std::endl;
-  std::cout << "...doing nothing..." << std::endl;
+  global_mockIC->msg_reject(
+      std::string(reinterpret_cast<const char *>(src), size));
 }
 
 uint32_t ic0_msg_method_name_size() {
@@ -352,31 +350,48 @@ void ic0_cycles_burn128(uint64_t amount_high, uint64_t amount_low,
 }
 
 void ic0_call_cycles_add128(uint64_t amount_high, uint64_t amount_low) {
-  g_mock_call_cycles_added += u128_from_parts(amount_high, amount_low);
+  __uint128_t cycles = u128_from_parts(amount_high, amount_low);
+  g_mock_call_cycles_added += cycles;
+  global_mockIC->call_cycles_add(cycles);
 }
 
+// The calls are queued by the Mock IC and delivered after the entry point
+// returns - see MockIC::drain. The Mock IC uses one function for reply and
+// reject, like the IC does when both are the same.
 void ic0_call_new(uintptr_t callee_src, uint32_t callee_size,
                   uintptr_t name_src, uint32_t name_size, uintptr_t reply_fun,
-                  uint32_t reply_env, uintptr_t reject_fun,
-                  uint32_t reject_env) {
-  std::cout << "ic0mock ic0::call_new" << std::endl;
-  std::cout << "...doing nothing..." << std::endl;
+                  uintptr_t reply_env, uintptr_t reject_fun,
+                  uintptr_t reject_env) {
+  mock_refuse_unless(mock_permitted(entry_contexts::call), "ic0_call_new");
+  if (reply_fun != reject_fun || reply_env != reject_env) {
+    IC_API::trap("ic0mock: call_new with different reply & reject callbacks "
+                 "is not supported by the Mock IC");
+  }
+  const uint8_t *callee = reinterpret_cast<const uint8_t *>(callee_src);
+  global_mockIC->call_new(
+      std::vector<uint8_t>(callee, callee + callee_size),
+      std::string(reinterpret_cast<const char *>(name_src), name_size),
+      reply_fun, reply_env);
 }
 
-void ic0_call_on_cleanup(uintptr_t fun, uint32_t env) {
-  std::cout << "ic0mock ic0::call_on_cleanup" << std::endl;
-  std::cout << "...doing nothing..." << std::endl;
+void ic0_call_on_cleanup(uintptr_t fun, uintptr_t env) {
+  global_mockIC->call_on_cleanup(fun, env);
 }
 
 void ic0_call_data_append(uintptr_t src, uint32_t size) {
-  std::cout << "ic0mock ic0::call_data_append" << std::endl;
-  std::cout << "...doing nothing..." << std::endl;
+  global_mockIC->call_data_append(reinterpret_cast<const uint8_t *>(src), size);
 }
 
-uint32_t ic0_call_perform() {
-  std::cout << "ic0mock ic0::call_perform" << std::endl;
-  std::cout << "...PATCH-PATCH- Returning 0..." << std::endl;
-  return 0;
+void ic0_call_with_best_effort_response(uint32_t timeout_seconds) {
+  global_mockIC->call_with_best_effort_response(timeout_seconds);
+}
+
+uint32_t ic0_call_perform() { return global_mockIC->call_perform(); }
+
+uint64_t ic0_msg_deadline() {
+  mock_refuse_unless(mock_permitted(entry_contexts::msg_deadline),
+                     "ic0_msg_deadline");
+  return global_mockIC->get_msg_deadline();
 }
 
 uint32_t ic0_stable_size() {

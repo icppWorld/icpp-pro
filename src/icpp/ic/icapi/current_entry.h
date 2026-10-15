@@ -42,11 +42,11 @@ CanisterBase *current_entry();
 // destructor runs, so a callback only re-attaches an instance that still
 // exists.
 class IC_API;
-void register_api(IC_API *api);   // IC_API constructor: also makes it live
-void unregister_api(IC_API *api); // IC_API destructor
-void set_live_api(IC_API *api);   // nullptr to clear
-IC_API *live_api();
-bool is_registered_api(IC_API *api);
+void register_ic_api(IC_API *ic_api); // IC_API constructor: also makes it live
+void unregister_ic_api(IC_API *ic_api); // IC_API destructor
+void set_live_ic_api(IC_API *ic_api);   // nullptr to clear
+IC_API *live_ic_api();
+bool is_registered_ic_api(IC_API *ic_api);
 
 // The calls this canister has performed whose callback has not run yet.
 // canister_pre_upgrade refuses to upgrade while it is non-zero.

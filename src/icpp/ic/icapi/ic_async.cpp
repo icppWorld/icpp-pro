@@ -16,8 +16,8 @@
 
 // Gives the async machinery access to IC_API's private async_attach.
 struct IC_AsyncAccess {
-  static void attach(IC_API &api, const CanisterBase &entry) {
-    api.async_attach(entry);
+  static void attach(IC_API &ic_api, const CanisterBase &entry) {
+    ic_api.async_attach(entry);
   }
 };
 
@@ -150,10 +150,10 @@ extern "C" void icpp_call_callback(uintptr_t env) {
   }
 
   // Re-attach the IC_API of the coroutine, so its guards see this callback
-  if (state->api != nullptr && is_registered_api(state->api)) {
-    IC_AsyncAccess::attach(*state->api, entry);
+  if (state->ic_api != nullptr && is_registered_ic_api(state->ic_api)) {
+    IC_AsyncAccess::attach(*state->ic_api, entry);
   } else {
-    set_live_api(nullptr);
+    set_live_ic_api(nullptr);
   }
 
   // The coroutine may finish here and free its frame - and with it *state
@@ -161,7 +161,7 @@ extern "C" void icpp_call_callback(uintptr_t env) {
   handle.resume();
 
   clear_current_entry();
-  set_live_api(nullptr);
+  set_live_ic_api(nullptr);
 }
 
 // Runs only when the code after a co_await trapped. On the IC, the trap
@@ -176,15 +176,15 @@ extern "C" void icpp_call_cleanup(uintptr_t env) {
 
   CanisterBase entry = CanisterCleanupCallback{state->method};
   set_current_entry(entry);
-  if (state->api != nullptr && is_registered_api(state->api)) {
-    IC_AsyncAccess::attach(*state->api, entry);
+  if (state->ic_api != nullptr && is_registered_ic_api(state->ic_api)) {
+    IC_AsyncAccess::attach(*state->ic_api, entry);
   }
 
   std::coroutine_handle<> handle = state->handle;
   handle.destroy();
 
   clear_current_entry();
-  set_live_api(nullptr);
+  set_live_ic_api(nullptr);
 }
 
 // ---------------------------------------------------------------------------
@@ -276,7 +276,7 @@ bool IC_CallAwaiter::await_suspend(std::coroutine_handle<> handle) {
   }
 
   m_state.handle = handle;
-  m_state.api = live_api();
+  m_state.ic_api = live_ic_api();
   m_state.method = m_call.m_method;
   uintptr_t env = reinterpret_cast<uintptr_t>(&m_state);
   uint32_t rc = perform(m_call.m_callee, m_call.m_method, m_call.m_args,
@@ -296,7 +296,7 @@ bool IC_CallAwaiter::await_suspend(std::coroutine_handle<> handle) {
   m_state.counted = true;
   add_calls_in_flight(1);
   clear_current_entry();
-  set_live_api(nullptr);
+  set_live_ic_api(nullptr);
   return true;
 }
 

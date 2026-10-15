@@ -83,7 +83,7 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
   // Record the entry point for IC_API's static methods (timers, time),
   // which have no instance and consult current_entry() for their guards.
   set_current_entry(m_canister_entry);
-  register_api(this);
+  register_ic_api(this);
 
   // An upgrade while calls are in flight would run their callbacks against
   // the new code, with the heap of this version gone.
@@ -143,13 +143,13 @@ IC_API::~IC_API() {
   // never constructs an IC_API would otherwise inherit a stale entry and
   // its guards could falsely trap correct code.
   clear_current_entry();
-  unregister_api(this);
+  unregister_ic_api(this);
 }
 
 void IC_API::async_attach(const CanisterBase &entry) {
   m_canister_entry = entry;
   set_current_entry(m_canister_entry);
-  set_live_api(this);
+  set_live_ic_api(this);
 }
 
 uint32_t IC_API::calls_in_flight() { return ::calls_in_flight(); }

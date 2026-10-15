@@ -13,10 +13,10 @@ extern "C" void icpp_environ_set_available(int available);
 namespace {
 CanisterBase g_current_entry;
 bool g_current_entry_set{false};
-IC_API *g_live_api{nullptr};
+IC_API *g_live_ic_api{nullptr};
 uint32_t g_calls_in_flight{0};
 
-std::unordered_set<IC_API *> &registered_apis() {
+std::unordered_set<IC_API *> &registered_ic_apis() {
   static std::unordered_set<IC_API *> apis;
   return apis;
 }
@@ -44,21 +44,23 @@ CanisterBase *current_entry() {
   return &g_current_entry;
 }
 
-void register_api(IC_API *api) {
-  registered_apis().insert(api);
-  g_live_api = api;
+void register_ic_api(IC_API *ic_api) {
+  registered_ic_apis().insert(ic_api);
+  g_live_ic_api = ic_api;
 }
 
-void unregister_api(IC_API *api) {
-  registered_apis().erase(api);
-  if (g_live_api == api) g_live_api = nullptr;
+void unregister_ic_api(IC_API *ic_api) {
+  registered_ic_apis().erase(ic_api);
+  if (g_live_ic_api == ic_api) g_live_ic_api = nullptr;
 }
 
-void set_live_api(IC_API *api) { g_live_api = api; }
+void set_live_ic_api(IC_API *ic_api) { g_live_ic_api = ic_api; }
 
-IC_API *live_api() { return g_live_api; }
+IC_API *live_ic_api() { return g_live_ic_api; }
 
-bool is_registered_api(IC_API *api) { return registered_apis().count(api) > 0; }
+bool is_registered_ic_api(IC_API *ic_api) {
+  return registered_ic_apis().count(ic_api) > 0;
+}
 
 uint32_t calls_in_flight() { return g_calls_in_flight; }
 

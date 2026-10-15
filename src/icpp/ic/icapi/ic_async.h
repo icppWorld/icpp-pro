@@ -218,7 +218,7 @@ private:
 // address is the env of the callbacks.
 struct IC_CallState {
   std::coroutine_handle<> handle;
-  IC_API *api{nullptr};
+  IC_API *ic_api{nullptr};
   std::string method;
   bool counted{false}; // counted in calls_in_flight
   std::optional<IC_CallError> error;

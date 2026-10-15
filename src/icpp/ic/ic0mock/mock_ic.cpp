@@ -320,7 +320,7 @@ struct SavedMessage {
   std::string reject_message, method_name;
   uint64_t deadline;
   std::optional<CanisterBase> entry;
-  IC_API *api;
+  IC_API *ic_api;
 };
 } // namespace
 
@@ -394,7 +394,7 @@ void MockIC::deliver_request(size_t call_index) {
                      m_msg_method_name,
                      m_msg_deadline,
                      std::nullopt,
-                     live_api()};
+                     live_ic_api()};
   if (current_entry() != nullptr) saved.entry = *current_entry();
 
   CallContext context;
@@ -448,7 +448,7 @@ void MockIC::deliver_request(size_t call_index) {
   } else {
     clear_current_entry();
   }
-  set_live_api(saved.api);
+  set_live_ic_api(saved.ic_api);
 }
 
 void MockIC::deliver_response(const Event &event) {
@@ -472,7 +472,7 @@ void MockIC::deliver_response(const Event &event) {
                      m_msg_method_name,
                      m_msg_deadline,
                      std::nullopt,
-                     live_api()};
+                     live_ic_api()};
   if (current_entry() != nullptr) saved.entry = *current_entry();
 
   CallContext &ctx = m_contexts[origin];
@@ -526,7 +526,7 @@ void MockIC::deliver_response(const Event &event) {
   } else {
     clear_current_entry();
   }
-  set_live_api(saved.api);
+  set_live_ic_api(saved.ic_api);
 }
 
 MockIC::~MockIC() {}

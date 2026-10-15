@@ -12,7 +12,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from icpp.run_shell_cmd import run_shell_cmd
 from icpp.smoketest import ICP, call_canister_api, flatten_candid_text, get_canister_id
@@ -185,6 +185,122 @@ def test__budget_probe(network: str) -> None:
     assert all(total[i + 1] > total[i] for i in range(3))
     assert total[-1] > sum(message[1:]) // 2
     assert max(message[1:]) < total[-1]
+
+
+# ---------------------------------------------------------------------------
+# A long computation that only completes with yield_fresh_budget()
+
+INSTRUCTION_LIMIT = 40_000_000_000  # of one update message
+LCG_A = 6364136223846793005
+LCG_C = 1442695040888963407
+
+
+def lcg(x: int, n: int) -> int:
+    """x = a * x + c (mod 2^64), n times, by composing the step with itself."""
+    mask = (1 << 64) - 1
+    a, c = LCG_A, LCG_C
+    total_a, total_c = 1, 0
+    while n:
+        if n & 1:
+            total_a, total_c = (a * total_a) & mask, (a * total_c + c) & mask
+        a, c = (a * a) & mask, (a * c + c) & mask
+        n >>= 1
+    return (total_a * x + total_c) & mask
+
+
+def compute(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+    network: str, job: int, seed: int, n: int, chunk: int, reload: bool = True
+) -> List[int]:
+    """(result, chunks, call_instructions, max_message_instructions)"""
+    response = call(
+        network,
+        "canister_a",
+        "compute",
+        f"({job} : nat32, {seed} : nat64, {n} : nat64, {chunk} : nat64, "
+        f"{str(reload).lower()})",
+        timeout_seconds=900,
+    )
+    return [
+        int(token.split(":")[0].strip().replace("_", ""))
+        for token in response.strip("()\n ").split(",")
+        if ":" in token
+    ]
+
+
+def steps_for(network: str, instructions: int) -> int:
+    """The number of LCG steps that executes at least `instructions`
+    instructions: calibrated with a short run, plus a 2% margin."""
+    calibration = 100_000_000
+    used = compute(network, 0, 1, calibration, INSTRUCTION_LIMIT // 2)[2]
+    return instructions * calibration * 102 // (used * 100) + 1
+
+
+def test__compute_150b_instructions(network: str) -> None:
+    # 150B instructions: almost 4x the limit of one message. It completes,
+    # in chunks of at most 20B, each followed by a yield.
+    n = steps_for(network, 150_000_000_000)
+    result, chunks, call_instructions, max_message = compute(
+        network, 1, 7, n, 20_000_000_000
+    )
+    assert result == lcg(7, n)
+    assert call_instructions >= 150_000_000_000
+    assert max_message < INSTRUCTION_LIMIT
+    assert chunks >= 150_000_000_000 // 20_000_000_000
+
+
+def test__compute_no_yield_traps(network: str) -> None:
+    # The same computation without yields, at 50B instructions: it exceeds
+    # the instruction limit of one message
+    n = steps_for(network, 50_000_000_000)
+    response = call(
+        network,
+        "canister_a",
+        "compute_no_yield",
+        f"(7 : nat64, {n} : nat64)",
+        timeout_seconds=900,
+    )
+    assert "instructions" in response and "limit" in response, response
+
+
+def run_jobs(network: str, reload: bool) -> Tuple[int, List[int]]:
+    """Starts 8 jobs at the same time, each ~5B instructions in chunks of
+    0.5B. Returns how many got the right result, and the run log."""
+    jobs = range(1, 9)
+    n = steps_for(network, 5_000_000_000)
+    assert call(network, "canister_a", "clear_run_log") == "()"
+    results: Dict[int, int] = {}
+
+    def run(job: int) -> None:
+        results[job] = compute(network, job, 1000 + job, n, 500_000_000, reload)[0]
+
+    threads = [threading.Thread(target=run, args=(job,)) for job in jobs]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=900)
+    right = sum(1 for job in jobs if results.get(job) == lcg(1000 + job, n))
+    log_text = call(network, "canister_a", "get_run_log")
+    log = [int(x.split(":")[0]) for x in log_text.split("{")[1].split(";") if ":" in x]
+    return right, log
+
+
+def test__compute_many_users(network: str) -> None:
+    # 8 jobs at the same time: their chunks interleave, and every job gets
+    # the right result, because every chunk reloads its own state first
+    right, log = run_jobs(network, reload=True)
+    assert right == 8
+    switches = sum(1 for i in range(1, len(log)) if log[i] != log[i - 1])
+    assert switches > 8, f"the chunks did not interleave: {log}"
+
+
+def test__compute_many_users_without_reload(network: str) -> None:
+    # The proof that the chunks interleave: when a chunk does not reload its
+    # state, another job's chunk changed it in between, and results are wrong
+    right, _ = run_jobs(network, reload=False)
+    assert right < 8
+
+
+# ---------------------------------------------------------------------------
 
 
 def upgrade(

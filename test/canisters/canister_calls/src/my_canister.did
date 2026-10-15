@@ -21,5 +21,10 @@ service : {
   "yield_loop" : (nat32) -> (text);
   "budget_probe" : (nat32) -> (vec nat64, vec nat64);
   "start_held_call" : (principal) -> ();
+  "compute" : (nat32, nat64, nat64, nat64, bool) -> (nat64, nat32, nat64, nat64);
+  "compute_no_yield" : (nat64, nat64) -> (nat64);
+  "get_job" : (nat32) -> (nat64, nat64) query;
+  "get_run_log" : () -> (vec nat32) query;
+  "clear_run_log" : () -> ();
   "get_state" : () -> (nat64, nat64, nat64, nat32, bool) query;
 };

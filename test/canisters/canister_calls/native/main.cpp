@@ -81,6 +81,90 @@ std::string chain_args(const std::vector<std::string> &hops,
   return bytes.as_hex_string();
 }
 
+// The LCG of compute(), iterated n times from seed
+uint64_t lcg(uint64_t x, uint64_t n) {
+  for (uint64_t i = 0; i < n; ++i)
+    x = 6364136223846793005ULL * x + 1442695040888963407ULL;
+  return x;
+}
+
+// Candid hex of the arguments of compute
+std::string compute_args(uint32_t job, uint64_t seed, uint64_t n, bool reload) {
+  CandidArgs args;
+  args.append(CandidTypeNat32{job});
+  args.append(CandidTypeNat64{seed});
+  args.append(CandidTypeNat64{n});
+  args.append(CandidTypeNat64{1}); // chunk_instructions: one block a chunk
+  args.append(CandidTypeBool{reload});
+  VecBytes bytes = CandidSerialize(args).get_B();
+  return bytes.as_hex_string();
+}
+
+// Decodes a reply of the given Candid args from hex
+void decode(const std::string &hex, CandidArgs &args) {
+  VecBytes bytes;
+  bytes.store_hex_string(hex);
+  CandidDeserialize(bytes, args);
+}
+
+void check(bool ok, const std::string &what) {
+  if (!ok) {
+    std::cout << "Test '" << what << "' Failed\n";
+    exit(1);
+  }
+  std::cout << "Test '" << what << "' - Passed\n";
+}
+
+// The saved state of a job, read with get_job
+uint64_t job_x(MockIC &mockIC, uint32_t job, const std::string &caller) {
+  CandidArgs in;
+  in.append(CandidTypeNat32{job});
+  VecBytes in_bytes = CandidSerialize(in).get_B();
+  std::string out_hex;
+  mockIC.run_test("get_job " + std::to_string(job), get_job,
+                  in_bytes.as_hex_string(), "", true, caller, &out_hex);
+  uint64_t x{0}, i{0};
+  CandidArgs out;
+  out.append(CandidTypeNat64{&x});
+  out.append(CandidTypeNat64{&i});
+  decode(out_hex, out);
+  return x;
+}
+
+// Starts 3 jobs before any of them finished, and lets them interleave.
+// Returns how many jobs got the right result.
+int run_interleaved_jobs(MockIC &mockIC, bool reload,
+                         const std::string &caller) {
+  const uint64_t n = 200'000; // 4 chunks of LCG_BLOCK steps
+  mockIC.run_test("clear_run_log", clear_run_log, EMPTY, "4449444c0000", true,
+                  caller);
+  mockIC.set_auto_drain(false);
+  for (uint32_t job = 1; job <= 3; ++job) {
+    mockIC.run_test("compute job " + std::to_string(job), compute,
+                    compute_args(job, 1000 + job, n, reload), "", true, caller);
+  }
+  mockIC.drain();
+  mockIC.set_auto_drain(true);
+
+  std::string log_hex;
+  mockIC.run_test("get_run_log", get_run_log, EMPTY, "", true, caller,
+                  &log_hex);
+  std::vector<uint32_t> log;
+  CandidArgs out;
+  out.append(CandidTypeVecNat32{&log});
+  decode(log_hex, out);
+  // The chunks of the jobs took turns: 1, 2, 3, 1, 2, 3, ...
+  check(log.size() >= 4 && log[0] == 1 && log[1] == 2 && log[2] == 3 &&
+            log[3] == 1,
+        "the chunks of the jobs interleave");
+
+  int right{0};
+  for (uint32_t job = 1; job <= 3; ++job) {
+    if (job_x(mockIC, job, caller) == lcg(1000 + job, n)) ++right;
+  }
+  return right;
+}
+
 // '()' -> trap while calls are in flight (the IC_API constructor path)
 void native_pre_upgrade_with_ic_api() {
   IC_API ic_api(CanisterPreUpgrade{"native_pre_upgrade_with_ic_api"}, false);
@@ -168,6 +252,30 @@ int main() {
                 my_principal);
   run_text_test(mockIC, "call_chain end", call_chain, chain_args({}, "C++"),
                 self + ": Hello, C++!", my_principal);
+
+  // A long computation in chunks, with a yield after each
+  {
+    std::string out_hex;
+    mockIC.run_test("compute alone", compute,
+                    compute_args(9, 42, 200'000, true), "", silent_on_trap,
+                    my_principal, &out_hex);
+    uint64_t result{0}, call_instructions{0}, max_message{0};
+    uint32_t chunks{0};
+    CandidArgs out;
+    out.append(CandidTypeNat64{&result});
+    out.append(CandidTypeNat32{&chunks});
+    out.append(CandidTypeNat64{&call_instructions});
+    out.append(CandidTypeNat64{&max_message});
+    decode(out_hex, out);
+    check(result == lcg(42, 200'000) && chunks == 4,
+          "compute alone: the right result, in 4 chunks");
+  }
+  // Jobs that run at the same time: right, because every chunk reloads its
+  // job; wrong when the chunks skip the reload
+  check(run_interleaved_jobs(mockIC, true, my_principal) == 3,
+        "interleaved jobs, with reload: all 3 right");
+  check(run_interleaved_jobs(mockIC, false, my_principal) < 3,
+        "interleaved jobs, without reload: not all right");
 
   // A oneway call: performed, no response
   mockIC.run_test("call_oneway self", call_oneway, P_SELF, "4449444c00017e01",

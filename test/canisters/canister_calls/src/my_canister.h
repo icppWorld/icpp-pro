@@ -29,4 +29,10 @@ void call_oneway() WASM_SYMBOL_EXPORTED("canister_update call_oneway");
 void yield_loop() WASM_SYMBOL_EXPORTED("canister_update yield_loop");
 void budget_probe() WASM_SYMBOL_EXPORTED("canister_update budget_probe");
 void start_held_call() WASM_SYMBOL_EXPORTED("canister_update start_held_call");
+void compute() WASM_SYMBOL_EXPORTED("canister_update compute");
+void compute_no_yield()
+    WASM_SYMBOL_EXPORTED("canister_update compute_no_yield");
+void get_job() WASM_SYMBOL_EXPORTED("canister_query get_job");
+void get_run_log() WASM_SYMBOL_EXPORTED("canister_query get_run_log");
+void clear_run_log() WASM_SYMBOL_EXPORTED("canister_update clear_run_log");
 void get_state() WASM_SYMBOL_EXPORTED("canister_query get_state");

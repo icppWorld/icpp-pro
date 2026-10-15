@@ -3,7 +3,9 @@
 
 #include "my_canister.h"
 
+#include <algorithm>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "ic0.h"
@@ -32,6 +34,37 @@ CandidTypePrincipal principal_arg(IC_API &ic_api, CandidArgs &args,
 std::string error_text(const IC_CallError &error) {
   return std::to_string(static_cast<uint32_t>(error.reject_code)) + ":" +
          error.reject_message;
+}
+// A long computation: an LCG iterated n times from a seed. The state of each
+// job is saved between its chunks, like llama's prompt cache per caller.
+struct LcgState {
+  uint64_t x{0}; // the LCG value
+  uint64_t i{0}; // the steps done
+};
+std::unordered_map<uint32_t, LcgState> g_jobs;
+// The shared work area every chunk computes in, like llama's model context:
+// another job's chunk can run in between, so a chunk must reload its job.
+LcgState g_work;
+std::vector<uint32_t> g_run_log; // the job of every chunk, in order of running
+
+// x = a * x + c (mod 2^64), with Knuth's MMIX constants
+constexpr uint64_t LCG_A = 6364136223846793005ULL;
+constexpr uint64_t LCG_C = 1442695040888963407ULL;
+// Steps between two reads of the instruction counter
+constexpr uint64_t LCG_BLOCK = 65536;
+
+// Runs blocks of steps on g_work until n steps are done, or the message
+// executed `chunk_instructions` instructions.
+void lcg_chunk(uint64_t n, uint64_t chunk_instructions) {
+  do {
+    uint64_t end = std::min(n, g_work.i + LCG_BLOCK);
+    uint64_t x = g_work.x;
+    for (uint64_t i = g_work.i; i < end; ++i)
+      x = LCG_A * x + LCG_C;
+    g_work = {x, end};
+  } while (g_work.i < n && IC_API::performance_counter(
+                               IC_API::PerformanceCounterType::Instructions) <
+                               chunk_instructions);
 }
 } // namespace
 
@@ -342,6 +375,94 @@ IC_Async start_held_call_async() {
   g_held_done = r.has_value();
 }
 void start_held_call() { start_held_call_async(); }
+
+// A long computation, in chunks of at most `chunk_instructions`, with a
+// self-yield after each, so the whole computation can exceed the
+// instruction limit of one message. Every chunk loads its job from g_jobs
+// into the shared g_work, and saves it back, before it yields.
+// `reload = false` skips the load: a broken chunk, for the tests to prove
+// that other calls run in between.
+// '(job, seed, n, chunk_instructions, reload)' ->
+// '(result, chunks, call_instructions, max_message_instructions)'
+IC_Async compute_async() {
+  IC_API ic_api(CanisterUpdate{"compute"}, false);
+  uint32_t job{0};
+  uint64_t seed{0}, n{0}, chunk_instructions{0};
+  bool reload{true};
+  CandidArgs args;
+  args.append(CandidTypeNat32{&job});
+  args.append(CandidTypeNat64{&seed});
+  args.append(CandidTypeNat64{&n});
+  args.append(CandidTypeNat64{&chunk_instructions});
+  args.append(CandidTypeBool{&reload});
+  ic_api.from_wire(args);
+
+  g_jobs[job] = {seed, 0};
+  g_work = g_jobs[job];
+  uint32_t chunks{0};
+  uint64_t max_message{0};
+  while (true) {
+    if (reload) g_work = g_jobs[job]; // load the job's saved state
+    lcg_chunk(n, chunk_instructions);
+    g_jobs[job] = g_work; // save it, BEFORE the co_await
+    g_run_log.push_back(job);
+    ++chunks;
+    max_message = std::max(max_message,
+                           IC_API::performance_counter(
+                               IC_API::PerformanceCounterType::Instructions));
+    if (g_jobs[job].i >= n) break;
+    IC_CallResult<void> r = co_await ic_api.yield_fresh_budget();
+    r.value();
+  }
+  CandidArgs out;
+  out.append(CandidTypeNat64{g_jobs[job].x});
+  out.append(CandidTypeNat32{chunks});
+  out.append(CandidTypeNat64{IC_API::performance_counter(
+      IC_API::PerformanceCounterType::CallContextInstructions)});
+  out.append(CandidTypeNat64{max_message});
+  ic_api.to_wire(out);
+}
+void compute() { compute_async(); }
+
+// The same computation in one message, without yields: it traps when it
+// exceeds the instruction limit. '(seed, n)' -> '(result)'
+void compute_no_yield() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  uint64_t seed{0}, n{0};
+  CandidArgs args;
+  args.append(CandidTypeNat64{&seed});
+  args.append(CandidTypeNat64{&n});
+  ic_api.from_wire(args);
+  g_work = {seed, 0};
+  lcg_chunk(n, UINT64_MAX);
+  ic_api.to_wire(CandidTypeNat64{g_work.x});
+}
+
+// The saved state of a job: '(job)' -> '(x, steps)'
+void get_job() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  uint32_t job{0};
+  ic_api.from_wire(CandidTypeNat32{&job});
+  LcgState state = g_jobs[job];
+  CandidArgs out;
+  out.append(CandidTypeNat64{state.x});
+  out.append(CandidTypeNat64{state.i});
+  ic_api.to_wire(out);
+}
+
+// The job of every chunk that ran, in order: '()' -> '(vec nat32)'
+void get_run_log() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  ic_api.from_wire();
+  ic_api.to_wire(CandidTypeVecNat32{g_run_log});
+}
+
+void clear_run_log() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  ic_api.from_wire();
+  g_run_log.clear();
+  ic_api.to_wire();
+}
 
 // '()' -> '(before, after, destroyed, calls_in_flight, held_done)'
 void get_state() {

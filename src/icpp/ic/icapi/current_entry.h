@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "canister.h"
 
 void set_current_entry(const CanisterBase &entry);

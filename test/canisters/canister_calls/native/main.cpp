@@ -43,6 +43,15 @@ const std::string BOUNDED_B{
 const std::string N3{"4449444c00017903000000"};                    // (3)
 const std::string N2{"4449444c00017902000000"};                    // (2)
 const std::string EMPTY{"4449444c0000"};                           // ()
+const std::string P_SELF_SELF{
+    "4449444c00026868010a0000000000c0115a0101010a0000000000c0115a0101"};
+// (self, "info_cq", self) and (self, "info", self)
+const std::string TIMER_INFO_CQ{
+    "4449444c0003687168010a0000000000c0115a010107696e"
+    "666f5f6371010a0000000000c0115a0101"};
+const std::string TIMER_INFO{
+    "4449444c0003687168010a0000000000c0115a010104696e66"
+    "6f010a0000000000c0115a0101"};
 
 const std::string OUT_HELLO{"4449444c0001710b48656c6c6f2c20432b2b21"};
 const std::string OUT_HI_B{"4449444c0001710948692066726f6d2042"};
@@ -232,6 +241,12 @@ int main() {
   mockIC.register_method("slow", slow);
   mockIC.register_method("hold", hold);
   mockIC.register_method("call_chain", call_chain);
+  mockIC.register_method("greet_q", greet_q, MockIC::MethodKind::Query);
+  mockIC.register_method("cq_name", cq_name,
+                         MockIC::MethodKind::CompositeQuery);
+  mockIC.register_method("info", info);
+  mockIC.register_method("info_cq", info_cq,
+                         MockIC::MethodKind::CompositeQuery);
 
   // A call to the canister itself, and to canister B
   mockIC.run_test("call_greet self", call_greet, GREET_SELF, OUT_HELLO,
@@ -397,6 +412,98 @@ int main() {
     check(after.destroyed == before.destroyed + 1 && after.in_flight == 0,
           "call_all_then_trap: the frame freed, no call in flight");
   }
+
+  // Composite queries: queries that call queries
+  run_text_test(mockIC, "cq_greet self", cq_greet, GREET_SELF, "Hello, C++!",
+                my_principal);
+  mockIC.expect_call(CANISTER_B, "greet_q",
+                     MockIC::MockResponse::reply(OUT_HI_B));
+  run_text_test(mockIC, "cq_greet B", cq_greet, GREET_B, "Hi from B",
+                my_principal);
+  {
+    CandidArgs in;
+    in.append(CandidTypeVecPrincipal{std::vector<std::string>{self, self}});
+    VecBytes in_bytes = CandidSerialize(in).get_B();
+    std::string out_hex;
+    mockIC.run_test("cq_all self", cq_all, in_bytes.as_hex_string(), "",
+                    silent_on_trap, my_principal, &out_hex);
+    std::vector<std::string> out;
+    CandidArgs args;
+    args.append(CandidTypeVecText{&out});
+    decode(out_hex, args);
+    check(out == std::vector<std::string>{"ok:Hello, C++!", "ok:Hello, C++!"},
+          "cq_all self: both calls replied");
+  }
+  // A composite query can't call an update method, and an update can't call
+  // a composite query
+  run_text_test(mockIC, "cq_call_update self", cq_call_update, P_SELF, "rej:5",
+                my_principal);
+  run_text_test(mockIC, "call_cq self", call_cq, P_SELF, "rej:5", my_principal);
+  {
+    // In a composite query's callback: no certificate, not replicated
+    CandidArgs in;
+    in.append(CandidTypePrincipal{self});
+    in.append(CandidTypeText{"probe"});
+    VecBytes in_bytes = CandidSerialize(in).get_B();
+    run_text_test(mockIC, "cq_in_callback probe", cq_in_callback,
+                  in_bytes.as_hex_string(),
+                  "certificate: 0 then 0; replicated: 0 then 0", my_principal);
+  }
+  for (const std::string what : {"timer", "certify"}) {
+    // Refused in a composite query's callback: the callback traps, and the
+    // query does not reply
+    CandidArgs in;
+    in.append(CandidTypePrincipal{self});
+    in.append(CandidTypeText{what});
+    VecBytes in_bytes = CandidSerialize(in).get_B();
+    std::string out_hex;
+    mockIC.run_test("cq_in_callback " + what, cq_in_callback,
+                    in_bytes.as_hex_string(), "", silent_on_trap, my_principal,
+                    &out_hex);
+    check(out_hex.empty(), "cq_in_callback " + what + ": refused, no reply");
+  }
+  {
+    // A composite query can't send cycles: it traps before the call
+    CandidArgs in;
+    in.append(CandidTypePrincipal{self});
+    in.append(CandidTypeText{"cycles"});
+    VecBytes in_bytes = CandidSerialize(in).get_B();
+    mockIC.run_trap_test("cq_in_callback cycles", cq_in_callback,
+                         in_bytes.as_hex_string(), silent_on_trap,
+                         my_principal);
+  }
+  {
+    State before = read_state(mockIC, my_principal);
+    mockIC.run_test("cq_then_trap self", cq_then_trap, P_SELF, "",
+                    silent_on_trap, my_principal);
+    State after = read_state(mockIC, my_principal);
+    check(after.destroyed == before.destroyed + 1 && after.in_flight == 0,
+          "cq_then_trap: the frame freed, never counted in flight");
+  }
+
+  // The same logic as an update and as a composite query; a composite query
+  // calling a composite query
+  run_text_test(mockIC, "info self", info, P_SELF, "ok:Hello, info!",
+                my_principal);
+  run_text_test(mockIC, "info_cq self", info_cq, P_SELF, "ok:Hello, info!",
+                my_principal);
+  run_text_test(mockIC, "cq_via self self", cq_via, P_SELF_SELF,
+                "ok:Hello, info!", my_principal);
+
+  // A timer can't call a composite query, but can call its update variant.
+  // The Mock IC does not fire timers: the test calls canister_global_timer.
+  mockIC.run_test("timer_call info_cq", timer_call, TIMER_INFO_CQ, EMPTY,
+                  silent_on_trap, my_principal);
+  mockIC.run_test("canister_global_timer (info_cq)", canister_global_timer,
+                  EMPTY, "", silent_on_trap, my_principal);
+  run_text_test(mockIC, "timer_result info_cq", timer_result, EMPTY, "rej:5",
+                my_principal);
+  mockIC.run_test("timer_call info", timer_call, TIMER_INFO, EMPTY,
+                  silent_on_trap, my_principal);
+  mockIC.run_test("canister_global_timer (info)", canister_global_timer, EMPTY,
+                  "", silent_on_trap, my_principal);
+  run_text_test(mockIC, "timer_result info", timer_result, EMPTY,
+                "ok:Hello, info!", my_principal);
 
   // An upgrade while a call is in flight is refused
   mockIC.set_auto_drain(false);

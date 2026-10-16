@@ -63,8 +63,8 @@ void check_current_entry(bool (*rule)(CanisterBase &), const char *method,
 
 void check_timer_entry(const char *method) {
   CanisterBase *entry = current_entry();
-  if (entry != nullptr &&
-      (entry->is_entry_Q() || entry->is_entry_F() || entry->is_entry_s())) {
+  if (entry != nullptr && (entry->is_entry_Q() || entry->is_entry_F() ||
+                           entry->is_entry_s() || entry->is_composite())) {
     IC_API::trap(std::string(method) + " is not available in a " +
                  entry->get_entry_type() +
                  " entry point - ic0.global_timer_set is refused there. "
@@ -103,7 +103,8 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
   const bool has_arg_data =
       m_canister_entry.is_entry_I() || m_canister_entry.is_entry_U() ||
       m_canister_entry.is_entry_Q() || m_canister_entry.is_entry_Ry() ||
-      m_canister_entry.is_entry_F();
+      m_canister_entry.is_entry_F() || m_canister_entry.is_entry_CQ() ||
+      m_canister_entry.is_entry_CRy();
   const bool has_caller = !m_canister_entry.is_entry_s();
 
   if (has_arg_data) {
@@ -255,10 +256,13 @@ __uint128_t IC_API::accept_msg_cycles(__uint128_t max_amount) {
 }
 
 __uint128_t IC_API::burn_cycles(__uint128_t amount) {
-  check_entry(m_canister_entry,
-              !m_canister_entry.is_entry_F() && !m_canister_entry.is_entry_s(),
-              "IC_API::burn_cycles",
-              "all except inspect_message & canister_start");
+  check_entry(
+      m_canister_entry,
+      !m_canister_entry.is_entry_F() && !m_canister_entry.is_entry_s() &&
+          !m_canister_entry.is_composite(),
+      "IC_API::burn_cycles",
+      "all except inspect_message, canister_start, composite queries and "
+      "their callbacks");
   __uint128_t burned;
   ic0_cycles_burn128((uint64_t)(amount >> 64), (uint64_t)amount,
                      reinterpret_cast<uintptr_t>(&burned));
@@ -302,8 +306,9 @@ bool IC_API::data_certificate_present() {
 }
 
 std::vector<uint8_t> IC_API::get_data_certificate() {
-  check_entry(m_canister_entry, m_canister_entry.is_entry_Q(),
-              "IC_API::get_data_certificate", "query");
+  check_entry(m_canister_entry,
+              m_canister_entry.is_entry_Q() || m_canister_entry.is_entry_CQ(),
+              "IC_API::get_data_certificate", "query or composite query");
   if (!data_certificate_present()) {
     trap("IC_API::get_data_certificate: no data certificate present. It is "
          "only available in non-replicated query calls.");
@@ -663,14 +668,13 @@ void IC_API::to_wire(const CandidArgs &args_out) {
   if (m_called_to_wire) {
     trap("ERROR: The canister is calling ic_api.to_wire() more than once.");
   }
-  if (!(m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Q() ||
-        m_canister_entry.is_entry_Ry() || m_canister_entry.is_entry_Rt())) {
+  if (!entry_contexts::reply(m_canister_entry)) {
     trap(
         "ERROR: The canister function '" +
         m_canister_entry.get_calling_function() +
         "' is calling ic_api.to_wire(), but it is of type '" +
         m_canister_entry.get_entry_type() +
-        "'.\nYou can only call ic_api.to_wire() for CanisterQuery, CanisterUpdate, CanisterReplyCallback & CanisterRejectCallback functions.\nPlease update the IC_API instantiation.");
+        "'.\nYou can only call ic_api.to_wire() for CanisterQuery, CanisterUpdate, CanisterCompositeQuery and the reply & reject callbacks.\nPlease update the IC_API instantiation.");
   }
   m_called_to_wire = true;
 
@@ -684,9 +688,8 @@ void IC_API::to_wire(const CandidArgs &args_out) {
   }
 
   // https://internetcomputer.org/docs/current/references/ic-interface-spec#system-api-imports
-  // Only can call msg_reply if entry is `U Q Ry Rt`
-  if (m_canister_entry.is_entry_U() || m_canister_entry.is_entry_Q() ||
-      m_canister_entry.is_entry_Ry() || m_canister_entry.is_entry_Rt()) {
+  // Only can call msg_reply if entry is `U Q CQ Ry Rt CRy CRt`
+  if (entry_contexts::reply(m_canister_entry)) {
     // Send it out over the wire
     msg_reply();
   }

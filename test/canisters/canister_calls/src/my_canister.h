@@ -44,3 +44,21 @@ void get_job() WASM_SYMBOL_EXPORTED("canister_query get_job");
 void get_run_log() WASM_SYMBOL_EXPORTED("canister_query get_run_log");
 void clear_run_log() WASM_SYMBOL_EXPORTED("canister_update clear_run_log");
 void get_state() WASM_SYMBOL_EXPORTED("canister_query get_state");
+
+// Composite queries
+void greet_q() WASM_SYMBOL_EXPORTED("canister_query greet_q");
+void cq_name() WASM_SYMBOL_EXPORTED("canister_composite_query cq_name");
+void cq_greet() WASM_SYMBOL_EXPORTED("canister_composite_query cq_greet");
+void cq_all() WASM_SYMBOL_EXPORTED("canister_composite_query cq_all");
+void cq_call_update()
+    WASM_SYMBOL_EXPORTED("canister_composite_query cq_call_update");
+void call_cq() WASM_SYMBOL_EXPORTED("canister_update call_cq");
+void cq_in_callback()
+    WASM_SYMBOL_EXPORTED("canister_composite_query cq_in_callback");
+void cq_then_trap()
+    WASM_SYMBOL_EXPORTED("canister_composite_query cq_then_trap");
+void info() WASM_SYMBOL_EXPORTED("canister_update info");
+void info_cq() WASM_SYMBOL_EXPORTED("canister_composite_query info_cq");
+void cq_via() WASM_SYMBOL_EXPORTED("canister_composite_query cq_via");
+void timer_call() WASM_SYMBOL_EXPORTED("canister_update timer_call");
+void timer_result() WASM_SYMBOL_EXPORTED("canister_query timer_result");

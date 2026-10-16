@@ -21,6 +21,10 @@ class CanisterQuery;
 class CanisterReplyCallback;
 class CanisterRejectCallback;
 class CanisterCleanupCallback;
+class CanisterCompositeQuery;
+class CanisterCompositeReplyCallback;
+class CanisterCompositeRejectCallback;
+class CanisterCompositeCleanupCallback;
 class CanisterStart;
 
 // ------------------------------------------------------------------
@@ -31,6 +35,10 @@ class CanisterStart;
 
 // The Canister Entry Point classes
 #include "canister_cleanup_callback.h"
+#include "canister_composite_cleanup_callback.h"
+#include "canister_composite_query.h"
+#include "canister_composite_reject_callback.h"
+#include "canister_composite_reply_callback.h"
 #include "canister_global_timer.h"
 #include "canister_heartbeat.h"
 #include "canister_init.h"

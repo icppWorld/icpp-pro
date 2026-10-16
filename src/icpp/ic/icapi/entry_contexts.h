@@ -19,14 +19,21 @@ bool all_except_start(CanisterBase &entry);
 // (non-replicated) and inspect_message are refused.
 bool root_key(CanisterBase &entry);
 
-// update, query, reply & reject callbacks, cleanup and inspect_message.
+// update, query, reply & reject callbacks, cleanup, inspect_message, and a
+// composite query with its reply, reject & cleanup callbacks.
 bool caller_info(CanisterBase &entry);
 
-// update, reply & reject callbacks, heartbeat & timer: where call_new and the
-// rest of the call API are available. (Composite queries are not supported.)
+// update, composite query, reply & reject callbacks (also of a composite
+// query), heartbeat & timer: where call_new and the rest of the call API are
+// available. Not in a query, nor in a cleanup callback.
 bool call(CanisterBase &entry);
 
-// update, query, reply & reject callbacks.
+// update, query, composite query, reply & reject callbacks (also of a
+// composite query).
 bool msg_deadline(CanisterBase &entry);
+
+// Where a reply or reject can be sent: update, query, composite query, reply
+// & reject callbacks (also of a composite query).
+bool reply(CanisterBase &entry);
 
 } // namespace entry_contexts

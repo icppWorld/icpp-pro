@@ -370,6 +370,9 @@ std::vector<IC_Call> calls_arg(IC_API &ic_api) {
   args.append(CandidTypeVecPrincipal{&callees});
   args.append(CandidTypeVecText{&methods});
   ic_api.from_wire(args);
+  if (callees.size() != methods.size()) {
+    IC_API::trap("calls_arg: callees and methods must have the same length");
+  }
   std::vector<IC_Call> calls;
   for (size_t i = 0; i < callees.size(); ++i) {
     IC_Call call =

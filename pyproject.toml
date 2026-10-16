@@ -88,7 +88,7 @@ dev = [
     "wasmtime",
     # Verifies the threshold ECDSA signatures of the canister_management
     # smoketests (test/canisters/canister_management)
-    "ecdsa==0.19.2",
+    "cryptography==50.0.2",
 ]
 
 [project.urls]

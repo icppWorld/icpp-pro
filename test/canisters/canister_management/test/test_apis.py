@@ -14,7 +14,12 @@ from pathlib import Path
 from typing import List
 
 import pytest
-from ecdsa import SECP256k1, VerifyingKey  # type: ignore[import-untyped]
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import (
+    Prehashed,
+    encode_dss_signature,
+)
 
 from icpp.smoketest import call_canister_api, flatten_candid_text
 
@@ -82,8 +87,12 @@ def test__ecdsa(network: str) -> None:
         call(network, "ecdsa", f'("{KEY}", {blob_arg(message_hash)})')
     )
     assert len(public_key) == 33 and len(signature) == 64
-    vk = VerifyingKey.from_string(public_key, curve=SECP256k1)
-    assert vk.verify_digest(signature, message_hash)
+    # The signature is r || s; verify() raises InvalidSignature if it is wrong
+    vk = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), public_key)
+    r, s = (int.from_bytes(signature[i : i + 32], "big") for i in (0, 32))
+    vk.verify(
+        encode_dss_signature(r, s), message_hash, ec.ECDSA(Prehashed(hashes.SHA256()))
+    )
 
 
 @pytest.mark.parametrize("ed25519", [True, False])

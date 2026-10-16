@@ -276,6 +276,45 @@ def test__cq_in_callback_refused(network: str) -> None:
         assert expected in response, f"{what}: {response}"
 
 
+def test__cq_via(network: str) -> None:
+    # A composite query calls a composite query of another canister:
+    # python -> a.cq_via -> b.info_cq -> c.greet_q
+    b, c = (principal(network, f"canister_{x}") for x in "bc")
+    response = call(
+        network, "canister_a", "cq_via", f'(principal "{b}", principal "{c}")'
+    )
+    assert response == '("ok:Hello, info!")'
+
+
+def timer_call(network: str, method: str) -> str:
+    # A timer on canister_c calls canister_a.<method>(canister_b), and
+    # timer_result reports the outcome once the timer fired
+    a, b = (principal(network, f"canister_{x}") for x in "ab")
+    argument = f'(principal "{a}", "{method}", principal "{b}")'
+    assert call(network, "canister_c", "timer_call", argument) == "()"
+    for _ in range(30):
+        response = call(network, "canister_c", "timer_result")
+        if response != '("pending")':
+            return response
+        time.sleep(1)
+    return response
+
+
+def test__timer_calls_cq(network: str) -> None:
+    # A timer runs in replicated mode: its call to a composite query is
+    # rejected with code 5 (CanisterError)
+    assert timer_call(network, "info_cq") == '("rej:5")'
+
+
+def test__timer_calls_update_variant(network: str) -> None:
+    # The same logic, exported as an update, can be called from a timer
+    assert timer_call(network, "info") == '("ok:Hello, info!")'
+    # and users still call it as a composite query
+    b = principal(network, "canister_b")
+    response = call(network, "canister_a", "info_cq", f'(principal "{b}")')
+    assert response == '("ok:Hello, info!")'
+
+
 def test__call_oneway(network: str) -> None:
     b = principal(network, "canister_b")
     response = call(network, "canister_a", "call_oneway", f'(principal "{b}")')

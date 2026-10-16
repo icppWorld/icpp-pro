@@ -55,13 +55,18 @@ struct IC_PublicKey {
 
 using IC_Blob = std::vector<uint8_t>;
 
+// Calls to the management canister (aaaaa-aa), the IC's system API. Each
+// helper encodes the Candid argument, attaches the cycles the call costs, and
+// decodes the reply.
 class IC_Management {
 public:
-  // 32 random bytes
+  // 32 random bytes from the IC's random beacon, which no node can predict.
+  // Execution is deterministic, so this is a canister's only source of secure
+  // randomness.
   static IC_Task<IC_CallResult<IC_Blob>> raw_rand();
 
-  // Creates a canister, controlled by this canister unless settings say
-  // otherwise. It starts with extra_cycles, attached on top of the cost of
+  // Creates an empty canister, e.g. one per user, controlled by this
+  // canister unless settings say otherwise. It starts with extra_cycles, attached on top of the cost of
   // the creation: a canister needs cycles to allocate memory, so give it some
   // (the IC rejects the creation with an "insufficient cycles" error
   // otherwise).
@@ -69,7 +74,10 @@ public:
   create_canister(IC_CanisterSettings settings = {},
                   __uint128_t extra_cycles = 0);
 
-  // Threshold ECDSA
+  // Threshold ECDSA (secp256k1): the private key is spread over the nodes of
+  // a signing subnet and never exists in one place. The public key gives a
+  // Bitcoin or Ethereum address that this canister controls; sign_with_ecdsa
+  // signs a 32-byte hash, e.g. of a transaction.
   static IC_Task<IC_CallResult<IC_PublicKey>>
   ecdsa_public_key(IC_EcdsaKeyId key, std::vector<IC_Blob> derivation_path,
                    std::optional<CandidTypePrincipal> canister_id = {});
@@ -77,7 +85,9 @@ public:
   sign_with_ecdsa(IC_Blob message_hash, std::vector<IC_Blob> derivation_path,
                   IC_EcdsaKeyId key);
 
-  // Threshold Schnorr; bip341_merkle_root_hash only for bip340secp256k1
+  // Threshold Schnorr: bip340secp256k1 for Bitcoin Taproot (with an optional
+  // bip341_merkle_root_hash), ed25519 for e.g. Solana. Like ECDSA, no private
+  // key exists in one place.
   static IC_Task<IC_CallResult<IC_PublicKey>>
   schnorr_public_key(IC_SchnorrKeyId key, std::vector<IC_Blob> derivation_path,
                      std::optional<CandidTypePrincipal> canister_id = {});
@@ -86,7 +96,9 @@ public:
                     IC_SchnorrKeyId key,
                     std::optional<IC_Blob> bip341_merkle_root_hash = {});
 
-  // vetKD
+  // vetKD (vetKeys): derives a secret key for an input, encrypted to the
+  // client's transport public key, so no node sees it. For end-to-end
+  // encryption, with this canister deciding who gets which key.
   static IC_Task<IC_CallResult<IC_Blob>>
   vetkd_public_key(IC_VetKdKeyId key, IC_Blob context,
                    std::optional<CandidTypePrincipal> canister_id = {});
@@ -94,7 +106,7 @@ public:
   vetkd_derive_key(IC_Blob input, IC_Blob context, IC_Blob transport_public_key,
                    IC_VetKdKeyId key);
 
-  // An HTTPS outcall
+  // An HTTPS request to a server on the internet, e.g. a price feed
   static IC_Task<IC_CallResult<IC_HttpOutcallResponse>>
   http_request(IC_HttpOutcallRequest request);
 }; // docs end: ic_management

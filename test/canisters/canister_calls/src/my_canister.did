@@ -40,5 +40,10 @@ service : {
   "call_cq" : (principal) -> (text);
   "cq_in_callback" : (principal, text) -> (text) composite_query;
   "cq_then_trap" : (principal) -> () composite_query;
+  "info" : (principal) -> (text);
+  "info_cq" : (principal) -> (text) composite_query;
+  "cq_via" : (principal, principal) -> (text) composite_query;
+  "timer_call" : (principal, text, principal) -> ();
+  "timer_result" : () -> (text) query;
   "get_state" : () -> (nat64, nat64, nat64, nat32, bool) query;
 };

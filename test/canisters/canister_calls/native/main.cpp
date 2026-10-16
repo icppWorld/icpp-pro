@@ -43,6 +43,15 @@ const std::string BOUNDED_B{
 const std::string N3{"4449444c00017903000000"};                    // (3)
 const std::string N2{"4449444c00017902000000"};                    // (2)
 const std::string EMPTY{"4449444c0000"};                           // ()
+const std::string P_SELF_SELF{
+    "4449444c00026868010a0000000000c0115a0101010a0000000000c0115a0101"};
+// (self, "info_cq", self) and (self, "info", self)
+const std::string TIMER_INFO_CQ{
+    "4449444c0003687168010a0000000000c0115a010107696e"
+    "666f5f6371010a0000000000c0115a0101"};
+const std::string TIMER_INFO{
+    "4449444c0003687168010a0000000000c0115a010104696e66"
+    "6f010a0000000000c0115a0101"};
 
 const std::string OUT_HELLO{"4449444c0001710b48656c6c6f2c20432b2b21"};
 const std::string OUT_HI_B{"4449444c0001710948692066726f6d2042"};
@@ -234,6 +243,9 @@ int main() {
   mockIC.register_method("call_chain", call_chain);
   mockIC.register_method("greet_q", greet_q, MockIC::MethodKind::Query);
   mockIC.register_method("cq_name", cq_name,
+                         MockIC::MethodKind::CompositeQuery);
+  mockIC.register_method("info", info);
+  mockIC.register_method("info_cq", info_cq,
                          MockIC::MethodKind::CompositeQuery);
 
   // A call to the canister itself, and to canister B
@@ -468,6 +480,30 @@ int main() {
     check(after.destroyed == before.destroyed + 1 && after.in_flight == 0,
           "cq_then_trap: the frame freed, never counted in flight");
   }
+
+  // The same logic as an update and as a composite query; a composite query
+  // calling a composite query
+  run_text_test(mockIC, "info self", info, P_SELF, "ok:Hello, info!",
+                my_principal);
+  run_text_test(mockIC, "info_cq self", info_cq, P_SELF, "ok:Hello, info!",
+                my_principal);
+  run_text_test(mockIC, "cq_via self self", cq_via, P_SELF_SELF,
+                "ok:Hello, info!", my_principal);
+
+  // A timer can't call a composite query, but can call its update variant.
+  // The Mock IC does not fire timers: the test calls canister_global_timer.
+  mockIC.run_test("timer_call info_cq", timer_call, TIMER_INFO_CQ, EMPTY,
+                  silent_on_trap, my_principal);
+  mockIC.run_test("canister_global_timer (info_cq)", canister_global_timer,
+                  EMPTY, "", silent_on_trap, my_principal);
+  run_text_test(mockIC, "timer_result info_cq", timer_result, EMPTY, "rej:5",
+                my_principal);
+  mockIC.run_test("timer_call info", timer_call, TIMER_INFO, EMPTY,
+                  silent_on_trap, my_principal);
+  mockIC.run_test("canister_global_timer (info)", canister_global_timer, EMPTY,
+                  "", silent_on_trap, my_principal);
+  run_text_test(mockIC, "timer_result info", timer_result, EMPTY,
+                "ok:Hello, info!", my_principal);
 
   // An upgrade while a call is in flight is refused
   mockIC.set_auto_drain(false);

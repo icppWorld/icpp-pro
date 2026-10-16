@@ -602,6 +602,101 @@ IC_Async cq_then_trap_async() {
 }
 void cq_then_trap() { cq_then_trap_async(); }
 
+// The same logic, exported twice: as a composite query for users, and as an
+// update for timers and other canisters, which can't call a composite query.
+// Calls target.greet_q: -> "ok:Hello, info!"
+IC_Task<std::string> info_task(CandidTypePrincipal target) {
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(target, "greet_q")
+          .with_arg(CandidTypeText{"info"});
+  co_return outcome(r);
+}
+
+// '(target)' -> '("ok:Hello, info!")'
+IC_Async info_async() {
+  IC_API ic_api(CanisterUpdate{"info"}, false);
+  std::string target_text;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&target_text});
+  CandidTypePrincipal target = principal_arg(ic_api, args, target_text);
+  ic_api.to_wire(CandidTypeText{co_await info_task(target)});
+}
+void info() { info_async(); }
+
+// '(target)' -> '("ok:Hello, info!")'
+IC_Async info_cq_async() {
+  IC_API ic_api(CanisterCompositeQuery{"info_cq"}, false);
+  std::string target_text;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&target_text});
+  CandidTypePrincipal target = principal_arg(ic_api, args, target_text);
+  ic_api.to_wire(CandidTypeText{co_await info_task(target)});
+}
+void info_cq() { info_cq_async(); }
+
+// A composite query that calls a composite query of another canister:
+// '(callee, target)' -> callee.info_cq(target) -> target.greet_q
+// -> '("ok:Hello, info!")'
+IC_Async cq_via_async() {
+  IC_API ic_api(CanisterCompositeQuery{"cq_via"}, false);
+  std::string callee_text, target_text;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  args.append(CandidTypePrincipal{&target_text});
+  ic_api.from_wire(args);
+
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(CandidTypePrincipal{callee_text},
+                                     "info_cq")
+          .with_arg(CandidTypePrincipal{target_text});
+  std::string text;
+  if (r) r->decode(CandidTypeText{&text});
+  ic_api.to_wire(CandidTypeText{r ? text : outcome(r)});
+}
+void cq_via() { cq_via_async(); }
+
+// A call made from a timer: it runs in replicated mode, like an update.
+std::string g_timer_result;
+
+IC_Async timer_call_async(std::string callee, std::string method,
+                          std::string target) {
+  IC_API ic_api(CanisterGlobalTimer{"timer_call"}, false);
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(CandidTypePrincipal{callee}, method)
+          .with_arg(CandidTypePrincipal{target});
+  if (r) {
+    std::string text;
+    r->decode(CandidTypeText{&text});
+    g_timer_result = text;
+  } else {
+    g_timer_result = outcome(r);
+  }
+}
+
+// Sets a timer that calls callee.method(target):
+// '(callee, method, target)' -> '()'. timer_result has the outcome.
+void timer_call() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  std::string callee, method, target;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee});
+  args.append(CandidTypeText{&method});
+  args.append(CandidTypePrincipal{&target});
+  ic_api.from_wire(args);
+  g_timer_result = "pending";
+  IC_API::set_timer(1, [callee, method, target] {
+    timer_call_async(callee, method, target);
+  });
+  ic_api.to_wire();
+}
+
+// '()' -> '("pending")', or the outcome of the timer's call
+void timer_result() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  ic_api.from_wire();
+  ic_api.to_wire(CandidTypeText{g_timer_result});
+}
+
 // A call without a response: '(callee)' -> '(true)'
 void call_oneway() {
   IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);

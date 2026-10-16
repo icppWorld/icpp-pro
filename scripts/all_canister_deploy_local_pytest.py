@@ -287,8 +287,16 @@ def main() -> int:
         default=default_jobs(len(canister_paths)),
         help="how many canisters to build & test concurrently (1 = serial)",
     )
+    parser.add_argument(
+        "--canister",
+        action="append",
+        help="test only this canister (repeatable); default: all canisters",
+    )
     args = parser.parse_args()
     jobs = max(1, args.jobs)
+    if args.canister:
+        canister_paths = [p for p in canister_paths if p.name in args.canister]
+        jobs = min(jobs, max(1, len(canister_paths)))
 
     typer.echo(
         f"Testing {len(canister_paths)} canisters with {jobs} job(s) "

@@ -78,14 +78,26 @@ all-tests:
 	$(MAKE) python-test
 	$(MAKE) all-canister-native
 	$(MAKE) all-canister-deploy-local-pytest
+
+# The quick variant CI runs on the Python versions that don't run all-tests:
+# the C++ builds & canister tests don't depend on the Python version, the
+# icpp CLI does. So: static checks, python tests, and the greet canister.
+.PHONY: smoke-tests
+smoke-tests:
+	$(MAKE) all-static
+	$(MAKE) python-test
+	@python -m scripts.all_canister_native --canister greet
+	$(MAKE) all-canister-deploy-local-pytest CANISTERS=greet
 .PHONY: all-canister-deploy-local-pytest
 # JOBS = how many canisters to build & test concurrently. Each canister has its
 # own local network on an ephemeral port, so they do not collide. The default is
 # cpu_count/4 (CI runners have 3-4 vCPU -> 1 job, i.e. serial), because
 # icpp build-wasm is itself multi-threaded. Use JOBS=1 to force serial.
+# CANISTERS = only these canisters (space separated); default: all.
 JOBS ?=
+CANISTERS ?=
 all-canister-deploy-local-pytest: icpp-pro-test-identity
-	@python -m scripts.all_canister_deploy_local_pytest $(if $(JOBS),--jobs $(JOBS),)
+	@python -m scripts.all_canister_deploy_local_pytest $(if $(JOBS),--jobs $(JOBS),) $(foreach c,$(CANISTERS),--canister $(c))
 
 # The identity the canisters are deployed with and the tests run as. It is
 # named explicitly and passed to every icp command as `--identity`; the

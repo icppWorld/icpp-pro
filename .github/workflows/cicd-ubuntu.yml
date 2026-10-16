@@ -42,6 +42,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
+      # The Python version that runs all-tests; the others run smoke-tests
+      ALL_TESTS_PYTHON: "3.11"
       # `icp network start` downloads the icp-cli-network-launcher from the
       # GitHub API. Unauthenticated, that is 60 requests/hour shared across
       # ALL GitHub-hosted runners, so our matrix jobs randomly died with:
@@ -126,7 +128,20 @@ jobs:
           echo "Installing rust"
           icpp install-rust
 
+      # The C++ builds and the canister tests don't depend on the Python
+      # version, so all-tests runs on one Python version per OS, and the other
+      # versions run smoke-tests (static checks, python tests, greet). On
+      # macOS this halves the wall-clock time: the free plan runs at most 5
+      # macOS jobs at once. JOBS=3 deploys & tests 3 canisters at a time; each
+      # gets its own local network, and they mostly wait on the replica.
       - name: all-tests
+        if: matrix.python-version == env.ALL_TESTS_PYTHON
         shell: bash -l {0}
         run: |
-          make all-tests
+          make all-tests JOBS=3
+
+      - name: smoke-tests
+        if: matrix.python-version != env.ALL_TESTS_PYTHON
+        shell: bash -l {0}
+        run: |
+          make smoke-tests

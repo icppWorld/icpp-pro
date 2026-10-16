@@ -1,5 +1,6 @@
 """Runs the native tests for all canisters"""
 
+import argparse
 import sys
 import os
 from pathlib import Path
@@ -15,6 +16,16 @@ def main() -> int:
     canister_paths_1 = list((ROOT_PATH / "test/canisters").glob("canister_*"))
     canister_paths_2 = list((ROOT_PATH / "src/icpp/canisters").glob("*"))
     canister_paths = canister_paths_2 + canister_paths_1
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--canister",
+        action="append",
+        help="test only this canister (repeatable); default: all canisters",
+    )
+    args = parser.parse_args()
+    if args.canister:
+        canister_paths = [p for p in canister_paths if p.name in args.canister]
     for canister_path in canister_paths:
         typer.echo(f"====\nTesting canister: {canister_path.name}")
 

@@ -72,3 +72,13 @@ def test__composite_query_budget_is_shared(network: str) -> None:
     assert response.startswith('("parts: 2 of 2; burn_q: 2000'), response
     response = call(network, "cq_burn", "(3 : nat32, 2_000_000_000 : nat64)")
     assert "Composite query calls exceeded the instruction limit" in response, response
+
+
+def test__ingest_refuses_newline(network: str) -> None:
+    # A message with a newline would read back as two: the whole batch is
+    # refused before anything is stored
+    assert call(network, "reset") == "()"
+    response = call(network, "ingest", '(vec {"apple pie"; "apple\\ncherry"})')
+    assert "a message can't contain a newline" in response, response
+    response = call(network, "ask", '("apple")')
+    assert response.startswith('("0 messages, 0 mention apple'), response

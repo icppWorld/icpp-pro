@@ -57,10 +57,18 @@ void reset() {
   ic_api.to_wire();
 }
 
+// Every store self-call commits on its own: if a later one fails, the
+// messages stored before it stay stored, and ingest traps. A retry of the
+// same batch would store those again, so a caller resets first.
 IC_Async ingest_async() {
   IC_API ic_api(CanisterUpdate{"ingest"}, false);
   std::vector<std::string> messages;
   ic_api.from_wire(CandidTypeVecText{&messages});
+  // The state file has one message per line: refuse the whole batch before
+  // anything is stored
+  for (const std::string &message : messages)
+    if (message.find('\n') != std::string::npos)
+      IC_API::trap("ingest: a message can't contain a newline");
 
   CandidTypePrincipal self = ic_api.get_canister_self();
   for (const std::string &message : messages) {

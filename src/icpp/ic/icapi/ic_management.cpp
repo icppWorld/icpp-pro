@@ -278,10 +278,12 @@ IC_Management::http_request(IC_HttpOutcallRequest request) {
   header.append("name", CandidTypeVecText{names});
   header.append("value", CandidTypeVecText{values});
 
+  // The limit paid for is the limit sent, also when the IC's default applies.
+  uint64_t max_response_bytes =
+      request.max_response_bytes.value_or(HTTP_MAX_RESPONSE_BYTES);
   CandidTypeRecord arg;
   arg.append("url", CandidTypeText{request.url});
-  arg.append("max_response_bytes",
-             CandidTypeOptNat64{request.max_response_bytes});
+  arg.append("max_response_bytes", CandidTypeOptNat64{max_response_bytes});
   arg.append("method", CandidTypeVariant{http_method(request.method)});
   arg.append("headers", CandidTypeVecRecord{header});
   if (request.body.has_value()) {
@@ -307,9 +309,8 @@ IC_Management::http_request(IC_HttpOutcallRequest request) {
   }
   arg.append("is_replicated", CandidTypeOptBool{request.is_replicated});
 
-  __uint128_t cycles = IC_API::cost_http_request(
-      request_size,
-      request.max_response_bytes.value_or(HTTP_MAX_RESPONSE_BYTES));
+  __uint128_t cycles =
+      IC_API::cost_http_request(request_size, max_response_bytes);
   IC_CallResult<IC_CallReply> r =
       co_await IC_Call::guaranteed_response(management(), "http_request")
           .with_arg(arg)

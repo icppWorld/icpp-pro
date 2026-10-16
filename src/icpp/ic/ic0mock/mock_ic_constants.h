@@ -35,7 +35,7 @@ constexpr uint64_t MOCKIC_COST_HTTP_REQUEST_PER_RESPONSE_BYTE = 10'400;
 // transform instruction; a non-replicated outcall costs 1/13 (one node of 13)
 constexpr uint64_t MOCKIC_COST_HTTP_REQUEST_PER_MS = 1'000;
 constexpr uint64_t MOCKIC_COST_HTTP_REQUEST_PER_TRANSFORM_INSTRUCTION = 1;
-constexpr uint64_t MOCKIC_SUBNET_SIZE = 13;
+constexpr uint64_t MOCKIC_SUBNET_SIZE = MOCKIC_SUBNET_NODE_COUNT;
 // Threshold signing & vetKD: the production key, and the test keys.
 constexpr uint64_t MOCKIC_COST_SIGN_KEY_1 = 26'153'846'153;
 constexpr uint64_t MOCKIC_COST_SIGN_TEST_KEY = 10'000'000'000;

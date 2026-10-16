@@ -255,6 +255,11 @@ IC_Call IC_Call::unbounded_wait(const CandidTypePrincipal &callee,
   return make(callee, method, std::nullopt);
 }
 
+IC_Call IC_Call::guaranteed_response(const CandidTypePrincipal &callee,
+                                     const std::string &method) {
+  return make(callee, method, std::nullopt);
+}
+
 IC_Call &IC_Call::with_arg(CandidType arg) {
   CandidArgs args;
   args.append(arg);
@@ -498,6 +503,10 @@ std::string IC_CallError::to_string() const {
            IC_API::to_string_128(required) + " required";
   case Kind::CallPerformFailed:
     return "ic0.call_perform failed with code " + std::to_string(perform_code);
+  case Kind::SignCostFailed:
+    return sign_cost_error == IC_API::SignCostError::InvalidKeyName
+               ? "unknown key name"
+               : "unknown curve or algorithm";
   case Kind::CallRejected:
     break;
   }

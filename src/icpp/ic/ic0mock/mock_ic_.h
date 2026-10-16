@@ -232,6 +232,10 @@ private:
   };
   void start_root_context(const std::string &method);
   void deliver_request(size_t call);
+  // The management canister's reply to `method`, if the Mock IC knows it:
+  // deterministic bytes of the right length. False when it does not.
+  bool management_reply(const std::string &method, std::vector<uint8_t> &reply);
+  uint64_t m_management_counter{0};
   void deliver_response(const Event &event);
   void respond(size_t context, bool is_reply, const std::vector<uint8_t> &reply,
                uint32_t reject_code, const std::string &reject_message);

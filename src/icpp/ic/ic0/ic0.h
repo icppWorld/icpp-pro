@@ -211,6 +211,11 @@ void ic0_cost_http_request(uint64_t request_size, uint64_t max_res_bytes,
                            uint32_t dst)
     WASM_SYMBOL_IMPORTED("ic0", "cost_http_request");
 
+// The parameters are a Candid-encoded record - see IC_API::cost_http_request_v2
+void ic0_cost_http_request_v2(uint32_t params_src, uint32_t params_size,
+                              uint32_t dst)
+    WASM_SYMBOL_IMPORTED("ic0", "cost_http_request_v2");
+
 uint32_t ic0_cost_sign_with_ecdsa(uint32_t src, uint32_t size,
                                   uint32_t ecdsa_curve, uint32_t dst)
     WASM_SYMBOL_IMPORTED("ic0", "cost_sign_with_ecdsa");

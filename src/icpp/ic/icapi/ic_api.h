@@ -228,6 +228,32 @@ public:
   static __uint128_t cost_http_request(uint64_t request_size,
                                        uint64_t max_response_bytes);
 
+  // The cost of an HTTPS outcall under pay-as-you-go pricing (the request's
+  // pricing_version 2), from the resources it uses. outcall_type is how it is
+  // replicated: on all nodes of the subnet, on one node (is_replicated =
+  // false), or on a chosen number of nodes (flexible, with the IC's default
+  // counts when none are given).
+  enum class HttpOutcallType : uint32_t {
+    FullyReplicated = 0,
+    NonReplicated = 1,
+    Flexible = 2
+  };
+  struct HttpOutcallReplicationCounts {
+    uint32_t total_requests;
+    uint32_t min_responses;
+    uint32_t max_responses;
+  };
+  struct HttpOutcallCostParams {
+    uint64_t request_bytes{0};
+    uint64_t http_roundtrip_time_ms{0};
+    uint64_t raw_response_bytes{0};
+    uint64_t transformed_response_bytes{0};
+    uint64_t transform_instructions{0};
+    HttpOutcallType outcall_type{HttpOutcallType::FullyReplicated};
+    std::optional<HttpOutcallReplicationCounts> flexible_counts; // Flexible
+  };
+  static __uint128_t cost_http_request_v2(const HttpOutcallCostParams &params);
+
   // The cost of a threshold signature or vetKD key derivation, for a key
   // name (e.g. "key_1", "test_key_1") and a curve or algorithm. error tells
   // when the curve/algorithm or the key name is not known; cycles is then 0.
@@ -295,6 +321,12 @@ public:
   void to_wire(const CandidType &arg_out);
   void to_wire(const CandidArgs &args_out);
   void to_wire(const IC_HttpResponse response); // docs end: to_wire
+
+  // A transform query of an HTTPS outcall: its argument, and its result
+  // docs start: http_transform
+  void from_wire(IC_HttpTransformArgs &args);
+  void
+  to_wire(const IC_HttpOutcallResponse &response); // docs end: http_transform
 
   VecBytes get_B_in() { return m_B_in; }
   VecBytes get_B_out() { return m_B_out; }
@@ -501,3 +533,4 @@ private:
 };
 
 #include "ic_async.h"
+#include "ic_management.h"

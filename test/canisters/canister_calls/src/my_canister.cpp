@@ -18,6 +18,7 @@ uint64_t g_after{0};     // call_then_trap, after its co_await (rolled back)
 uint64_t g_destroyed{0}; // call_then_trap frames freed (by the cleanup)
 bool g_released{false};  // hold() returns once release() was called
 bool g_held_done{false}; // the held call of start_held_call returned
+uint64_t g_task_ran{0};  // bump_task ran
 
 // Counts the frames of call_then_trap that are freed.
 struct FrameGuard {
@@ -305,6 +306,167 @@ IC_Async call_chain_async() {
   ic_api.to_wire(CandidTypeText{me + " > " + rest});
 }
 void call_chain() { call_chain_async(); }
+
+// ---------------------------------------------------------------------------
+// Composition: a coroutine that awaits another coroutine (IC_Task), and
+// several calls at once (IC_CallAll)
+
+namespace {
+// callee.greet(name), as a task
+IC_Task<IC_CallResult<std::string>> greet_task(CandidTypePrincipal callee,
+                                               std::string name) {
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(callee, "greet")
+          .with_arg(CandidTypeText{name});
+  if (!r) co_return r.error();
+  std::string greeting;
+  r->decode(CandidTypeText{&greeting});
+  co_return greeting;
+}
+
+// Two levels: a task awaiting tasks
+IC_Task<std::string> twice_task(CandidTypePrincipal callee, std::string name) {
+  IC_CallResult<std::string> first = co_await greet_task(callee, name);
+  IC_CallResult<std::string> second = co_await greet_task(callee, *first);
+  co_return *second;
+}
+
+// A task that finishes without making a call
+IC_Task<std::string> bracket_task(std::string s) { co_return "[" + s + "]"; }
+
+IC_Task<> bump_task() {
+  ++g_task_ran;
+  co_return;
+}
+
+// Traps after its co_await: the cleanup destroys the whole chain
+IC_Task<> trap_task(CandidTypePrincipal callee) {
+  FrameGuard guard;
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(callee, "greet")
+          .with_arg(CandidTypeText{"trap"});
+  ++g_after; // rolled back by the trap
+  IC_API::trap("task_then_trap: trapped on purpose after the co_await");
+}
+
+// "ok:<greeting>", "rej:<code>" or "err:<message>" of one call
+std::string outcome(IC_CallResult<IC_CallReply> &r) {
+  if (!r) {
+    if (r.error().kind == IC_CallError::Kind::CallRejected) {
+      return "rej:" +
+             std::to_string(static_cast<uint32_t>(r.error().reject_code));
+    }
+    return "err:" + r.error().to_string();
+  }
+  std::string greeting;
+  r->decode(CandidTypeText{&greeting});
+  return "ok:" + greeting;
+}
+
+// The callees of call_all and call_all_then_trap: '(vec principal, vec text)'
+std::vector<IC_Call> calls_arg(IC_API &ic_api) {
+  std::vector<std::string> callees, methods;
+  CandidArgs args;
+  args.append(CandidTypeVecPrincipal{&callees});
+  args.append(CandidTypeVecText{&methods});
+  ic_api.from_wire(args);
+  std::vector<IC_Call> calls;
+  for (size_t i = 0; i < callees.size(); ++i) {
+    IC_Call call =
+        IC_Call::bounded_wait(CandidTypePrincipal{callees[i]}, methods[i]);
+    if (methods[i] == "greet") call.with_arg(CandidTypeText{"C++"});
+    calls.push_back(call);
+  }
+  return calls;
+}
+} // namespace
+
+// '(callee, "C++")' -> '("Hello, C++!")'
+IC_Async task_greet_async() {
+  IC_API ic_api(CanisterUpdate{"task_greet"}, false);
+  std::string callee_text, name;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  args.append(CandidTypeText{&name});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+
+  IC_CallResult<std::string> greeting = co_await greet_task(callee, name);
+  ic_api.to_wire(
+      CandidTypeText{greeting ? *greeting : error_text(greeting.error())});
+}
+void task_greet() { task_greet_async(); }
+
+// '(callee, "C++")' -> '("[Hello, Hello, C++!!]")'
+IC_Async task_nested_async() {
+  IC_API ic_api(CanisterUpdate{"task_nested"}, false);
+  std::string callee_text, name;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  args.append(CandidTypeText{&name});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+
+  std::string twice = co_await twice_task(callee, name);
+  std::string bracketed = co_await bracket_task(twice);
+  ic_api.to_wire(CandidTypeText{bracketed});
+}
+void task_nested() { task_nested_async(); }
+
+// A task that traps after its co_await: what it and the root did after the
+// co_await is rolled back, and the cleanup frees both frames.
+// '(callee)' -> trap
+IC_Async task_then_trap_async() {
+  IC_API ic_api(CanisterUpdate{"task_then_trap"}, false);
+  std::string callee_text;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+  FrameGuard guard;
+
+  ++g_before; // committed by the co_await
+  co_await trap_task(callee);
+}
+void task_then_trap() { task_then_trap_async(); }
+
+// A task that is never awaited never runs: '()' -> '(times bump_task ran)'
+IC_Async task_not_awaited_async() {
+  IC_API ic_api(CanisterUpdate{"task_not_awaited"}, false);
+  ic_api.from_wire();
+  {
+    IC_Task<> unused = bump_task();
+  }
+  ic_api.to_wire(CandidTypeNat64{g_task_ran});
+  co_return;
+}
+void task_not_awaited() { task_not_awaited_async(); }
+
+// Several calls at once, results in the order of the calls:
+// '(vec {a; b}, vec {"greet"; "reject_me"})' ->
+// '(vec {"ok:Hello, C++!"; "rej:4"})'
+IC_Async call_all_async() {
+  IC_API ic_api(CanisterUpdate{"call_all"}, false);
+  std::vector<IC_Call> calls = calls_arg(ic_api);
+
+  std::vector<IC_CallResult<IC_CallReply>> results = co_await IC_CallAll(calls);
+  std::vector<std::string> out;
+  for (IC_CallResult<IC_CallReply> &r : results)
+    out.push_back(outcome(r));
+  ic_api.to_wire(CandidTypeVecText{out});
+}
+void call_all() { call_all_async(); }
+
+// The code after a co_await IC_CallAll traps: the cleanup frees the frame.
+// '(vec principal, vec text)' -> trap
+IC_Async call_all_then_trap_async() {
+  IC_API ic_api(CanisterUpdate{"call_all_then_trap"}, false);
+  std::vector<IC_Call> calls = calls_arg(ic_api);
+  FrameGuard guard;
+
+  ++g_before; // committed by the co_await
+  std::vector<IC_CallResult<IC_CallReply>> results = co_await IC_CallAll(calls);
+  ++g_after; // rolled back by the trap
+  IC_API::trap("call_all_then_trap: trapped on purpose after the co_await");
+}
+void call_all_then_trap() { call_all_then_trap_async(); }
 
 // A call without a response: '(callee)' -> '(true)'
 void call_oneway() {

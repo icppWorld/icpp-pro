@@ -22,7 +22,10 @@
 //
 // The mechanics follow the Rust CDK (ic-cdk): one callback function for both
 // reply and reject, with the call state as its env, and a cleanup callback
-// that frees the suspended coroutine when the code after a co_await traps.
+// that frees the suspended coroutines when the code after a co_await traps.
+//
+// A coroutine can co_await another coroutine that returns IC_Task<T>, and get
+// its result; IC_CallAll makes several calls at once.
 //
 // Not available in C++17 builds, which have no coroutines.
 
@@ -30,6 +33,7 @@
 
 #if defined(__cpp_impl_coroutine)
 
+#include <concepts>
 #include <coroutine>
 #include <cstdint>
 #include <optional>
@@ -121,6 +125,7 @@ private:
 };
 
 class IC_CallAwaiter;
+class IC_CallsAwaiter;
 
 #if defined(ICPP_ALLOW_UNBOUNDED_WAIT)
 #define ICPP_UNBOUNDED_WAIT_WARNING
@@ -172,7 +177,7 @@ public:
   IC_CallAwaiter operator co_await() const;
 
 private:
-  friend class IC_CallAwaiter;
+  friend class IC_CallsAwaiter;
   // Every IC_Call comes from bounded_wait or unbounded_wait
   IC_Call() = default;
   static IC_Call make(const CandidTypePrincipal &callee,
@@ -185,18 +190,44 @@ private:
   std::optional<uint32_t> m_timeout_seconds;
 };
 
-// The return type of a coroutine that makes calls. It starts right away and
-// runs until its first co_await; the rest runs in the callbacks.
+// Several calls at once: they are all performed in this message, and the
+// co_await resumes once every response arrived, with the results in the
+// order of the calls.
+//   std::vector<IC_CallResult<IC_CallReply>> results =
+//       co_await IC_CallAll({call_1, call_2, call_3});
+class IC_CallAll {
+public:
+  explicit IC_CallAll(std::vector<IC_Call> calls) : m_calls(std::move(calls)) {}
+  class Awaiter;
+  Awaiter operator co_await() &&;
+
+private:
+  std::vector<IC_Call> m_calls;
+};
+
+// The return type of a coroutine that makes calls, started from the exported
+// method. It starts right away and runs until its first co_await; the rest
+// runs in the callbacks.
 class IC_Async {
 public:
-  struct promise_type {
-    IC_Async get_return_object() noexcept { return {}; }
-    std::suspend_never initial_suspend() noexcept { return {}; }
-    std::suspend_never final_suspend() noexcept { return {}; }
-    void return_void() noexcept {}
-    void unhandled_exception();
-  };
+  struct promise_type;
 };
+
+// The return type of a coroutine that another coroutine co_awaits, to get its
+// result. It starts when it is awaited - a task that is never awaited never
+// runs - and the awaiting coroutine continues when it finishes:
+//   IC_Task<std::string> greet_task(CandidTypePrincipal callee) {
+//     IC_CallResult<IC_CallReply> r =
+//         co_await IC_Call::bounded_wait(callee, "greet");
+//     std::string s;
+//     r->decode(CandidTypeText{&s});
+//     co_return s;
+//   }
+//   ... std::string s = co_await greet_task(callee);
+// Only the coroutine started from the exported method constructs an IC_API;
+// a task gets what it needs as arguments. Pass them by value: a task runs
+// across messages, after the caller's temporaries are gone.
+template <typename T = void> class IC_Task;
 
 // co_await ic_api.yield_fresh_budget() continues in a new message - the
 // reply or reject callback of a call to the canister itself - with a fresh
@@ -214,51 +245,177 @@ private:
 // ---------------------------------------------------------------------------
 // Implementation details
 
-// The state of one awaited call. Its address is the env of the callbacks.
-struct IC_CallState {
-  std::coroutine_handle<> handle;
-  IC_API *ic_api{nullptr};
-  std::string method;
-  bool counted{false}; // counted in calls_in_flight
-  std::optional<IC_CallError> error;
-  IC_CallReply reply;
+[[noreturn]] void icpp_call_error_trap(const IC_CallError &error);
+// Rethrows in the Mock IC, where a trap is a C++ exception; traps on the IC.
+void icpp_unhandled_exception();
+
+// Every coroutine of a chain - the IC_Async started from the exported method,
+// and the IC_Tasks it awaits - knows the root of the chain: the IC_Async. A
+// call resumes the innermost coroutine; after a trap, the cleanup destroys
+// the root, whose destructor destroys the tasks it awaits, and so on.
+struct IC_PromiseBase {
+  std::coroutine_handle<> root;         // the IC_Async of the chain
+  std::coroutine_handle<> continuation; // the coroutine awaiting this task
+};
+template <typename P>
+concept IC_Promise = std::derived_from<P, IC_PromiseBase>;
+
+struct IC_Async::promise_type : IC_PromiseBase {
+  IC_Async get_return_object() noexcept {
+    root = std::coroutine_handle<promise_type>::from_promise(*this);
+    return {};
+  }
+  std::suspend_never initial_suspend() noexcept { return {}; }
+  std::suspend_never final_suspend() noexcept { return {}; }
+  void return_void() noexcept {}
+  void unhandled_exception() { icpp_unhandled_exception(); }
 };
 
-class IC_CallAwaiter {
-public:
-  explicit IC_CallAwaiter(IC_Call call) : m_call(std::move(call)) {}
-  IC_CallAwaiter(const IC_CallAwaiter &) = delete;
-  IC_CallAwaiter &operator=(const IC_CallAwaiter &) = delete;
-  ~IC_CallAwaiter();
+// A finished task continues the coroutine that awaits it.
+struct IC_TaskFinalAwaiter {
   bool await_ready() const noexcept { return false; }
-  bool await_suspend(std::coroutine_handle<> handle);
-  IC_CallResult<IC_CallReply> await_resume();
+  template <IC_Promise P>
+  std::coroutine_handle<> await_suspend(std::coroutine_handle<P> h) noexcept {
+    return h.promise().continuation;
+  }
+  void await_resume() const noexcept {}
+};
+
+template <typename T> struct IC_TaskPromise : IC_PromiseBase {
+  std::optional<T> value;
+  template <typename U> void return_value(U &&v) {
+    value.emplace(std::forward<U>(v));
+  }
+  T result() { return std::move(*value); }
+};
+template <> struct IC_TaskPromise<void> : IC_PromiseBase {
+  void return_void() noexcept {}
+  void result() {}
+};
+
+template <typename T> class [[nodiscard]] IC_Task {
+public:
+  struct promise_type : IC_TaskPromise<T> {
+    IC_Task get_return_object() noexcept {
+      return IC_Task(std::coroutine_handle<promise_type>::from_promise(*this));
+    }
+    std::suspend_always initial_suspend() noexcept { return {}; }
+    IC_TaskFinalAwaiter final_suspend() noexcept { return {}; }
+    void unhandled_exception() { icpp_unhandled_exception(); }
+  };
+
+  IC_Task(IC_Task &&other) noexcept : m_h(other.m_h) { other.m_h = {}; }
+  IC_Task &operator=(IC_Task &&other) noexcept {
+    if (this != &other) {
+      if (m_h) m_h.destroy();
+      m_h = other.m_h;
+      other.m_h = {};
+    }
+    return *this;
+  }
+  IC_Task(const IC_Task &) = delete;
+  IC_Task &operator=(const IC_Task &) = delete;
+  // Destroys the task's frame: a finished task, or - after a trap - a task
+  // suspended at a co_await, as part of the chain the cleanup destroys.
+  ~IC_Task() {
+    if (m_h) m_h.destroy();
+  }
+
+  class Awaiter {
+  public:
+    explicit Awaiter(std::coroutine_handle<promise_type> h) : m_h(h) {}
+    bool await_ready() const noexcept { return false; }
+    // Starts the task, in the chain of the awaiting coroutine
+    template <IC_Promise P>
+    std::coroutine_handle<> await_suspend(std::coroutine_handle<P> parent) {
+      m_h.promise().root = parent.promise().root;
+      m_h.promise().continuation = parent;
+      return m_h;
+    }
+    T await_resume() { return m_h.promise().result(); }
+
+  private:
+    std::coroutine_handle<promise_type> m_h;
+  };
+
+  // A task is awaited once: co_await my_task(...), or co_await std::move(t).
+  Awaiter operator co_await() && {
+    if (!m_h || m_h.promise().continuation) {
+      IC_API::trap("IC_Task: a task can be awaited only once");
+    }
+    return Awaiter(m_h);
+  }
 
 private:
-  IC_Call m_call;
-  // On the heap, not in the awaiter: once the call is performed, the state
-  // belongs to the callbacks. The reply/reject callback deletes it after the
-  // coroutine resumed, the cleanup callback after it destroyed the
-  // coroutine. So the state outlives this awaiter, which is gone by the time
-  // the cleanup runs after a trap in the code that follows the co_await.
-  IC_CallState *m_state{new IC_CallState};
+  explicit IC_Task(std::coroutine_handle<promise_type> h) : m_h(h) {}
+  std::coroutine_handle<promise_type> m_h;
+};
+
+// The calls of one co_await. Each call's env is an IC_CallSlot; the state is
+// shared. Both live on the heap: once a call is performed, they belong to the
+// callbacks, which outlive the awaiter.
+struct IC_CallsState {
+  std::coroutine_handle<> handle; // resumed by the last response
+  std::coroutine_handle<> root;   // destroyed by the cleanup after a trap
+  IC_API *ic_api{nullptr};
+  uint32_t pending{0}; // calls whose response did not arrive yet
+  std::vector<std::optional<IC_CallError>> errors;
+  std::vector<IC_CallReply> replies;
+};
+struct IC_CallSlot {
+  IC_CallsState *calls;
+  uint32_t index;
+  std::string method;
+  bool counted{false};   // counted in calls_in_flight
+  bool delivered{false}; // the callback stored its response
+};
+
+// Performs the calls of one co_await, and suspends until every response
+// arrived. A call that can't be performed gets its error right away; when no
+// call was performed, the coroutine does not suspend.
+class IC_CallsAwaiter {
+public:
+  explicit IC_CallsAwaiter(std::vector<IC_Call> calls)
+      : m_calls(std::move(calls)) {}
+  IC_CallsAwaiter(const IC_CallsAwaiter &) = delete;
+  IC_CallsAwaiter &operator=(const IC_CallsAwaiter &) = delete;
+  ~IC_CallsAwaiter();
+  bool await_ready() const noexcept { return false; }
+  template <IC_Promise P> bool await_suspend(std::coroutine_handle<P> handle) {
+    return suspend(handle, handle.promise().root);
+  }
+
+protected:
+  bool suspend(std::coroutine_handle<> handle, std::coroutine_handle<> root);
+  IC_CallResult<IC_CallReply> result(size_t i);
+  size_t size() const { return m_calls.size(); }
+
+private:
+  std::vector<IC_Call> m_calls;
+  IC_CallsState *m_state{new IC_CallsState};
   bool m_performed{false}; // the callbacks own m_state
 };
 
-class IC_Yield::Awaiter {
+class IC_CallAwaiter : public IC_CallsAwaiter {
 public:
-  explicit Awaiter(IC_Call call) : m_inner(std::move(call)) {}
-  bool await_ready() const noexcept { return false; }
-  bool await_suspend(std::coroutine_handle<> handle) {
-    return m_inner.await_suspend(handle);
-  }
-  IC_CallResult<void> await_resume();
-
-private:
-  IC_CallAwaiter m_inner;
+  explicit IC_CallAwaiter(IC_Call call)
+      : IC_CallsAwaiter(std::vector<IC_Call>{std::move(call)}) {}
+  IC_CallResult<IC_CallReply> await_resume() { return result(0); }
 };
 
-[[noreturn]] void icpp_call_error_trap(const IC_CallError &error);
+class IC_CallAll::Awaiter : public IC_CallsAwaiter {
+public:
+  explicit Awaiter(std::vector<IC_Call> calls)
+      : IC_CallsAwaiter(std::move(calls)) {}
+  std::vector<IC_CallResult<IC_CallReply>> await_resume();
+};
+
+class IC_Yield::Awaiter : public IC_CallsAwaiter {
+public:
+  explicit Awaiter(IC_Call call)
+      : IC_CallsAwaiter(std::vector<IC_Call>{std::move(call)}) {}
+  IC_CallResult<void> await_resume();
+};
 
 template <typename T> T &IC_CallResult<T>::value() {
   if (!has_value()) icpp_call_error_trap(std::get<1>(m_v));

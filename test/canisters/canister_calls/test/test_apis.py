@@ -139,6 +139,82 @@ def test__call_chain_a_b_a(network: str) -> None:
     assert f'"{a} > {b} > {a}: Hello, C++!"' in flatten_candid_text(response)
 
 
+def test__task_greet(network: str) -> None:
+    # A coroutine that awaits another coroutine, which makes the call
+    b = principal(network, "canister_b")
+    response = call(network, "canister_a", "task_greet", f'(principal "{b}", "C++")')
+    assert response == '("Hello, C++!")'
+
+
+def test__task_nested(network: str) -> None:
+    # Two levels of tasks, and a task that finishes without making a call
+    b = principal(network, "canister_b")
+    response = call(network, "canister_a", "task_nested", f'(principal "{b}", "C++")')
+    assert response == '("[Hello, Hello, C++!!]")'
+
+
+def test__task_then_trap(network: str) -> None:
+    # A task traps after its co_await: what happened after the co_await is
+    # rolled back, the cleanup frees the frames of the task and of the
+    # coroutine awaiting it, and no call stays in flight.
+    b = principal(network, "canister_b")
+    before = call(network, "canister_a", "get_state")
+    response = call(network, "canister_a", "task_then_trap", f'(principal "{b}")')
+    assert "trapped on purpose after the co_await" in response
+    after = call(network, "canister_a", "get_state")
+    b0, a0, d0 = nat64s(before)
+    b1, a1, d1 = nat64s(after)
+    assert b1 == b0 + 1  # committed by the co_await
+    assert a1 == a0  # rolled back with the trap
+    assert d1 == d0 + 2  # both frames freed by the cleanup
+    assert "0 : nat32" in after
+
+
+def test__task_not_awaited(network: str) -> None:
+    # A task that is never awaited never runs
+    assert call(network, "canister_a", "task_not_awaited") == "(0 : nat64)"
+
+
+def calls_arg(callees: List[str], methods: List[str]) -> str:
+    vec_principals = "; ".join(f'principal "{c}"' for c in callees)
+    vec_methods = "; ".join(f'"{m}"' for m in methods)
+    return f"(vec {{{vec_principals}}}, vec {{{vec_methods}}})"
+
+
+def test__call_all(network: str) -> None:
+    # Several calls at once, to three canisters; the results come back in
+    # the order of the calls
+    a, b, c = (principal(network, f"canister_{x}") for x in "abc")
+    response = call(
+        network,
+        "canister_a",
+        "call_all",
+        calls_arg([b, a, c, b], ["greet", "greet", "reject_me", "greet"]),
+    )
+    assert flatten_candid_text(response) == (
+        '(vec { "ok:Hello, C++!"; "ok:Hello, C++!"; "rej:4"; "ok:Hello, C++!" })'
+    )
+
+
+def test__call_all_then_trap(network: str) -> None:
+    # The code after co_await IC_CallAll traps: the cleanup frees the frame,
+    # and no call stays in flight
+    a, b = (principal(network, f"canister_{x}") for x in "ab")
+    before = call(network, "canister_a", "get_state")
+    response = call(
+        network,
+        "canister_a",
+        "call_all_then_trap",
+        calls_arg([b, a], ["greet", "reject_me"]),
+    )
+    assert "trapped on purpose after the co_await" in response
+    after = call(network, "canister_a", "get_state")
+    b0, a0, d0 = nat64s(before)
+    b1, a1, d1 = nat64s(after)
+    assert b1 == b0 + 1 and a1 == a0 and d1 == d0 + 1
+    assert "0 : nat32" in after
+
+
 def test__call_oneway(network: str) -> None:
     b = principal(network, "canister_b")
     response = call(network, "canister_a", "call_oneway", f'(principal "{b}")')

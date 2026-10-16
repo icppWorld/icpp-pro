@@ -61,7 +61,10 @@ struct IC_CallError {
     // Not performed: ic0.call_perform failed
     CallPerformFailed,
     // Performed, and rejected by the callee or the IC
-    CallRejected
+    CallRejected,
+    // Not performed: the cost of a signature or vetKD key is unknown - the
+    // key name or the curve/algorithm is not known (IC_Management)
+    SignCostFailed
   };
   Kind kind{Kind::CallRejected};
   IC_RejectCode reject_code{IC_RejectCode::NoError}; // CallRejected
@@ -70,6 +73,7 @@ struct IC_CallError {
   __uint128_t available{0}; // InsufficientLiquidCycleBalance
   __uint128_t required{0};  // InsufficientLiquidCycleBalance
   uint32_t perform_code{0}; // CallPerformFailed
+  IC_API::SignCostError sign_cost_error{IC_API::SignCostError::None};
 
   // The callee did not run the call: retrying can't do it twice.
   bool is_clean_reject() const;
@@ -178,6 +182,11 @@ public:
 
 private:
   friend class IC_CallsAwaiter;
+  friend class IC_Management;
+  // A guaranteed-response call to a trusted callee, without the warning of
+  // unbounded_wait: for the management canister helpers
+  static IC_Call guaranteed_response(const CandidTypePrincipal &callee,
+                                     const std::string &method);
   // Every IC_Call comes from bounded_wait or unbounded_wait
   IC_Call() = default;
   static IC_Call make(const CandidTypePrincipal &callee,

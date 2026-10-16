@@ -1,0 +1,15 @@
+type http_header = record { name : text; value : text };
+type http_request_result = record { status : nat; headers : vec http_header; body : blob };
+
+service : {
+  "raw_rand" : () -> (blob);
+  "create_canister" : () -> (principal);
+  "ecdsa" : (text, blob) -> (blob, blob);
+  "schnorr" : (text, bool, blob) -> (blob, blob);
+  "vetkd" : (text) -> (blob, blob);
+  "invalid_key" : () -> (text);
+  "http_get" : (text, bool) -> (text);
+  "transform" : (record { response : http_request_result; context : blob }) -> (http_request_result) query;
+  "cost_http_v2" : () -> (nat, nat, nat) query;
+  "echo_vec_blob" : (vec blob) -> (vec blob) query;
+};

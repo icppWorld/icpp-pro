@@ -3,6 +3,7 @@
 // setting breakpoints in our IDE.
 
 #include "candid_assert.h"
+#include "candid_serialize.h"
 #include "candid_serialize_type_table_registry.h"
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
@@ -327,6 +328,52 @@ struct SavedMessage {
 };
 } // namespace
 
+bool MockIC::management_reply(const std::string &method,
+                              std::vector<uint8_t> &reply) {
+  ++m_management_counter;
+  // Deterministic bytes that differ per call
+  auto bytes = [this](size_t n) {
+    std::vector<uint8_t> v(n);
+    for (size_t i = 0; i < n; ++i)
+      v[i] = (uint8_t)(m_management_counter * 31 + i);
+    return v;
+  };
+  CandidArgs out;
+  if (method == "raw_rand") {
+    out.append(CandidTypeVecNat8{bytes(32)});
+  } else if (method == "create_canister") {
+    // A new principal, like those of the local network's canisters
+    std::vector<uint8_t> id{
+        0, 0, 0, 0, 0, 0x10, 0, (uint8_t)m_management_counter, 1, 1};
+    CandidTypeRecord result;
+    result.append("canister_id", CandidTypePrincipal{id});
+    out.append(result);
+  } else if (method == "ecdsa_public_key" || method == "schnorr_public_key") {
+    CandidTypeRecord result;
+    result.append("public_key", CandidTypeVecNat8{bytes(33)});
+    result.append("chain_code", CandidTypeVecNat8{bytes(32)});
+    out.append(result);
+  } else if (method == "sign_with_ecdsa" || method == "sign_with_schnorr") {
+    CandidTypeRecord result;
+    result.append("signature", CandidTypeVecNat8{bytes(64)});
+    out.append(result);
+  } else if (method == "vetkd_public_key") {
+    CandidTypeRecord result;
+    result.append("public_key", CandidTypeVecNat8{bytes(96)});
+    out.append(result);
+  } else if (method == "vetkd_derive_key") {
+    CandidTypeRecord result;
+    result.append("encrypted_key", CandidTypeVecNat8{bytes(192)});
+    out.append(result);
+  } else {
+    return false;
+  }
+  VecBytes B = CandidSerialize(out).get_B();
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+  reply = B.vec_uint8_t();
+  return true;
+}
+
 void MockIC::deliver_request(size_t call_index) {
   PendingCall call = m_calls[call_index];
   std::string callee = CandidTypePrincipal(call.callee).get_text();
@@ -337,7 +384,15 @@ void MockIC::deliver_request(size_t call_index) {
     event.is_response = true;
     event.call = call_index;
     auto it = m_expected.find({callee, call.method});
-    if (it == m_expected.end()) {
+    std::vector<uint8_t> management;
+    if (it == m_expected.end() && callee == "aaaaa-aa" &&
+        management_reply(call.method, management)) {
+      // The management canister: what the Mock IC knows of it. The cycles
+      // sent along pay for the operation.
+      event.is_reply = true;
+      event.reply = management;
+      event.refund = 0;
+    } else if (it == m_expected.end()) {
       event.is_reply = false;
       event.reject_code = 3; // DESTINATION_INVALID
       event.reject_message = "Mock IC: no response for " + callee + "." +

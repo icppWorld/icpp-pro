@@ -3,6 +3,8 @@
 
 #include "ic0.h"
 #include "candid_type.h"
+#include "candid_deserialize.h"
+#include "candid_serialize.h"
 #include "candid_type_all_includes.h"
 #include "current_entry.h"
 #include "entry_contexts.h"
@@ -178,6 +180,8 @@ std::vector<uint8_t> bytes_from_hex(std::string_view hex) {
 } // namespace
 
 #include "candid_type.h"
+#include "candid_deserialize.h"
+#include "candid_serialize.h"
 #include "candid_type_all_includes.h"
 #include "global.h"
 #include "vec_bytes.h"
@@ -630,6 +634,56 @@ void ic0_cost_http_request(uint64_t request_size, uint64_t max_res_bytes,
                           request_size +
                       (__uint128_t)MOCKIC_COST_HTTP_REQUEST_PER_RESPONSE_BYTE *
                           max_res_bytes);
+}
+
+// Decodes the Candid record of IC_API::cost_http_request_v2. A fully
+// replicated outcall runs on every node of the subnet (the price of the
+// formula), a non-replicated one on one node, and the Mock IC prices a
+// flexible one on its total_requests nodes.
+void ic0_cost_http_request_v2(uintptr_t params_src, uint32_t params_size,
+                              uintptr_t dst) {
+  uint64_t request_bytes{0}, roundtrip_ms{0}, raw_bytes{0},
+      transformed_bytes{0}, transform_instructions{0};
+  std::string label;
+  bool has_outcall_type{false}, has_counts{false};
+  uint32_t total{0}, min_responses{0}, max_responses{0};
+  CandidTypeRecord counts;
+  counts.append("total_requests", CandidTypeNat32{&total});
+  counts.append("min_responses", CandidTypeNat32{&min_responses});
+  counts.append("max_responses", CandidTypeNat32{&max_responses});
+  CandidTypeVariant outcall_type{&label};
+  outcall_type.append("fully_replicated", CandidTypeNull{});
+  outcall_type.append("non_replicated", CandidTypeNull{});
+  outcall_type.append("flexible", CandidTypeOptRecord{&counts, &has_counts});
+  CandidTypeRecord record;
+  record.append("request_bytes", CandidTypeNat64{&request_bytes});
+  record.append("http_roundtrip_time_ms", CandidTypeNat64{&roundtrip_ms});
+  record.append("raw_response_bytes", CandidTypeNat64{&raw_bytes});
+  record.append("transformed_response_bytes",
+                CandidTypeNat64{&transformed_bytes});
+  record.append("transform_instructions",
+                CandidTypeNat64{&transform_instructions});
+  record.append("outcall_type",
+                CandidTypeOptVariant{&outcall_type, &has_outcall_type});
+  VecBytes B;
+  B.store(reinterpret_cast<const uint8_t *>(params_src), params_size);
+  CandidArgs args;
+  args.append(record);
+  CandidDeserialize(B, args);
+
+  __uint128_t one_node =
+      (__uint128_t)MOCKIC_COST_HTTP_REQUEST_BASE +
+      (__uint128_t)MOCKIC_COST_HTTP_REQUEST_PER_REQUEST_BYTE * request_bytes +
+      (__uint128_t)MOCKIC_COST_HTTP_REQUEST_PER_RESPONSE_BYTE *
+          (raw_bytes + transformed_bytes) +
+      (__uint128_t)MOCKIC_COST_HTTP_REQUEST_PER_MS * roundtrip_ms +
+      (__uint128_t)MOCKIC_COST_HTTP_REQUEST_PER_TRANSFORM_INSTRUCTION *
+          transform_instructions;
+  uint64_t nodes = MOCKIC_SUBNET_SIZE;
+  if (has_outcall_type && label == "non_replicated") nodes = 1;
+  if (has_outcall_type && label == "flexible" && has_counts) nodes = total;
+  // The formula is the price on all nodes; each node costs its share
+  write_u128(dst, one_node * nodes / MOCKIC_SUBNET_SIZE);
 }
 
 uint32_t ic0_cost_sign_with_ecdsa(uintptr_t src, uint32_t size,

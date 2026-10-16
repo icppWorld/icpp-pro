@@ -56,3 +56,37 @@ struct IC_HttpResponse {
   // Representing 'upgrade' as std::optional<bool>
   std::optional<bool> upgrade;
 };
+// ---------------------------------------------------------------------------
+// HTTPS outcalls - see IC_Management::http_request
+
+// docs start: http_outcall
+enum class IC_HttpMethod { Get, Head, Post, Put, Delete, Patch };
+
+struct IC_HttpOutcallRequest {
+  std::string url;
+  IC_HttpMethod method{IC_HttpMethod::Get};
+  std::vector<IC_HeaderField> headers;
+  std::optional<std::vector<uint8_t>> body;
+  // The largest response the canister accepts, and pays for (default and
+  // maximum: 2 MB)
+  std::optional<uint64_t> max_response_bytes;
+  // A query of this canister that the response passes through on every node,
+  // e.g. to remove headers that differ per node, so the nodes agree on it
+  std::optional<std::string> transform_method;
+  std::vector<uint8_t> transform_context;
+  // false: the request is sent by one node instead of every node of the
+  // subnet. Cheaper, but the response is not agreed on by consensus.
+  std::optional<bool> is_replicated;
+};
+
+struct IC_HttpOutcallResponse {
+  __uint128_t status{0};
+  std::vector<IC_HeaderField> headers;
+  std::vector<uint8_t> body;
+};
+
+// The argument of a transform query
+struct IC_HttpTransformArgs {
+  IC_HttpOutcallResponse response;
+  std::vector<uint8_t> context;
+}; // docs end: http_outcall

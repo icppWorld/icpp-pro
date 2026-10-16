@@ -119,75 +119,107 @@ check_liquid_balance(const std::string &method,
 // ---------------------------------------------------------------------------
 // The callbacks. One function serves as both the reply and the reject
 // callback: ic0.msg_reject_code() tells them apart. The env is the
-// IC_CallState in the suspended coroutine frame.
+// IC_CallSlot of the call.
+
+namespace {
+// Clears what a callback set up, before it returns.
+void end_callback() {
+  clear_current_entry();
+  set_live_ic_api(nullptr);
+}
+} // namespace
 
 extern "C" void icpp_call_callback(uintptr_t env) {
-  IC_CallState *state = reinterpret_cast<IC_CallState *>(env);
-  if (state->counted) {
-    state->counted = false;
+  IC_CallSlot *slot = reinterpret_cast<IC_CallSlot *>(env);
+  IC_CallsState *calls = slot->calls;
+  if (slot->counted) {
+    slot->counted = false;
     add_calls_in_flight(-1);
   }
 
   uint32_t code = ic0_msg_reject_code();
-  CanisterBase entry =
-      code == 0 ? CanisterBase(CanisterReplyCallback{state->method})
-                : CanisterBase(CanisterRejectCallback{state->method});
+  CanisterBase entry = code == 0
+                           ? CanisterBase(CanisterReplyCallback{slot->method})
+                           : CanisterBase(CanisterRejectCallback{slot->method});
   set_current_entry(entry);
   CandidSerializeTypeTableRegistry::get_instance().clear();
 
   __uint128_t refunded = read_u128(ic0_msg_cycles_refunded128);
   if (code == 0) {
     std::vector<uint8_t> bytes = arg_data();
-    state->reply.bytes.store(bytes.data(), (uint32_t)bytes.size());
-    state->reply.cycles_refunded = refunded;
+    calls->replies[slot->index].bytes.store(bytes.data(),
+                                            (uint32_t)bytes.size());
+    calls->replies[slot->index].cycles_refunded = refunded;
   } else {
     IC_CallError error;
     error.kind = IC_CallError::Kind::CallRejected;
     error.reject_code = static_cast<IC_RejectCode>(code);
     error.reject_message = reject_message();
     error.cycles_refunded = refunded;
-    state->error = error;
+    calls->errors[slot->index] = error;
+  }
+  --calls->pending;
+  slot->delivered = true;
+
+  // Not the last response: this message only stores it
+  if (calls->pending > 0) {
+    delete slot;
+    end_callback();
+    return;
   }
 
   // Re-attach the IC_API of the coroutine, so its guards see this callback
-  if (state->ic_api != nullptr && is_registered_ic_api(state->ic_api)) {
-    IC_AsyncAccess::attach(*state->ic_api, entry);
+  if (calls->ic_api != nullptr && is_registered_ic_api(calls->ic_api)) {
+    IC_AsyncAccess::attach(*calls->ic_api, entry);
   } else {
     set_live_ic_api(nullptr);
   }
 
   // The coroutine may finish here and free its frame. The state is not in
   // the frame: delete it once the coroutine no longer needs it. If the code
-  // after the co_await traps, this line is never reached, and the cleanup
+  // after the co_await traps, these lines are never reached, and the cleanup
   // callback deletes the state instead.
-  state->handle.resume();
-  delete state;
-
-  clear_current_entry();
-  set_live_ic_api(nullptr);
+  calls->handle.resume();
+  delete calls;
+  delete slot;
+  end_callback();
 }
 
-// Runs only when the code after a co_await trapped. On the IC, the trap
-// rolled back everything the callback did, so the coroutine is suspended at
-// that co_await again: destroy it, to free its frame.
+// Runs only when a callback trapped. On the IC, the trap rolled back
+// everything the callback did; in the Mock IC, which has no rollback, the
+// callback may have stored its response first - slot->delivered tells.
+// - The last response trapped - the code after the co_await: the coroutines
+//   are suspended at their co_awaits again. Destroy the root of the chain,
+//   which destroys the tasks it awaits, to free their frames.
+// - Another response trapped, before any code of the coroutine ran: record
+//   the error; a later response resumes the coroutine.
 extern "C" void icpp_call_cleanup(uintptr_t env) {
-  IC_CallState *state = reinterpret_cast<IC_CallState *>(env);
-  if (state->counted) {
-    state->counted = false;
+  IC_CallSlot *slot = reinterpret_cast<IC_CallSlot *>(env);
+  IC_CallsState *calls = slot->calls;
+  if (slot->counted) {
+    slot->counted = false;
     add_calls_in_flight(-1);
   }
-
-  CanisterBase entry = CanisterCleanupCallback{state->method};
-  set_current_entry(entry);
-  if (state->ic_api != nullptr && is_registered_ic_api(state->ic_api)) {
-    IC_AsyncAccess::attach(*state->ic_api, entry);
+  if (!slot->delivered) {
+    --calls->pending;
+    IC_CallError error;
+    error.kind = IC_CallError::Kind::CallRejected;
+    error.reject_code = IC_RejectCode::SysUnknown;
+    error.reject_message = "the callback of this call trapped";
+    calls->errors[slot->index] = error;
   }
 
-  state->handle.destroy();
-  delete state;
-
-  clear_current_entry();
-  set_live_ic_api(nullptr);
+  CanisterBase entry = CanisterCleanupCallback{slot->method};
+  set_current_entry(entry);
+  if (calls->pending == 0) {
+    if (calls->ic_api != nullptr && is_registered_ic_api(calls->ic_api)) {
+      IC_AsyncAccess::attach(*calls->ic_api, entry);
+    }
+    calls->root.destroy();
+    delete calls;
+  }
+  delete slot;
+  end_callback();
 }
 
 // ---------------------------------------------------------------------------
@@ -265,52 +297,76 @@ IC_CallAwaiter IC_Call::operator co_await() const {
 }
 
 // ---------------------------------------------------------------------------
-// IC_CallAwaiter
+// IC_CallsAwaiter, IC_CallAll
 
-IC_CallAwaiter::~IC_CallAwaiter() {
+IC_CallsAwaiter::~IC_CallsAwaiter() {
   if (!m_performed) delete m_state;
 }
 
-bool IC_CallAwaiter::await_suspend(std::coroutine_handle<> handle) {
+bool IC_CallsAwaiter::suspend(std::coroutine_handle<> handle,
+                              std::coroutine_handle<> root) {
   check_call_entry("IC_Call");
-
-  // A call that is not performed resumes the coroutine right away, with the
-  // error: no callback will ever run.
-  if (auto error = check_liquid_balance(m_call.m_method, m_call.m_args,
-                                        m_call.m_cycles)) {
-    m_state->error = error;
-    return false;
-  }
-
   m_state->handle = handle;
+  m_state->root = root;
   m_state->ic_api = live_ic_api();
-  m_state->method = m_call.m_method;
-  uintptr_t env = reinterpret_cast<uintptr_t>(m_state);
-  uint32_t rc = perform(m_call.m_callee, m_call.m_method, m_call.m_args,
-                        m_call.m_cycles, m_call.m_timeout_seconds,
-                        reinterpret_cast<uintptr_t>(&icpp_call_callback), env,
-                        reinterpret_cast<uintptr_t>(&icpp_call_cleanup));
-  if (rc != 0) {
-    IC_CallError error;
-    error.kind = IC_CallError::Kind::CallPerformFailed;
-    error.perform_code = rc;
-    m_state->error = error;
-    return false;
+  m_state->errors.assign(m_calls.size(), std::nullopt);
+  m_state->replies.assign(m_calls.size(), IC_CallReply{});
+
+  for (uint32_t i = 0; i < m_calls.size(); ++i) {
+    const IC_Call &call = m_calls[i];
+    // A call that is not performed gets its error right away: no callback
+    // will ever run for it. The balance is checked per call: each one
+    // performed lowers it.
+    if (auto error =
+            check_liquid_balance(call.m_method, call.m_args, call.m_cycles)) {
+      m_state->errors[i] = error;
+      continue;
+    }
+    IC_CallSlot *slot = new IC_CallSlot{m_state, i, call.m_method};
+    uint32_t rc = perform(call.m_callee, call.m_method, call.m_args,
+                          call.m_cycles, call.m_timeout_seconds,
+                          reinterpret_cast<uintptr_t>(&icpp_call_callback),
+                          reinterpret_cast<uintptr_t>(slot),
+                          reinterpret_cast<uintptr_t>(&icpp_call_cleanup));
+    if (rc != 0) {
+      delete slot;
+      IC_CallError error;
+      error.kind = IC_CallError::Kind::CallPerformFailed;
+      error.perform_code = rc;
+      m_state->errors[i] = error;
+      continue;
+    }
+    slot->counted = true;
+    add_calls_in_flight(1);
+    ++m_state->pending;
   }
+
+  // No call performed: resume right away, with the errors
+  if (m_state->pending == 0) return false;
 
   // Suspend: the entry function returns, which commits this message. The
   // IC_API stays in the coroutine frame, but is not live in other messages.
   m_performed = true;
-  m_state->counted = true;
-  add_calls_in_flight(1);
   clear_current_entry();
   set_live_ic_api(nullptr);
   return true;
 }
 
-IC_CallResult<IC_CallReply> IC_CallAwaiter::await_resume() {
-  if (m_state->error.has_value()) return *m_state->error;
-  return std::move(m_state->reply);
+IC_CallResult<IC_CallReply> IC_CallsAwaiter::result(size_t i) {
+  if (m_state->errors[i].has_value()) return *m_state->errors[i];
+  return std::move(m_state->replies[i]);
+}
+
+IC_CallAll::Awaiter IC_CallAll::operator co_await() && {
+  return Awaiter(std::move(m_calls));
+}
+
+std::vector<IC_CallResult<IC_CallReply>> IC_CallAll::Awaiter::await_resume() {
+  std::vector<IC_CallResult<IC_CallReply>> results;
+  results.reserve(size());
+  for (size_t i = 0; i < size(); ++i)
+    results.push_back(result(i));
+  return results;
 }
 
 // ---------------------------------------------------------------------------
@@ -323,7 +379,7 @@ IC_Yield::Awaiter IC_Yield::operator co_await() const {
 }
 
 IC_CallResult<void> IC_Yield::Awaiter::await_resume() {
-  IC_CallResult<IC_CallReply> result = m_inner.await_resume();
+  IC_CallResult<IC_CallReply> result = this->result(0);
   // A reject - e.g. the canister is stopping - also continues in a new
   // message: only a call that was not performed is an error.
   if (result || result.error().kind == IC_CallError::Kind::CallRejected) {
@@ -366,11 +422,11 @@ __attribute__((weak)) void icpp_default_pre_upgrade() {
 // ---------------------------------------------------------------------------
 // IC_Async, IC_CallResult, IC_CallReply, IC_CallError
 
-void IC_Async::promise_type::unhandled_exception() {
+void icpp_unhandled_exception() {
 #if defined(__cpp_exceptions) && !defined(__wasm__)
   throw; // The Mock IC: a trap is a C++ exception
 #else
-  IC_API::trap("IC_Async: unhandled exception");
+  IC_API::trap("IC_Async / IC_Task: unhandled exception");
 #endif
 }
 

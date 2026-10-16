@@ -165,6 +165,51 @@ int run_interleaved_jobs(MockIC &mockIC, bool reload,
   return right;
 }
 
+// (before, after, destroyed, calls_in_flight, held_done), read with get_state
+struct State {
+  uint64_t before{0}, after{0}, destroyed{0};
+  uint32_t in_flight{0};
+  bool held_done{false};
+};
+State read_state(MockIC &mockIC, const std::string &caller) {
+  std::string out_hex;
+  mockIC.run_test("get_state", get_state, "4449444c0000", "", true, caller,
+                  &out_hex);
+  State state;
+  CandidArgs out;
+  out.append(CandidTypeNat64{&state.before});
+  out.append(CandidTypeNat64{&state.after});
+  out.append(CandidTypeNat64{&state.destroyed});
+  out.append(CandidTypeNat32{&state.in_flight});
+  out.append(CandidTypeBool{&state.held_done});
+  decode(out_hex, out);
+  return state;
+}
+
+// Candid hex of the arguments of call_all: (vec principal, vec text)
+std::string calls_args(const std::vector<std::string> &callees,
+                       const std::vector<std::string> &methods) {
+  CandidArgs args;
+  args.append(CandidTypeVecPrincipal{callees});
+  args.append(CandidTypeVecText{methods});
+  VecBytes bytes = CandidSerialize(args).get_B();
+  return bytes.as_hex_string();
+}
+
+// Runs call_all, and checks its vec text reply
+void check_call_all(MockIC &mockIC, const std::string &name,
+                    const std::string &in,
+                    const std::vector<std::string> &expected,
+                    const std::string &caller) {
+  std::string out_hex;
+  mockIC.run_test(name, call_all, in, "", true, caller, &out_hex);
+  std::vector<std::string> out;
+  CandidArgs args;
+  args.append(CandidTypeVecText{&out});
+  decode(out_hex, args);
+  check(out == expected, name + ": the results, in the order of the calls");
+}
+
 // '()' -> trap while calls are in flight (the IC_API constructor path)
 void native_pre_upgrade_with_ic_api() {
   IC_API ic_api(CanisterPreUpgrade{"native_pre_upgrade_with_ic_api"}, false);
@@ -297,6 +342,62 @@ int main() {
                   "01000000000000000000000000",
                   silent_on_trap, my_principal);
 
+  // A coroutine that awaits another coroutine: IC_Task
+  run_text_test(mockIC, "task_greet self", task_greet, GREET_SELF,
+                "Hello, C++!", my_principal);
+  mockIC.expect_call(CANISTER_B, "greet",
+                     MockIC::MockResponse::reply(OUT_HI_B));
+  run_text_test(mockIC, "task_greet B", task_greet, GREET_B, "Hi from B",
+                my_principal);
+  run_text_test(mockIC, "task_nested self", task_nested, GREET_SELF,
+                "[Hello, Hello, C++!!]", my_principal);
+  mockIC.run_test("task_not_awaited: the task never ran", task_not_awaited,
+                  EMPTY, "4449444c0001780000000000000000", silent_on_trap,
+                  my_principal);
+  {
+    // A trap in a task, after its co_await: the cleanup frees the task's
+    // frame and the root's. (The Mock IC does not roll back g_after.)
+    State before = read_state(mockIC, my_principal);
+    mockIC.run_test("task_then_trap self", task_then_trap, P_SELF, "",
+                    silent_on_trap, my_principal);
+    State after = read_state(mockIC, my_principal);
+    check(after.destroyed == before.destroyed + 2 && after.in_flight == 0,
+          "task_then_trap: both frames freed, no call in flight");
+  }
+
+  // Several calls at once: IC_CallAll
+  check_call_all(
+      mockIC, "call_all self",
+      calls_args({self, self, self}, {"greet", "reject_me", "greet"}),
+      {"ok:Hello, C++!", "rej:4", "ok:Hello, C++!"}, my_principal);
+  mockIC.expect_call(CANISTER_B, "greet",
+                     MockIC::MockResponse::reply(OUT_HI_B));
+  check_call_all(mockIC, "call_all self and B",
+                 calls_args({CANISTER_B, self}, {"greet", "greet"}),
+                 {"ok:Hi from B", "ok:Hello, C++!"}, my_principal);
+  // A call that is not performed gets its error; the others go ahead
+  mockIC.set_next_call_perform_rc(1);
+  check_call_all(mockIC, "call_all, the first call not performed",
+                 calls_args({self, self}, {"greet", "greet"}),
+                 {"err:ic0.call_perform failed with code 1", "ok:Hello, C++!"},
+                 my_principal);
+  // No call performed: the coroutine continues without suspending
+  mockIC.set_next_call_perform_rc(1);
+  check_call_all(mockIC, "call_all, no call performed",
+                 calls_args({self}, {"greet"}),
+                 {"err:ic0.call_perform failed with code 1"}, my_principal);
+  check_call_all(mockIC, "call_all, no calls", calls_args({}, {}), {},
+                 my_principal);
+  {
+    State before = read_state(mockIC, my_principal);
+    mockIC.run_test("call_all_then_trap self", call_all_then_trap,
+                    calls_args({self, self}, {"greet", "reject_me"}), "",
+                    silent_on_trap, my_principal);
+    State after = read_state(mockIC, my_principal);
+    check(after.destroyed == before.destroyed + 1 && after.in_flight == 0,
+          "call_all_then_trap: the frame freed, no call in flight");
+  }
+
   // An upgrade while a call is in flight is refused
   mockIC.set_auto_drain(false);
   mockIC.run_test("start_held_call self", start_held_call, P_SELF,
@@ -314,10 +415,11 @@ int main() {
   mockIC.run_test("canister_pre_upgrade (default), no call in flight",
                   icpp_default_pre_upgrade, EMPTY, "", silent_on_trap,
                   my_principal);
-  mockIC.run_test("get_state after the held call", get_state, EMPTY,
-                  "4449444c0005787878797e01000000000000000100000000000000"
-                  "01000000000000000000000001",
-                  silent_on_trap, my_principal);
+  {
+    State state = read_state(mockIC, my_principal);
+    check(state.in_flight == 0 && state.held_done,
+          "get_state after the held call: done, no call in flight");
+  }
 
   // returns 1 if any tests failed
   return mockIC.test_summary();

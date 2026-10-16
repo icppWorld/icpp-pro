@@ -18,6 +18,12 @@ service : {
   "call_sequence" : (principal, text) -> (text);
   "call_chain" : (vec principal, text) -> (text);
   "call_oneway" : (principal) -> (bool);
+  "task_greet" : (principal, text) -> (text);
+  "task_nested" : (principal, text) -> (text);
+  "task_then_trap" : (principal) -> ();
+  "task_not_awaited" : () -> (nat64);
+  "call_all" : (vec principal, vec text) -> (vec text);
+  "call_all_then_trap" : (vec principal, vec text) -> ();
   "yield_loop" : (nat32) -> (text);
   "budget_probe" : (nat32) -> (vec nat64, vec nat64);
   "start_held_call" : (principal) -> ();

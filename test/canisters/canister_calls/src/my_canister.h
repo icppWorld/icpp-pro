@@ -26,6 +26,14 @@ void call_bounded() WASM_SYMBOL_EXPORTED("canister_update call_bounded");
 void call_sequence() WASM_SYMBOL_EXPORTED("canister_update call_sequence");
 void call_chain() WASM_SYMBOL_EXPORTED("canister_update call_chain");
 void call_oneway() WASM_SYMBOL_EXPORTED("canister_update call_oneway");
+void task_greet() WASM_SYMBOL_EXPORTED("canister_update task_greet");
+void task_nested() WASM_SYMBOL_EXPORTED("canister_update task_nested");
+void task_then_trap() WASM_SYMBOL_EXPORTED("canister_update task_then_trap");
+void task_not_awaited()
+    WASM_SYMBOL_EXPORTED("canister_update task_not_awaited");
+void call_all() WASM_SYMBOL_EXPORTED("canister_update call_all");
+void call_all_then_trap()
+    WASM_SYMBOL_EXPORTED("canister_update call_all_then_trap");
 void yield_loop() WASM_SYMBOL_EXPORTED("canister_update yield_loop");
 void budget_probe() WASM_SYMBOL_EXPORTED("canister_update budget_probe");
 void start_held_call() WASM_SYMBOL_EXPORTED("canister_update start_held_call");

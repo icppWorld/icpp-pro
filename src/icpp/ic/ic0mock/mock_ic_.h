@@ -119,8 +119,13 @@ public:
     static MockResponse timeout();
   };
 
+  // The kind of a registered method: a composite query can only call query
+  // and composite query methods, and a composite query can't be called from
+  // an update, a callback or a timer (replicated mode).
+  enum class MethodKind { Update, Query, CompositeQuery };
   // A method of this canister, so a call to the canister itself can run it.
-  void register_method(const std::string &name, void (*fn)());
+  void register_method(const std::string &name, void (*fn)(),
+                       MethodKind kind = MethodKind::Update);
   // The response of canister `callee` (principal text) to `method`. Sticky.
   void expect_call(const std::string &callee, const std::string &method,
                    const MockResponse &response);
@@ -202,7 +207,8 @@ private:
     uintptr_t cleanup_fun{0};
     uintptr_t cleanup_env{0};
     std::optional<uint32_t> timeout_seconds;
-    size_t origin{0}; // the call context that made the call
+    size_t origin{0};             // the call context that made the call
+    bool origin_composite{false}; // made from a composite query
   };
   // A call context: the root one of a test, or one per delivered call
   struct CallContext {
@@ -235,7 +241,11 @@ private:
   size_t m_current_context{0};
   size_t m_root_context{0};
   PendingCall m_building;
-  std::map<std::string, void (*)()> m_methods;
+  struct Method {
+    void (*fn)();
+    MethodKind kind;
+  };
+  std::map<std::string, Method> m_methods;
   std::map<std::pair<std::string, std::string>, MockResponse> m_expected;
   uint32_t m_next_perform_rc{0};
   bool m_auto_drain{true};

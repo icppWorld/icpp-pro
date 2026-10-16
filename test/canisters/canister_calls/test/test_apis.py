@@ -215,6 +215,67 @@ def test__call_all_then_trap(network: str) -> None:
     assert "0 : nat32" in after
 
 
+# ---------------------------------------------------------------------------
+# Composite queries
+
+
+def test__cq_greet(network: str) -> None:
+    # A composite query calls a query, on another canister and on itself
+    a, b = (principal(network, f"canister_{x}") for x in "ab")
+    for callee in (b, a):
+        response = call(
+            network, "canister_a", "cq_greet", f'(principal "{callee}", "C++")'
+        )
+        assert response == '("Hello, C++!")'
+
+
+def test__cq_all(network: str) -> None:
+    # Several calls at once, from a composite query
+    a, b, c = (principal(network, f"canister_{x}") for x in "abc")
+    vec = "; ".join(f'principal "{x}"' for x in (a, b, c))
+    response = call(network, "canister_a", "cq_all", f"(vec {{{vec}}})")
+    assert flatten_candid_text(response) == (
+        '(vec { "ok:Hello, C++!"; "ok:Hello, C++!"; "ok:Hello, C++!" })'
+    )
+
+
+def test__cq_call_update(network: str) -> None:
+    # A composite query can only call query and composite query methods
+    b = principal(network, "canister_b")
+    response = call(network, "canister_a", "cq_call_update", f'(principal "{b}")')
+    assert response.startswith('("rej:'), response
+
+
+def test__call_cq(network: str) -> None:
+    # An update can't call a composite query: that would be replicated mode
+    b = principal(network, "canister_b")
+    response = call(network, "canister_a", "call_cq", f'(principal "{b}")')
+    assert response.startswith('("rej:'), response
+
+
+def test__cq_in_callback_probe(network: str) -> None:
+    # Only the top-level query sees the data certificate; nothing is replicated
+    b = principal(network, "canister_b")
+    response = call(
+        network, "canister_a", "cq_in_callback", f'(principal "{b}", "probe")'
+    )
+    assert response == '("certificate: 1 then 0; replicated: 0 then 0")'
+
+
+def test__cq_in_callback_refused(network: str) -> None:
+    # Timers, certified data and cycles are not available in a composite query
+    b = principal(network, "canister_b")
+    for what, expected in (
+        ("timer", "CanisterCompositeReplyCallback"),
+        ("certify", "CanisterCompositeReplyCallback"),
+        ("cycles", "a composite query can't send cycles"),
+    ):
+        response = call(
+            network, "canister_a", "cq_in_callback", f'(principal "{b}", "{what}")'
+        )
+        assert expected in response, f"{what}: {response}"
+
+
 def test__call_oneway(network: str) -> None:
     b = principal(network, "canister_b")
     response = call(network, "canister_a", "call_oneway", f'(principal "{b}")')

@@ -358,7 +358,8 @@ struct IC_CallsState {
   std::coroutine_handle<> handle; // resumed by the last response
   std::coroutine_handle<> root;   // destroyed by the cleanup after a trap
   IC_API *ic_api{nullptr};
-  uint32_t pending{0}; // calls whose response did not arrive yet
+  bool composite{false}; // made from a composite query
+  uint32_t pending{0};   // calls whose response did not arrive yet
   std::vector<std::optional<IC_CallError>> errors;
   std::vector<IC_CallReply> replies;
 };

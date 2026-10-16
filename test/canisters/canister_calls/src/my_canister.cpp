@@ -471,6 +471,137 @@ IC_Async call_all_then_trap_async() {
 }
 void call_all_then_trap() { call_all_then_trap_async(); }
 
+// ---------------------------------------------------------------------------
+// Composite queries: queries that call queries
+
+// A query, for the composite queries to call: '("C++")' -> '("Hello, C++!")'
+void greet_q() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  std::string name;
+  ic_api.from_wire(CandidTypeText{&name});
+  ic_api.to_wire(CandidTypeText{"Hello, " + name + "!"});
+}
+
+// A composite query, with no arguments: '()' -> '("composite")'
+void cq_name() {
+  IC_API ic_api(CanisterCompositeQuery{std::string(__func__)}, false);
+  ic_api.from_wire();
+  ic_api.to_wire(CandidTypeText{"composite"});
+}
+
+// Calls callee.greet_q: '(callee, "C++")' -> '("Hello, C++!")'
+IC_Async cq_greet_async() {
+  IC_API ic_api(CanisterCompositeQuery{"cq_greet"}, false);
+  std::string callee_text, name;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  args.append(CandidTypeText{&name});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(callee, "greet_q")
+          .with_arg(CandidTypeText{name});
+  std::string greeting;
+  if (r) r->decode(CandidTypeText{&greeting});
+  ic_api.to_wire(CandidTypeText{r ? greeting : error_text(r.error())});
+}
+void cq_greet() { cq_greet_async(); }
+
+// greet_q on several canisters at once:
+// '(vec {a; b})' -> '(vec {"ok:Hello, C++!"; "ok:Hello, C++!"})'
+IC_Async cq_all_async() {
+  IC_API ic_api(CanisterCompositeQuery{"cq_all"}, false);
+  std::vector<std::string> callees;
+  ic_api.from_wire(CandidTypeVecPrincipal{&callees});
+  std::vector<IC_Call> calls;
+  for (const std::string &callee : callees) {
+    calls.push_back(
+        IC_Call::bounded_wait(CandidTypePrincipal{callee}, "greet_q")
+            .with_arg(CandidTypeText{"C++"}));
+  }
+  std::vector<IC_CallResult<IC_CallReply>> results = co_await IC_CallAll(calls);
+  std::vector<std::string> out;
+  for (IC_CallResult<IC_CallReply> &r : results)
+    out.push_back(outcome(r));
+  ic_api.to_wire(CandidTypeVecText{out});
+}
+void cq_all() { cq_all_async(); }
+
+// A composite query calling an update method is rejected:
+// '(callee)' -> '("rej:<code>")'
+IC_Async cq_call_update_async() {
+  IC_API ic_api(CanisterCompositeQuery{"cq_call_update"}, false);
+  std::string callee_text;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(callee, "greet")
+          .with_arg(CandidTypeText{"C++"});
+  ic_api.to_wire(CandidTypeText{outcome(r)});
+}
+void cq_call_update() { cq_call_update_async(); }
+
+// An update calling a composite query is rejected: '(callee)' -> '("rej:5")'
+IC_Async call_cq_async() {
+  IC_API ic_api(CanisterUpdate{"call_cq"}, false);
+  std::string callee_text;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(callee, "cq_name");
+  ic_api.to_wire(CandidTypeText{r ? "replied" : outcome(r)});
+}
+void call_cq() { call_cq_async(); }
+
+// What a composite query and the callback of its call may do:
+// '(callee, what)' -> trap, for what = "timer", "certify" or "cycles"
+// '(callee, "probe")' ->
+//   '("certificate: 1 then 0; replicated: 0 then 0")'
+IC_Async cq_in_callback_async() {
+  IC_API ic_api(CanisterCompositeQuery{"cq_in_callback"}, false);
+  std::string callee_text, what;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  args.append(CandidTypeText{&what});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+
+  bool certificate_before = ic_api.data_certificate_present();
+  bool replicated_before = IC_API::in_replicated_execution();
+  IC_Call call =
+      IC_Call::bounded_wait(callee, "greet_q").with_arg(CandidTypeText{"C++"});
+  if (what == "cycles") call.with_cycles(1'000);
+  IC_CallResult<IC_CallReply> r = co_await call;
+  if (what == "timer") IC_API::set_timer(1'000'000'000, [] {});
+  if (what == "certify") ic_api.set_certified_data({1, 2, 3});
+  ic_api.to_wire(CandidTypeText{
+      "certificate: " + std::to_string(certificate_before) + " then " +
+      std::to_string(ic_api.data_certificate_present()) +
+      "; replicated: " + std::to_string(replicated_before) + " then " +
+      std::to_string(IC_API::in_replicated_execution())});
+}
+void cq_in_callback() { cq_in_callback_async(); }
+
+// The code after the co_await traps: the cleanup frees the frame.
+// '(callee)' -> trap
+IC_Async cq_then_trap_async() {
+  IC_API ic_api(CanisterCompositeQuery{"cq_then_trap"}, false);
+  std::string callee_text;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+  FrameGuard guard;
+
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(callee, "greet_q")
+          .with_arg(CandidTypeText{"C++"});
+  IC_API::trap("cq_then_trap: trapped on purpose after the co_await");
+}
+void cq_then_trap() { cq_then_trap_async(); }
+
 // A call without a response: '(callee)' -> '(true)'
 void call_oneway() {
   IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);

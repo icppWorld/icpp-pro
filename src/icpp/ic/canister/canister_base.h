@@ -30,6 +30,21 @@ public:
     return m_entry_type == "CanisterHeartbeat" ||
            m_entry_type == "CanisterGlobalTimer";
   }
+  // A composite query (CQ), and the reply (CRy), reject (CRt) & cleanup (CC)
+  // callbacks of the calls it makes. The spec gives them their own rules.
+  bool is_entry_CQ() { return m_entry_type == "CanisterCompositeQuery"; }
+  bool is_entry_CRy() {
+    return m_entry_type == "CanisterCompositeReplyCallback";
+  }
+  bool is_entry_CRt() {
+    return m_entry_type == "CanisterCompositeRejectCallback";
+  }
+  bool is_entry_CC() {
+    return m_entry_type == "CanisterCompositeCleanupCallback";
+  }
+  bool is_composite() {
+    return is_entry_CQ() || is_entry_CRy() || is_entry_CRt() || is_entry_CC();
+  }
   bool is_entry_Wildcard() { return m_entry_type != "CanisterStart"; }
   std::string get_calling_function() { return m_calling_function; }
   std::string get_entry_type() { return m_entry_type; }

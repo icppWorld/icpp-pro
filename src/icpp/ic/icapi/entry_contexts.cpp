@@ -15,17 +15,22 @@ bool root_key(CanisterBase &entry) {
 
 bool caller_info(CanisterBase &entry) {
   return entry.is_entry_U() || entry.is_entry_Q() || entry.is_entry_Ry() ||
-         entry.is_entry_Rt() || entry.is_entry_C() || entry.is_entry_F();
+         entry.is_entry_Rt() || entry.is_entry_C() || entry.is_entry_F() ||
+         entry.is_composite();
 }
 
 bool call(CanisterBase &entry) {
   return entry.is_entry_U() || entry.is_entry_Ry() || entry.is_entry_Rt() ||
-         entry.is_entry_T();
+         entry.is_entry_T() || entry.is_entry_CQ() || entry.is_entry_CRy() ||
+         entry.is_entry_CRt();
 }
 
-bool msg_deadline(CanisterBase &entry) {
+bool msg_deadline(CanisterBase &entry) { return reply(entry); }
+
+bool reply(CanisterBase &entry) {
   return entry.is_entry_U() || entry.is_entry_Q() || entry.is_entry_Ry() ||
-         entry.is_entry_Rt();
+         entry.is_entry_Rt() || entry.is_entry_CQ() || entry.is_entry_CRy() ||
+         entry.is_entry_CRt();
 }
 
 } // namespace entry_contexts

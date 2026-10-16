@@ -32,5 +32,13 @@ service : {
   "get_job" : (nat32) -> (nat64, nat64) query;
   "get_run_log" : () -> (vec nat32) query;
   "clear_run_log" : () -> ();
+  "greet_q" : (text) -> (text) query;
+  "cq_name" : () -> (text) composite_query;
+  "cq_greet" : (principal, text) -> (text) composite_query;
+  "cq_all" : (vec principal) -> (vec text) composite_query;
+  "cq_call_update" : (principal) -> (text) composite_query;
+  "call_cq" : (principal) -> (text);
+  "cq_in_callback" : (principal, text) -> (text) composite_query;
+  "cq_then_trap" : (principal) -> () composite_query;
   "get_state" : () -> (nat64, nat64, nat64, nat32, bool) query;
 };

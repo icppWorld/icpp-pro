@@ -44,10 +44,12 @@ __uint128_t g_mock_call_cycles_added{0};
 // enforced.
 bool mock_arg_data_permitted() {
   // An allow-list, like the replica: init/post_upgrade (I), update (U),
-  // query (Q), reply callback (Ry) & inspect_message (F).
+  // query (Q), composite query (CQ), reply callback (Ry, CRy) &
+  // inspect_message (F).
   CanisterBase *entry = current_entry();
   return entry == nullptr || entry->is_entry_I() || entry->is_entry_U() ||
-         entry->is_entry_Q() || entry->is_entry_Ry() || entry->is_entry_F();
+         entry->is_entry_Q() || entry->is_entry_Ry() || entry->is_entry_F() ||
+         entry->is_entry_CQ() || entry->is_entry_CRy();
 }
 
 // For the rules shared with the IC_API guards (entry_contexts.h).
@@ -67,6 +69,13 @@ void mock_refuse_unless(bool permitted, const char *api) {
                current_entry()->get_entry_type() +
                " mode (the Mock IC enforces the replica's permitted entry "
                "points)");
+}
+
+// Cycles, timers and certified data are not available in a composite query,
+// nor in the callbacks of the calls it makes.
+void mock_refuse_in_composite(const char *api) {
+  CanisterBase *entry = current_entry();
+  mock_refuse_unless(entry == nullptr || !entry->is_composite(), api);
 }
 
 // The copy half of an ic0 size/copy pair: like the replica, trap when the
@@ -321,15 +330,18 @@ void ic0_canister_liquid_cycle_balance128(uintptr_t dst) {
 }
 
 void ic0_msg_cycles_available128(uintptr_t dst) {
+  mock_refuse_in_composite("ic0_msg_cycles_available128");
   write_u128(dst, global_mockIC->get_msg_cycles_available());
 }
 
 void ic0_msg_cycles_refunded128(uintptr_t dst) {
+  mock_refuse_in_composite("ic0_msg_cycles_refunded128");
   write_u128(dst, global_mockIC->get_msg_cycles_refunded());
 }
 
 void ic0_msg_cycles_accept128(uint64_t max_amount_high, uint64_t max_amount_low,
                               uintptr_t dst) {
+  mock_refuse_in_composite("ic0_msg_cycles_accept128");
   // accepted = min(max_amount, available); moves from available to balance.
   __uint128_t max_amount = u128_from_parts(max_amount_high, max_amount_low);
   __uint128_t available = global_mockIC->get_msg_cycles_available();
@@ -341,6 +353,7 @@ void ic0_msg_cycles_accept128(uint64_t max_amount_high, uint64_t max_amount_low,
 
 void ic0_cycles_burn128(uint64_t amount_high, uint64_t amount_low,
                         uintptr_t dst) {
+  mock_refuse_in_composite("ic0_cycles_burn128");
   // Burns no more than the balance; writes the amount actually burned.
   __uint128_t amount = u128_from_parts(amount_high, amount_low);
   __uint128_t balance = global_mockIC->get_canister_self_cycle_balance();
@@ -350,6 +363,7 @@ void ic0_cycles_burn128(uint64_t amount_high, uint64_t amount_low,
 }
 
 void ic0_call_cycles_add128(uint64_t amount_high, uint64_t amount_low) {
+  mock_refuse_in_composite("ic0_call_cycles_add128");
   __uint128_t cycles = u128_from_parts(amount_high, amount_low);
   g_mock_call_cycles_added += cycles;
   global_mockIC->call_cycles_add(cycles);
@@ -417,6 +431,7 @@ void ic0_stable_read(uintptr_t dst, uint32_t off, uint32_t size) {
 }
 
 void ic0_certified_data_set(uintptr_t src, uint32_t size) {
+  mock_refuse_in_composite("ic0_certified_data_set");
   // The replica enforces CERTIFIED_DATA_MAX_LENGTH = 32.
   if (size > 32) {
     IC_API::trap("ic0.certified_data_set: payload too large (max 32 bytes). "
@@ -428,6 +443,12 @@ void ic0_certified_data_set(uintptr_t src, uint32_t size) {
 }
 
 uint32_t ic0_data_certificate_present() {
+  // Only the top-level query sees the certificate, not the callbacks of the
+  // calls a composite query makes.
+  CanisterBase *entry = current_entry();
+  if (entry != nullptr &&
+      (entry->is_entry_CRy() || entry->is_entry_CRt() || entry->is_entry_CC()))
+    return 0;
   return global_mockIC->get_data_certificate_present() ? 1 : 0;
 }
 
@@ -497,7 +518,7 @@ uint32_t ic0_in_replicated_execution() {
   // node; everything else, and a query called by an update, is replicated.
   CanisterBase *entry = current_entry();
   if (entry == nullptr) return 1;
-  if (entry->is_entry_F()) return 0;
+  if (entry->is_entry_F() || entry->is_composite()) return 0;
   if (entry->is_entry_Q()) return global_mockIC->get_query_replicated() ? 1 : 0;
   return 1;
 }
@@ -642,6 +663,7 @@ uint64_t ic0_time() {
 }
 
 uint64_t ic0_global_timer_set(uint64_t timestamp_ns) {
+  mock_refuse_in_composite("ic0_global_timer_set");
   uint64_t previous = g_mock_armed_global_timer;
   g_mock_armed_global_timer = timestamp_ns;
   ++g_mock_global_timer_set_call_count;

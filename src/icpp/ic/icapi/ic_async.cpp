@@ -75,8 +75,8 @@ void check_call_entry(const char *api) {
   if (entry != nullptr && !entry_contexts::call(*entry)) {
     IC_API::trap(std::string(api) + " is not available in a " +
                  entry->get_entry_type() +
-                 " entry point. Allowed entry points: update, reply & reject "
-                 "callbacks, heartbeat & timer.");
+                 " entry point. Allowed entry points: update, composite "
+                 "query, reply & reject callbacks, heartbeat & timer.");
   }
 }
 
@@ -138,13 +138,19 @@ extern "C" void icpp_call_callback(uintptr_t env) {
   }
 
   uint32_t code = ic0_msg_reject_code();
-  CanisterBase entry = code == 0
-                           ? CanisterBase(CanisterReplyCallback{slot->method})
-                           : CanisterBase(CanisterRejectCallback{slot->method});
+  CanisterBase entry =
+      calls->composite
+          ? (code == 0
+                 ? CanisterBase(CanisterCompositeReplyCallback{slot->method})
+                 : CanisterBase(CanisterCompositeRejectCallback{slot->method}))
+          : (code == 0 ? CanisterBase(CanisterReplyCallback{slot->method})
+                       : CanisterBase(CanisterRejectCallback{slot->method}));
   set_current_entry(entry);
   CandidSerializeTypeTableRegistry::get_instance().clear();
 
-  __uint128_t refunded = read_u128(ic0_msg_cycles_refunded128);
+  // A composite query sends no cycles, and can't read refunded cycles
+  __uint128_t refunded =
+      calls->composite ? 0 : read_u128(ic0_msg_cycles_refunded128);
   if (code == 0) {
     std::vector<uint8_t> bytes = arg_data();
     calls->replies[slot->index].bytes.store(bytes.data(),
@@ -209,7 +215,10 @@ extern "C" void icpp_call_cleanup(uintptr_t env) {
     calls->errors[slot->index] = error;
   }
 
-  CanisterBase entry = CanisterCleanupCallback{slot->method};
+  CanisterBase entry =
+      calls->composite
+          ? CanisterBase(CanisterCompositeCleanupCallback{slot->method})
+          : CanisterBase(CanisterCleanupCallback{slot->method});
   set_current_entry(entry);
   if (calls->pending == 0) {
     if (calls->ic_api != nullptr && is_registered_ic_api(calls->ic_api)) {
@@ -306,6 +315,8 @@ IC_CallsAwaiter::~IC_CallsAwaiter() {
 bool IC_CallsAwaiter::suspend(std::coroutine_handle<> handle,
                               std::coroutine_handle<> root) {
   check_call_entry("IC_Call");
+  CanisterBase *entry = current_entry();
+  m_state->composite = entry != nullptr && entry->is_composite();
   m_state->handle = handle;
   m_state->root = root;
   m_state->ic_api = live_ic_api();
@@ -314,6 +325,10 @@ bool IC_CallsAwaiter::suspend(std::coroutine_handle<> handle,
 
   for (uint32_t i = 0; i < m_calls.size(); ++i) {
     const IC_Call &call = m_calls[i];
+    if (m_state->composite && call.m_cycles > 0) {
+      IC_API::trap("IC_Call::with_cycles: a composite query can't send "
+                   "cycles along with a call");
+    }
     // A call that is not performed gets its error right away: no callback
     // will ever run for it. The balance is checked per call: each one
     // performed lowers it.
@@ -336,8 +351,12 @@ bool IC_CallsAwaiter::suspend(std::coroutine_handle<> handle,
       m_state->errors[i] = error;
       continue;
     }
-    slot->counted = true;
-    add_calls_in_flight(1);
+    // A composite query's calls are not counted: the IC discards the state of
+    // a query, and they can't block stopping or upgrading the canister.
+    if (!m_state->composite) {
+      slot->counted = true;
+      add_calls_in_flight(1);
+    }
     ++m_state->pending;
   }
 

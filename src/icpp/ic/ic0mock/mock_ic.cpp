@@ -199,8 +199,9 @@ MockIC::MockResponse MockIC::MockResponse::timeout() {
   return reject(6, "IC0506: deadline expired before the response arrived");
 }
 
-void MockIC::register_method(const std::string &name, void (*fn)()) {
-  m_methods[name] = fn;
+void MockIC::register_method(const std::string &name, void (*fn)(),
+                             MethodKind kind) {
+  m_methods[name] = Method{fn, kind};
 }
 
 void MockIC::expect_call(const std::string &callee, const std::string &method,
@@ -232,6 +233,8 @@ void MockIC::call_new(const std::vector<uint8_t> &callee,
   m_building.fun = fun;
   m_building.env = env;
   m_building.origin = m_current_context;
+  CanisterBase *entry = current_entry();
+  m_building.origin_composite = entry != nullptr && entry->is_composite();
 }
 
 void MockIC::call_data_append(const uint8_t *src, uint32_t size) {
@@ -382,6 +385,28 @@ void MockIC::deliver_request(size_t call_index) {
     m_events.push_back(event);
     return;
   }
+  // The rules of composite queries, as the replica enforces them
+  std::string refused;
+  if (call.origin_composite && method->second.kind == MethodKind::Update) {
+    refused = "Mock IC: a composite query can only call query and composite "
+              "query methods, and '" +
+              call.method + "' is an update method";
+  } else if (!call.origin_composite &&
+             method->second.kind == MethodKind::CompositeQuery) {
+    refused = "Mock IC: the composite query '" + call.method +
+              "' cannot be called in replicated mode";
+  }
+  if (!refused.empty()) {
+    Event event;
+    event.is_response = true;
+    event.call = call_index;
+    event.is_reply = false;
+    event.reject_code = 5; // CANISTER_ERROR
+    event.reject_message = refused;
+    event.refund = call.cycles;
+    m_events.push_back(event);
+    return;
+  }
 
   SavedMessage saved{m_B_in,
                      m_B_out,
@@ -419,7 +444,7 @@ void MockIC::deliver_request(size_t call_index) {
 
   size_t index = m_current_context;
   try {
-    method->second();
+    method->second.fn();
   } catch (const std::exception &e) {
     std::cout << "Mock IC: '" << call.method << "' trapped: " << e.what()
               << "\n";

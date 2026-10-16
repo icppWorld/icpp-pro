@@ -43,7 +43,7 @@ jobs:
 
     env:
       # The Python version that runs all-tests; the others run smoke-tests
-      ALL_TESTS_PYTHON: "3.11"
+      ALL_TESTS_PYTHON: "3.14"
       # `icp network start` downloads the icp-cli-network-launcher from the
       # GitHub API. Unauthenticated, that is 60 requests/hour shared across
       # ALL GitHub-hosted runners, so our matrix jobs randomly died with:

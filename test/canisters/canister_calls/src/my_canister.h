@@ -57,3 +57,8 @@ void cq_in_callback()
     WASM_SYMBOL_EXPORTED("canister_composite_query cq_in_callback");
 void cq_then_trap()
     WASM_SYMBOL_EXPORTED("canister_composite_query cq_then_trap");
+void info() WASM_SYMBOL_EXPORTED("canister_update info");
+void info_cq() WASM_SYMBOL_EXPORTED("canister_composite_query info_cq");
+void cq_via() WASM_SYMBOL_EXPORTED("canister_composite_query cq_via");
+void timer_call() WASM_SYMBOL_EXPORTED("canister_update timer_call");
+void timer_result() WASM_SYMBOL_EXPORTED("canister_query timer_result");

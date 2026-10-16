@@ -260,7 +260,9 @@ __uint128_t IC_API::burn_cycles(__uint128_t amount) {
       m_canister_entry,
       !m_canister_entry.is_entry_F() && !m_canister_entry.is_entry_s() &&
           !m_canister_entry.is_composite(),
-      "IC_API::burn_cycles", "all except inspect_message & canister_start");
+      "IC_API::burn_cycles",
+      "all except inspect_message, canister_start, composite queries and "
+      "their callbacks");
   __uint128_t burned;
   ic0_cycles_burn128((uint64_t)(amount >> 64), (uint64_t)amount,
                      reinterpret_cast<uintptr_t>(&burned));

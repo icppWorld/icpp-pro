@@ -19,8 +19,8 @@ bool all_except_start(CanisterBase &entry);
 // (non-replicated) and inspect_message are refused.
 bool root_key(CanisterBase &entry);
 
-// update, query, composite query, reply & reject callbacks, cleanup and
-// inspect_message - the composite ones included.
+// update, query, reply & reject callbacks, cleanup, inspect_message, and a
+// composite query with its reply, reject & cleanup callbacks.
 bool caller_info(CanisterBase &entry);
 
 // update, composite query, reply & reject callbacks (also of a composite

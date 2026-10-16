@@ -1,0 +1,19 @@
+service : {
+  // Deletes the state file: '()' -> '()'
+  "reset" : () -> ();
+  // Stores every message with an update self-call to store:
+  // '(vec {"a"; "b"})' -> '(bytes of the state file : nat64)'
+  "ingest" : (vec text) -> (nat64);
+  // Appends a message to the state file. Only the canister itself may call it.
+  "store" : (text) -> ();
+  // Reads the state file: '("word")' ->
+  // '("3 messages, 2 mention word; instructions: 123")'
+  "ask" : (text) -> (text) query;
+  // ask, through a self-call from a composite query
+  "ask_cq" : (text) -> (text) composite_query;
+  // Burns at least n instructions: '(n)' -> '(instructions : nat64)'
+  "burn_q" : (nat64) -> (nat64) query;
+  // Calls burn_q on itself `parts` times, one after the other:
+  // '(parts, n)' -> '("parts: 2 of 2; burn_q: 1000, 1000; own: 50")'
+  "cq_burn" : (nat32, nat64) -> (text) composite_query;
+};

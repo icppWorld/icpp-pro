@@ -86,6 +86,9 @@ dev = [
     # (which is committed, so the test suite itself does not need it).
     # Kept here so pylint/mypy can resolve the generator's import.
     "wasmtime",
+    # Verifies the threshold ECDSA signatures of the canister_management
+    # smoketests (test/canisters/canister_management)
+    "ecdsa==0.19.2",
 ]
 
 [project.urls]

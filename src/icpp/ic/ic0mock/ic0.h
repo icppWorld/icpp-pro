@@ -139,6 +139,9 @@ void ic0_cost_create_canister(uintptr_t dst);
 void ic0_cost_http_request(uint64_t request_size, uint64_t max_res_bytes,
                            uintptr_t dst);
 
+void ic0_cost_http_request_v2(uintptr_t params_src, uint32_t params_size,
+                              uintptr_t dst);
+
 uint32_t ic0_cost_sign_with_ecdsa(uintptr_t src, uint32_t size,
                                   uint32_t ecdsa_curve, uintptr_t dst);
 

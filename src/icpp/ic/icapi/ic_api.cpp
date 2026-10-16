@@ -434,6 +434,69 @@ __uint128_t IC_API::cost_http_request(uint64_t request_size,
   return cycles;
 }
 
+// The parameters are the Candid record the replica decodes:
+// record { request_bytes : nat64; http_roundtrip_time_ms : nat64;
+//   raw_response_bytes : nat64; transformed_response_bytes : nat64;
+//   transform_instructions : nat64; outcall_type : opt variant {
+//     fully_replicated : reserved; non_replicated : reserved;
+//     flexible : opt record { total_requests : nat32; min_responses : nat32;
+//                             max_responses : nat32 } } }
+// A reserved payload is sent as null, the way the replica expects it.
+__uint128_t IC_API::cost_http_request_v2(const HttpOutcallCostParams &params) {
+  CandidTypeVariant outcall_type;
+  switch (params.outcall_type) {
+  case HttpOutcallType::FullyReplicated:
+    outcall_type = CandidTypeVariant{"fully_replicated", CandidTypeNull{}};
+    break;
+  case HttpOutcallType::NonReplicated:
+    outcall_type = CandidTypeVariant{"non_replicated", CandidTypeNull{}};
+    break;
+  case HttpOutcallType::Flexible:
+    if (params.flexible_counts.has_value()) {
+      CandidTypeRecord counts;
+      counts.append("total_requests",
+                    CandidTypeNat32{params.flexible_counts->total_requests});
+      counts.append("min_responses",
+                    CandidTypeNat32{params.flexible_counts->min_responses});
+      counts.append("max_responses",
+                    CandidTypeNat32{params.flexible_counts->max_responses});
+      outcall_type = CandidTypeVariant{"flexible", CandidTypeOptRecord{counts}};
+    } else {
+      // opt record { ... } without a value: the IC's default counts
+      CandidTypeRecord counts;
+      counts.append("total_requests", CandidTypeNat32{});
+      counts.append("min_responses", CandidTypeNat32{});
+      counts.append("max_responses", CandidTypeNat32{});
+      bool has_counts{false};
+      outcall_type = CandidTypeVariant{
+          "flexible", CandidTypeOptRecord{&counts, &has_counts}};
+    }
+    break;
+  }
+  CandidTypeRecord record;
+  record.append("request_bytes", CandidTypeNat64{params.request_bytes});
+  record.append("http_roundtrip_time_ms",
+                CandidTypeNat64{params.http_roundtrip_time_ms});
+  record.append("raw_response_bytes",
+                CandidTypeNat64{params.raw_response_bytes});
+  record.append("transformed_response_bytes",
+                CandidTypeNat64{params.transformed_response_bytes});
+  record.append("transform_instructions",
+                CandidTypeNat64{params.transform_instructions});
+  record.append("outcall_type", CandidTypeOptVariant{outcall_type});
+  CandidArgs args;
+  args.append(record);
+  VecBytes B = CandidSerialize(args).get_B();
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+  std::vector<uint8_t> bytes = B.vec_uint8_t();
+
+  __uint128_t cycles;
+  ic0_cost_http_request_v2(reinterpret_cast<uintptr_t>(bytes.data()),
+                           (uint32_t)bytes.size(),
+                           reinterpret_cast<uintptr_t>(&cycles));
+  return cycles;
+}
+
 namespace {
 // The three sign & derive cost calls share their shape: key name, a curve or
 // algorithm, the cycles at dst on success.
@@ -580,6 +643,46 @@ void IC_API::from_wire(IC_HttpUpdateRequest &request) {
   request.headers = temp_request.headers;
   request.method = temp_request.method;
   request.url = temp_request.url;
+}
+
+// The argument of a transform query:
+// record { response : record { status : nat; headers : vec record {
+//   name : text; value : text }; body : blob }; context : blob }
+void IC_API::from_wire(IC_HttpTransformArgs &args) {
+  std::vector<std::string> names, values;
+  CandidTypeRecord header;
+  header.append("name", CandidTypeVecText{&names});
+  header.append("value", CandidTypeVecText{&values});
+  CandidTypeRecord response;
+  response.append("status", CandidTypeNat{&args.response.status});
+  response.append("headers", CandidTypeVecRecord{&header});
+  response.append("body", CandidTypeVecNat8{&args.response.body});
+  CandidTypeRecord record;
+  record.append("response", response);
+  record.append("context", CandidTypeVecNat8{&args.context});
+  from_wire(record);
+
+  args.response.headers.clear();
+  for (size_t i = 0; i < names.size() && i < values.size(); ++i) {
+    args.response.headers.push_back(IC_HeaderField{names[i], values[i]});
+  }
+}
+
+// The result of a transform query: an http_request_result
+void IC_API::to_wire(const IC_HttpOutcallResponse &response) {
+  std::vector<std::string> names, values;
+  for (const IC_HeaderField &h : response.headers) {
+    names.push_back(h.name);
+    values.push_back(h.value);
+  }
+  CandidTypeRecord header;
+  header.append("name", CandidTypeVecText{names});
+  header.append("value", CandidTypeVecText{values});
+  CandidTypeRecord result;
+  result.append("status", CandidTypeNat{response.status});
+  result.append("headers", CandidTypeVecRecord{header});
+  result.append("body", CandidTypeVecNat8{response.body});
+  to_wire(result);
 }
 
 std::optional<__uint128_t> IC_API::string_to_uint128_t(const std::string &str) {

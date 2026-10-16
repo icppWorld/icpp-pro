@@ -295,6 +295,10 @@ def main() -> int:
     args = parser.parse_args()
     jobs = max(1, args.jobs)
     if args.canister:
+        unknown = set(args.canister) - {p.name for p in canister_paths}
+        if unknown:
+            typer.echo(f"ERROR: no canister named {', '.join(sorted(unknown))}")
+            return 1
         canister_paths = [p for p in canister_paths if p.name in args.canister]
         jobs = min(jobs, max(1, len(canister_paths)))
 

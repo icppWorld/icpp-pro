@@ -25,6 +25,10 @@ def main() -> int:
     )
     args = parser.parse_args()
     if args.canister:
+        unknown = set(args.canister) - {p.name for p in canister_paths}
+        if unknown:
+            typer.echo(f"ERROR: no canister named {', '.join(sorted(unknown))}")
+            return 1
         canister_paths = [p for p in canister_paths if p.name in args.canister]
     for canister_path in canister_paths:
         typer.echo(f"====\nTesting canister: {canister_path.name}")

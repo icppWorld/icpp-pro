@@ -214,6 +214,34 @@ IC_Async call_then_trap_async() {
 }
 void call_then_trap() { call_then_trap_async(); }
 
+// Two coroutines in one call: the first traps after its co_await, while the
+// second still waits for its response. The second then replies, or ends
+// without a reply. '(callee, reply)' -> trap
+IC_Async two_coroutines_trap_async(CandidTypePrincipal callee) {
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(callee, "greet")
+          .with_arg(CandidTypeText{"trap"});
+  IC_API::trap("two_coroutines: trapped on purpose after the co_await");
+}
+IC_Async two_coroutines_other_async(CandidTypePrincipal callee, bool reply) {
+  IC_API ic_api(CanisterUpdate{"two_coroutines"}, false);
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(callee, "greet")
+          .with_arg(CandidTypeText{"other"});
+  if (reply) ic_api.to_wire(CandidTypeText{"replied"});
+}
+void two_coroutines() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  std::string callee_text;
+  bool reply{false};
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  args.append(CandidTypeBool{&reply});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+  two_coroutines_trap_async(callee);
+  two_coroutines_other_async(callee, reply);
+}
+
 // '(callee, cycles)' -> '(accepted, refunded)'
 IC_Async call_with_cycles_async() {
   IC_API ic_api(CanisterUpdate{"call_with_cycles"}, false);

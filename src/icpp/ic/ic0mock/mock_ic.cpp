@@ -70,7 +70,7 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
       ++m_tests_failed;
       std::cout << "\nTest: '" << test_name
                 << "' Failed with a trap after a co_await:\n";
-      std::cerr << m_contexts[m_root_context].reject_message << '\n';
+      std::cerr << m_contexts[m_root_context].trap_message << '\n';
       if (m_exit_on_fail) {
         test_summary();
         exit(1);
@@ -659,12 +659,17 @@ void MockIC::deliver_response(const Event &event) {
   }
   CallContext &after = m_contexts[origin];
   after.cycles_available = m_msg_cycles_available;
+  // A trap anywhere in the call counts, also when another coroutine of the
+  // same call is still waiting for its response
+  if (trap && !after.trapped) {
+    after.trapped = true;
+    after.trap_message = "trapped: " + *trap;
+  }
   // Also the root context: a call of the test that traps after a co_await
   if (!after.done && after.outstanding == 0) {
-    after.trapped = trap.has_value();
     respond(origin, false, {}, 5,
-            trap ? "trapped: " + *trap
-                 : "the canister did not reply to the call");
+            after.trapped ? after.trap_message
+                          : "the canister did not reply to the call");
   }
 
   m_B_in = saved.B_in;

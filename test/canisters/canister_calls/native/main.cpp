@@ -609,6 +609,19 @@ int main() {
           "get_state after the held call: done, no call in flight");
   }
 
+  // Two coroutines in one call: a trap in one fails the call, also when the
+  // other replies, or ends without a reply, later
+  for (bool reply : {false, true}) {
+    CandidArgs in;
+    in.append(CandidTypePrincipal{self});
+    in.append(CandidTypeBool{reply});
+    VecBytes in_bytes = CandidSerialize(in).get_B();
+    mockIC.run_trap_test(std::string("two_coroutines, the other ") +
+                             (reply ? "replies" : "does not reply"),
+                         two_coroutines, in_bytes.as_hex_string(),
+                         silent_on_trap, my_principal);
+  }
+
   // start_call: the reply of each call, and a stale handle
   mockIC.set_auto_drain(false);
   {

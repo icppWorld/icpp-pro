@@ -13,6 +13,7 @@ service : {
   "call_reject" : (principal) -> (text);
   "call_trap" : (principal) -> (text);
   "call_then_trap" : (principal) -> ();
+  "two_coroutines" : (principal, bool) -> (text);
   "call_with_cycles" : (principal, nat64) -> (nat64, nat64);
   "call_bounded" : (principal, nat32, nat32) -> (text);
   "call_sequence" : (principal, text) -> (text);

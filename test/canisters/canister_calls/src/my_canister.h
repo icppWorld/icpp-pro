@@ -20,6 +20,7 @@ void call_greet() WASM_SYMBOL_EXPORTED("canister_update call_greet");
 void call_reject() WASM_SYMBOL_EXPORTED("canister_update call_reject");
 void call_trap() WASM_SYMBOL_EXPORTED("canister_update call_trap");
 void call_then_trap() WASM_SYMBOL_EXPORTED("canister_update call_then_trap");
+void two_coroutines() WASM_SYMBOL_EXPORTED("canister_update two_coroutines");
 void call_with_cycles()
     WASM_SYMBOL_EXPORTED("canister_update call_with_cycles");
 void call_bounded() WASM_SYMBOL_EXPORTED("canister_update call_bounded");

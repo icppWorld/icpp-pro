@@ -181,3 +181,9 @@ _handoff/
 # but a crashed run can leave it behind.
 test/canisters/canister_upgrade/upgrade_record.txt
 .siblings-verify-logs/
+
+# External IC agent skills (skills.internetcomputer.org), installed per checkout
+# by .claude/sync-ic-skills.sh (a SessionStart hook) - tooling, not repo state.
+# Our own skills stay tracked.
+.claude/skills/*
+!.claude/skills/icpp-pro-*/

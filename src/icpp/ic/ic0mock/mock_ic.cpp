@@ -50,15 +50,7 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
   ++m_tests_total;
   std::cout << "\n----------\n";
   std::cout << "MockIC run_test: " << test_name << ": \n";
-
-  // Always start with a clean type table registry in the registry singleton
-  CandidSerializeTypeTableRegistry::get_instance().clear();
-  m_B_in.clear();
-  m_B_out.clear();
-  m_B_in.store_hex_string(candid_in);
-  m_caller = CandidTypePrincipal(caller);
-  m_canister_self = CandidTypePrincipal(std::string(MOCKIC_CANISTER_SELF));
-  start_root_context(test_name);
+  start_message(test_name, candid_in, caller);
 
   m_silent_on_trap = silent_on_trap;
   try {
@@ -125,13 +117,7 @@ int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
   ++m_tests_total;
   std::cout << "\n----------\n";
   std::cout << "MockIC run_trap_test: " << test_name << ": \n";
-
-  m_B_in.clear();
-  m_B_out.clear();
-  m_B_in.store_hex_string(candid_in);
-  m_caller = CandidTypePrincipal(caller);
-  m_canister_self = CandidTypePrincipal(std::string(MOCKIC_CANISTER_SELF));
-  start_root_context(test_name);
+  start_message(test_name, candid_in, caller);
 
   m_silent_on_trap = silent_on_trap;
   try {
@@ -152,6 +138,25 @@ int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
     std::cout << "Test: " << test_name << ": Passed\n";
     return 0;
   }
+}
+
+MockIC::CallHandle MockIC::start_call(const std::string &name,
+                                      void (*api_callback)(),
+                                      const std::string &candid_in,
+                                      const std::string &caller) {
+  std::cout << "\n----------\n";
+  std::cout << "MockIC start_call: " << name << ": \n";
+  start_message(name, candid_in, caller);
+  CallHandle handle = m_root_context;
+  try {
+    api_callback();
+  } catch (const std::exception &e) {
+    std::cout << "Mock IC: '" << name << "' trapped: " << e.what() << "\n";
+    if (!m_contexts[handle].done) {
+      respond(handle, false, {}, 5, std::string("trapped: ") + e.what());
+    }
+  }
+  return handle;
 }
 
 int MockIC::test_summary() {
@@ -208,6 +213,19 @@ void MockIC::register_method(const std::string &name, void (*fn)(),
 void MockIC::expect_call(const std::string &callee, const std::string &method,
                          const MockResponse &response) {
   m_expected[{callee, method}] = response;
+}
+
+void MockIC::start_message(const std::string &test_name,
+                           const std::string &candid_in,
+                           const std::string &caller) {
+  // Always start with a clean type table registry in the registry singleton
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+  m_B_in.clear();
+  m_B_out.clear();
+  m_B_in.store_hex_string(candid_in);
+  m_caller = CandidTypePrincipal(caller);
+  m_canister_self = CandidTypePrincipal(std::string(MOCKIC_CANISTER_SELF));
+  start_root_context(test_name);
 }
 
 // A test starts a new root call context, unless calls are still queued from
@@ -278,6 +296,8 @@ void MockIC::respond(size_t context, bool is_reply,
                      const std::string &reject_message) {
   CallContext &ctx = m_contexts[context];
   ctx.done = true;
+  ctx.rejected = !is_reply;
+  ctx.reject_message = reject_message;
   if (ctx.from_call < 0) return; // the root context: the reply of the test
   Event event;
   event.is_response = true;
@@ -301,15 +321,20 @@ void MockIC::msg_reject(const std::string &message) {
 }
 
 void MockIC::drain() {
-  while (!m_events.empty()) {
-    Event event = m_events.front();
-    m_events.pop_front();
-    if (event.is_response) {
-      deliver_response(event);
-    } else {
-      deliver_request(event.call);
-    }
+  while (drain_one()) {
   }
+}
+
+bool MockIC::drain_one() {
+  if (m_events.empty()) return false;
+  Event event = m_events.front();
+  m_events.pop_front();
+  if (event.is_response) {
+    deliver_response(event);
+  } else {
+    deliver_request(event.call);
+  }
+  return true;
 }
 
 namespace {
@@ -416,7 +441,23 @@ void MockIC::deliver_request(size_t call_index) {
     return;
   }
 
-  // The canister itself: run the method, in a new call context.
+  // The canister itself. Stopping or stopped, it rejects every call, like
+  // the IC: "Canister <id> is stopping".
+  if (m_canister_status != MOCKIC_CANISTER_STATUS_RUNNING) {
+    Event event;
+    event.is_response = true;
+    event.call = call_index;
+    event.is_reply = false;
+    event.reject_code = 5; // CANISTER_ERROR
+    event.reject_message =
+        "Canister " + callee +
+        (m_canister_status == MOCKIC_CANISTER_STATUS_STOPPED ? " is stopped"
+                                                             : " is stopping");
+    event.refund = call.cycles;
+    m_events.push_back(event);
+    return;
+  }
+  // Run the method, in a new call context.
   // ic_api.yield_fresh_budget() calls __icpp_yield, which only replies.
   if (call.method == "__icpp_yield" && m_methods.count(call.method) == 0) {
     Event event;

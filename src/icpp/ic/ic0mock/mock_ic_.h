@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <optional>
@@ -68,6 +69,8 @@ public:
   uint64_t get_canister_version() { return m_canister_version; }
   void set_canister_version(uint64_t v) { m_canister_version = v; }
   uint32_t get_canister_status() { return m_canister_status; }
+  // Stopping or stopped: calls to the canister itself are rejected, like on
+  // the IC; responses to calls in flight are still delivered.
   void set_canister_status(uint32_t v) { m_canister_status = v; }
   // A CanisterQuery is a non-replicated query call unless set otherwise; an
   // update calling a query method makes it replicated on the IC.
@@ -95,6 +98,17 @@ public:
     m_env_vars[name] = value;
   }
   void clear_env_vars() { m_env_vars.clear(); }
+
+  // ic0.performance_counter returns steady-clock nanoseconds natively. A test
+  // of code that sizes its work by instructions can feed its own counter,
+  // e.g. one it advances per step: fn(counter_type). Sticky too.
+  std::function<uint64_t(uint32_t)> get_performance_counter() {
+    return m_performance_counter;
+  }
+  void set_performance_counter(std::function<uint64_t(uint32_t)> fn) {
+    m_performance_counter = std::move(fn);
+  }
+  void clear_performance_counter() { m_performance_counter = nullptr; }
 
   // -------------------------------------------------------------------------
   // Inter-canister calls (ic_async.h).
@@ -136,7 +150,35 @@ public:
   void set_auto_drain(bool auto_drain) { m_auto_drain = auto_drain; }
   // Delivers the queued calls & responses until none are left.
   void drain();
+  // Delivers the next queued call or response. False when none was queued.
+  bool drain_one();
   size_t pending_calls() { return m_events.size(); }
+
+  // Calls that interleave: start_call runs the entry point and returns a
+  // handle, without delivering the calls it made, nor asserting a reply.
+  // After drain() or drain_one(), the handle tells how the call ended:
+  //   mockIC.set_auto_drain(false);
+  //   MockIC::CallHandle a = mockIC.start_call("a", my_method, IN_A);
+  //   MockIC::CallHandle b = mockIC.start_call("b", my_method, IN_B);
+  //   mockIC.drain();
+  //   mockIC.reply_hex(a); mockIC.reply_hex(b);
+  // A handle stays valid until a run_test, run_trap_test or start_call starts
+  // a call with no calls queued.
+  using CallHandle = size_t;
+  CallHandle start_call(const std::string &name, void (*api_callback)(),
+                        const std::string &candid_in,
+                        const std::string &caller = "");
+  // The call replied or rejected
+  bool call_done(CallHandle h) { return m_contexts.at(h).done; }
+  // It rejected, or trapped
+  bool was_rejected(CallHandle h) { return m_contexts.at(h).rejected; }
+  // The Candid reply, as hex
+  std::string reply_hex(CallHandle h) {
+    return m_contexts.at(h).reply.as_hex_string();
+  }
+  std::string reject_message(CallHandle h) {
+    return m_contexts.at(h).reject_message;
+  }
 
   // For the ic0 mock functions
   void call_new(const std::vector<uint8_t> &callee, const std::string &method,
@@ -196,6 +238,7 @@ private:
   std::vector<uint8_t> m_caller_info_data;
   std::vector<uint8_t> m_caller_info_signer;
   std::map<std::string, std::string> m_env_vars;
+  std::function<uint64_t(uint32_t)> m_performance_counter;
   // Inter-canister calls
   struct PendingCall {
     std::vector<uint8_t> callee;
@@ -216,6 +259,8 @@ private:
     std::string method;
     bool done{false};
     VecBytes reply;
+    bool rejected{false};
+    std::string reject_message;
     int outstanding{0}; // performed calls without a response yet
     int from_call{-1};  // the call it answers
     __uint128_t cycles_available{0};
@@ -230,6 +275,9 @@ private:
     std::string reject_message;
     __uint128_t refund{0};
   };
+  // Sets up the message of a test, and its root call context
+  void start_message(const std::string &test_name, const std::string &candid_in,
+                     const std::string &caller);
   void start_root_context(const std::string &method);
   void deliver_request(size_t call);
   // The management canister's reply to `method`, if the Mock IC knows it:

@@ -35,6 +35,8 @@ void call_all() WASM_SYMBOL_EXPORTED("canister_update call_all");
 void call_all_then_trap()
     WASM_SYMBOL_EXPORTED("canister_update call_all_then_trap");
 void yield_loop() WASM_SYMBOL_EXPORTED("canister_update yield_loop");
+void yield_until_stop()
+    WASM_SYMBOL_EXPORTED("canister_update yield_until_stop");
 void budget_probe() WASM_SYMBOL_EXPORTED("canister_update budget_probe");
 void start_held_call() WASM_SYMBOL_EXPORTED("canister_update start_held_call");
 void compute() WASM_SYMBOL_EXPORTED("canister_update compute");

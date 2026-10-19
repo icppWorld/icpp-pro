@@ -535,6 +535,9 @@ uint64_t ic0_performance_counter(uint32_t counter_type) {
     IC_API::trap("ic0_performance_counter: unknown counter type " +
                  std::to_string(counter_type));
   }
+  // A test that feeds its own counter: mockIC.set_performance_counter
+  auto counter = global_mockIC->get_performance_counter();
+  if (counter) return counter(counter_type);
   return std::chrono::duration_cast<std::chrono::nanoseconds>(
              std::chrono::steady_clock::now().time_since_epoch())
       .count();

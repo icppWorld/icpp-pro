@@ -18,7 +18,16 @@
 // Each co_await is a commit point: the state changes made before it are
 // kept, even when the code after it traps. The code after a co_await runs in
 // the reply or reject callback - a new message, with its own instruction
-// limit. ic_api.get_caller() is still the original caller.
+// limit: 38B instructions, where the first message of an update gets 40B,
+// because the IC reserves 5% for the cleanup callback.
+// ic_api.get_caller() is still the original caller.
+//
+// A trap after a co_await rolls back only that message. State set before a
+// commit point stays, so a flag like busy[key] = true, set before the first
+// co_await, stays set forever when a later message traps. An RAII guard does
+// not help: the cleanup destroys the coroutine frame without running its
+// destructors. Give such an entry a time-to-live, e.g. store its start time
+// and treat it as expired after a while.
 //
 // The mechanics follow the Rust CDK (ic-cdk): one callback function for both
 // reply and reject, with the call state as its env, and a cleanup callback
@@ -64,7 +73,10 @@ struct IC_CallError {
     CallRejected,
     // Not performed: the cost of a signature or vetKD key is unknown - the
     // key name or the curve/algorithm is not known (IC_Management)
-    SignCostFailed
+    SignCostFailed,
+    // yield_fresh_budget only: the canister is stopping. Reply now with what
+    // you have
+    CanisterStopping
   };
   Kind kind{Kind::CallRejected};
   IC_RejectCode reject_code{IC_RejectCode::NoError}; // CallRejected
@@ -240,7 +252,13 @@ template <typename T = void> class IC_Task;
 
 // co_await ic_api.yield_fresh_budget() continues in a new message - the
 // reply or reject callback of a call to the canister itself - with a fresh
-// instruction limit. An error means no new message started.
+// instruction limit of 38B. The result:
+// - success: you are in a new message, with a fresh instruction limit.
+// - CanisterStopping: the canister is stopping. Reply now with what you have,
+//   and do no further heavy work: the limit may not be fresh.
+// - any other error: the call was not performed, no new message started.
+//   IC_CallResult<void> r = co_await ic_api.yield_fresh_budget();
+//   if (!r) { /* reply with the partial result */ co_return; }
 class IC_Yield {
 public:
   explicit IC_Yield(IC_Call call);
@@ -424,7 +442,16 @@ class IC_Yield::Awaiter : public IC_CallsAwaiter {
 public:
   explicit Awaiter(IC_Call call)
       : IC_CallsAwaiter(std::vector<IC_Call>{std::move(call)}) {}
+  // A stopping canister does not call itself: the IC would reject the call
+  template <IC_Promise P> bool await_suspend(std::coroutine_handle<P> handle) {
+    m_stopping = stopping();
+    return !m_stopping && suspend(handle, handle.promise().root);
+  }
   IC_CallResult<void> await_resume();
+
+private:
+  static bool stopping();
+  bool m_stopping{false};
 };
 
 template <typename T> T &IC_CallResult<T>::value() {

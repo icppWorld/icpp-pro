@@ -727,6 +727,26 @@ IC_Async yield_loop_async() {
 }
 void yield_loop() { yield_loop_async(); }
 
+// Up to n self-yields, until the canister is stopping. Replies with how far
+// it got: '(n)' -> '("stopping after <i> yields")' or '("done after <n>
+// yields")'
+IC_Async yield_until_stop_async() {
+  IC_API ic_api(CanisterUpdate{"yield_until_stop"}, false);
+  uint32_t n{0};
+  ic_api.from_wire(CandidTypeNat32{&n});
+  for (uint32_t i = 0; i < n; ++i) {
+    IC_CallResult<void> r = co_await ic_api.yield_fresh_budget();
+    if (!r) {
+      if (r.error().kind != IC_CallError::Kind::CanisterStopping) r.value();
+      ic_api.to_wire(
+          CandidTypeText{"stopping after " + std::to_string(i) + " yields"});
+      co_return;
+    }
+  }
+  ic_api.to_wire(CandidTypeText{"done after " + std::to_string(n) + " yields"});
+}
+void yield_until_stop() { yield_until_stop_async(); }
+
 // The instructions of each message, and of the whole call, after each yield:
 // '(n)' -> '(vec message_instructions, vec call_instructions)'
 IC_Async budget_probe_async() {

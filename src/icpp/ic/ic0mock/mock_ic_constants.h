@@ -12,6 +12,8 @@ constexpr std::string_view MOCKIC_CONTROLLER =
 // A canister that runs code has been installed at least once.
 constexpr uint64_t MOCKIC_INITIAL_CANISTER_VERSION = 1;
 constexpr uint32_t MOCKIC_CANISTER_STATUS_RUNNING = 1;
+constexpr uint32_t MOCKIC_CANISTER_STATUS_STOPPING = 2;
+constexpr uint32_t MOCKIC_CANISTER_STATUS_STOPPED = 3;
 // A real 13-node application subnet on mainnet.
 constexpr std::string_view MOCKIC_SUBNET_SELF =
     "pzp6e-ekpqk-3c5x7-2h6so-njoeq-mt45d-h3h6c-q3mxf-vpeq5-fk5o7-yae";

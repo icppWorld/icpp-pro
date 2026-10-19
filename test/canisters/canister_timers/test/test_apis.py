@@ -125,22 +125,30 @@ def test__recurring_fires_and_can_be_cancelled(network: str, principal: str) -> 
     )
     assert _parse_bool(response) is True
 
+    def recurring_count() -> int:
+        return _parse_nat64(
+            call_canister_api(
+                icp_yaml_path=ICP_YAML_PATH,
+                canister_name=CANISTER_NAME,
+                canister_method="get_recurring_count",
+                network=network,
+            )
+        )
+
+    # The baseline is read after the cancel returned: on a slow runner the
+    # timer keeps firing while the cancel call is in flight.
+    at_cancel = recurring_count()
+    assert at_cancel >= after_three
+
     # Quietness check still requires a wall-clock wait — there's no faster
     # way to be sure something *isn't* happening — but we keep it short and
     # allow at most one additional in-flight firing tick that may have been
     # in the pipeline when cancel landed.
     time.sleep(2.5)
-    after_cancel = _parse_nat64(
-        call_canister_api(
-            icp_yaml_path=ICP_YAML_PATH,
-            canister_name=CANISTER_NAME,
-            canister_method="get_recurring_count",
-            network=network,
-        )
-    )
-    assert after_cancel <= after_three + 1, (
+    after_cancel = recurring_count()
+    assert after_cancel <= at_cancel + 1, (
         f"recurring did not stop after cancel: "
-        f"after_three={after_three}, after_cancel={after_cancel}"
+        f"at_cancel={at_cancel}, after_cancel={after_cancel}"
     )
 
 

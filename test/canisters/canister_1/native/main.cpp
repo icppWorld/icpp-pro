@@ -1723,7 +1723,7 @@ int main() {
                   "4449444c0000", silent_on_trap, my_principal);
   mockIC.set_subnet_node_count(MOCKIC_SUBNET_NODE_COUNT);
 
-  mockIC.set_canister_status(2);
+  mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_STOPPING);
   mockIC.set_canister_version(7);
   mockIC.run_test("native_canister_stopping", native_canister_stopping,
                   "4449444c0000", "", silent_on_trap, my_principal);

@@ -484,19 +484,94 @@ def test__compute_many_users_without_reload(network: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def upgrade(
-    network: str, identity: str, canister: str
+def icp_canister(
+    network: str, identity: str, command: str, timeout_seconds: int = 300
 ) -> subprocess.CompletedProcess[str]:
+    """Runs `icp canister <command>` in this project."""
     project = ICP_YAML_PATH.parent.resolve()
     return subprocess.run(
-        f"{ICP} canister install {canister} --mode upgrade --wasm {WASM_PATH.resolve()} "
+        f"{ICP} canister {command} "
         f"--environment {network} --identity {identity} --project-root-override {project} "
         "< /dev/null",
         shell=True,
         capture_output=True,
         text=True,
         check=False,
+        timeout=timeout_seconds,
     )
+
+
+def upgrade(
+    network: str, identity: str, canister: str
+) -> subprocess.CompletedProcess[str]:
+    return icp_canister(
+        network,
+        identity,
+        f"install {canister} --mode upgrade --wasm {WASM_PATH.resolve()}",
+    )
+
+
+def canister_status(network: str, identity: str, canister: str) -> str:
+    """Running, Stopping or Stopped"""
+    result = icp_canister(network, identity, f"status {canister}")
+    assert result.returncode == 0, result.stdout + result.stderr
+    for status in ("Running", "Stopping", "Stopped"):
+        if status in result.stdout:
+            return status
+    raise AssertionError(result.stdout)
+
+
+def test__stop_during_yield_loop(network: str, identity: str) -> None:
+    # A stop while a yield loop runs: yield_fresh_budget returns
+    # CanisterStopping, the loop replies with what it has, and the stop
+    # completes right away instead of waiting for the loop to end.
+    canister = "canister_c"
+    responses: List[str] = []
+
+    def loop() -> None:
+        # Record a failed call too, so the test reports it
+        try:
+            responses.append(
+                call(
+                    network,
+                    canister,
+                    "yield_until_stop",
+                    "(1_000_000 : nat32)",
+                    timeout_seconds=300,
+                )
+            )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            responses.append(f"the call failed: {e!r}")
+
+    # A daemon thread: a call that never returns can't keep pytest alive
+    looping = threading.Thread(target=loop, daemon=True)
+    seconds = 0.0
+    try:
+        looping.start()
+        time.sleep(5)
+        assert looping.is_alive(), "the yield loop ended before the stop"
+
+        start = time.time()
+        stopped = icp_canister(
+            network, identity, f"stop {canister}", timeout_seconds=120
+        )
+        seconds = time.time() - start
+        looping.join(timeout=60)
+        assert stopped.returncode == 0, stopped.stdout + stopped.stderr
+        assert seconds < 60, f"the stop took {seconds:.0f}s"
+        assert not looping.is_alive() and responses, "the call did not return"
+        assert "stopping after" in responses[0], responses[0]
+        assert int(responses[0].split("after ")[1].split(" ")[0]) > 0
+        assert canister_status(network, identity, canister) == "Stopped"
+    finally:
+        # Also after a failed or timed-out stop: the other tests need it
+        # running. An assert here would hide the original failure.
+        started = icp_canister(network, identity, f"start {canister}")
+        if started.returncode != 0:
+            print(f"Could not start {canister}: {started.stdout}{started.stderr}")
+    assert started.returncode == 0, started.stdout + started.stderr
+    assert canister_status(network, identity, canister) == "Running"
+    print(f"The stop took {seconds:.1f}s: {responses[0]}")
 
 
 def test__upgrade_waits_while_call_in_flight(network: str, identity: str) -> None:

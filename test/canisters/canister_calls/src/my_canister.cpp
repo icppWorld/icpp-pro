@@ -214,6 +214,34 @@ IC_Async call_then_trap_async() {
 }
 void call_then_trap() { call_then_trap_async(); }
 
+// Two coroutines in one call: the first traps after its co_await, while the
+// second still waits for its response. The second then replies, or ends
+// without a reply. '(callee, reply)' -> trap
+IC_Async two_coroutines_trap_async(CandidTypePrincipal callee) {
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(callee, "greet")
+          .with_arg(CandidTypeText{"trap"});
+  IC_API::trap("two_coroutines: trapped on purpose after the co_await");
+}
+IC_Async two_coroutines_other_async(CandidTypePrincipal callee, bool reply) {
+  IC_API ic_api(CanisterUpdate{"two_coroutines"}, false);
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(callee, "greet")
+          .with_arg(CandidTypeText{"other"});
+  if (reply) ic_api.to_wire(CandidTypeText{"replied"});
+}
+void two_coroutines() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  std::string callee_text;
+  bool reply{false};
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  args.append(CandidTypeBool{&reply});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+  two_coroutines_trap_async(callee);
+  two_coroutines_other_async(callee, reply);
+}
+
 // '(callee, cycles)' -> '(accepted, refunded)'
 IC_Async call_with_cycles_async() {
   IC_API ic_api(CanisterUpdate{"call_with_cycles"}, false);
@@ -726,6 +754,27 @@ IC_Async yield_loop_async() {
                                 std::to_string(n) + " yields"});
 }
 void yield_loop() { yield_loop_async(); }
+
+// Up to n self-yields, until the canister is stopping. Replies with how far
+// it got: '(n)' -> '("stopping after <i> yields")' or '("done after <n>
+// yields")'
+IC_Async yield_until_stop_async() {
+  IC_API ic_api(CanisterUpdate{"yield_until_stop"}, false);
+  uint32_t n{0};
+  ic_api.from_wire(CandidTypeNat32{&n});
+  for (uint32_t i = 0; i < n; ++i) {
+    IC_CallResult<void> r = co_await ic_api.yield_fresh_budget();
+    if (!r) {
+      // Any other error: value() traps with it
+      if (r.error().kind != IC_CallError::Kind::CanisterStopping) r.value();
+      ic_api.to_wire(
+          CandidTypeText{"stopping after " + std::to_string(i) + " yields"});
+      co_return;
+    }
+  }
+  ic_api.to_wire(CandidTypeText{"done after " + std::to_string(n) + " yields"});
+}
+void yield_until_stop() { yield_until_stop_async(); }
 
 // The instructions of each message, and of the whole call, after each yield:
 // '(n)' -> '(vec message_instructions, vec call_instructions)'

@@ -402,14 +402,30 @@ IC_Yield::Awaiter IC_Yield::operator co_await() const {
   return Awaiter(m_call);
 }
 
+bool IC_Yield::Awaiter::stopping() {
+  return ic0_canister_status() !=
+         static_cast<uint32_t>(IC_API::CanisterStatus::Running);
+}
+
 IC_CallResult<void> IC_Yield::Awaiter::await_resume() {
+  IC_CallError error;
+  error.kind = IC_CallError::Kind::CanisterStopping;
+  if (m_stopping) return error;
+
   IC_CallResult<IC_CallReply> result = this->result(0);
-  // A reject - e.g. the canister is stopping - also continues in a new
-  // message: only a call that was not performed is an error.
-  if (result || result.error().kind == IC_CallError::Kind::CallRejected) {
-    return {};
+  if (result) return {};
+  if (result.error().kind != IC_CallError::Kind::CallRejected) {
+    return result.error();
   }
-  return result.error();
+  // The stop began while the self-call was in flight
+  if (stopping()) {
+    error.reject_code = result.error().reject_code;
+    error.reject_message = result.error().reject_message;
+    return error;
+  }
+  // Any other reject - e.g. SysUnknown or SysTransient - also continues in a
+  // new message: the loop can keep working.
+  return {};
 }
 
 IC_Yield IC_API::yield_fresh_budget() {
@@ -507,6 +523,8 @@ std::string IC_CallError::to_string() const {
     return sign_cost_error == IC_API::SignCostError::InvalidKeyName
                ? "unknown key name"
                : "unknown curve or algorithm";
+  case Kind::CanisterStopping:
+    return "the canister is stopping";
   case Kind::CallRejected:
     break;
   }

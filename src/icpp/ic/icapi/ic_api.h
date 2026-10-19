@@ -173,9 +173,13 @@ public:
   // docs start: performance_counter
   // Instructions executed so far in the current message (Instructions), or
   // in the whole call context (CallContextInstructions). Available in every
-  // entry point. The Mock IC cannot count wasm instructions; it returns an
-  // increasing nanosecond count, so the difference of two readings still
-  // profiles the code in between.
+  // entry point. The limit of one message is 40B instructions for the first
+  // message of an update, and 38B in a reply or reject callback - e.g. after
+  // co_await ic_api.yield_fresh_budget(): an instruction guard in a yield
+  // loop needs a lower ceiling after a yield. The Mock IC cannot count wasm
+  // instructions; it returns an increasing nanosecond count, so the
+  // difference of two readings still profiles the code in between. A native
+  // test can feed its own counter with mockIC.set_performance_counter.
   enum class PerformanceCounterType : uint32_t {
     Instructions = 0,
     CallContextInstructions = 1
@@ -291,7 +295,10 @@ public:
   // docs start: yield_fresh_budget
   // co_await ic_api.yield_fresh_budget() continues the coroutine in a new
   // message, with a fresh instruction limit, by calling the canister itself.
-  // See ic_async.h. Not available in C++17.
+  // A reply or reject callback gets 38B instructions, where the first message
+  // of an update gets 40B. On a stopping canister it returns the error
+  // CanisterStopping: reply then with what you have. See ic_async.h. Not
+  // available in C++17.
   class IC_Yield yield_fresh_budget(); // docs end: yield_fresh_budget
 #endif
 

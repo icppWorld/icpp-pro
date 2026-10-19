@@ -13,6 +13,7 @@ service : {
   "call_reject" : (principal) -> (text);
   "call_trap" : (principal) -> (text);
   "call_then_trap" : (principal) -> ();
+  "two_coroutines" : (principal, bool) -> (text);
   "call_with_cycles" : (principal, nat64) -> (nat64, nat64);
   "call_bounded" : (principal, nat32, nat32) -> (text);
   "call_sequence" : (principal, text) -> (text);
@@ -25,6 +26,7 @@ service : {
   "call_all" : (vec principal, vec text) -> (vec text);
   "call_all_then_trap" : (vec principal, vec text) -> ();
   "yield_loop" : (nat32) -> (text);
+  "yield_until_stop" : (nat32) -> (text);
   "budget_probe" : (nat32) -> (vec nat64, vec nat64);
   "start_held_call" : (principal) -> ();
   "compute" : (nat32, nat64, nat64, nat64, bool) -> (nat64, nat32, nat64, nat64);

@@ -50,15 +50,7 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
   ++m_tests_total;
   std::cout << "\n----------\n";
   std::cout << "MockIC run_test: " << test_name << ": \n";
-
-  // Always start with a clean type table registry in the registry singleton
-  CandidSerializeTypeTableRegistry::get_instance().clear();
-  m_B_in.clear();
-  m_B_out.clear();
-  m_B_in.store_hex_string(candid_in);
-  m_caller = CandidTypePrincipal(caller);
-  m_canister_self = CandidTypePrincipal(std::string(MOCKIC_CANISTER_SELF));
-  start_root_context(test_name);
+  start_message(test_name, candid_in, caller, true);
 
   m_silent_on_trap = silent_on_trap;
   try {
@@ -72,6 +64,18 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
       if (m_contexts[m_root_context].done) {
         m_B_out = m_contexts[m_root_context].reply;
       }
+    }
+    // A trap after a co_await fails the test, like a trap before it
+    if (m_contexts[m_root_context].trapped) {
+      ++m_tests_failed;
+      std::cout << "\nTest: '" << test_name
+                << "' Failed with a trap after a co_await:\n";
+      std::cerr << m_contexts[m_root_context].trap_message << '\n';
+      if (m_exit_on_fail) {
+        test_summary();
+        exit(1);
+      }
+      return 1;
     }
 
     if (candid_out_expected == "") {
@@ -125,19 +129,18 @@ int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
   ++m_tests_total;
   std::cout << "\n----------\n";
   std::cout << "MockIC run_trap_test: " << test_name << ": \n";
-
-  m_B_in.clear();
-  m_B_out.clear();
-  m_B_in.store_hex_string(candid_in);
-  m_caller = CandidTypePrincipal(caller);
-  m_canister_self = CandidTypePrincipal(std::string(MOCKIC_CANISTER_SELF));
-  start_root_context(test_name);
+  start_message(test_name, candid_in, caller, true);
 
   m_silent_on_trap = silent_on_trap;
   try {
-    // Now call the API we're testing. It must trap.
+    // Now call the API we're testing. It must trap, before or after a
+    // co_await.
     api_callback();
     if (m_auto_drain) drain();
+    if (m_contexts[m_root_context].trapped) {
+      std::cout << "Test: " << test_name << ": Passed\n";
+      return 0;
+    }
 
     // If it did not trap, give an error message
     ++m_tests_failed;
@@ -152,6 +155,35 @@ int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
     std::cout << "Test: " << test_name << ": Passed\n";
     return 0;
   }
+}
+
+MockIC::CallHandle MockIC::start_call(const std::string &name,
+                                      void (*api_callback)(),
+                                      const std::string &candid_in,
+                                      const std::string &caller) {
+  std::cout << "\n----------\n";
+  std::cout << "MockIC start_call: " << name << ": \n";
+  // Never forgets the earlier calls: their handles stay valid
+  start_message(name, candid_in, caller, false);
+  CallHandle handle{m_generation, m_root_context};
+  try {
+    api_callback();
+  } catch (const std::exception &e) {
+    std::cout << "Mock IC: '" << name << "' trapped: " << e.what() << "\n";
+    if (!m_contexts[handle.context].done) {
+      respond(handle.context, false, {}, 5,
+              std::string("trapped: ") + e.what());
+    }
+  }
+  return handle;
+}
+
+MockIC::CallContext &MockIC::context(CallHandle h) {
+  if (h.generation != m_generation || h.context >= m_contexts.size()) {
+    IC_API::trap("MockIC: a stale CallHandle - a run_test or run_trap_test "
+                 "forgot its call");
+  }
+  return m_contexts[h.context];
 }
 
 int MockIC::test_summary() {
@@ -210,12 +242,27 @@ void MockIC::expect_call(const std::string &callee, const std::string &method,
   m_expected[{callee, method}] = response;
 }
 
-// A test starts a new root call context, unless calls are still queued from
-// a test that turned auto_drain off: their contexts must stay valid.
-void MockIC::start_root_context(const std::string &method) {
-  if (m_events.empty()) {
+void MockIC::start_message(const std::string &test_name,
+                           const std::string &candid_in,
+                           const std::string &caller, bool reset) {
+  // Always start with a clean type table registry in the registry singleton
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+  m_B_in.clear();
+  m_B_out.clear();
+  m_B_in.store_hex_string(candid_in);
+  m_caller = CandidTypePrincipal(caller);
+  m_canister_self = CandidTypePrincipal(std::string(MOCKIC_CANISTER_SELF));
+  start_root_context(test_name, reset);
+}
+
+// A test starts a new root call context. A run_test or run_trap_test forgets
+// the earlier calls, unless calls are still queued from a test that turned
+// auto_drain off: their contexts must stay valid.
+void MockIC::start_root_context(const std::string &method, bool reset) {
+  if (reset && m_events.empty()) {
     m_calls.clear();
     m_contexts.clear();
+    ++m_generation;
   }
   CallContext context;
   context.caller = m_caller;
@@ -278,6 +325,8 @@ void MockIC::respond(size_t context, bool is_reply,
                      const std::string &reject_message) {
   CallContext &ctx = m_contexts[context];
   ctx.done = true;
+  ctx.rejected = !is_reply;
+  ctx.reject_message = reject_message;
   if (ctx.from_call < 0) return; // the root context: the reply of the test
   Event event;
   event.is_response = true;
@@ -301,15 +350,20 @@ void MockIC::msg_reject(const std::string &message) {
 }
 
 void MockIC::drain() {
-  while (!m_events.empty()) {
-    Event event = m_events.front();
-    m_events.pop_front();
-    if (event.is_response) {
-      deliver_response(event);
-    } else {
-      deliver_request(event.call);
-    }
+  while (drain_one()) {
   }
+}
+
+bool MockIC::drain_one() {
+  if (m_events.empty()) return false;
+  Event event = m_events.front();
+  m_events.pop_front();
+  if (event.is_response) {
+    deliver_response(event);
+  } else {
+    deliver_request(event.call);
+  }
+  return true;
 }
 
 namespace {
@@ -416,7 +470,23 @@ void MockIC::deliver_request(size_t call_index) {
     return;
   }
 
-  // The canister itself: run the method, in a new call context.
+  // The canister itself. Stopping or stopped, it rejects every call, like
+  // the IC: "Canister <id> is stopping".
+  if (m_canister_status != MOCKIC_CANISTER_STATUS_RUNNING) {
+    Event event;
+    event.is_response = true;
+    event.call = call_index;
+    event.is_reply = false;
+    event.reject_code = 5; // CANISTER_ERROR
+    event.reject_message =
+        "Canister " + callee +
+        (m_canister_status == MOCKIC_CANISTER_STATUS_STOPPED ? " is stopped"
+                                                             : " is stopping");
+    event.refund = call.cycles;
+    m_events.push_back(event);
+    return;
+  }
+  // Run the method, in a new call context.
   // ic_api.yield_fresh_budget() calls __icpp_yield, which only replies.
   if (call.method == "__icpp_yield" && m_methods.count(call.method) == 0) {
     Event event;
@@ -570,11 +640,13 @@ void MockIC::deliver_response(const Event &event) {
   m_msg_method_name = ctx.method;
   m_msg_deadline = ctx.deadline; // of the call this context answers
 
+  std::optional<std::string> trap;
   try {
     reinterpret_cast<void (*)(uintptr_t)>(call.fun)(call.env);
   } catch (const std::exception &e) {
     std::cout << "Mock IC: the callback of '" << call.method
               << "' trapped: " << e.what() << "\n";
+    trap = e.what();
     if (call.cleanup_fun != 0) {
       try {
         reinterpret_cast<void (*)(uintptr_t)>(call.cleanup_fun)(
@@ -587,8 +659,17 @@ void MockIC::deliver_response(const Event &event) {
   }
   CallContext &after = m_contexts[origin];
   after.cycles_available = m_msg_cycles_available;
-  if (!after.done && after.outstanding == 0 && after.from_call >= 0) {
-    respond(origin, false, {}, 5, "the canister did not reply to the call");
+  // A trap anywhere in the call counts, also when another coroutine of the
+  // same call is still waiting for its response
+  if (trap && !after.trapped) {
+    after.trapped = true;
+    after.trap_message = "trapped: " + *trap;
+  }
+  // Also the root context: a call of the test that traps after a co_await
+  if (!after.done && after.outstanding == 0) {
+    respond(origin, false, {}, 5,
+            after.trapped ? after.trap_message
+                          : "the canister did not reply to the call");
   }
 
   m_B_in = saved.B_in;

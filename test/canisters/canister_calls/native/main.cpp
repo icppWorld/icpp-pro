@@ -42,6 +42,7 @@ const std::string BOUNDED_B{
     "4449444c0003687979010a000000000000000201010100000003000000"}; // (B,1,3)
 const std::string N3{"4449444c00017903000000"};                    // (3)
 const std::string N2{"4449444c00017902000000"};                    // (2)
+const std::string N100{"4449444c00017964000000"};                  // (100)
 const std::string EMPTY{"4449444c0000"};                           // ()
 const std::string P_SELF_SELF{
     "4449444c00026868010a0000000000c0115a0101010a0000000000c0115a0101"};
@@ -58,6 +59,17 @@ const std::string OUT_HI_B{"4449444c0001710948692066726f6d2042"};
 const std::string OUT_CYCLES{
     "4449444c0002787820a107000000000020a1070000000000"}; // (500_000, 500_000)
 
+// The text of a Candid reply, from hex
+std::string text_of(const std::string &hex) {
+  VecBytes out;
+  out.store_hex_string(hex);
+  std::string text;
+  CandidArgs args;
+  args.append(CandidTypeText{&text});
+  CandidDeserialize(out, args);
+  return text;
+}
+
 // Runs a method that replies with text, and checks the text starts with
 // `prefix`.
 int run_text_test(MockIC &mockIC, const std::string &name, void (*fn)(),
@@ -65,12 +77,7 @@ int run_text_test(MockIC &mockIC, const std::string &name, void (*fn)(),
                   const std::string &caller) {
   std::string out_hex;
   mockIC.run_test(name, fn, in, "", true, caller, &out_hex);
-  VecBytes out;
-  out.store_hex_string(out_hex);
-  std::string text;
-  CandidArgs args;
-  args.append(CandidTypeText{&text});
-  CandidDeserialize(out, args);
+  std::string text = text_of(out_hex);
   if (text.rfind(prefix, 0) != 0) {
     std::cout << "Test '" << name << "' Failed: '" << text
               << "' does not start with '" << prefix << "'\n";
@@ -347,10 +354,86 @@ int main() {
   mockIC.run_test("budget_probe 2", budget_probe, N2, "", silent_on_trap,
                   my_principal);
 
+  // A test can feed its own instruction counter
+  mockIC.set_performance_counter(
+      [](uint32_t type) -> uint64_t { return 1000 + type; });
+  {
+    std::string out_hex;
+    mockIC.run_test("budget_probe 2, own counter", budget_probe, N2, "",
+                    silent_on_trap, my_principal, &out_hex);
+    std::vector<uint64_t> message, call;
+    CandidArgs out;
+    out.append(CandidTypeVecNat64{&message});
+    out.append(CandidTypeVecNat64{&call});
+    decode(out_hex, out);
+    check(message == std::vector<uint64_t>{1000, 1000} &&
+              call == std::vector<uint64_t>{1001, 1001},
+          "set_performance_counter: the counter the test fed");
+  }
+  mockIC.clear_performance_counter();
+
+  // A stopping canister: yield_fresh_budget returns CanisterStopping, so
+  // the loop replies with what it has.
+  // - Stopping before the yield: no self-call is made.
+  mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_STOPPING);
+  run_text_test(mockIC, "yield_until_stop, stopping before the yield",
+                yield_until_stop, N3, "stopping after 0 yields", my_principal);
+  check(mockIC.pending_calls() == 0, "stopping: no self-call queued");
+  mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_RUNNING);
+  run_text_test(mockIC, "yield_until_stop, running", yield_until_stop, N3,
+                "done after 3 yields", my_principal);
+  // - Stopping while the self-call is queued: the IC rejects it.
+  //   Each yield is 2 events: the self-call, then its response.
+  mockIC.set_auto_drain(false);
+  {
+    MockIC::CallHandle h = mockIC.start_call(
+        "yield_until_stop 100", yield_until_stop, N100, my_principal);
+    for (int i = 0; i < 4; ++i)
+      mockIC.drain_one();
+    mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_STOPPING);
+    mockIC.drain();
+    mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_RUNNING);
+    check(mockIC.call_done(h) && !mockIC.was_rejected(h) &&
+              text_of(mockIC.reply_hex(h)) == "stopping after 2 yields",
+          "yield_until_stop, stopping while the self-call is queued");
+  }
+  // - Stopping while the response is queued: it is still delivered, and the
+  //   next yield sees the stop.
+  {
+    MockIC::CallHandle h = mockIC.start_call(
+        "yield_until_stop 100", yield_until_stop, N100, my_principal);
+    for (int i = 0; i < 5; ++i)
+      mockIC.drain_one();
+    mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_STOPPING);
+    mockIC.drain();
+    mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_RUNNING);
+    check(text_of(mockIC.reply_hex(h)) == "stopping after 3 yields",
+          "yield_until_stop, stopping while the response is queued");
+  }
+  // The reply of each interleaved call, and a call that traps
+  {
+    MockIC::CallHandle a =
+        mockIC.start_call("yield_loop 2", yield_loop, N2, my_principal);
+    MockIC::CallHandle b =
+        mockIC.start_call("yield_loop 3", yield_loop, N3, my_principal);
+    MockIC::CallHandle c =
+        mockIC.start_call("trap_me", trap_me, EMPTY, my_principal);
+    check(!mockIC.call_done(a) && !mockIC.call_done(b),
+          "start_call: not done before drain");
+    mockIC.drain();
+    check(text_of(mockIC.reply_hex(a)) == my_principal + " after 2 yields" &&
+              text_of(mockIC.reply_hex(b)) == my_principal + " after 3 yields",
+          "start_call: the reply of each interleaved call");
+    check(mockIC.call_done(c) && mockIC.was_rejected(c) &&
+              mockIC.reject_message(c).rfind("trapped: ", 0) == 0,
+          "start_call: a trap is a reject");
+  }
+  mockIC.set_auto_drain(true);
+
   // The code after a co_await traps: the cleanup frees the frame, and the
   // call is no longer in flight. (The Mock IC does not roll back g_after.)
-  mockIC.run_test("call_then_trap self", call_then_trap, P_SELF, "",
-                  silent_on_trap, my_principal);
+  mockIC.run_trap_test("call_then_trap self", call_then_trap, P_SELF,
+                       silent_on_trap, my_principal);
   // (before, after, destroyed, calls_in_flight, held_done)
   mockIC.run_test("get_state after call_then_trap", get_state, EMPTY,
                   "4449444c0005787878797e01000000000000000100000000000000"
@@ -373,8 +456,8 @@ int main() {
     // A trap in a task, after its co_await: the cleanup frees the task's
     // frame and the root's. (The Mock IC does not roll back g_after.)
     State before = read_state(mockIC, my_principal);
-    mockIC.run_test("task_then_trap self", task_then_trap, P_SELF, "",
-                    silent_on_trap, my_principal);
+    mockIC.run_trap_test("task_then_trap self", task_then_trap, P_SELF,
+                         silent_on_trap, my_principal);
     State after = read_state(mockIC, my_principal);
     check(after.destroyed == before.destroyed + 2 && after.in_flight == 0,
           "task_then_trap: both frames freed, no call in flight");
@@ -405,9 +488,9 @@ int main() {
                  my_principal);
   {
     State before = read_state(mockIC, my_principal);
-    mockIC.run_test("call_all_then_trap self", call_all_then_trap,
-                    calls_args({self, self}, {"greet", "reject_me"}), "",
-                    silent_on_trap, my_principal);
+    mockIC.run_trap_test("call_all_then_trap self", call_all_then_trap,
+                         calls_args({self, self}, {"greet", "reject_me"}),
+                         silent_on_trap, my_principal);
     State after = read_state(mockIC, my_principal);
     check(after.destroyed == before.destroyed + 1 && after.in_flight == 0,
           "call_all_then_trap: the frame freed, no call in flight");
@@ -456,11 +539,9 @@ int main() {
     in.append(CandidTypePrincipal{self});
     in.append(CandidTypeText{what});
     VecBytes in_bytes = CandidSerialize(in).get_B();
-    std::string out_hex;
-    mockIC.run_test("cq_in_callback " + what, cq_in_callback,
-                    in_bytes.as_hex_string(), "", silent_on_trap, my_principal,
-                    &out_hex);
-    check(out_hex.empty(), "cq_in_callback " + what + ": refused, no reply");
+    mockIC.run_trap_test("cq_in_callback " + what + ": refused", cq_in_callback,
+                         in_bytes.as_hex_string(), silent_on_trap,
+                         my_principal);
   }
   {
     // A composite query can't send cycles: it traps before the call
@@ -474,8 +555,8 @@ int main() {
   }
   {
     State before = read_state(mockIC, my_principal);
-    mockIC.run_test("cq_then_trap self", cq_then_trap, P_SELF, "",
-                    silent_on_trap, my_principal);
+    mockIC.run_trap_test("cq_then_trap self", cq_then_trap, P_SELF,
+                         silent_on_trap, my_principal);
     State after = read_state(mockIC, my_principal);
     check(after.destroyed == before.destroyed + 1 && after.in_flight == 0,
           "cq_then_trap: the frame freed, never counted in flight");
@@ -527,6 +608,54 @@ int main() {
     check(state.in_flight == 0 && state.held_done,
           "get_state after the held call: done, no call in flight");
   }
+
+  // Two coroutines in one call: a trap in one fails the call, also when the
+  // other replies, or ends without a reply, later
+  for (bool reply : {false, true}) {
+    CandidArgs in;
+    in.append(CandidTypePrincipal{self});
+    in.append(CandidTypeBool{reply});
+    VecBytes in_bytes = CandidSerialize(in).get_B();
+    mockIC.run_trap_test(std::string("two_coroutines, the other ") +
+                             (reply ? "replies" : "does not reply"),
+                         two_coroutines, in_bytes.as_hex_string(),
+                         silent_on_trap, my_principal);
+  }
+
+  // start_call: the reply of each call, and a stale handle
+  mockIC.set_auto_drain(false);
+  {
+    // A call that traps after a co_await: the caller gets a reject
+    MockIC::CallHandle h = mockIC.start_call(
+        "call_then_trap self", call_then_trap, P_SELF, my_principal);
+    mockIC.drain();
+    check(mockIC.call_done(h) && mockIC.was_rejected(h),
+          "start_call: a trap after a co_await is a reject");
+
+    // Two calls on a stopping canister: neither queues a call, and each
+    // handle still reads its own reply
+    mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_STOPPING);
+    MockIC::CallHandle a = mockIC.start_call(
+        "yield_until_stop 3", yield_until_stop, N3, my_principal);
+    MockIC::CallHandle b =
+        mockIC.start_call("yield_loop 2", yield_loop, N2, my_principal);
+    mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_RUNNING);
+    check(text_of(mockIC.reply_hex(a)) == "stopping after 0 yields" &&
+              mockIC.was_rejected(b) && mockIC.call_done(h),
+          "start_call: handles stay valid when nothing is queued");
+
+    // A run_test with nothing queued forgets the calls: an old handle traps
+    mockIC.run_test("get_state", get_state, EMPTY, "", silent_on_trap,
+                    my_principal);
+    bool trapped{false};
+    try {
+      mockIC.reply_hex(a);
+    } catch (const std::exception &) {
+      trapped = true;
+    }
+    check(trapped, "start_call: a stale handle traps");
+  }
+  mockIC.set_auto_drain(true);
 
   // returns 1 if any tests failed
   return mockIC.test_summary();

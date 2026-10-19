@@ -141,11 +141,13 @@ jobs:
       # macOS this halves the wall-clock time: the free plan runs at most 5
       # macOS jobs at once. JOBS=3 deploys & tests 3 canisters at a time; each
       # gets its own local network, and they mostly wait on the replica.
+      # macos-15-intel is too slow for that: with 3 at a time, plain query
+      # calls time out after 30 s. It tests one canister at a time.
       - name: all-tests
         if: matrix.python-version == env.ALL_TESTS_PYTHON
         shell: bash -l {0}
         run: |
-          make all-tests JOBS=3
+          make all-tests JOBS=${{ matrix.os == 'macos-15-intel' && 1 || 3 }}
 
       - name: smoke-tests
         if: matrix.python-version != env.ALL_TESTS_PYTHON

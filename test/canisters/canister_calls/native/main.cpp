@@ -432,8 +432,8 @@ int main() {
 
   // The code after a co_await traps: the cleanup frees the frame, and the
   // call is no longer in flight. (The Mock IC does not roll back g_after.)
-  mockIC.run_test("call_then_trap self", call_then_trap, P_SELF, "",
-                  silent_on_trap, my_principal);
+  mockIC.run_trap_test("call_then_trap self", call_then_trap, P_SELF,
+                       silent_on_trap, my_principal);
   // (before, after, destroyed, calls_in_flight, held_done)
   mockIC.run_test("get_state after call_then_trap", get_state, EMPTY,
                   "4449444c0005787878797e01000000000000000100000000000000"
@@ -456,8 +456,8 @@ int main() {
     // A trap in a task, after its co_await: the cleanup frees the task's
     // frame and the root's. (The Mock IC does not roll back g_after.)
     State before = read_state(mockIC, my_principal);
-    mockIC.run_test("task_then_trap self", task_then_trap, P_SELF, "",
-                    silent_on_trap, my_principal);
+    mockIC.run_trap_test("task_then_trap self", task_then_trap, P_SELF,
+                         silent_on_trap, my_principal);
     State after = read_state(mockIC, my_principal);
     check(after.destroyed == before.destroyed + 2 && after.in_flight == 0,
           "task_then_trap: both frames freed, no call in flight");
@@ -488,9 +488,9 @@ int main() {
                  my_principal);
   {
     State before = read_state(mockIC, my_principal);
-    mockIC.run_test("call_all_then_trap self", call_all_then_trap,
-                    calls_args({self, self}, {"greet", "reject_me"}), "",
-                    silent_on_trap, my_principal);
+    mockIC.run_trap_test("call_all_then_trap self", call_all_then_trap,
+                         calls_args({self, self}, {"greet", "reject_me"}),
+                         silent_on_trap, my_principal);
     State after = read_state(mockIC, my_principal);
     check(after.destroyed == before.destroyed + 1 && after.in_flight == 0,
           "call_all_then_trap: the frame freed, no call in flight");
@@ -539,11 +539,9 @@ int main() {
     in.append(CandidTypePrincipal{self});
     in.append(CandidTypeText{what});
     VecBytes in_bytes = CandidSerialize(in).get_B();
-    std::string out_hex;
-    mockIC.run_test("cq_in_callback " + what, cq_in_callback,
-                    in_bytes.as_hex_string(), "", silent_on_trap, my_principal,
-                    &out_hex);
-    check(out_hex.empty(), "cq_in_callback " + what + ": refused, no reply");
+    mockIC.run_trap_test("cq_in_callback " + what + ": refused", cq_in_callback,
+                         in_bytes.as_hex_string(), silent_on_trap,
+                         my_principal);
   }
   {
     // A composite query can't send cycles: it traps before the call
@@ -557,8 +555,8 @@ int main() {
   }
   {
     State before = read_state(mockIC, my_principal);
-    mockIC.run_test("cq_then_trap self", cq_then_trap, P_SELF, "",
-                    silent_on_trap, my_principal);
+    mockIC.run_trap_test("cq_then_trap self", cq_then_trap, P_SELF,
+                         silent_on_trap, my_principal);
     State after = read_state(mockIC, my_principal);
     check(after.destroyed == before.destroyed + 1 && after.in_flight == 0,
           "cq_then_trap: the frame freed, never counted in flight");

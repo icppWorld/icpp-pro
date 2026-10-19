@@ -119,6 +119,8 @@ public:
   // name, a call to another canister gets the response set with expect_call,
   // and the response runs the caller's callback. Unlike the IC, the Mock IC
   // does not roll back the state changes of a trapped message.
+  // A trap after a co_await counts as a trap: it fails run_test, and passes
+  // run_trap_test.
 
   // The response of another canister to a call.
   struct MockResponse {
@@ -264,8 +266,9 @@ private:
     VecBytes reply;
     bool rejected{false};
     std::string reject_message;
-    int outstanding{0}; // performed calls without a response yet
-    int from_call{-1};  // the call it answers
+    bool trapped{false}; // a callback trapped, and that ended the call
+    int outstanding{0};  // performed calls without a response yet
+    int from_call{-1};   // the call it answers
     __uint128_t cycles_available{0};
     uint64_t deadline{0}; // of the call it answers: 0 unless bounded-wait
   };

@@ -65,6 +65,18 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
         m_B_out = m_contexts[m_root_context].reply;
       }
     }
+    // A trap after a co_await fails the test, like a trap before it
+    if (m_contexts[m_root_context].trapped) {
+      ++m_tests_failed;
+      std::cout << "\nTest: '" << test_name
+                << "' Failed with a trap after a co_await:\n";
+      std::cerr << m_contexts[m_root_context].reject_message << '\n';
+      if (m_exit_on_fail) {
+        test_summary();
+        exit(1);
+      }
+      return 1;
+    }
 
     if (candid_out_expected == "") {
       std::cout << "Test: " << test_name << ": Passed\n";
@@ -121,9 +133,14 @@ int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
 
   m_silent_on_trap = silent_on_trap;
   try {
-    // Now call the API we're testing. It must trap.
+    // Now call the API we're testing. It must trap, before or after a
+    // co_await.
     api_callback();
     if (m_auto_drain) drain();
+    if (m_contexts[m_root_context].trapped) {
+      std::cout << "Test: " << test_name << ": Passed\n";
+      return 0;
+    }
 
     // If it did not trap, give an error message
     ++m_tests_failed;
@@ -623,11 +640,13 @@ void MockIC::deliver_response(const Event &event) {
   m_msg_method_name = ctx.method;
   m_msg_deadline = ctx.deadline; // of the call this context answers
 
+  std::optional<std::string> trap;
   try {
     reinterpret_cast<void (*)(uintptr_t)>(call.fun)(call.env);
   } catch (const std::exception &e) {
     std::cout << "Mock IC: the callback of '" << call.method
               << "' trapped: " << e.what() << "\n";
+    trap = e.what();
     if (call.cleanup_fun != 0) {
       try {
         reinterpret_cast<void (*)(uintptr_t)>(call.cleanup_fun)(
@@ -642,7 +661,10 @@ void MockIC::deliver_response(const Event &event) {
   after.cycles_available = m_msg_cycles_available;
   // Also the root context: a call of the test that traps after a co_await
   if (!after.done && after.outstanding == 0) {
-    respond(origin, false, {}, 5, "the canister did not reply to the call");
+    after.trapped = trap.has_value();
+    respond(origin, false, {}, 5,
+            trap ? "trapped: " + *trap
+                 : "the canister did not reply to the call");
   }
 
   m_B_in = saved.B_in;

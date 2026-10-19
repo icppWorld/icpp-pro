@@ -527,6 +527,7 @@ def test__stop_during_yield_loop(network: str, identity: str) -> None:
     # completes right away instead of waiting for the loop to end.
     canister = "canister_c"
     responses: List[str] = []
+    # A daemon thread: a call that never returns can't keep pytest alive
     looping = threading.Thread(
         target=lambda: responses.append(
             call(
@@ -536,17 +537,21 @@ def test__stop_during_yield_loop(network: str, identity: str) -> None:
                 "(1_000_000 : nat32)",
                 timeout_seconds=300,
             )
-        )
+        ),
+        daemon=True,
     )
-    looping.start()
-    time.sleep(5)
-    assert looping.is_alive(), "the yield loop ended before the stop"
-
-    start = time.time()
-    stopped = icp_canister(network, identity, f"stop {canister}")
-    seconds = time.time() - start
-    looping.join(timeout=60)
+    seconds = 0.0
     try:
+        looping.start()
+        time.sleep(5)
+        assert looping.is_alive(), "the yield loop ended before the stop"
+
+        start = time.time()
+        stopped = icp_canister(
+            network, identity, f"stop {canister}", timeout_seconds=120
+        )
+        seconds = time.time() - start
+        looping.join(timeout=60)
         assert stopped.returncode == 0, stopped.stdout + stopped.stderr
         assert seconds < 60, f"the stop took {seconds:.0f}s"
         assert not looping.is_alive()
@@ -554,6 +559,7 @@ def test__stop_during_yield_loop(network: str, identity: str) -> None:
         assert int(responses[0].split("after ")[1].split(" ")[0]) > 0
         assert canister_status(network, identity, canister) == "Stopped"
     finally:
+        # Also after a failed or timed-out stop: the other tests need it running
         started = icp_canister(network, identity, f"start {canister}")
         assert started.returncode == 0, started.stdout + started.stderr
     assert canister_status(network, identity, canister) == "Running"

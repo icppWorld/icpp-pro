@@ -527,19 +527,24 @@ def test__stop_during_yield_loop(network: str, identity: str) -> None:
     # completes right away instead of waiting for the loop to end.
     canister = "canister_c"
     responses: List[str] = []
-    # A daemon thread: a call that never returns can't keep pytest alive
-    looping = threading.Thread(
-        target=lambda: responses.append(
-            call(
-                network,
-                canister,
-                "yield_until_stop",
-                "(1_000_000 : nat32)",
-                timeout_seconds=300,
+
+    def loop() -> None:
+        # Record a failed call too, so the test reports it
+        try:
+            responses.append(
+                call(
+                    network,
+                    canister,
+                    "yield_until_stop",
+                    "(1_000_000 : nat32)",
+                    timeout_seconds=300,
+                )
             )
-        ),
-        daemon=True,
-    )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            responses.append(f"the call failed: {e!r}")
+
+    # A daemon thread: a call that never returns can't keep pytest alive
+    looping = threading.Thread(target=loop, daemon=True)
     seconds = 0.0
     try:
         looping.start()
@@ -554,14 +559,17 @@ def test__stop_during_yield_loop(network: str, identity: str) -> None:
         looping.join(timeout=60)
         assert stopped.returncode == 0, stopped.stdout + stopped.stderr
         assert seconds < 60, f"the stop took {seconds:.0f}s"
-        assert not looping.is_alive()
+        assert not looping.is_alive() and responses, "the call did not return"
         assert "stopping after" in responses[0], responses[0]
         assert int(responses[0].split("after ")[1].split(" ")[0]) > 0
         assert canister_status(network, identity, canister) == "Stopped"
     finally:
-        # Also after a failed or timed-out stop: the other tests need it running
+        # Also after a failed or timed-out stop: the other tests need it
+        # running. An assert here would hide the original failure.
         started = icp_canister(network, identity, f"start {canister}")
-        assert started.returncode == 0, started.stdout + started.stderr
+        if started.returncode != 0:
+            print(f"Could not start {canister}: {started.stdout}{started.stderr}")
+    assert started.returncode == 0, started.stdout + started.stderr
     assert canister_status(network, identity, canister) == "Running"
     print(f"The stop took {seconds:.1f}s: {responses[0]}")
 

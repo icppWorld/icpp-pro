@@ -737,6 +737,7 @@ IC_Async yield_until_stop_async() {
   for (uint32_t i = 0; i < n; ++i) {
     IC_CallResult<void> r = co_await ic_api.yield_fresh_budget();
     if (!r) {
+      // Any other error: value() traps with it
       if (r.error().kind != IC_CallError::Kind::CanisterStopping) r.value();
       ic_api.to_wire(
           CandidTypeText{"stopping after " + std::to_string(i) + " yields"});

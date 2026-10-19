@@ -611,6 +611,41 @@ int main() {
           "get_state after the held call: done, no call in flight");
   }
 
+  // start_call: the reply of each call, and a stale handle
+  mockIC.set_auto_drain(false);
+  {
+    // A call that traps after a co_await: the caller gets a reject
+    MockIC::CallHandle h = mockIC.start_call(
+        "call_then_trap self", call_then_trap, P_SELF, my_principal);
+    mockIC.drain();
+    check(mockIC.call_done(h) && mockIC.was_rejected(h),
+          "start_call: a trap after a co_await is a reject");
+
+    // Two calls on a stopping canister: neither queues a call, and each
+    // handle still reads its own reply
+    mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_STOPPING);
+    MockIC::CallHandle a = mockIC.start_call(
+        "yield_until_stop 3", yield_until_stop, N3, my_principal);
+    MockIC::CallHandle b =
+        mockIC.start_call("yield_loop 2", yield_loop, N2, my_principal);
+    mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_RUNNING);
+    check(text_of(mockIC.reply_hex(a)) == "stopping after 0 yields" &&
+              mockIC.was_rejected(b) && mockIC.call_done(h),
+          "start_call: handles stay valid when nothing is queued");
+
+    // A run_test with nothing queued forgets the calls: an old handle traps
+    mockIC.run_test("get_state", get_state, EMPTY, "", silent_on_trap,
+                    my_principal);
+    bool trapped{false};
+    try {
+      mockIC.reply_hex(a);
+    } catch (const std::exception &) {
+      trapped = true;
+    }
+    check(trapped, "start_call: a stale handle traps");
+  }
+  mockIC.set_auto_drain(true);
+
   // returns 1 if any tests failed
   return mockIC.test_summary();
 }

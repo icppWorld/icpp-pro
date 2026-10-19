@@ -102,7 +102,7 @@ public:
   // ic0.performance_counter returns steady-clock nanoseconds natively. A test
   // of code that sizes its work by instructions can feed its own counter,
   // e.g. one it advances per step: fn(counter_type). Sticky too.
-  std::function<uint64_t(uint32_t)> get_performance_counter() {
+  const std::function<uint64_t(uint32_t)> &get_performance_counter() const {
     return m_performance_counter;
   }
   void set_performance_counter(std::function<uint64_t(uint32_t)> fn) {
@@ -162,23 +162,26 @@ public:
   //   MockIC::CallHandle b = mockIC.start_call("b", my_method, IN_B);
   //   mockIC.drain();
   //   mockIC.reply_hex(a); mockIC.reply_hex(b);
-  // A handle stays valid until a run_test, run_trap_test or start_call starts
-  // a call with no calls queued.
-  using CallHandle = size_t;
+  // A handle stays valid until a run_test or run_trap_test starts with no
+  // calls queued: that forgets all calls, and using an older handle traps.
+  // Unlike the IC, the Mock IC runs a call that a test starts on a stopping
+  // canister.
+  struct CallHandle {
+    uint64_t generation;
+    size_t context;
+  };
   CallHandle start_call(const std::string &name, void (*api_callback)(),
                         const std::string &candid_in,
                         const std::string &caller = "");
   // The call replied or rejected
-  bool call_done(CallHandle h) { return m_contexts.at(h).done; }
+  bool call_done(CallHandle h) { return context(h).done; }
   // It rejected, or trapped
-  bool was_rejected(CallHandle h) { return m_contexts.at(h).rejected; }
+  bool was_rejected(CallHandle h) { return context(h).rejected; }
   // The Candid reply, as hex
   std::string reply_hex(CallHandle h) {
-    return m_contexts.at(h).reply.as_hex_string();
+    return context(h).reply.as_hex_string();
   }
-  std::string reject_message(CallHandle h) {
-    return m_contexts.at(h).reject_message;
-  }
+  std::string reject_message(CallHandle h) { return context(h).reject_message; }
 
   // For the ic0 mock functions
   void call_new(const std::vector<uint8_t> &callee, const std::string &method,
@@ -275,10 +278,14 @@ private:
     std::string reject_message;
     __uint128_t refund{0};
   };
-  // Sets up the message of a test, and its root call context
+  // Sets up the message of a test, and its root call context. `reset`: when
+  // no calls are queued, forget the earlier calls.
   void start_message(const std::string &test_name, const std::string &candid_in,
-                     const std::string &caller);
-  void start_root_context(const std::string &method);
+                     const std::string &caller, bool reset);
+  void start_root_context(const std::string &method, bool reset);
+  // The call context of a handle. Traps when the handle is stale.
+  CallContext &context(CallHandle h);
+  uint64_t m_generation{0}; // incremented when the calls are forgotten
   void deliver_request(size_t call);
   // The management canister's reply to `method`, if the Mock IC knows it:
   // deterministic bytes of the right length. False when it does not.

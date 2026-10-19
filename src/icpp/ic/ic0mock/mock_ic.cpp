@@ -50,7 +50,7 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
   ++m_tests_total;
   std::cout << "\n----------\n";
   std::cout << "MockIC run_test: " << test_name << ": \n";
-  start_message(test_name, candid_in, caller);
+  start_message(test_name, candid_in, caller, true);
 
   m_silent_on_trap = silent_on_trap;
   try {
@@ -117,7 +117,7 @@ int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
   ++m_tests_total;
   std::cout << "\n----------\n";
   std::cout << "MockIC run_trap_test: " << test_name << ": \n";
-  start_message(test_name, candid_in, caller);
+  start_message(test_name, candid_in, caller, true);
 
   m_silent_on_trap = silent_on_trap;
   try {
@@ -146,17 +146,27 @@ MockIC::CallHandle MockIC::start_call(const std::string &name,
                                       const std::string &caller) {
   std::cout << "\n----------\n";
   std::cout << "MockIC start_call: " << name << ": \n";
-  start_message(name, candid_in, caller);
-  CallHandle handle = m_root_context;
+  // Never forgets the earlier calls: their handles stay valid
+  start_message(name, candid_in, caller, false);
+  CallHandle handle{m_generation, m_root_context};
   try {
     api_callback();
   } catch (const std::exception &e) {
     std::cout << "Mock IC: '" << name << "' trapped: " << e.what() << "\n";
-    if (!m_contexts[handle].done) {
-      respond(handle, false, {}, 5, std::string("trapped: ") + e.what());
+    if (!m_contexts[handle.context].done) {
+      respond(handle.context, false, {}, 5,
+              std::string("trapped: ") + e.what());
     }
   }
   return handle;
+}
+
+MockIC::CallContext &MockIC::context(CallHandle h) {
+  if (h.generation != m_generation || h.context >= m_contexts.size()) {
+    IC_API::trap("MockIC: a stale CallHandle - a run_test or run_trap_test "
+                 "forgot its call");
+  }
+  return m_contexts[h.context];
 }
 
 int MockIC::test_summary() {
@@ -217,7 +227,7 @@ void MockIC::expect_call(const std::string &callee, const std::string &method,
 
 void MockIC::start_message(const std::string &test_name,
                            const std::string &candid_in,
-                           const std::string &caller) {
+                           const std::string &caller, bool reset) {
   // Always start with a clean type table registry in the registry singleton
   CandidSerializeTypeTableRegistry::get_instance().clear();
   m_B_in.clear();
@@ -225,15 +235,17 @@ void MockIC::start_message(const std::string &test_name,
   m_B_in.store_hex_string(candid_in);
   m_caller = CandidTypePrincipal(caller);
   m_canister_self = CandidTypePrincipal(std::string(MOCKIC_CANISTER_SELF));
-  start_root_context(test_name);
+  start_root_context(test_name, reset);
 }
 
-// A test starts a new root call context, unless calls are still queued from
-// a test that turned auto_drain off: their contexts must stay valid.
-void MockIC::start_root_context(const std::string &method) {
-  if (m_events.empty()) {
+// A test starts a new root call context. A run_test or run_trap_test forgets
+// the earlier calls, unless calls are still queued from a test that turned
+// auto_drain off: their contexts must stay valid.
+void MockIC::start_root_context(const std::string &method, bool reset) {
+  if (reset && m_events.empty()) {
     m_calls.clear();
     m_contexts.clear();
+    ++m_generation;
   }
   CallContext context;
   context.caller = m_caller;
@@ -628,7 +640,8 @@ void MockIC::deliver_response(const Event &event) {
   }
   CallContext &after = m_contexts[origin];
   after.cycles_available = m_msg_cycles_available;
-  if (!after.done && after.outstanding == 0 && after.from_call >= 0) {
+  // Also the root context: a call of the test that traps after a co_await
+  if (!after.done && after.outstanding == 0) {
     respond(origin, false, {}, 5, "the canister did not reply to the call");
   }
 

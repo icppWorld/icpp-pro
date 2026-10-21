@@ -59,3 +59,34 @@ def get_upgrade_record(network: str) -> Dict[str, Union[int, str]]:
         assert match, f"no {field} in response: {response}"
         record[field] = match.group(1)
     return record
+
+
+def call(network: str, method: str, argument: str = "()") -> str:
+    """Calls a method of the canister"""
+    return call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method=method,
+        canister_argument=argument,
+        network=network,
+    )
+
+
+def write_file(network: str, path: str, mb: int) -> None:
+    """Writes a file of mb MiB with write_file"""
+    response = call(network, "write_file", f'("{path}", {mb} : nat32)')
+    assert response == f"({mb * 1024 * 1024:_} : nat64)", response
+
+
+def read_file(network: str, path: str) -> Dict[str, str]:
+    """The fields of the read_file reply, e.g. {"bytes": "1048576", ...}"""
+    text = call(network, "read_file", f'("{path}")').strip('()" \n,')
+    return dict(field.split(": ") for field in text.split("; "))
+
+
+def assert_file(network: str, path: str, mb: int) -> Dict[str, str]:
+    """The file holds mb MiB, as written by write_file"""
+    fields = read_file(network, path)
+    assert fields["bytes"] == str(mb * 1024 * 1024), fields
+    assert fields["ok"] == "true", fields
+    return fields

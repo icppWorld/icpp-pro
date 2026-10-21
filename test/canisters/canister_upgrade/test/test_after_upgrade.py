@@ -12,7 +12,7 @@ constructing IC_API in pre_upgrade does not trap on a real replica.
 
 # pylint: disable=missing-function-docstring
 
-from .upgrade_record import get_upgrade_record, number
+from .upgrade_record import assert_file, get_upgrade_record, number, write_file
 
 
 def test__record_after_upgrade(network: str, principal: str) -> None:
@@ -35,3 +35,23 @@ def test__record_after_upgrade(network: str, principal: str) -> None:
     pre_upgrade_version = number(record, "pre_upgrade_version")
     assert pre_upgrade_version >= number(record, "init_version")
     assert number(record, "post_upgrade_version") == pre_upgrade_version + 1
+
+
+def test__files_after_upgrade(network: str) -> None:
+    # The files written before the upgrade, also by a canister built with the
+    # previous icpp-pro release, read back intact
+    assert_file(network, "kept.bin", 5)
+    assert_file(network, "shrunk.bin", 1)
+
+
+def test__file_overwritten_by_a_smaller_one(network: str) -> None:
+    # A file overwritten in place by a smaller one reads like a new file of
+    # that size: the read does not walk over the chunks of the larger file
+    # that was there before
+    write_file(network, "overwritten.bin", 16)
+    write_file(network, "overwritten.bin", 1)
+    write_file(network, "fresh.bin", 1)
+    overwritten = assert_file(network, "overwritten.bin", 1)
+    fresh = assert_file(network, "fresh.bin", 1)
+    ratio = int(overwritten["instructions"]) / int(fresh["instructions"])
+    assert ratio < 2, f"the read of the overwritten file costs {ratio:.1f}x"

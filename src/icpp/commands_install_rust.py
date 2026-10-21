@@ -144,7 +144,12 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
         CARGO_LOCKS / "ic-wasi-polyfill.Cargo.lock",
         config_default.RUST_COMPILER_ROOT / "ic-wasi-polyfill" / "Cargo.lock",
     )
-    cmd = f"{config_default.CARGO} build --locked --release --target wasm32-wasip1 "
+    # The repository is a workspace with test canisters & integration tests:
+    # build only the library
+    cmd = (
+        f"{config_default.CARGO} build --locked --release --target wasm32-wasip1 "
+        "--package ic-wasi-polyfill "
+    )
 
     #
     # The 'transient' feature use the transient file system implementation.

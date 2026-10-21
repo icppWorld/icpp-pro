@@ -15,4 +15,10 @@ type UpgradeRecord = record {
 
 service : {
     "get_upgrade_record" : () -> (UpgradeRecord) query;
+    // Writes a file of n MiB, truncating what was there:
+    // '("path", n)' -> '(bytes : nat64)'
+    "write_file" : (text, nat32) -> (nat64);
+    // Reads a file with one read that asks for more than it holds:
+    // '("path")' -> '("bytes: 1048576; ok: true; instructions: 123")'
+    "read_file" : (text) -> (text) query;
 };

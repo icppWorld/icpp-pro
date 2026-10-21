@@ -86,10 +86,11 @@ public:
   create_canister(IC_CanisterSettings settings = {},
                   __uint128_t extra_cycles = 0);
 
-  // The status of a canister this canister controls: running or stopped,
-  // its cycles balance and burn rate, its memory, its module hash and its
-  // controllers. The IC rejects the call if this canister is not a
-  // controller.
+  // The status of a canister: running or stopped, its cycles balance and
+  // burn rate, its memory, its module hash and its controllers. A canister
+  // may read its own status and that of a canister it controls; other
+  // canisters only when the target's status_visibility allows it. The IC
+  // rejects the call otherwise.
   static IC_Task<IC_CallResult<IC_CanisterStatus>>
   canister_status(CandidTypePrincipal canister_id);
 

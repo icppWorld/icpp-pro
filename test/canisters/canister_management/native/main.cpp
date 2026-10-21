@@ -117,6 +117,65 @@ int main() {
     check(text == "err:unknown key name", "invalid_key: not signed");
   }
   {
+    // canister_status: the reply has more fields than IC_CanisterStatus,
+    // as the real one does; they are skipped
+    CandidTypeRecord settings;
+    settings.append("controllers",
+                    CandidTypeVecPrincipal{std::vector<std::string>{caller}});
+    settings.append("compute_allocation", CandidTypeNat{__uint128_t(0)});
+    settings.append("memory_allocation", CandidTypeNat{__uint128_t(0)});
+    settings.append("freezing_threshold", CandidTypeNat{__uint128_t(2592000)});
+    settings.append("reserved_cycles_limit",
+                    CandidTypeNat{__uint128_t(5000000000000)});
+    settings.append("log_visibility", CandidTypeVariant{"controllers"});
+    settings.append("wasm_memory_limit", CandidTypeNat{__uint128_t(0)});
+    CandidTypeRecord memory_metrics;
+    memory_metrics.append("wasm_memory_size", CandidTypeNat{__uint128_t(100)});
+    memory_metrics.append("stable_memory_size", CandidTypeNat{__uint128_t(0)});
+    CandidTypeRecord query_stats;
+    query_stats.append("num_calls_total", CandidTypeNat{__uint128_t(0)});
+    CandidTypeRecord result;
+    result.append("status", CandidTypeVariant{"stopped"});
+    result.append("settings", settings);
+    result.append("module_hash",
+                  CandidTypeOptVec{CandidTypeVecNat8{IC_Blob(32, 0xab)}});
+    result.append("memory_size", CandidTypeNat{__uint128_t(1234)});
+    result.append("memory_metrics", memory_metrics);
+    result.append("cycles", CandidTypeNat{__uint128_t(100000000000)});
+    result.append("reserved_cycles", CandidTypeNat{__uint128_t(0)});
+    result.append("idle_cycles_burned_per_day", CandidTypeNat{__uint128_t(42)});
+    result.append("query_stats", query_stats);
+    CandidArgs reply;
+    reply.append(result);
+    mockIC.expect_call("aaaaa-aa", "canister_status",
+                       MockIC::MockResponse::reply(hex(reply)));
+    CandidArgs in;
+    in.append(CandidTypePrincipal{"aaaaa-aa"});
+    std::string text;
+    CandidArgs out;
+    out.append(CandidTypeText{&text});
+    run(mockIC, "canister_status", canister_status, in, out, caller);
+    check(text ==
+              "stopped; cycles=100000000000; idle_cycles_burned_per_day=42; "
+              "memory_size=1234; module_hash=32 bytes; controllers=1; "
+              "freezing_threshold=2592000",
+          "canister_status: the decoded fields");
+  }
+  {
+    // canister_status of a canister this canister does not control
+    mockIC.expect_call(
+        "aaaaa-aa", "canister_status",
+        MockIC::MockResponse::reject(5, "Only controllers can call it"));
+    CandidArgs in;
+    in.append(CandidTypePrincipal{"aaaaa-aa"});
+    std::string text;
+    CandidArgs out;
+    out.append(CandidTypeText{&text});
+    run(mockIC, "canister_status (rejected)", canister_status, in, out, caller);
+    check(text == "rej:5:Only controllers can call it",
+          "canister_status: the reject");
+  }
+  {
     // An HTTPS outcall: the response set with expect_call
     CandidTypeRecord header;
     header.append("name", CandidTypeVecText{std::vector<std::string>{"a"}});

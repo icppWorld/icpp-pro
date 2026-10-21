@@ -93,6 +93,24 @@ void trap_me() {
   IC_API::trap("trapped on purpose");
 }
 
+// A newer version of a callee's reply: the record has more fields than a
+// caller declares. '()' -> '(record { name; age; email; tags; address; role; id })'
+void profile() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  ic_api.from_wire();
+  CandidTypeRecord address;
+  address.append("city", CandidTypeText{"Detroit"});
+  CandidTypeRecord r;
+  r.append("name", CandidTypeText{"Ada"});
+  r.append("age", CandidTypeNat{__uint128_t(36)});
+  r.append("email", CandidTypeText{"ada@example.com"});
+  r.append("tags", CandidTypeVecText{std::vector<std::string>{"a", "b"}});
+  r.append("address", address);
+  r.append("role", CandidTypeVariant{"admin"});
+  r.append("id", CandidTypePrincipal{"aaaaa-aa"});
+  ic_api.to_wire(r);
+}
+
 // Accepts half of the cycles sent along: '()' -> '(accepted : nat64)'
 void accept_half() {
   IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
@@ -164,6 +182,32 @@ IC_Async call_greet_async() {
   ic_api.to_wire(CandidTypeText{greeting});
 }
 void call_greet() { call_greet_async(); }
+
+// Decodes only the fields it declares from a reply with more fields:
+// '(callee)' -> '("Ada 36")'
+IC_Async call_profile_async() {
+  IC_API ic_api(CanisterUpdate{"call_profile"}, false);
+  std::string callee_text;
+  CandidArgs args;
+  args.append(CandidTypePrincipal{&callee_text});
+  CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
+
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(callee, "profile");
+  if (!r) {
+    ic_api.to_wire(CandidTypeText{error_text(r.error())});
+    co_return;
+  }
+  std::string name;
+  __uint128_t age{0};
+  CandidTypeRecord profile;
+  profile.append("name", CandidTypeText{&name});
+  profile.append("age", CandidTypeNat{&age});
+  r->decode(profile);
+  ic_api.to_wire(
+      CandidTypeText{name + " " + std::to_string(static_cast<uint64_t>(age))});
+}
+void call_profile() { call_profile_async(); }
 
 // '(callee)' -> '("4:rejected on purpose")'
 IC_Async call_reject_async() {

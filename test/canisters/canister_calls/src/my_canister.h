@@ -8,6 +8,7 @@
 
 // Callee methods
 void greet() WASM_SYMBOL_EXPORTED("canister_update greet");
+void profile() WASM_SYMBOL_EXPORTED("canister_update profile");
 void reject_me() WASM_SYMBOL_EXPORTED("canister_update reject_me");
 void trap_me() WASM_SYMBOL_EXPORTED("canister_update trap_me");
 void accept_half() WASM_SYMBOL_EXPORTED("canister_update accept_half");
@@ -17,6 +18,7 @@ void release() WASM_SYMBOL_EXPORTED("canister_update release");
 
 // Caller methods
 void call_greet() WASM_SYMBOL_EXPORTED("canister_update call_greet");
+void call_profile() WASM_SYMBOL_EXPORTED("canister_update call_profile");
 void call_reject() WASM_SYMBOL_EXPORTED("canister_update call_reject");
 void call_trap() WASM_SYMBOL_EXPORTED("canister_update call_trap");
 void call_then_trap() WASM_SYMBOL_EXPORTED("canister_update call_then_trap");

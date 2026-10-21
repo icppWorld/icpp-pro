@@ -55,6 +55,18 @@ struct IC_PublicKey {
 
 using IC_Blob = std::vector<uint8_t>;
 
+// The status of a canister, from IC_Management::canister_status. The reply
+// has more fields; these are the ones decoded.
+struct IC_CanisterStatus {
+  IC_API::CanisterStatus status{IC_API::CanisterStatus::Running};
+  __uint128_t cycles{0};
+  __uint128_t idle_cycles_burned_per_day{0};
+  __uint128_t memory_size{0};
+  std::optional<IC_Blob> module_hash;   // empty: no code installed
+  std::vector<std::string> controllers; // principal texts
+  __uint128_t freezing_threshold{0};
+};
+
 // Calls to the management canister (aaaaa-aa), the IC's system API. Each
 // helper encodes the Candid argument, attaches the cycles the call costs, and
 // decodes the reply.
@@ -73,6 +85,13 @@ public:
   static IC_Task<IC_CallResult<CandidTypePrincipal>>
   create_canister(IC_CanisterSettings settings = {},
                   __uint128_t extra_cycles = 0);
+
+  // The status of a canister this canister controls: running or stopped,
+  // its cycles balance and burn rate, its memory, its module hash and its
+  // controllers. The IC rejects the call if this canister is not a
+  // controller.
+  static IC_Task<IC_CallResult<IC_CanisterStatus>>
+  canister_status(CandidTypePrincipal canister_id);
 
   // Threshold ECDSA (secp256k1): the private key is spread over the nodes of
   // a signing subnet and never exists in one place. The public key gives a

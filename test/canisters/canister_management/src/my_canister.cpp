@@ -48,6 +48,36 @@ IC_Async create_canister_async() {
 }
 void create_canister() { create_canister_async(); }
 
+// '(canister_id)' -> '("running; cycles=..; module_hash=none; controllers=..; freezing_threshold=..")'
+IC_Async canister_status_async() {
+  IC_API ic_api(CanisterUpdate{"canister_status"}, false);
+  std::string canister_id;
+  ic_api.from_wire(CandidTypePrincipal{&canister_id});
+  IC_CallResult<IC_CanisterStatus> r =
+      co_await IC_Management::canister_status(CandidTypePrincipal{canister_id});
+  if (!r) {
+    ic_api.to_wire(CandidTypeText{error_text(r.error())});
+    co_return;
+  }
+  const char *status = r->status == IC_API::CanisterStatus::Running ? "running"
+                       : r->status == IC_API::CanisterStatus::Stopping
+                           ? "stopping"
+                           : "stopped";
+  auto nat = [](__uint128_t v) {
+    return std::to_string(static_cast<uint64_t>(v));
+  };
+  std::string module_hash =
+      r->module_hash ? std::to_string(r->module_hash->size()) + " bytes"
+                     : "none";
+  ic_api.to_wire(CandidTypeText{
+      std::string(status) + "; cycles=" + nat(r->cycles) +
+      "; idle_cycles_burned_per_day=" + nat(r->idle_cycles_burned_per_day) +
+      "; memory_size=" + nat(r->memory_size) + "; module_hash=" + module_hash +
+      "; controllers=" + std::to_string(r->controllers.size()) +
+      "; freezing_threshold=" + nat(r->freezing_threshold)});
+}
+void canister_status() { canister_status_async(); }
+
 // '(key_name, message_hash)' -> '(public_key, signature)'
 IC_Async ecdsa_async() {
   IC_API ic_api(CanisterUpdate{"ecdsa"}, false);

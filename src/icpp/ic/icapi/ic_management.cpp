@@ -163,6 +163,46 @@ IC_Management::create_canister(IC_CanisterSettings settings,
   co_return CandidTypePrincipal{canister_id};
 }
 
+IC_Task<IC_CallResult<IC_CanisterStatus>>
+IC_Management::canister_status(CandidTypePrincipal canister_id) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "canister_status")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+
+  // The reply has more fields; they are skipped (record width subtyping)
+  IC_CanisterStatus status;
+  std::string label;
+  CandidTypeVariant status_variant{&label};
+  status_variant.append("running", CandidTypeNull{});
+  status_variant.append("stopping", CandidTypeNull{});
+  status_variant.append("stopped", CandidTypeNull{});
+  CandidTypeRecord settings;
+  settings.append("controllers", CandidTypeVecPrincipal{&status.controllers});
+  settings.append("freezing_threshold",
+                  CandidTypeNat{&status.freezing_threshold});
+  IC_Blob module_hash;
+  bool has_module_hash{false};
+  CandidTypeVecNat8 module_hash_vec{&module_hash};
+  CandidTypeRecord result;
+  result.append("status", status_variant);
+  result.append("settings", settings);
+  result.append("module_hash",
+                CandidTypeOptVec{&module_hash_vec, &has_module_hash});
+  result.append("memory_size", CandidTypeNat{&status.memory_size});
+  result.append("cycles", CandidTypeNat{&status.cycles});
+  result.append("idle_cycles_burned_per_day",
+                CandidTypeNat{&status.idle_cycles_burned_per_day});
+  r->decode(result);
+
+  if (label == "stopping") status.status = IC_API::CanisterStatus::Stopping;
+  else if (label == "stopped") status.status = IC_API::CanisterStatus::Stopped;
+  if (has_module_hash) status.module_hash = module_hash;
+  co_return status;
+}
+
 IC_Task<IC_CallResult<IC_PublicKey>> IC_Management::ecdsa_public_key(
     IC_EcdsaKeyId key, std::vector<IC_Blob> derivation_path,
     std::optional<CandidTypePrincipal> canister_id) {

@@ -242,6 +242,7 @@ int main() {
 
   // The methods a call to the canister itself can run
   mockIC.register_method("greet", greet);
+  mockIC.register_method("profile", profile);
   mockIC.register_method("reject_me", reject_me);
   mockIC.register_method("trap_me", trap_me);
   mockIC.register_method("accept_half", accept_half);
@@ -262,6 +263,10 @@ int main() {
                      MockIC::MockResponse::reply(OUT_HI_B));
   mockIC.run_test("call_greet B", call_greet, GREET_B, OUT_HI_B, silent_on_trap,
                   my_principal);
+
+  // A reply record with more fields than the caller declares
+  run_text_test(mockIC, "call_profile self", call_profile, P_SELF, "Ada 36",
+                my_principal);
 
   // Rejects: by the callee, by a trap in the callee, by the IC
   run_text_test(mockIC, "call_reject self", call_reject, P_SELF,

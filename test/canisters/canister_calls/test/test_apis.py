@@ -68,6 +68,14 @@ def test__call_greet_self(network: str) -> None:
     assert response == '("Hello, me!")'
 
 
+def test__call_profile_b(network: str) -> None:
+    # canister_b replies with a record that has more fields than canister_a
+    # declares: canister_a decodes its fields and skips the others
+    b = principal(network, "canister_b")
+    response = call(network, "canister_a", "call_profile", f'(principal "{b}")')
+    assert response == '("Ada 36")'
+
+
 def test__call_reject(network: str) -> None:
     b = principal(network, "canister_b")
     response = call(network, "canister_a", "call_reject", f'(principal "{b}")')

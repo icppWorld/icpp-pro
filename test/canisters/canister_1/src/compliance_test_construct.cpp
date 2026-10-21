@@ -3,6 +3,7 @@
 #include "compliance_test_construct.h"
 #include "candid_type.h"
 
+#include <optional>
 #include <string>
 
 #include "candid_deserialize.h"
@@ -70,11 +71,12 @@ void test_records() {
     // TODO: roundtrip decoding check
   }
   {
-    // CandidSerializeTypeTableRegistry::get_instance().clear();
+    CandidSerializeTypeTableRegistry::get_instance().clear();
     // assert blob "DIDL\01\6c\01\01\7c\01\00\2a" == "(record {})"                       : (record {}) "record: ignore fields";
-    // didc encode ...
-    // TODO if (CandidSerialize(r).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 6");
-    // TODO: roundtrip decoding check
+    // decoding check: an additional field of any type is skipped
+    CandidArgs A;
+    A.append(CandidTypeRecord());
+    CandidDeserialize("4449444c016c01017c01002a", A);
   }
   {
     // CandidSerializeTypeTableRegistry::get_instance().clear();
@@ -91,11 +93,16 @@ void test_records() {
     // TODO: roundtrip decoding check
   }
   {
-    // CandidSerializeTypeTableRegistry::get_instance().clear();
+    CandidSerializeTypeTableRegistry::get_instance().clear();
     // assert blob "DIDL\01\6c\01\01\7c\01\00\2a" == "(record { 2 = null })"             : (record {2:opt int}) "record: missing opt field";
-    // didc encode ...
-    // TODO if (CandidSerialize(r).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 9");
-    // TODO: roundtrip decoding check
+    // decoding check
+    std::optional<__int128_t> o;
+    CandidTypeRecord r;
+    r.append(2, CandidTypeOptInt(&o));
+    CandidArgs A;
+    A.append(r);
+    CandidDeserialize("4449444c016c01017c01002a", A);
+    if (o.has_value()) IC_API::trap(std::string(__func__) + ": 9");
   }
   {
     // CandidSerializeTypeTableRegistry::get_instance().clear();
@@ -105,11 +112,41 @@ void test_records() {
     // TODO: roundtrip decoding check
   }
   {
-    // CandidSerializeTypeTableRegistry::get_instance().clear();
+    CandidSerializeTypeTableRegistry::get_instance().clear();
     // assert blob "DIDL\01\6c\02\00\7c\01\7e\01\00\2a\01" == "(record {1 = true})"      : (record {1:bool}) "record: ignore fields";
-    // didc encode ...
-    // TODO if (CandidSerialize(r).assert_candid("...", true)) IC_API::trap(std::string(__func__) + ": 11");
-    // TODO: roundtrip decoding check
+    // decoding check
+    bool b{false};
+    CandidTypeRecord r;
+    r.append(1, CandidTypeBool(&b));
+    CandidArgs A;
+    A.append(r);
+    CandidDeserialize("4449444c016c02007c017e01002a01", A);
+    if (!b) IC_API::trap(std::string(__func__) + ": 11");
+  }
+  {
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    // assert blob "DIDL\07\6c\07..." == "(record { bar = true; baz = record { bar = false }; bbb = opt record { head = 20 }})"
+    //   : (record { bar: bool; baz: record { bar: bool }; bbb: opt record { head : int} }) "skip fields";
+    // decoding check: additional fields are skipped, also in nested records
+    bool bar{false};
+    bool baz_bar{true};
+    __int128_t head{0};
+    bool has_bbb{false};
+    CandidTypeRecord baz;
+    baz.append("bar", CandidTypeBool(&baz_bar));
+    CandidTypeRecord bbb;
+    bbb.append("head", CandidTypeInt(&head));
+    CandidTypeRecord r;
+    r.append("bar", CandidTypeBool(&bar));
+    r.append("baz", baz);
+    r.append("bbb", CandidTypeOptRecord(&bbb, &has_bbb));
+    CandidArgs A;
+    A.append(r);
+    CandidDeserialize(
+        "4449444c076c07c3e3aa0201d3e3aa027ed5e3aa0202dbe3aa0201a2e5aa0204bbf1aa0206868eb702756c02d3e3aa027e868eb702756b02d1a7cf027ff1f3928e04036c02a0d2aca8047c90eddae704026e056c02a0d2aca8047c90eddae704046b02d3e3aa027f868eb7027f0100010b0000000100000a000000011400002a000000",
+        A);
+    if (!bar || baz_bar || !has_bbb || head != 20)
+      IC_API::trap(std::string(__func__) + ": skip fields");
   }
   {
     // CandidSerializeTypeTableRegistry::get_instance().clear();

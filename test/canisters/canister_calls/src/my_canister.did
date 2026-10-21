@@ -1,6 +1,7 @@
 service : {
   // Callee methods
   "greet" : (text) -> (text);
+  "profile" : () -> (record { name : text; age : nat; email : text; tags : vec text; address : record { city : text }; role : variant { admin }; id : principal });
   "reject_me" : () -> ();
   "trap_me" : () -> ();
   "accept_half" : () -> (nat64);
@@ -10,6 +11,7 @@ service : {
 
   // Caller methods
   "call_greet" : (principal, text) -> (text);
+  "call_profile" : (principal) -> (text);
   "call_reject" : (principal) -> (text);
   "call_trap" : (principal) -> (text);
   "call_then_trap" : (principal) -> ();

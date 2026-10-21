@@ -8,12 +8,138 @@
 #include "candid_type_visitors.h"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 
 #include "candid_deserialize.h"
 #include "candid_serialize.h"
 #include "candid_serialize_type_table_registry.h"
 #include "ic_api.h"
+
+namespace {
+// The hex of a record with the fields 10 (nat) & 20 (text), and additional
+// fields of many types before, between and after them. wrap puts the record
+// in a variant, an opt or a vec.
+enum class Wrap { None, Variant, Opt };
+std::string superset_hex(__uint128_t n, const std::string &t,
+                         Wrap wrap = Wrap::None) {
+  // The type table registry must be cleared before the types are built
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+  CandidTypeRecord inner;
+  inner.append(1, CandidTypeText("inner"));
+  inner.append(2, CandidTypeVecNat8(std::vector<uint8_t>{1, 2, 3}));
+
+  CandidTypeRecord r;
+  r.append(3, CandidTypeOptRecord(inner));
+  r.append(5, CandidTypeNat(__uint128_t(5)));
+  r.append(10, CandidTypeNat(n));
+  r.append(15, CandidTypeText("between"));
+  r.append(16, inner);
+  r.append(17, CandidTypeVariant("x", CandidTypeInt(__int128_t(-7))));
+  r.append(20, CandidTypeText(t));
+  r.append(25, CandidTypeVecNat(std::vector<__uint128_t>{1, 2}));
+  r.append(30, CandidTypeVecNat8(std::vector<uint8_t>{0xde, 0xad}));
+  r.append(35, CandidTypePrincipal("aaaaa-aa"));
+  r.append(40, CandidTypeRecord());
+  r.append(45, CandidTypeBool(true));
+  if (wrap == Wrap::Variant)
+    return CandidSerialize(CandidTypeVariant("ok", r)).as_hex_string();
+  if (wrap == Wrap::Opt)
+    return CandidSerialize(CandidTypeOptRecord(r)).as_hex_string();
+  return CandidSerialize(r).as_hex_string();
+}
+
+void decode(const std::string &hex_string, const CandidType &expected) {
+  CandidArgs A;
+  A.append(expected);
+  CandidDeserialize(hex_string, A);
+}
+
+void check(bool ok, const std::string &what) {
+  if (!ok) IC_API::trap("test_record_width_subtyping: " + what);
+}
+
+void test_record_width_subtyping() {
+  { // A record
+    std::string wire = superset_hex(42, "hello");
+    __uint128_t n{0};
+    std::string t;
+    CandidTypeRecord r;
+    r.append(10, CandidTypeNat(&n));
+    r.append(20, CandidTypeText(&t));
+    decode(wire, r);
+    check(n == 42 && t == "hello", "record");
+  }
+
+  { // A record in a variant case
+    std::string wire = superset_hex(43, "in variant", Wrap::Variant);
+    __uint128_t n{0};
+    std::string t;
+    std::string label;
+    CandidTypeRecord r;
+    r.append(10, CandidTypeNat(&n));
+    r.append(20, CandidTypeText(&t));
+    CandidTypeVariant v{&label};
+    v.append("ok", r);
+    decode(wire, v);
+    check(label == "ok" && n == 43 && t == "in variant", "variant");
+  }
+
+  { // A record in an opt
+    std::string wire = superset_hex(44, "in opt", Wrap::Opt);
+    __uint128_t n{0};
+    std::string t;
+    bool has_value{false};
+    CandidTypeRecord r;
+    r.append(10, CandidTypeNat(&n));
+    r.append(20, CandidTypeText(&t));
+    decode(wire, CandidTypeOptRecord(&r, &has_value));
+    check(has_value && n == 44 && t == "in opt", "opt");
+  }
+
+  { // Records in a vec
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    CandidTypeRecord w;
+    w.append(3, CandidTypeVecNat(std::vector<__uint128_t>{7, 8}));
+    w.append(10, CandidTypeVecNat(std::vector<__uint128_t>{45, 46}));
+    w.append(15, CandidTypeVecText(std::vector<std::string>{"x", "y"}));
+    w.append(20, CandidTypeVecText(std::vector<std::string>{"a", "b"}));
+    w.append(25, CandidTypeVecBool(std::vector<bool>{true, false}));
+    std::string wire = CandidSerialize(CandidTypeVecRecord(w)).as_hex_string();
+
+    std::vector<__uint128_t> ns;
+    std::vector<std::string> ts;
+    CandidTypeRecord r;
+    r.append(10, CandidTypeVecNat(&ns));
+    r.append(20, CandidTypeVecText(&ts));
+    decode(wire, CandidTypeVecRecord(&r));
+    check(ns == std::vector<__uint128_t>{45, 46} &&
+              ts == std::vector<std::string>{"a", "b"},
+          "vec");
+  }
+
+  { // An expected opt that is not on the wire, after an additional field
+    std::string wire = superset_hex(47, "no opt");
+    __uint128_t n{0};
+    std::string t;
+    std::optional<std::string> o;
+    CandidTypeRecord r;
+    r.append(10, CandidTypeNat(&n));
+    r.append(20, CandidTypeText(&t));
+    r.append(99, CandidTypeOptText(&o));
+    decode(wire, r);
+    check(n == 47 && t == "no opt" && !o.has_value(), "missing opt");
+  }
+
+  { // A record with only additional fields
+    std::string wire = superset_hex(48, "all extra");
+    decode(wire, CandidTypeRecord());
+  }
+
+  // The tests that follow expect an empty type table registry
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+}
+} // namespace
 
 int unit_test_candid() {
   { // Verify idl hash
@@ -269,6 +395,11 @@ int unit_test_candid() {
     std::vector<std::byte> v_expected{std::byte('\x01'), std::byte('\x02'),
                                       std::byte('\x01'), std::byte('\x02')};
     if (v != v_expected) IC_API::trap(std::string(__func__) + ": 5b");
+  }
+
+  { // Record width subtyping: an additional field on the wire, of any type,
+    // is decoded and discarded, also inside a variant, an opt and a vec
+    test_record_width_subtyping();
   }
 
   return 0;

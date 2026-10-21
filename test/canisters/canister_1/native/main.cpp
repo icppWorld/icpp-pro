@@ -1439,22 +1439,24 @@ int main() {
       "4449444c016c03e3d2a2c10172cbe4fdc70471bfce83fe077c01007b14ae47e17a843f0d432b2b20446576656c6f7065720b",
       silent_on_trap);
 
-  // Both fields are provided with actual values, with a new non-Opt at the beginning,which must trap
+  // Both fields are provided with actual values, with an additional non-Opt at the beginning,
+  // which is decoded & discarded (record width subtyping)
   // from_wire:
   // '(1 : nat8, record {field4 = opt (null : null); field3 = opt ("hello" : text); field2 = opt (null : null); field1 = opt (16 : nat16); field0 = "f0 non opt";})'
-  mockIC.run_trap_test(
-      "roundtrip_record_opt 1 trap a", roundtrip_record_opt,
+  mockIC.run_test(
+      "roundtrip_record_opt 1 fwc c", roundtrip_record_opt,
       "4449444c046c05b69cba840871b79cba840801b89cba840802b99cba840803ba9cba8408026e7a6e7f6e71027b00010a6630206e6f6e206f707401100001010568656c6c6f01",
+      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
-  // Both fields are provided with actual values, with a new non-Opt in the middle,which must trap
+  // Both fields are provided with actual values, with an additional non-Opt in the middle,
+  // which is decoded & discarded (record width subtyping)
   // from_wire:
   // '(1 : nat8, record {field4 = opt (null : null); field3 = opt ("hello" : text); field2 = "f2 non opt"; field1 = opt (16 : nat16); field0 = opt ("start opt" : text);})'
-  // to_wire:
-  // -> TRAP !
-  mockIC.run_trap_test(
-      "roundtrip_record_opt 1 trap b", roundtrip_record_opt,
+  mockIC.run_test(
+      "roundtrip_record_opt 1 fwc d", roundtrip_record_opt,
       "4449444c046c05b69cba840801b79cba840802b89cba840871b99cba840801ba9cba8408036e716e7a6e7f027b000101097374617274206f70740110000a6632206e6f6e206f7074010568656c6c6f01",
+      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // Verify that a variant traps if the variant's id (hash) on wire does not match expected

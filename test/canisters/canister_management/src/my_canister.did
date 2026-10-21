@@ -4,6 +4,7 @@ type http_request_result = record { status : nat; headers : vec http_header; bod
 service : {
   "raw_rand" : () -> (blob);
   "create_canister" : () -> (principal);
+  "canister_status" : (principal) -> (text);
   "ecdsa" : (text, blob) -> (blob, blob);
   "schnorr" : (text, bool, blob) -> (blob, blob);
   "vetkd" : (text) -> (blob, blob);

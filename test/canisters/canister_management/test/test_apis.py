@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.asymmetric.utils import (
     encode_dss_signature,
 )
 
-from icpp.smoketest import call_canister_api, flatten_candid_text
+from icpp.smoketest import call_canister_api, flatten_candid_text, get_canister_id
 
 # Path to the icp.yaml file
 ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
@@ -93,6 +93,39 @@ def test__ecdsa(network: str) -> None:
     vk.verify(
         encode_dss_signature(r, s), message_hash, ec.ECDSA(Prehashed(hashes.SHA256()))
     )
+
+
+def canister_status(network: str, canister_id: str) -> str:
+    """The text that the canister_status method replies"""
+    response = call(network, "canister_status", f'(principal "{canister_id}")')
+    return flatten_candid_text(response).strip('()", ')
+
+
+def test__canister_status(network: str) -> None:
+    # Of a canister this canister created, so controls: the real reply has
+    # more fields than IC_CanisterStatus, which are skipped
+    created = call(network, "create_canister")
+    text = canister_status(network, created.split('"')[1])
+    assert text.startswith("running; cycles="), text
+    assert "; module_hash=none; controllers=1;" in text, text
+    cycles = int(text.split("cycles=")[1].split(";")[0])
+    assert cycles > 0, text
+
+
+def test__canister_status_of_itself(network: str) -> None:
+    # A canister may read its own status, also when it is not a controller
+    me = get_canister_id(
+        canister_name=CANISTER, icp_yaml_path=ICP_YAML_PATH, network=network
+    )
+    text = canister_status(network, me)
+    assert text.startswith("running; cycles="), text
+    assert "; module_hash=32 bytes;" in text, text
+
+
+def test__canister_status_rejected(network: str) -> None:
+    # Of a principal that is not a canister: the IC rejects the call
+    text = canister_status(network, "2vxsx-fae")
+    assert text.startswith("rej:"), text
 
 
 @pytest.mark.parametrize("ed25519", [True, False])

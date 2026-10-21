@@ -8,7 +8,12 @@ import platform
 from pathlib import Path
 import getpass
 import icpp_candid  # pylint: disable = unused-import
-from icpp import __version_wasi_sdk__, __version_rust__
+from icpp import (
+    __version_wasi_sdk__,
+    __version_rust__,
+    __version_wasi2ic__,
+    __version_ic_wasi_polyfill__,
+)
 
 # The OS we're running on - https://stackoverflow.com/a/1857/5480536
 
@@ -31,7 +36,13 @@ WASI_SDK_COMPILER_ROOT = WASI_SDK_ROOT / f"{__version_wasi_sdk__}"
 
 # Rust & dependencies
 RUST_ROOT = ICPP_ROOT / "rust"
-RUST_COMPILER_ROOT = RUST_ROOT / f"{__version_rust__}"
+# Named after the pins too: a release that changes wasi2ic or ic-wasi-polyfill
+# installs into its own folder, so an upgrade of icpp-pro never builds with
+# the previous one, and two icpp-pro versions side by side each use their own
+RUST_COMPILER_ROOT = (
+    RUST_ROOT
+    / f"{__version_rust__}-{__version_wasi2ic__[:8]}-{__version_ic_wasi_polyfill__[:8]}"
+)
 RUST_BIN = RUST_COMPILER_ROOT / "bin"
 RUST_TARGET = RUST_COMPILER_ROOT / "target/wasm32-wasip1/release"
 

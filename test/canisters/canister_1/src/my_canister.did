@@ -74,6 +74,13 @@ service: {
     "caller_is_anonymous" : () -> (bool) query;
     "caller_is_controller" : () -> (bool) query;
     "roundtrip_vec_nat16" : (vec nat16) -> (vec nat16) query;
+    "roundtrip_vec_of_items" : (vec record { id: nat64; note: opt text; kind: variant { a; b: nat }; tags: vec text; inner: record { q: text } }) ->
+                               (vec record { id: nat64; note: opt text; kind: variant { a; b: nat }; tags: vec text; inner: record { q: text } }) query;
+    "roundtrip_vec_of_variants" : (vec variant { i32: int32; f64: float64; v128: nat; t: text; u }) -> (vec variant { i32: int32; f64: float64; v128: nat; t: text; u }) query;
+    "roundtrip_vec_of_nested" : (vec record { ts: nat64; items: vec record { id: principal; n: nat64; m: opt nat } }) ->
+                                (vec record { ts: nat64; items: vec record { id: principal; n: nat64; m: opt nat } }) query;
+    "roundtrip_vec_of_shared" : (record { r1: vec record { k: opt nat }; r2: vec record { k: opt nat } }) -> (record { r1: vec record { k: opt nat }; r2: vec record { k: opt nat } }) query;
+    "vec_of_wrong_element" : () -> (vec nat64) query;
     "roundtrip_vec_record" : (vec record { name: text; value: text }) -> (vec record { name: text; value: text }) query;
     "roundtrip_vec_variant" : (vec variant { AdminQuery; AdminUpdate }) -> (vec variant { AdminQuery; AdminUpdate }) query;
     "roundtrip_vec_record_variant" : (vec record { "principal": text; role: variant { AdminQuery; AdminUpdate }; assignedBy: text; assignedAt: nat64; note: text }) ->

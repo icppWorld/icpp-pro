@@ -279,9 +279,27 @@ void test_records() {
   }
 }
 
+void test_vectors() {
+  IC_API::debug_print("   - " + std::string(__func__));
+  {
+    // assert blob "DIDL\02\6d\01\6c\00\01\00\05"                                  : (vec record {}) "vec of records";
+    // decoding check, with CandidTypeVecOf
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    size_t count{0};
+    CandidArgs A;
+    A.append(CandidTypeVecOf([&]() -> CandidType { return CandidTypeRecord(); },
+                             [&]() { ++count; }));
+    CandidDeserialize("4449444c026d016c00010005", A);
+    if (count != 5) IC_API::trap(std::string(__func__) + ": vec of records");
+  }
+  // Not yet supported: a vec null is refused when the type table is read
+  // assert blob "DIDL\01\6d\7f\01\00\e8\07"                                     : (vec null) "vec: space bomb";
+}
+
 int compliance_test_construct() {
   IC_API::debug_print(" - " + std::string(__func__));
   test_records();
+  test_vectors();
   // Clear out the type table registry
   CandidSerializeTypeTableRegistry::get_instance().clear();
   return 0;

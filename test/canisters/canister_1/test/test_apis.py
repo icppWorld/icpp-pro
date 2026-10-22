@@ -853,7 +853,7 @@ def test__roundtrip_vec_record(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e"
+    expected_response = "4449444c056c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d03010403034831560348314e034832560348324e034833560348334e"
     assert response == expected_response
 
 
@@ -862,12 +862,12 @@ def test__roundtrip_vec_record_2(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_vec_record",
-        canister_argument="4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e",
+        canister_argument="4449444c056c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d03010403034831560348314e034832560348324e034833560348334e",
         canister_input="raw",
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e"
+    expected_response = "4449444c056c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d03010403034831560348314e034832560348324e034833560348334e"
     assert response == expected_response
 
 
@@ -882,7 +882,7 @@ def test__roundtrip_vec_variant(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c046b0299d8ddf2087fd8a7f6ae0b7f6b006b0299d8ddf2087fd8a7f6ae0b7f6d02010303000100"
+    expected_response = "4449444c036b0299d8ddf2087fd8a7f6ae0b7f6b006d00010203000100"
     assert response == expected_response
 
 
@@ -897,7 +897,7 @@ def test__roundtrip_vec_record_variant(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c0f6b0299d8ddf2087fd8a7f6ae0b7f6c05ae9db1900102e1e194b40206c5e394b40202f2afa8c80402f6d6bbdd04056d716b006b0299d8ddf2087fd8a7f6ae0b7f6d046d786c006c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd04096b0299d8ddf2087fd8a7f6ae0b7f6d086c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd040c6b0299d8ddf2087fd8a7f6ae0b7f6c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd040e6b0299d8ddf2087fd8a7f6ae0b7f010a02076162632d313233d2029649000000000a636f6e74726f6c6c65720474657374000778797a2d373839ea16b04c020000000b636f6e74726f6c6c65723205746573743201"
+    expected_response = "4449444c096b0299d8ddf2087fd8a7f6ae0b7f6c05ae9db1900102e1e194b40205c5e394b40202f2afa8c80402f6d6bbdd04046d716b006d006d786c006c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd04006d07010802076162632d313233d2029649000000000a636f6e74726f6c6c65720474657374000778797a2d373839ea16b04c020000000b636f6e74726f6c6c65723205746573743201"
     assert response == expected_response
 
 
@@ -1192,7 +1192,7 @@ def test__roundtrip_opt_vec_record(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c096c02b79cba840801b89cba8408016d716c006c02b79cba840871b89cba8408716d036c02b79cba840871b89cba8408716c02b79cba840871b89cba8408716c02b79cba840871b89cba8408716e04010801030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f330462796533"
+    expected_response = "4449444c066c02b79cba840801b89cba8408016d716c006c02b79cba840871b89cba8408716d036e04010501030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f330462796533"
     assert response == expected_response
 
 
@@ -1206,7 +1206,7 @@ def test__roundtrip_opt_vec_record_2(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c096c02b79cba840801b89cba8408016d716c006c02b79cba840871b89cba8408716d036c02b79cba840871b89cba8408716c02b79cba840871b89cba8408716c02b79cba840871b89cba8408716e04010801030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f330462796533"
+    expected_response = "4449444c066c02b79cba840801b89cba8408016d716c006c02b79cba840871b89cba8408716d036e04010501030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f330462796533"
     assert response == expected_response
 
 
@@ -1542,7 +1542,7 @@ def test__roundtrip_record_vec_record_1(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c096c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c01c6a4a1980604010803034831560348314e034832560348324e034833560348334e"
+    expected_response = "4449444c066c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c01c6a4a1980604010503034831560348314e034832560348324e034833560348334e"
     assert response == expected_response
 
 
@@ -1556,7 +1556,7 @@ def test__roundtrip_record_vec_record_2(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c096c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c01c6a4a1980604010803034831560348314e034832560348324e034833560348334e"
+    expected_response = "4449444c066c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c01c6a4a1980604010503034831560348314e034832560348324e034833560348334e"
     assert response == expected_response
 
 
@@ -1571,7 +1571,7 @@ def test__roundtrip_http_headers(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c0d6c02000101016d716c006c02007101716d036c02007101716c02007101716c02007101716c02007101716c02007101716c02007101716c02007101716c01c6a4a1980604010c0704686f73742735756772762d7a716161612d61616161672d6163666e612d6361692e7261772e696370302e696f09782d7265616c2d69700d32312e39382e3234312e3234350f782d666f727761726465642d666f720d32312e39382e3234312e32343511782d666f727761726465642d70726f746f0568747470730c782d726571756573742d69642464396234316462342d346539372d383237362d313466312d3664623764303037623537640a757365722d6167656e740b6375726c2f372e38312e3006616363657074032a2f2a"
+    expected_response = "4449444c066c02000101016d716c006c02007101716d036c01c6a4a198060401050704686f73742735756772762d7a716161612d61616161672d6163666e612d6361692e7261772e696370302e696f09782d7265616c2d69700d32312e39382e3234312e3234350f782d666f727761726465642d666f720d32312e39382e3234312e32343511782d666f727761726465642d70726f746f0568747470730c782d726571756573742d69642464396234316462342d346539372d383237362d313466312d3664623764303037623537640a757365722d6167656e740b6375726c2f372e38312e3006616363657074032a2f2a"
     assert response == expected_response
 
 
@@ -1615,7 +1615,7 @@ def test__roundtrip_variant_1(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"
+    expected_response = "4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"
     assert response == expected_response
 
 
@@ -1629,7 +1629,7 @@ def test__roundtrip_variant_2(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"
+    expected_response = "4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"
     assert response == expected_response
 
 
@@ -1643,7 +1643,7 @@ def test__roundtrip_variant_3(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c066b02bc8a017fc5fed2017a6b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed201716b02bc8a0171c5fed2017106000102030405000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"
+    expected_response = "4449444c036b02bc8a017fc5fed2017a6b02bc8a0171c5fed2017a6b02bc8a0171c5fed2017106000001010202000194010008416c6c20676f6f6401f4010008416c6c20676f6f6401054572726f72"
     assert response == expected_response
 
 
@@ -1889,7 +1889,7 @@ def test__roundtrip_vec_record_w_opts(network: str, principal: str) -> None:
         canister_output="raw",
         network=network,
     )
-    expected_response = "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e"
+    expected_response = "4449444c056c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d03010403034831560348314e034832560348324e034833560348334e"
     assert response == expected_response
 
 
@@ -1954,3 +1954,63 @@ def test__trap_roundtrip_record(network: str, principal: str) -> None:
         network=network,
     )
     assert "Failed call to api" in response
+
+
+# CandidTypeVecOf: icp encodes the argument and decodes the reply, so both
+# directions are checked against Rust's candid
+VEC_OF_ITEMS = (
+    '(vec { record { id = 1 : nat64; note = opt "n1"; kind = variant { a }; tags = vec { "x"; "y" }; inner = record { q = "q1" } };'
+    ' record { id = 2 : nat64; note = null; kind = variant { b = 300 : nat }; tags = vec {}; inner = record { q = "q2" } } })'
+)
+
+
+def roundtrip_idl(network: str, method: str, argument: str) -> str:
+    """Calls method with argument (Candid text), and returns the reply as text"""
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method=method,
+        canister_argument=argument,
+        canister_output="idl",
+        network=network,
+    )
+    return " ".join(response.split())
+
+
+def test__roundtrip_vec_of_items(network: str) -> None:
+    assert roundtrip_idl(network, "roundtrip_vec_of_items", VEC_OF_ITEMS) == (
+        '( vec { record { id = 1 : nat64; kind = variant { a }; note = opt "n1"; tags = vec { "x"; "y" }; inner = record { q = "q1" }; }; record { id = 2 : nat64; kind = variant { b = 300 : nat }; note = null; tags = vec {}; inner = record { q = "q2" }; }; }, )'
+    )
+
+
+def test__roundtrip_vec_of_items_empty(network: str) -> None:
+    assert roundtrip_idl(network, "roundtrip_vec_of_items", "(vec {})") == ("(vec {})")
+
+
+def test__roundtrip_vec_of_variants(network: str) -> None:
+    argument = (
+        "(vec { variant { i32 = -2147483648 : int32 }; variant { f64 = 1.5 : float64 };"
+        " variant { v128 = 340282366920938463463374607431768211455 : nat };"
+        ' variant { t = "hi" }; variant { u } })'
+    )
+    assert roundtrip_idl(network, "roundtrip_vec_of_variants", argument) == (
+        '( vec { variant { i32 = -2_147_483_648 : int32 }; variant { f64 = 1.5 : float64 }; variant { v128 = 340_282_366_920_938_463_463_374_607_431_768_211_455 : nat }; variant { t = "hi" }; variant { u }; }, )'
+    )
+
+
+def test__roundtrip_vec_of_nested(network: str) -> None:
+    argument = (
+        '(vec { record { ts = 10 : nat64; items = vec { record { id = principal "aaaaa-aa"; n = 1 : nat64; m = opt (9 : nat) };'
+        ' record { id = principal "2vxsx-fae"; n = 2 : nat64; m = null } } };'
+        " record { ts = 20 : nat64; items = vec {} } })"
+    )
+    assert roundtrip_idl(network, "roundtrip_vec_of_nested", argument) == (
+        '( vec { record { ts = 10 : nat64; items = vec { record { m = opt (9 : nat); n = 1 : nat64; id = principal "aaaaa-aa" }; record { m = null; n = 2 : nat64; id = principal "2vxsx-fae" }; }; }; record { ts = 20 : nat64; items = vec {} }; }, )'
+    )
+
+
+def test__roundtrip_vec_of_shared(network: str) -> None:
+    argument = "(record { r1 = vec { record { k = opt (1 : nat) } }; r2 = vec {} })"
+    assert roundtrip_idl(network, "roundtrip_vec_of_shared", argument) == (
+        "(record { r1 = vec { record { k = opt (1 : nat) } }; r2 = vec {} })"
+    )

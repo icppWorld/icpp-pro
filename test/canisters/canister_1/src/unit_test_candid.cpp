@@ -588,7 +588,7 @@ __attribute__((noinline)) void test_vec_of_decode() {
   { // 1,000 elements, and the decode is linear in the number of elements
     uint64_t instructions_100 = encode_decode_k(100);
     uint64_t instructions_1000 = encode_decode_k(1000);
-    check(instructions_1000 < 30 * instructions_100,
+    check(instructions_1000 < 20 * instructions_100,
           "vec_of 1,000 elements decode is not linear: " +
               std::to_string(instructions_100) + " for 100, " +
               std::to_string(instructions_1000) + " for 1,000");

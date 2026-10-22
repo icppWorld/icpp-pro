@@ -93,6 +93,15 @@ def guard(
                     "killed. Something allocates without limit.",
                 )
             time.sleep(interval)
+    # A run can end before a check sees its peak: the peak of the waited-for
+    # children also counts. (It is the largest of all children of this
+    # process so far, which for `icpp run-native` is the one run.)
     peak = max(peak, children_peak_bytes())
+    if peak > max_bytes:
+        error(
+            f"{command[0]} used {size(peak)}, over the {size(max_bytes)} limit "
+            "of the memory guard. Something allocates without limit."
+        )
+        return 1
     print(f"[memory guard] {command[0]}: peak {size(peak)}", flush=True)
     return process.returncode

@@ -61,3 +61,10 @@ def test__run_native_needs_a_build(tmp_path: Path) -> None:
     )
     assert result.returncode == 1
     assert "Run 'icpp build-native' first" in result.stdout
+
+
+def test__fails_a_short_run_over_the_limit(capsys: pytest.CaptureFixture[str]) -> None:
+    """A run that goes over the limit and ends before the first check fails too."""
+    quick = [sys.executable, "-c", "x = bytearray(400 * 2**20)"]
+    assert guard(quick, 200 * 2**20, interval=10) == 1
+    assert "over the 200.0 MiB limit of the memory guard" in capsys.readouterr().err

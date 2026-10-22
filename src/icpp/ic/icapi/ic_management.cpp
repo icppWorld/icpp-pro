@@ -10,6 +10,15 @@ namespace {
 // The default and maximum response size of an HTTPS outcall
 constexpr uint64_t HTTP_MAX_RESPONSE_BYTES = 2'000'000;
 
+// The worst case of a pay-as-you-go HTTPS outcall, as the replica bounds it
+// (max_usage_fee in rs/https_outcalls/pricing/src/fees.rs): the full response
+// time, the full instruction limit of a query for the transform, and a
+// transformed response of max_response_bytes plus the Candid reserve. The
+// replica refunds what is not used.
+constexpr uint64_t HTTP_MAX_RESPONSE_TIME_MS = 60'000;
+constexpr uint64_t HTTP_MAX_TRANSFORM_INSTRUCTIONS = 5'000'000'000;
+constexpr uint64_t HTTP_CANDID_OVERHEAD_RESERVE_BYTES = 1024;
+
 CandidTypePrincipal management() { return CandidTypePrincipal{"aaaaa-aa"}; }
 
 IC_CallError sign_cost_error(IC_API::SignCostError e) {
@@ -1250,8 +1259,12 @@ IC_Management::vetkd_derive_key(IC_Blob input, IC_Blob context,
       "encrypted_key");
 }
 
-IC_Task<IC_CallResult<IC_HttpOutcallResponse>>
-IC_Management::http_request(IC_HttpOutcallRequest request) {
+namespace {
+// The fields of an http_request_args (and of a flexible_http_request_args)
+// that the two share. Returns the request size the cost is computed from.
+uint64_t append_http_request(CandidTypeRecord &arg,
+                             const IC_HttpOutcallRequest &request,
+                             uint64_t max_response_bytes) {
   std::vector<std::string> names, values;
   uint64_t request_size = request.url.size();
   for (const IC_HeaderField &h : request.headers) {
@@ -1262,11 +1275,6 @@ IC_Management::http_request(IC_HttpOutcallRequest request) {
   CandidTypeRecord header;
   header.append("name", CandidTypeVecText{names});
   header.append("value", CandidTypeVecText{values});
-
-  // The limit paid for is the limit sent, also when the IC's default applies.
-  uint64_t max_response_bytes =
-      request.max_response_bytes.value_or(HTTP_MAX_RESPONSE_BYTES);
-  CandidTypeRecord arg;
   arg.append("url", CandidTypeText{request.url});
   arg.append("max_response_bytes", CandidTypeOptNat64{max_response_bytes});
   arg.append("method", CandidTypeVariant{http_method(request.method)});
@@ -1292,10 +1300,88 @@ IC_Management::http_request(IC_HttpOutcallRequest request) {
     transform.append("context", CandidTypeVecNat8{request.transform_context});
     arg.append("transform", CandidTypeOptRecord{transform});
   }
+  return request_size;
+}
+
+// The most a pay-as-you-go outcall can cost
+__uint128_t
+http_budget(uint64_t request_size, uint64_t max_response_bytes,
+            IC_API::HttpOutcallType type,
+            std::optional<IC_API::HttpOutcallReplicationCounts> counts = {}) {
+  IC_API::HttpOutcallCostParams params;
+  params.request_bytes = request_size;
+  params.http_roundtrip_time_ms = HTTP_MAX_RESPONSE_TIME_MS;
+  params.raw_response_bytes = max_response_bytes;
+  params.transformed_response_bytes =
+      max_response_bytes + HTTP_CANDID_OVERHEAD_RESERVE_BYTES;
+  params.transform_instructions = HTTP_MAX_TRANSFORM_INSTRUCTIONS;
+  params.outcall_type = type;
+  params.flexible_counts = counts;
+  return IC_API::cost_http_request_v2(params);
+}
+
+// The type of an http_request_result, decoded into response; headers needs
+// names & values, and must live as long as the decode
+CandidTypeRecord http_result_decoder(IC_HttpOutcallResponse &response,
+                                     CandidTypeRecord &headers) {
+  CandidTypeRecord result;
+  result.append("status", CandidTypeNat{&response.status});
+  result.append("headers", CandidTypeVecRecord{&headers});
+  result.append("body", CandidTypeVecNat8{&response.body});
+  return result;
+}
+
+void add_headers(IC_HttpOutcallResponse &response,
+                 const std::vector<std::string> &names,
+                 const std::vector<std::string> &values) {
+  for (size_t i = 0; i < names.size() && i < values.size(); ++i) {
+    response.headers.push_back(IC_HeaderField{names[i], values[i]});
+  }
+}
+
+// opt variant { used : nat64 (nat for cycles); exceeded : reserved }
+struct UsageScratch {
+  std::string label;
+  bool has{false};
+  uint64_t used64{0};
+  __uint128_t used{0};
+  CandidTypeVariant variant;
+};
+
+void bind_usage(UsageScratch &u, bool nat) {
+  u.variant = CandidTypeVariant{&u.label};
+  if (nat) u.variant.append("used", CandidTypeNat{&u.used});
+  else u.variant.append("used", CandidTypeNat64{&u.used64});
+  u.variant.append("exceeded", CandidTypeReserved{});
+}
+
+IC_HttpUsage usage_from(const UsageScratch &u, bool nat) {
+  IC_HttpUsage usage;
+  usage.reported = u.has;
+  usage.exceeded = u.has && u.label == "exceeded";
+  if (u.has && !usage.exceeded) usage.used = nat ? u.used : u.used64;
+  return usage;
+}
+} // namespace
+
+IC_Task<IC_CallResult<IC_HttpOutcallResponse>>
+IC_Management::http_request(IC_HttpOutcallRequest request) {
+  // The limit paid for is the limit sent, also when the IC's default applies.
+  uint64_t max_response_bytes =
+      request.max_response_bytes.value_or(HTTP_MAX_RESPONSE_BYTES);
+  CandidTypeRecord arg;
+  uint64_t request_size = append_http_request(arg, request, max_response_bytes);
   arg.append("is_replicated", CandidTypeOptBool{request.is_replicated});
+  if (request.pricing_version.has_value())
+    arg.append("pricing_version", CandidTypeOptNat32{*request.pricing_version});
 
   __uint128_t cycles =
-      IC_API::cost_http_request(request_size, max_response_bytes);
+      request.pricing_version == 2u
+          ? http_budget(request_size, max_response_bytes,
+                        request.is_replicated == false
+                            ? IC_API::HttpOutcallType::NonReplicated
+                            : IC_API::HttpOutcallType::FullyReplicated)
+          : IC_API::cost_http_request(request_size, max_response_bytes);
   IC_CallResult<IC_CallReply> r =
       co_await IC_Call::guaranteed_response(management(), "http_request")
           .with_arg(arg)
@@ -1303,19 +1389,191 @@ IC_Management::http_request(IC_HttpOutcallRequest request) {
   if (!r) co_return r.error();
 
   IC_HttpOutcallResponse response;
-  std::vector<std::string> r_names, r_values;
-  CandidTypeRecord r_header;
-  r_header.append("name", CandidTypeVecText{&r_names});
-  r_header.append("value", CandidTypeVecText{&r_values});
-  CandidTypeRecord result;
-  result.append("status", CandidTypeNat{&response.status});
-  result.append("headers", CandidTypeVecRecord{&r_header});
-  result.append("body", CandidTypeVecNat8{&response.body});
-  r->decode(result);
-  for (size_t i = 0; i < r_names.size() && i < r_values.size(); ++i) {
-    response.headers.push_back(IC_HeaderField{r_names[i], r_values[i]});
-  }
+  std::vector<std::string> names, values;
+  CandidTypeRecord headers;
+  headers.append("name", CandidTypeVecText{&names});
+  headers.append("value", CandidTypeVecText{&values});
+  r->decode(http_result_decoder(response, headers));
+  add_headers(response, names, values);
   co_return response;
+}
+
+IC_Task<IC_CallResult<IC_FlexibleHttpResult>>
+IC_Management::flexible_http_request(IC_FlexibleHttpRequest request,
+                                     std::optional<__uint128_t> cycles) {
+  uint64_t max_response_bytes =
+      request.request.max_response_bytes.value_or(HTTP_MAX_RESPONSE_BYTES);
+  CandidTypeRecord arg;
+  uint64_t request_size =
+      append_http_request(arg, request.request, max_response_bytes);
+  if (request.replication.has_value()) {
+    CandidTypeRecord replication;
+    replication.append("min_responses",
+                       CandidTypeNat32{request.replication->min_responses});
+    replication.append("max_responses",
+                       CandidTypeNat32{request.replication->max_responses});
+    replication.append("total_requests",
+                       CandidTypeNat32{request.replication->total_requests});
+    arg.append("replication", CandidTypeOptRecord{replication});
+  }
+  __uint128_t attached = cycles.value_or(
+      http_budget(request_size, max_response_bytes,
+                  IC_API::HttpOutcallType::Flexible, request.replication));
+  IC_CallResult<IC_CallReply> r = co_await IC_Call::guaranteed_response(
+                                      management(), "flexible_http_request")
+                                      .with_arg(arg)
+                                      .with_cycles(attached);
+  if (!r) co_return r.error();
+
+  IC_FlexibleHttpResult result;
+
+  // ok : vec http_request_result
+  IC_HttpOutcallResponse response;
+  std::vector<std::string> names, values;
+  CandidTypeRecord headers;
+  headers.append("name", CandidTypeVecText{&names});
+  headers.append("value", CandidTypeVecText{&values});
+  CandidTypeVecOf ok(
+      [&]() -> CandidType {
+        response = {};
+        names.clear();
+        values.clear();
+        return http_result_decoder(response, headers);
+      },
+      [&]() {
+        add_headers(response, names, values);
+        result.responses.push_back(response);
+      });
+
+  // err : record { global_error; node_details; message }
+  std::string global_label;
+  bool has_global{false};
+  CandidTypeVariant global{&global_label};
+  global.append("timeout", CandidTypeReserved{});
+  global.append("out_of_cycles", CandidTypeReserved{});
+  global.append("responses_too_large", CandidTypeReserved{});
+  global.append("too_many_rejects", CandidTypeReserved{});
+
+  // The values of a node detail, and the CandidTypes that point at them: an
+  // opt decodes through a pointer, so they live as long as the decode
+  IC_HttpNodeDetail detail;
+  UsageScratch raw, roundtrip, instructions, transformed, spent;
+  bind_usage(raw, false);
+  bind_usage(roundtrip, false);
+  bind_usage(instructions, false);
+  bind_usage(transformed, false);
+  bind_usage(spent, true);
+  std::string error_code, error_message;
+  bool has_error{false};
+  CandidTypeRecord node_error;
+  node_error.append("code", CandidTypeText{&error_code});
+  node_error.append("message", CandidTypeText{&error_message});
+  CandidTypeRecord report;
+  report.append_optional("raw_response_bytes",
+                         CandidTypeOptVariant{&raw.variant, &raw.has});
+  report.append_optional(
+      "http_roundtrip_time_ms",
+      CandidTypeOptVariant{&roundtrip.variant, &roundtrip.has});
+  report.append_optional(
+      "transform_instructions",
+      CandidTypeOptVariant{&instructions.variant, &instructions.has});
+  report.append_optional(
+      "transformed_response_bytes",
+      CandidTypeOptVariant{&transformed.variant, &transformed.has});
+  report.append_optional("cycles",
+                         CandidTypeOptVariant{&spent.variant, &spent.has});
+  CandidTypeRecord node;
+  node.append("node_id", CandidTypePrincipal{&detail.node_id});
+  node.append("report", report);
+  node.append("error", CandidTypeOptRecord{&node_error, &has_error});
+  CandidTypeVecOf node_details(
+      [&]() -> CandidType {
+        detail = {};
+        for (UsageScratch *u :
+             {&raw, &roundtrip, &instructions, &transformed, &spent}) {
+          u->label.clear();
+          u->has = false;
+          u->used64 = 0;
+          u->used = 0;
+        }
+        error_code.clear();
+        error_message.clear();
+        has_error = false;
+        return node;
+      },
+      [&]() {
+        detail.raw_response_bytes = usage_from(raw, false);
+        detail.http_roundtrip_time_ms = usage_from(roundtrip, false);
+        detail.transform_instructions = usage_from(instructions, false);
+        detail.transformed_response_bytes = usage_from(transformed, false);
+        detail.cycles = usage_from(spent, true);
+        if (has_error) {
+          detail.error_code = error_code;
+          detail.error_message = error_message;
+        }
+        result.node_details.push_back(detail);
+      });
+  CandidTypeRecord err;
+  err.append("global_error", CandidTypeOptVariant{&global, &has_global});
+  err.append("node_details", node_details);
+  err.append("message", CandidTypeText{&result.message});
+
+  std::string label;
+  CandidTypeVariant reply{&label};
+  reply.append("ok", ok);
+  reply.append("err", err);
+  r->decode(reply);
+
+  result.ok = label == "ok";
+  if (has_global) {
+    using G = IC_FlexibleHttpResult::GlobalError;
+    result.global_error = global_label == "timeout"         ? G::Timeout
+                          : global_label == "out_of_cycles" ? G::OutOfCycles
+                          : global_label == "responses_too_large"
+                              ? G::ResponsesTooLarge
+                              : G::TooManyRejects;
+  }
+  co_return result;
+}
+
+IC_Task<IC_CallResult<CandidTypePrincipal>>
+IC_Management::provisional_create_canister_with_cycles(
+    std::optional<__uint128_t> amount, IC_CanisterSettings settings,
+    std::optional<CandidTypePrincipal> specified_id) {
+  CandidTypeRecord settings_record;
+  bool has_settings = append_settings(settings_record, settings);
+  CandidTypeRecord arg;
+  arg.append("amount", CandidTypeOptNat{amount});
+  if (has_settings)
+    arg.append("settings", CandidTypeOptRecord{settings_record});
+  arg.append("specified_id",
+             CandidTypeOptPrincipal{principal_text(specified_id)});
+  arg.append("sender_canister_version",
+             CandidTypeOptNat64{ic0_canister_version()});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(),
+                                     "provisional_create_canister_with_cycles")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  std::string canister_id;
+  CandidTypeRecord result;
+  result.append("canister_id", CandidTypePrincipal{&canister_id});
+  r->decode(result);
+  co_return CandidTypePrincipal{canister_id};
+}
+
+IC_Task<IC_CallResult<void>>
+IC_Management::provisional_top_up_canister(CandidTypePrincipal canister_id,
+                                           __uint128_t amount) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  arg.append("amount", CandidTypeNat{amount});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(),
+                                     "provisional_top_up_canister")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  co_return IC_CallResult<void>{};
 }
 
 #endif // __cpp_impl_coroutine

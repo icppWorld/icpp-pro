@@ -66,3 +66,11 @@ void subnet_info_of() WASM_SYMBOL_EXPORTED("canister_update subnet_info_of");
 void subnet_metrics_of()
     WASM_SYMBOL_EXPORTED("canister_update subnet_metrics_of");
 void node_metrics_of() WASM_SYMBOL_EXPORTED("canister_update node_metrics_of");
+
+// The outcall and provisional helpers (outcalls.cpp)
+void flexible_get() WASM_SYMBOL_EXPORTED("canister_update flexible_get");
+void http_get_v2() WASM_SYMBOL_EXPORTED("canister_update http_get_v2");
+void provisional_create()
+    WASM_SYMBOL_EXPORTED("canister_update provisional_create");
+void provisional_top_up()
+    WASM_SYMBOL_EXPORTED("canister_update provisional_top_up");

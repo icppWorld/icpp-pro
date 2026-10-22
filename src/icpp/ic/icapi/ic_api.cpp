@@ -486,8 +486,10 @@ __uint128_t IC_API::cost_http_request_v2(const HttpOutcallCostParams &params) {
   record.append("outcall_type", CandidTypeOptVariant{outcall_type});
   CandidArgs args;
   args.append(record);
+  // The type table registry is not cleared here: the caller may be building
+  // a Candid value, e.g. the argument of the outcall this cost is for, whose
+  // type tables are in the registry
   VecBytes B = CandidSerialize(args).get_B();
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   std::vector<uint8_t> bytes = B.vec_uint8_t();
 
   __uint128_t cycles;

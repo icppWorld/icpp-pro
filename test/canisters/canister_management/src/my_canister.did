@@ -42,4 +42,8 @@ service : {
   "subnet_info_of" : (principal) -> (text);
   "subnet_metrics_of" : (principal) -> (text);
   "node_metrics_of" : (principal, nat64) -> (text);
+  "flexible_get" : (text, nat32, nat32, nat32, bool) -> (text);
+  "http_get_v2" : (text, bool) -> (text);
+  "provisional_create" : (vec nat, vec principal) -> (text);
+  "provisional_top_up" : (principal, nat) -> (text);
 };

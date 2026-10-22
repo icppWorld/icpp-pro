@@ -306,6 +306,38 @@ __attribute__((noinline)) void test_type_table_index_64() {
   CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
+// A Candid value built before IC_API::cost_http_request_v2 still encodes
+// correctly after it: the cost function encodes its own Candid argument, and
+// must not clear the type table registry the value refers to
+__attribute__((noinline)) void test_registry_survives_cost_http_v2() {
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+  CandidTypeRecord inner;
+  inner.append("n", CandidTypeNat32{uint32_t(7)});
+  CandidTypeRecord outer;
+  outer.append("url", CandidTypeText{"https://example.com/"});
+  outer.append("inner", CandidTypeOptRecord{inner});
+
+  IC_API::HttpOutcallCostParams params;
+  params.request_bytes = 20;
+  params.raw_response_bytes = 100;
+  IC_API::cost_http_request_v2(params);
+
+  std::string wire = CandidSerialize(outer).as_hex_string();
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+  std::string url;
+  uint32_t n{0};
+  bool has_inner{false};
+  CandidTypeRecord inner_d;
+  inner_d.append("n", CandidTypeNat32{&n});
+  CandidTypeRecord outer_d;
+  outer_d.append("url", CandidTypeText{&url});
+  outer_d.append("inner", CandidTypeOptRecord{&inner_d, &has_inner});
+  decode(wire, outer_d);
+  check(url == "https://example.com/" && has_inner && n == 7,
+        "a value encodes after cost_http_request_v2");
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+}
+
 // CandidTypeVecOf: a vec of any element type
 std::vector<VecOfItem> decode_vec_of_items(const std::string &wire) {
   CandidSerializeTypeTableRegistry::get_instance().clear();
@@ -922,6 +954,10 @@ int unit_test_candid() {
 
   { // A vec of any element type
     test_vec_of_decode();
+  }
+
+  { // The type table registry survives cost_http_request_v2
+    test_registry_survives_cost_http_v2();
   }
 
   { // An additional field of a vec of records is read and discarded

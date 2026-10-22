@@ -23,7 +23,20 @@
 #include <vector>
 
 // docs start: ic_management
-// The settings of a new canister; a field left empty gets the IC's default
+// Who may read a canister's logs, snapshots or status
+struct IC_Visibility {
+  enum class Kind { Controllers, Public, AllowedViewers };
+  Kind kind{Kind::Controllers};
+  std::vector<std::string> allowed_viewers; // principal texts, AllowedViewers
+};
+
+struct IC_EnvironmentVariable {
+  std::string name;
+  std::string value;
+};
+
+// The settings of a canister, for create_canister and update_settings; a
+// field left empty is not changed (create_canister: gets the IC's default)
 struct IC_CanisterSettings {
   std::optional<std::vector<std::string>> controllers; // principal texts
   std::optional<__uint128_t> compute_allocation;
@@ -31,6 +44,51 @@ struct IC_CanisterSettings {
   std::optional<__uint128_t> freezing_threshold;
   std::optional<__uint128_t> reserved_cycles_limit;
   std::optional<__uint128_t> wasm_memory_limit;
+  std::optional<__uint128_t> minimum_incoming_canister_call_cycles;
+  std::optional<IC_Visibility> log_visibility;
+  std::optional<__uint128_t> log_memory_limit;
+  std::optional<IC_Visibility> snapshot_visibility;
+  std::optional<IC_Visibility> status_visibility;
+  std::optional<__uint128_t> wasm_memory_threshold;
+  std::optional<std::vector<IC_EnvironmentVariable>> environment_variables;
+};
+
+// The settings of a canister, as canister_status reports them
+struct IC_DefiniteCanisterSettings {
+  std::vector<std::string> controllers; // principal texts
+  __uint128_t compute_allocation{0};
+  __uint128_t memory_allocation{0};
+  __uint128_t freezing_threshold{0};
+  __uint128_t reserved_cycles_limit{0};
+  __uint128_t minimum_incoming_canister_call_cycles{0};
+  IC_Visibility log_visibility;
+  __uint128_t log_memory_limit{0};
+  IC_Visibility snapshot_visibility;
+  IC_Visibility status_visibility;
+  __uint128_t wasm_memory_limit{0};
+  __uint128_t wasm_memory_threshold{0};
+  std::vector<IC_EnvironmentVariable> environment_variables;
+};
+
+// The memory of a canister, in bytes, as canister_status reports it
+struct IC_MemoryMetrics {
+  __uint128_t wasm_memory_size{0};
+  __uint128_t stable_memory_size{0};
+  __uint128_t global_memory_size{0};
+  __uint128_t wasm_binary_size{0};
+  __uint128_t custom_sections_size{0};
+  __uint128_t canister_history_size{0};
+  __uint128_t wasm_chunk_store_size{0};
+  __uint128_t snapshots_size{0};
+  __uint128_t log_memory_store_size{0};
+};
+
+// The query calls a canister answered, as canister_status reports them
+struct IC_QueryStats {
+  __uint128_t num_calls_total{0};
+  __uint128_t num_instructions_total{0};
+  __uint128_t request_payload_bytes_total{0};
+  __uint128_t response_payload_bytes_total{0};
 };
 
 // The threshold keys, e.g. "key_1" on mainnet, "test_key_1" (mainnet and a
@@ -55,16 +113,23 @@ struct IC_PublicKey {
 
 using IC_Blob = std::vector<uint8_t>;
 
-// The status of a canister, from IC_Management::canister_status. The reply
-// has more fields; these are the ones decoded.
+// The status of a canister, from IC_Management::canister_status. A field the
+// IC added recently stays at its default when an older replica leaves it out.
 struct IC_CanisterStatus {
   IC_API::CanisterStatus status{IC_API::CanisterStatus::Running};
   __uint128_t cycles{0};
   __uint128_t idle_cycles_burned_per_day{0};
   __uint128_t memory_size{0};
-  std::optional<IC_Blob> module_hash;   // empty: no code installed
-  std::vector<std::string> controllers; // principal texts
-  __uint128_t freezing_threshold{0};
+  std::optional<IC_Blob> module_hash; // empty: no code installed
+  std::vector<std::string>
+      controllers;                   // principal texts, = settings.controllers
+  __uint128_t freezing_threshold{0}; // = settings.freezing_threshold
+  bool ready_for_migration{false};
+  uint64_t version{0}; // the canister version
+  IC_DefiniteCanisterSettings settings;
+  IC_MemoryMetrics memory_metrics;
+  __uint128_t reserved_cycles{0};
+  IC_QueryStats query_stats;
 };
 
 // Calls to the management canister (aaaaa-aa), the IC's system API. Each
@@ -94,7 +159,27 @@ public:
   static IC_Task<IC_CallResult<IC_CanisterStatus>>
   canister_status(CandidTypePrincipal canister_id);
 
-  // Threshold ECDSA (secp256k1): the private key is spread over the nodes of
+  // Changes the settings of a canister this canister controls. Only the
+  // fields that are set change.
+  static IC_Task<IC_CallResult<void>>
+  update_settings(CandidTypePrincipal canister_id,
+                  IC_CanisterSettings settings);
+
+  // Starts, stops and deletes a canister this canister controls. A stop waits
+  // for the canister's calls in flight; a canister must be stopped before it
+  // is deleted, and its remaining cycles are then lost.
+  static IC_Task<IC_CallResult<void>>
+  start_canister(CandidTypePrincipal canister_id);
+  static IC_Task<IC_CallResult<void>>
+  stop_canister(CandidTypePrincipal canister_id);
+  static IC_Task<IC_CallResult<void>>
+  delete_canister(CandidTypePrincipal canister_id);
+
+  // Moves cycles from this canister to any canister, e.g. a top-up
+  static IC_Task<IC_CallResult<void>>
+  deposit_cycles(CandidTypePrincipal canister_id, __uint128_t cycles);
+
+  // Threshold ECDSA (secp256k1 or secp256r1): the private key is spread over the nodes of
   // a signing subnet and never exists in one place. The public key gives a
   // Bitcoin or Ethereum address that this canister controls; sign_with_ecdsa
   // signs a 32-byte hash, e.g. of a transaction.

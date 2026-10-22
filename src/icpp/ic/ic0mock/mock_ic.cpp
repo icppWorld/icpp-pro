@@ -406,7 +406,11 @@ bool MockIC::management_reply(const std::string &method,
     return v;
   };
   CandidArgs out;
-  if (method == "raw_rand") {
+  if (method == "update_settings" || method == "start_canister" ||
+      method == "stop_canister" || method == "delete_canister" ||
+      method == "deposit_cycles") {
+    // An empty reply: '()'
+  } else if (method == "raw_rand") {
     out.append(CandidTypeVecNat8{bytes(32)});
   } else if (method == "create_canister") {
     // A new principal, like those of the local network's canisters
@@ -439,6 +443,32 @@ bool MockIC::management_reply(const std::string &method,
   CandidSerializeTypeTableRegistry::get_instance().clear();
   reply = B.vec_uint8_t();
   return true;
+}
+
+const MockIC::PendingCall *MockIC::last_call(const std::string &callee,
+                                             const std::string &method) {
+  for (auto it = m_calls.rbegin(); it != m_calls.rend(); ++it) {
+    if (it->method == method &&
+        CandidTypePrincipal(it->callee).get_text() == callee) {
+      return &*it;
+    }
+  }
+  return nullptr;
+}
+
+std::string MockIC::last_call_arg_hex(const std::string &callee,
+                                      const std::string &method) {
+  const PendingCall *call = last_call(callee, method);
+  if (!call) return "";
+  VecBytes bytes;
+  bytes.store(call->args.data(), (uint32_t)call->args.size());
+  return bytes.as_hex_string();
+}
+
+__uint128_t MockIC::last_call_cycles(const std::string &callee,
+                                     const std::string &method) {
+  const PendingCall *call = last_call(callee, method);
+  return call ? call->cycles : 0;
 }
 
 void MockIC::deliver_request(size_t call_index) {

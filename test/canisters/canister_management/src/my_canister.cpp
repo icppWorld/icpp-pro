@@ -7,16 +7,9 @@
 #include <vector>
 
 #include "ic_api.h"
+#include "test_helpers.h"
 
 namespace {
-// "<code>:<message>" of a failed call
-std::string error_text(const IC_CallError &error) {
-  if (error.kind == IC_CallError::Kind::CallRejected) {
-    return "rej:" + std::to_string(static_cast<uint32_t>(error.reject_code)) +
-           ":" + error.reject_message;
-  }
-  return "err:" + error.to_string();
-}
 
 void reply_blobs(IC_API &ic_api, const IC_Blob &a, const IC_Blob &b) {
   CandidArgs out;

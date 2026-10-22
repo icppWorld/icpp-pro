@@ -691,7 +691,7 @@ void ic0_cost_http_request_v2(uintptr_t params_src, uint32_t params_size,
 
 uint32_t ic0_cost_sign_with_ecdsa(uintptr_t src, uint32_t size,
                                   uint32_t ecdsa_curve, uintptr_t dst) {
-  return mock_sign_cost(src, size, ecdsa_curve, 1, dst); // secp256k1
+  return mock_sign_cost(src, size, ecdsa_curve, 2, dst); // secp256k1, secp256r1
 }
 
 uint32_t ic0_cost_sign_with_schnorr(uintptr_t src, uint32_t size,

@@ -163,6 +163,9 @@ def test__http_get(network: str, replicated: bool) -> None:
     if text.startswith("rej:"):
         pytest.skip(f"the HTTPS outcall did not reach the internet: {text}")
     status, body_size, headers = (int(x) for x in text.split())
+    if status >= 500:
+        # The outcall worked: the server had a problem (seen on CI: 503)
+        pytest.skip(f"example.com answered {status}")
     assert status == 200 and body_size > 0
     if replicated:
         assert headers == 0

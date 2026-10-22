@@ -752,28 +752,47 @@ int main() {
   mockIC.run_trap_test(
       "vec_of unknown case", roundtrip_vec_of_variants,
       "4449444c026d016b067471757f777ba4aab60272c8b2bf0275818f92f1047d010002010201",
-      silent_on_trap);
+      silent_on_trap, "", "does not match any of the expected Variant ids");
   // The wrong payload type: '(vec { variant { t = 5 } })' with t: nat
   mockIC.run_trap_test("vec_of wrong payload type", roundtrip_vec_of_variants,
-                       "4449444c026d016b01747d0100010005", silent_on_trap);
+                       "4449444c026d016b01747d0100010005", silent_on_trap, "",
+                       "Wrong type on wire");
   // An element without the non-opt field id
   mockIC.run_trap_test(
       "vec_of missing field", roundtrip_vec_of_items,
       "4449444c066d016c04d4c2a7b80402f2afa8c80403d9e9dae7040496e3f0f00b056b02617f627d6e716d716c01717101000100000000",
-      silent_on_trap);
+      silent_on_trap, "", "Wrong id (hash) of a non-opt record field");
   // Truncated bytes
   mockIC.run_trap_test(
       "vec_of truncated", roundtrip_vec_of_items,
       "4449444c066d016c05dbb70178d4c2a7b80402f2afa8c80403d9e9dae7040496e3f0f00b056b02617f627d6e716d716c01717101000201000000000000000001026e310201780179027131020000000000000001ac0200",
-      silent_on_trap);
+      silent_on_trap, "", "extends past end");
   // A size larger than the bytes left
   mockIC.run_trap_test(
       "vec_of size too large", roundtrip_vec_of_variants,
       "4449444c026d016b057471757fa4aab60272c8b2bf0275818f92f1047d0100ffffffff0f",
-      silent_on_trap);
+      silent_on_trap, "", "is larger than the bytes left");
+  // A variant index on the wire outside the cases of its type table:
+  // '(vec { variant { AdminQuery } })' with the index 0 changed to 7
+  mockIC.run_trap_test("vec_variant index out of range", roundtrip_vec_variant,
+                       "4449444c026d016b0299d8ddf2087fd8a7f6ae0b7f01000107",
+                       silent_on_trap, "", "is outside the 2 cases");
+  // The same in a CandidTypeVecOf of variants, with the index 9 of 5 cases
+  mockIC.run_trap_test(
+      "vec_of variant index out of range", roundtrip_vec_of_variants,
+      "4449444c026d016b057471757fa4aab60272c8b2bf0275818f92f1047d01000109",
+      silent_on_trap, "", "is outside the 5 cases");
+  // A vec of records that are not zero width, with a size larger than the
+  // bytes left
+  mockIC.run_trap_test(
+      "vec_of records size too large", roundtrip_vec_of_items,
+      "4449444c066d016c05dbb70178d4c2a7b80402f2afa8c80403d9e9dae7040496e3f0f00b"
+      "056b02617f627d6e716d716c0171710100ffffffff0f",
+      silent_on_trap, "", "is larger than the bytes left");
   // An element of another type than the element type, when encoding
   mockIC.run_trap_test("vec_of wrong element", vec_of_wrong_element,
-                       "4449444c0000", silent_on_trap);
+                       "4449444c0000", silent_on_trap, "",
+                       "does not have the element type");
 
   // '(vec { true : bool; false : bool }, vec { 101 : nat; 102 : nat; 103 : nat }, vec { 101 : nat8; 102 : nat8; 103 : nat8 }, vec { 101 : nat16; 102 : nat16; 103 : nat16 }, vec { 101 : nat32; 102 : nat32; 103 : nat32 }, vec { 101 : nat64; 102 : nat64; 103 : nat64 }, vec { -101 : int; -102 : int; -103 : int }, vec { -101 : int8; -102 : int8; -103 : int8 }, vec { -101 : int16; -102 : int16; -103 : int16 }, vec { -101 : int32; -102 : int32; -103 : int32 }, vec { -101 : int64; -102 : int64; -103 : int64 }, vec { -1.01 : float32; -1.02 : float32; -1.03 : float32 }, vec { -1.01 : float64; -1.02 : float64; -1.03 : float64 }, vec { "Hello 101" : text; "Hello 102" : text; "Hello 103" : text }, vec { principal "2ibo7-dia"; principal "w3gef-eqbai"; principal "expmt-gtxsw-inftj-ttabj-qhp5s-nozup-n3bbo-k7zvn-dg4he-knac3-lae"})'
   // -> same

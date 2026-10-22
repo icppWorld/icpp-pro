@@ -124,37 +124,50 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
 
 int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
                           const std::string &candid_in,
-                          const bool silent_on_trap,
-                          const std::string &caller) {
+                          const bool silent_on_trap, const std::string &caller,
+                          const std::string &expected_trap_message) {
   ++m_tests_total;
   std::cout << "\n----------\n";
   std::cout << "MockIC run_trap_test: " << test_name << ": \n";
   start_message(test_name, candid_in, caller, true);
 
   m_silent_on_trap = silent_on_trap;
+  bool trapped{false};
+  std::string trap_message;
   try {
     // Now call the API we're testing. It must trap, before or after a
     // co_await.
     api_callback();
     if (m_auto_drain) drain();
     if (m_contexts[m_root_context].trapped) {
-      std::cout << "Test: " << test_name << ": Passed\n";
-      return 0;
+      trapped = true;
+      trap_message = m_contexts[m_root_context].trap_message;
     }
-
-    // If it did not trap, give an error message
-    ++m_tests_failed;
-    std::cout << "\nTest: '" << test_name << "' Failed\n";
-    if (m_exit_on_fail) {
-      test_summary();
-      exit(1);
-    }
-    return 1;
-
   } catch (const std::exception &e) {
+    trapped = true;
+    trap_message = e.what();
+  }
+
+  if (trapped &&
+      (expected_trap_message.empty() ||
+       trap_message.find(expected_trap_message) != std::string::npos)) {
     std::cout << "Test: " << test_name << ": Passed\n";
     return 0;
   }
+
+  // If it did not trap, or with another message, give an error message
+  ++m_tests_failed;
+  if (trapped) {
+    std::cout << "Trapped with:\n"
+              << trap_message << "\nExpecting a trap message with:\n"
+              << expected_trap_message << "\n";
+  }
+  std::cout << "\nTest: '" << test_name << "' Failed\n";
+  if (m_exit_on_fail) {
+    test_summary();
+    exit(1);
+  }
+  return 1;
 }
 
 MockIC::CallHandle MockIC::start_call(const std::string &name,

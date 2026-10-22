@@ -215,10 +215,13 @@ public:
                const bool silent_on_trap, const std::string &caller,
                std::string *candid_out);
 
+  // Passes when the call traps. With expected_trap_message, the trap message
+  // must also contain it.
   int run_trap_test(const std::string &test_name, void (*api_callback)(),
                     const std::string &candid_in,
                     const bool silent_on_trap = true,
-                    const std::string &caller = "");
+                    const std::string &caller = "",
+                    const std::string &expected_trap_message = "");
 
   int test_summary();
 

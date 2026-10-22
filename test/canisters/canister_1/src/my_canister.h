@@ -24,6 +24,16 @@ void test_env_var_count()
     WASM_SYMBOL_EXPORTED("canister_query test_env_var_count");
 void test_cost() WASM_SYMBOL_EXPORTED("canister_query test_cost");
 void test_candid() WASM_SYMBOL_EXPORTED("canister_query test_candid");
+void roundtrip_vec_of_items()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_vec_of_items");
+void roundtrip_vec_of_variants()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_vec_of_variants");
+void roundtrip_vec_of_nested()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_vec_of_nested");
+void roundtrip_vec_of_shared()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_vec_of_shared");
+void vec_of_wrong_element()
+    WASM_SYMBOL_EXPORTED("canister_query vec_of_wrong_element");
 void test_vendors() WASM_SYMBOL_EXPORTED("canister_query test_vendors");
 void test_getenv() WASM_SYMBOL_EXPORTED("canister_query test_getenv");
 

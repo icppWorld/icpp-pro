@@ -28,7 +28,10 @@ principal_text(const std::optional<CandidTypePrincipal> &p) {
 
 CandidTypeRecord ecdsa_key_id(const IC_EcdsaKeyId &key) {
   CandidTypeRecord key_id;
-  key_id.append("curve", CandidTypeVariant{"secp256k1"});
+  key_id.append("curve",
+                CandidTypeVariant{key.curve == IC_API::EcdsaCurve::Secp256r1
+                                      ? "secp256r1"
+                                      : "secp256k1"});
   key_id.append("name", CandidTypeText{key.name});
   return key_id;
 }
@@ -104,6 +107,104 @@ const char *http_method(IC_HttpMethod method) {
   return "get";
 }
 
+// log_visibility, snapshot_visibility, status_visibility
+CandidTypeVariant visibility_value(const IC_Visibility &v) {
+  switch (v.kind) {
+  case IC_Visibility::Kind::Public:
+    return CandidTypeVariant{"public"};
+  case IC_Visibility::Kind::AllowedViewers:
+    return CandidTypeVariant{"allowed_viewers",
+                             CandidTypeVecPrincipal{v.allowed_viewers}};
+  case IC_Visibility::Kind::Controllers:
+    break;
+  }
+  return CandidTypeVariant{"controllers"};
+}
+
+// The type to decode a visibility into; finish with visibility_from
+CandidTypeVariant visibility_type(std::string &label,
+                                  std::vector<std::string> &viewers) {
+  CandidTypeVariant v{&label};
+  v.append("controllers", CandidTypeNull{});
+  v.append("public", CandidTypeNull{});
+  v.append("allowed_viewers", CandidTypeVecPrincipal{&viewers});
+  return v;
+}
+
+IC_Visibility visibility_from(const std::string &label,
+                              const std::vector<std::string> &viewers) {
+  IC_Visibility v;
+  if (label == "public") v.kind = IC_Visibility::Kind::Public;
+  else if (label == "allowed_viewers") {
+    v.kind = IC_Visibility::Kind::AllowedViewers;
+    v.allowed_viewers = viewers;
+  }
+  return v;
+}
+
+// The fields of canister_settings that are set; an opt field without a value
+// is left out of the record. Returns whether any field is set.
+bool append_settings(CandidTypeRecord &record,
+                     const IC_CanisterSettings &settings) {
+  bool has_settings{false};
+  if (settings.controllers.has_value()) {
+    record.append("controllers", CandidTypeOptVec{CandidTypeVecPrincipal{
+                                     *settings.controllers}});
+    has_settings = true;
+  }
+  auto opt_nat = [&](const char *name, const std::optional<__uint128_t> &v) {
+    if (v.has_value()) {
+      record.append(name, CandidTypeOptNat{*v});
+      has_settings = true;
+    }
+  };
+  auto opt_visibility = [&](const char *name,
+                            const std::optional<IC_Visibility> &v) {
+    if (v.has_value()) {
+      record.append(name, CandidTypeOptVariant{visibility_value(*v)});
+      has_settings = true;
+    }
+  };
+  opt_nat("compute_allocation", settings.compute_allocation);
+  opt_nat("memory_allocation", settings.memory_allocation);
+  opt_nat("freezing_threshold", settings.freezing_threshold);
+  opt_nat("reserved_cycles_limit", settings.reserved_cycles_limit);
+  opt_nat("wasm_memory_limit", settings.wasm_memory_limit);
+  opt_nat("minimum_incoming_canister_call_cycles",
+          settings.minimum_incoming_canister_call_cycles);
+  opt_visibility("log_visibility", settings.log_visibility);
+  opt_nat("log_memory_limit", settings.log_memory_limit);
+  opt_visibility("snapshot_visibility", settings.snapshot_visibility);
+  opt_visibility("status_visibility", settings.status_visibility);
+  opt_nat("wasm_memory_threshold", settings.wasm_memory_threshold);
+  if (settings.environment_variables.has_value()) {
+    std::vector<std::string> names;
+    std::vector<std::string> values;
+    for (const auto &env : *settings.environment_variables) {
+      names.push_back(env.name);
+      values.push_back(env.value);
+    }
+    CandidTypeRecord env_var;
+    env_var.append("name", CandidTypeVecText{names});
+    env_var.append("value", CandidTypeVecText{values});
+    record.append("environment_variables",
+                  CandidTypeOptVec{CandidTypeVecRecord{env_var}});
+    has_settings = true;
+  }
+  return has_settings;
+}
+
+// A call with argument record { canister_id } and an empty reply
+IC_Task<IC_CallResult<void>>
+call_for_canister(const char *method, CandidTypePrincipal canister_id) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), method).with_arg(arg);
+  if (!r) co_return r.error();
+  co_return IC_CallResult<void>{};
+}
+
 CandidTypePrincipal canister_self() {
   std::vector<uint8_t> bytes(ic0_canister_self_size());
   ic0_canister_self_copy(reinterpret_cast<uintptr_t>(bytes.data()), 0,
@@ -125,24 +226,7 @@ IC_Task<IC_CallResult<CandidTypePrincipal>>
 IC_Management::create_canister(IC_CanisterSettings settings,
                                __uint128_t extra_cycles) {
   CandidTypeRecord settings_record;
-  bool has_settings{false};
-  if (settings.controllers.has_value()) {
-    settings_record.append(
-        "controllers",
-        CandidTypeOptVec{CandidTypeVecPrincipal{*settings.controllers}});
-    has_settings = true;
-  }
-  auto opt_nat = [&](const char *name, const std::optional<__uint128_t> &v) {
-    if (v.has_value()) {
-      settings_record.append(name, CandidTypeOptNat{*v});
-      has_settings = true;
-    }
-  };
-  opt_nat("compute_allocation", settings.compute_allocation);
-  opt_nat("memory_allocation", settings.memory_allocation);
-  opt_nat("freezing_threshold", settings.freezing_threshold);
-  opt_nat("reserved_cycles_limit", settings.reserved_cycles_limit);
-  opt_nat("wasm_memory_limit", settings.wasm_memory_limit);
+  bool has_settings = append_settings(settings_record, settings);
 
   // An opt field without a value is left out of the record
   CandidTypeRecord arg;
@@ -172,17 +256,82 @@ IC_Management::canister_status(CandidTypePrincipal canister_id) {
           .with_arg(arg);
   if (!r) co_return r.error();
 
-  // The reply has more fields; they are skipped (record width subtyping)
+  // The reply has more fields; they are skipped (record width subtyping).
+  // The fields the IC added after canister_status first shipped may be absent
+  // in a reply of an older replica, or of a mock (append_optional).
   IC_CanisterStatus status;
+  IC_DefiniteCanisterSettings &st = status.settings;
   std::string label;
   CandidTypeVariant status_variant{&label};
   status_variant.append("running", CandidTypeNull{});
   status_variant.append("stopping", CandidTypeNull{});
   status_variant.append("stopped", CandidTypeNull{});
+
+  std::string log_label, snapshot_label, status_label;
+  std::vector<std::string> log_viewers, snapshot_viewers, status_viewers;
+  std::vector<std::string> env_names, env_values;
+  CandidTypeRecord env_var;
+  env_var.append("name", CandidTypeVecText{&env_names});
+  env_var.append("value", CandidTypeVecText{&env_values});
   CandidTypeRecord settings;
-  settings.append("controllers", CandidTypeVecPrincipal{&status.controllers});
-  settings.append("freezing_threshold",
-                  CandidTypeNat{&status.freezing_threshold});
+  settings.append("controllers", CandidTypeVecPrincipal{&st.controllers});
+  settings.append("freezing_threshold", CandidTypeNat{&st.freezing_threshold});
+  settings.append_optional("compute_allocation",
+                           CandidTypeNat{&st.compute_allocation});
+  settings.append_optional("memory_allocation",
+                           CandidTypeNat{&st.memory_allocation});
+  settings.append_optional("reserved_cycles_limit",
+                           CandidTypeNat{&st.reserved_cycles_limit});
+  settings.append_optional(
+      "minimum_incoming_canister_call_cycles",
+      CandidTypeNat{&st.minimum_incoming_canister_call_cycles});
+  settings.append_optional("log_visibility",
+                           visibility_type(log_label, log_viewers));
+  settings.append_optional("log_memory_limit",
+                           CandidTypeNat{&st.log_memory_limit});
+  settings.append_optional("snapshot_visibility",
+                           visibility_type(snapshot_label, snapshot_viewers));
+  settings.append_optional("status_visibility",
+                           visibility_type(status_label, status_viewers));
+  settings.append_optional("wasm_memory_limit",
+                           CandidTypeNat{&st.wasm_memory_limit});
+  settings.append_optional("wasm_memory_threshold",
+                           CandidTypeNat{&st.wasm_memory_threshold});
+  settings.append_optional("environment_variables",
+                           CandidTypeVecRecord{&env_var});
+
+  IC_MemoryMetrics &mm = status.memory_metrics;
+  CandidTypeRecord memory_metrics;
+  memory_metrics.append_optional("wasm_memory_size",
+                                 CandidTypeNat{&mm.wasm_memory_size});
+  memory_metrics.append_optional("stable_memory_size",
+                                 CandidTypeNat{&mm.stable_memory_size});
+  memory_metrics.append_optional("global_memory_size",
+                                 CandidTypeNat{&mm.global_memory_size});
+  memory_metrics.append_optional("wasm_binary_size",
+                                 CandidTypeNat{&mm.wasm_binary_size});
+  memory_metrics.append_optional("custom_sections_size",
+                                 CandidTypeNat{&mm.custom_sections_size});
+  memory_metrics.append_optional("canister_history_size",
+                                 CandidTypeNat{&mm.canister_history_size});
+  memory_metrics.append_optional("wasm_chunk_store_size",
+                                 CandidTypeNat{&mm.wasm_chunk_store_size});
+  memory_metrics.append_optional("snapshots_size",
+                                 CandidTypeNat{&mm.snapshots_size});
+  memory_metrics.append_optional("log_memory_store_size",
+                                 CandidTypeNat{&mm.log_memory_store_size});
+
+  IC_QueryStats &qs = status.query_stats;
+  CandidTypeRecord query_stats;
+  query_stats.append_optional("num_calls_total",
+                              CandidTypeNat{&qs.num_calls_total});
+  query_stats.append_optional("num_instructions_total",
+                              CandidTypeNat{&qs.num_instructions_total});
+  query_stats.append_optional("request_payload_bytes_total",
+                              CandidTypeNat{&qs.request_payload_bytes_total});
+  query_stats.append_optional("response_payload_bytes_total",
+                              CandidTypeNat{&qs.response_payload_bytes_total});
+
   IC_Blob module_hash;
   bool has_module_hash{false};
   CandidTypeVecNat8 module_hash_vec{&module_hash};
@@ -195,12 +344,74 @@ IC_Management::canister_status(CandidTypePrincipal canister_id) {
   result.append("cycles", CandidTypeNat{&status.cycles});
   result.append("idle_cycles_burned_per_day",
                 CandidTypeNat{&status.idle_cycles_burned_per_day});
+  result.append_optional("ready_for_migration",
+                         CandidTypeBool{&status.ready_for_migration});
+  result.append_optional("version", CandidTypeNat64{&status.version});
+  result.append_optional("memory_metrics", memory_metrics);
+  result.append_optional("reserved_cycles",
+                         CandidTypeNat{&status.reserved_cycles});
+  result.append_optional("query_stats", query_stats);
   r->decode(result);
 
   if (label == "stopping") status.status = IC_API::CanisterStatus::Stopping;
   else if (label == "stopped") status.status = IC_API::CanisterStatus::Stopped;
   if (has_module_hash) status.module_hash = module_hash;
+  st.log_visibility = visibility_from(log_label, log_viewers);
+  st.snapshot_visibility = visibility_from(snapshot_label, snapshot_viewers);
+  st.status_visibility = visibility_from(status_label, status_viewers);
+  for (size_t i = 0; i < env_names.size() && i < env_values.size(); ++i) {
+    st.environment_variables.push_back({env_names[i], env_values[i]});
+  }
+  status.controllers = st.controllers;
+  status.freezing_threshold = st.freezing_threshold;
   co_return status;
+}
+
+IC_Task<IC_CallResult<void>>
+IC_Management::update_settings(CandidTypePrincipal canister_id,
+                               IC_CanisterSettings settings) {
+  // settings is not an opt here: it is sent also when no field is set
+  CandidTypeRecord settings_record;
+  append_settings(settings_record, settings);
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  arg.append("settings", settings_record);
+  arg.append("sender_canister_version",
+             CandidTypeOptNat64{ic0_canister_version()});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "update_settings")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  co_return IC_CallResult<void>{};
+}
+
+IC_Task<IC_CallResult<void>>
+IC_Management::start_canister(CandidTypePrincipal canister_id) {
+  co_return co_await call_for_canister("start_canister", canister_id);
+}
+
+IC_Task<IC_CallResult<void>>
+IC_Management::stop_canister(CandidTypePrincipal canister_id) {
+  co_return co_await call_for_canister("stop_canister", canister_id);
+}
+
+IC_Task<IC_CallResult<void>>
+IC_Management::delete_canister(CandidTypePrincipal canister_id) {
+  co_return co_await call_for_canister("delete_canister", canister_id);
+}
+
+IC_Task<IC_CallResult<void>>
+IC_Management::deposit_cycles(CandidTypePrincipal canister_id,
+                              __uint128_t cycles) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  // The attached cycles are what is deposited, so the call must not time out
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::guaranteed_response(management(), "deposit_cycles")
+          .with_arg(arg)
+          .with_cycles(cycles);
+  if (!r) co_return r.error();
+  co_return IC_CallResult<void>{};
 }
 
 IC_Task<IC_CallResult<IC_PublicKey>> IC_Management::ecdsa_public_key(

@@ -261,7 +261,7 @@ public:
   // The cost of a threshold signature or vetKD key derivation, for a key
   // name (e.g. "key_1", "test_key_1") and a curve or algorithm. error tells
   // when the curve/algorithm or the key name is not known; cycles is then 0.
-  enum class EcdsaCurve : uint32_t { Secp256k1 = 0 };
+  enum class EcdsaCurve : uint32_t { Secp256k1 = 0, Secp256r1 = 1 };
   enum class SchnorrAlgorithm : uint32_t { Bip340Secp256k1 = 0, Ed25519 = 1 };
   enum class VetKdCurve : uint32_t { Bls12_381_G2 = 0 };
   enum class SignCostError : uint32_t {

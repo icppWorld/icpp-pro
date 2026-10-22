@@ -334,9 +334,13 @@ static void native_cost_values() {
                                     IC_API::VetKdCurve::Bls12_381_G2)
           .cycles != MOCKIC_COST_SIGN_TEST_KEY)
     ICPP_HOOKS::trap("cost_vetkd_derive_key(dfx_test_key) != the mock fee");
-  if (IC_API::cost_sign_with_ecdsa("key_1", static_cast<IC_API::EcdsaCurve>(1))
+  if (IC_API::cost_sign_with_ecdsa("key_1", IC_API::EcdsaCurve::Secp256r1)
+          .cycles != MOCKIC_COST_SIGN_KEY_1)
+    ICPP_HOOKS::trap("cost_sign_with_ecdsa(key_1, secp256r1) != the mock fee");
+  // secp256k1 is 0 and secp256r1 is 1: 2 is not a curve
+  if (IC_API::cost_sign_with_ecdsa("key_1", static_cast<IC_API::EcdsaCurve>(2))
           .error != IC_API::SignCostError::InvalidCurveOrAlgorithm)
-    ICPP_HOOKS::trap("ecdsa curve 1 is not an invalid curve");
+    ICPP_HOOKS::trap("ecdsa curve 2 is not an invalid curve");
   ic_api.to_wire();
 }
 

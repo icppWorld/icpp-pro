@@ -13,4 +13,11 @@ service : {
   "transform" : (record { response : http_request_result; context : blob }) -> (http_request_result) query;
   "cost_http_v2" : () -> (nat, nat, nat) query;
   "echo_vec_blob" : (vec blob) -> (vec blob) query;
+  "update_settings" : (principal, text) -> (text);
+  "start_child" : (principal) -> (text);
+  "stop_child" : (principal) -> (text);
+  "delete_child" : (principal) -> (text);
+  "deposit_child" : (principal, nat) -> (text);
+  "canister_status_full" : (principal) -> (text);
+  "ecdsa_r1" : (text, blob) -> (text);
 };

@@ -146,6 +146,13 @@ public:
   void expect_call(const std::string &callee, const std::string &method,
                    const MockResponse &response);
   void clear_expected_calls() { m_expected.clear(); }
+  // What the last test sent to `callee` (principal text) for `method`: the
+  // Candid argument as hex, and the attached cycles. "" and 0 when it made no
+  // such call.
+  std::string last_call_arg_hex(const std::string &callee,
+                                const std::string &method);
+  __uint128_t last_call_cycles(const std::string &callee,
+                               const std::string &method);
   // The result of the next ic0.call_perform (0: performed).
   void set_next_call_perform_rc(uint32_t rc) { m_next_perform_rc = rc; }
   // false: keep calls queued after an entry point, until drain().
@@ -302,6 +309,8 @@ private:
   void respond(size_t context, bool is_reply, const std::vector<uint8_t> &reply,
                uint32_t reject_code, const std::string &reject_message);
   std::vector<PendingCall> m_calls;
+  const PendingCall *last_call(const std::string &callee,
+                               const std::string &method);
   std::vector<CallContext> m_contexts;
   std::deque<Event> m_events;
   size_t m_current_context{0};

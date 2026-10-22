@@ -25,6 +25,7 @@ from icpp import commands_get
 from icpp import commands_init
 from icpp import commands_build_wasm
 from icpp import commands_build_native
+from icpp import commands_run_native
 from icpp import commands_build_library
 from icpp import commands_build_library_native
 from icpp import commands_install_wasi_sdk

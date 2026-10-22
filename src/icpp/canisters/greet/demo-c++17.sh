@@ -81,4 +81,4 @@ icpp build-native --config icpp-c++17.toml --to-compile all
 echo " "
 echo "--------------------------------------------------"
 echo "Running the OS native debug executable"
-./build-native/mockic.exe
+icpp run-native

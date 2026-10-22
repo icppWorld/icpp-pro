@@ -237,10 +237,10 @@ def build_native(
     typer.echo("All done building the native debug executable:")
     typer.echo(f"{build_path.resolve()}/{executable}")
     try:
-        typer.echo("(✔)You can run it from the command line")
+        typer.echo("(✔)You can run it with: icpp run-native  (under a memory guard)")
         typer.echo("(✔)You can debug it with VS Code + CodeLLDB")
     except UnicodeEncodeError:
-        typer.echo("(-)You can run it from the command line")
+        typer.echo("(-)You can run it with: icpp run-native  (under a memory guard)")
         typer.echo("(-)You can debug it with VS Code + CodeLLDB")
 
     # ----------------------------------------------------------------------

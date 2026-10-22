@@ -116,7 +116,7 @@ follow the existing header conventions; C++17-compatible.
 conda activate icpp-pro
 make all-static                  # clang-format + black + pylint + mypy
 # targeted, for the canisters you touched:
-cd test/canisters/<canister> && icpp build-native && ./build-native/mockic.exe
+cd test/canisters/<canister> && icpp build-native && icpp run-native
 cd test/canisters/<canister> && icpp build-wasm
 # full suite before merge:
 make all-tests

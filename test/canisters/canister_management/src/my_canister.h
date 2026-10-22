@@ -24,3 +24,19 @@ void deposit_child() WASM_SYMBOL_EXPORTED("canister_update deposit_child");
 void canister_status_full()
     WASM_SYMBOL_EXPORTED("canister_update canister_status_full");
 void ecdsa_r1() WASM_SYMBOL_EXPORTED("canister_update ecdsa_r1");
+
+// The code helpers (code.cpp)
+void install_child() WASM_SYMBOL_EXPORTED("canister_update install_child");
+void upload_chunk_child()
+    WASM_SYMBOL_EXPORTED("canister_update upload_chunk_child");
+void upload_big_chunk_child()
+    WASM_SYMBOL_EXPORTED("canister_update upload_big_chunk_child");
+void stored_chunks_child()
+    WASM_SYMBOL_EXPORTED("canister_update stored_chunks_child");
+void clear_chunks_child()
+    WASM_SYMBOL_EXPORTED("canister_update clear_chunks_child");
+void install_chunked_child()
+    WASM_SYMBOL_EXPORTED("canister_update install_chunked_child");
+void uninstall_child() WASM_SYMBOL_EXPORTED("canister_update uninstall_child");
+void metadata_child() WASM_SYMBOL_EXPORTED("canister_update metadata_child");
+void info_child() WASM_SYMBOL_EXPORTED("canister_update info_child");

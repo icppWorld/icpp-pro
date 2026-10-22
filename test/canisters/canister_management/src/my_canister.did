@@ -20,4 +20,13 @@ service : {
   "deposit_child" : (principal, nat) -> (text);
   "canister_status_full" : (principal) -> (text);
   "ecdsa_r1" : (text, blob) -> (text);
+  "install_child" : (principal, text, blob, blob) -> (text);
+  "upload_chunk_child" : (principal, blob) -> (text);
+  "upload_big_chunk_child" : (principal, nat64) -> (text);
+  "stored_chunks_child" : (principal) -> (text);
+  "clear_chunks_child" : (principal) -> (text);
+  "install_chunked_child" : (principal, text, vec blob, blob, opt principal) -> (text);
+  "uninstall_child" : (principal) -> (text);
+  "metadata_child" : (principal, text) -> (text);
+  "info_child" : (principal, opt nat64) -> (text);
 };

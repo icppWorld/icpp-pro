@@ -13,10 +13,10 @@ from icpp.run_shell_cmd import run_shell_cmd
 @pytest.fixture(scope="session", autouse=True)
 def cycles_for_children(network: str, identity: str) -> None:
     """The tests create children with create_canister, each costing the
-    creation fee plus the child's 100B cycles: top up canister_management once"""
+    creation fee plus the child's 1T cycles: top up canister_management once"""
     if network == "local":
         run_shell_cmd(
-            f"icp canister top-up --amount 20t canister_management "
+            f"icp canister top-up --amount 100t canister_management "
             f"--environment local --identity {identity}",
             cwd=Path(__file__).parent.parent,
         )

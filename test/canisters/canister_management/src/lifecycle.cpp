@@ -34,6 +34,8 @@ IC_CanisterSettings settings_for(const std::string &name,
   IC_CanisterSettings s;
   if (name == "controllers") {
     s.controllers = std::vector<std::string>{self, caller};
+  } else if (name == "only_caller") {
+    s.controllers = std::vector<std::string>{caller};
   } else if (name == "public_logs") {
     s.log_visibility = IC_Visibility{IC_Visibility::Kind::Public, {}};
   } else if (name == "viewers") {

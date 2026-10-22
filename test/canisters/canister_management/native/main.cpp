@@ -12,6 +12,7 @@
 #include <string>
 
 #include "../src/my_canister.h"
+#include "../src/test_helpers.h"
 
 // The Mock IC
 // clang-format off
@@ -426,6 +427,211 @@ int main() {
     std::string text =
         run_text(mockIC, "ecdsa_r1 unknown key", ecdsa_r1, bad, caller);
     check(text.rfind("err:", 0) == 0, "ecdsa secp256r1: an unknown key name");
+  }
+  // ---------------------------------------------------------------------
+  // The code helpers. The arguments are pinned as icpp encodes them, each
+  // checked with didc against test/ic.did; the replies are didc encode-d.
+  {
+    // install_code in every mode; the Mock IC replies '()'
+    const char *modes[] = {"install", "reinstall", "upgrade", "upgrade_skip",
+                           "upgrade_keep"};
+    const char *args[] = {
+        "4449444c046c05d6fca70202a79fc97e02e3a683c30401b3c4b1f20468ca9998b40d036b019baaebec087f6d7b6e780100024449040061736d00010a00000000000000020101010100000000000000",
+        "4449444c046c05d6fca70202a79fc97e02e3a683c30401b3c4b1f20468ca9998b40d036b01c8bb8a707f6d7b6e780100024449040061736d00010a00000000000000020101010100000000000000",
+        "4449444c066c006e006b019ce9c69906016c05d6fca70204a79fc97e04e3a683c30402b3c4b1f20468ca9998b40d056d7b6e780103024449040061736d0001010a00000000000000020101010100000000000000",
+        "4449444c086c006e7e6c01c0a09bde05016e026b019ce9c69906036c05d6fca70206a79fc97e06e3a683c30404b3c4b1f20468ca9998b40d076d7b6e780105024449040061736d00010101010a00000000000000020101010100000000000000",
+        "4449444c0a6c006b0185a19bb8047f6b006e016c01dceaaefa02036e046b019ce9c69906056c05d6fca70208a79fc97e08e3a683c30406b3c4b1f20468ca9998b40d096d7b6e780107024449040061736d00010100010a00000000000000020101010100000000000000"};
+    for (int i = 0; i < 5; ++i) {
+      CandidArgs in;
+      in.append(CandidTypePrincipal{child});
+      in.append(CandidTypeText{modes[i]});
+      in.append(CandidTypeVecNat8{IC_Blob{0x00, 0x61, 0x73, 0x6d}});
+      in.append(CandidTypeVecNat8{IC_Blob{0x44, 0x49}});
+      check_eq(run_text(mockIC, std::string("install_child ") + modes[i],
+                        install_child, in, caller),
+               "ok", std::string("install_code: ") + modes[i]);
+      check_eq(mockIC.last_call_arg_hex("aaaaa-aa", "install_code"), args[i],
+               std::string("install_code: the argument, ") + modes[i]);
+    }
+  }
+  {
+    // upload_chunk: the reply is the chunk's hash
+    mockIC.expect_call(
+        "aaaaa-aa", "upload_chunk",
+        MockIC::MockResponse::reply(
+            "4449444c026c01cedfa0a804016d7b010020ababababababababababababababababab"
+            "ababababababababababababababab"));
+    CandidArgs in;
+    in.append(CandidTypePrincipal{child});
+    in.append(CandidTypeVecNat8{IC_Blob(5, 0x11)});
+    check_eq(
+        run_text(mockIC, "upload_chunk_child", upload_chunk_child, in, caller),
+        hex_text(IC_Blob(32, 0xab)), "upload_chunk: the hash");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "upload_chunk"),
+        "4449444c026c02ed8c8bae0401b3c4b1f204686d7b0100051111111111010a00000000000000020101",
+        "upload_chunk: the argument");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // stored_chunks: two hashes, then none
+    mockIC.expect_call(
+        "aaaaa-aa", "stored_chunks",
+        MockIC::MockResponse::reply(
+            "4449444c036d016c01cedfa0a804026d7b010002020102020304"));
+    check_eq(run_text(mockIC, "stored_chunks_child", stored_chunks_child,
+                      child_in(), caller),
+             "0102,0304", "stored_chunks: two hashes");
+    mockIC.expect_call("aaaaa-aa", "stored_chunks",
+                       MockIC::MockResponse::reply(
+                           "4449444c036d016c01cedfa0a804026d7b010000"));
+    check_eq(run_text(mockIC, "stored_chunks_child empty", stored_chunks_child,
+                      child_in(), caller),
+             "", "stored_chunks: none");
+    check_eq(mockIC.last_call_arg_hex("aaaaa-aa", "stored_chunks"),
+             "4449444c016c01b3c4b1f204680100010a00000000000000020101",
+             "stored_chunks: the argument");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // clear_chunk_store and uninstall_code: the Mock IC replies '()'
+    check_eq(run_text(mockIC, "clear_chunks_child", clear_chunks_child,
+                      child_in(), caller),
+             "ok", "clear_chunk_store: the reply");
+    check_eq(mockIC.last_call_arg_hex("aaaaa-aa", "clear_chunk_store"),
+             "4449444c016c01b3c4b1f204680100010a00000000000000020101",
+             "clear_chunk_store: the argument");
+    check_eq(run_text(mockIC, "uninstall_child", uninstall_child, child_in(),
+                      caller),
+             "ok", "uninstall_code: the reply");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "uninstall_code"),
+        "4449444c026c02b3c4b1f20468ca9998b40d016e780100010a00000000000000020101010100000000000000",
+        "uninstall_code: the argument");
+  }
+  {
+    // install_chunked_code, from the target's own store and from another
+    for (int with_store = 0; with_store < 2; ++with_store) {
+      CandidArgs in;
+      in.append(CandidTypePrincipal{child});
+      in.append(CandidTypeText{"upgrade"});
+      in.append(CandidTypeVecBlob{std::vector<IC_Blob>{{1, 2}, {3, 4}}});
+      in.append(CandidTypeVecNat8{IC_Blob{9, 9}});
+      in.append(CandidTypeOptPrincipal{
+          with_store ? std::optional<std::string>{"aaaaa-aa"} : std::nullopt});
+      check_eq(run_text(mockIC, "install_chunked_child", install_chunked_child,
+                        in, caller),
+               "ok", "install_chunked_code: the reply");
+      check_eq(
+          mockIC.last_call_arg_hex("aaaaa-aa", "install_chunked_code"),
+          with_store
+              ? "4449444c0b6c01cedfa0a804026d7b6d016c006e036b019ce9c69906046c07d6fca70201a6bd87b10401e3a683c30405eff5f3f0060995e8dcba0a688583b6af0b07ca9998b40d0a6e686c01cedfa0a804016d086e78010600020909000102020102020304010a00000000000000020101010100010100000000000000"
+              : "4449444c0b6c01cedfa0a804026d7b6d016c006e036b019ce9c69906046c07d6fca70201a6bd87b10401e3a683c30405eff5f3f0060995e8dcba0a688583b6af0b07ca9998b40d0a6e686c01cedfa0a804016d086e78010600020909000102020102020304010a0000000000000002010100010100000000000000",
+          "install_chunked_code: the argument");
+    }
+  }
+  {
+    // install_chunked_code with a wrong hash: rejected
+    mockIC.expect_call(
+        "aaaaa-aa", "install_chunked_code",
+        MockIC::MockResponse::reject(5, "Wasm module hash does not match"));
+    CandidArgs in;
+    in.append(CandidTypePrincipal{child});
+    in.append(CandidTypeText{"install"});
+    in.append(CandidTypeVecBlob{std::vector<IC_Blob>{{1, 2}}});
+    in.append(CandidTypeVecNat8{IC_Blob{0}});
+    in.append(CandidTypeOptPrincipal{std::optional<std::string>{}});
+    check_eq(run_text(mockIC, "install_chunked_child rejected",
+                      install_chunked_child, in, caller),
+             "rej:5:Wasm module hash does not match",
+             "install_chunked_code: the reject");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // canister_metadata
+    mockIC.expect_call(
+        "aaaaa-aa", "canister_metadata",
+        MockIC::MockResponse::reply(
+            "4449444c026c01f1fee18d03016d7b01000b7075626c69632d64617461"));
+    CandidArgs in;
+    in.append(CandidTypePrincipal{child});
+    in.append(CandidTypeText{"icpp"});
+    check_eq(run_text(mockIC, "metadata_child", metadata_child, in, caller),
+             "value=public-data", "canister_metadata: the value");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "canister_metadata"),
+        "4449444c016c02cbe4fdc70471b3c4b1f2046801000469637070010a00000000000000020101",
+        "canister_metadata: the argument");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // canister_info: every kind of change, both origins
+    mockIC.expect_call(
+        "aaaaa-aa", "canister_info",
+        MockIC::MockResponse::reply(
+            "4449444c166c04d7e09b90020181cfaef40a029ff4c1b60b048fedd8b10e786d686e03"
+            "6d7b6d056c04d6f68e800178c0c3dff50278e6b384d80406c2b9dbda0a0a6b0280d1e8"
+            "900207dced83b40b086c018fc1d4fb06686c02c0c3dff50209b3c4b1f204686e786b07"
+            "9f90dedf020bd798fbac040cbd81f4ce040e8cb1bb9a0511c89cb4c90a1398f795de0a"
+            "1590c6909a0f7f6c02d7e09b900201c2e7e2ce0b026c02e3a683c3040d81cfaef40a03"
+            "6b03c8bb8a707f9ce9c699067f9baaebec087f6c05c0c3dff50278dbe1c691030f9ed9"
+            "c0ad081082bff3a50d78b6b897890f036b0291a0c58d0370a4f794e508706e686c02d7"
+            "e09b900212c2e7e2ce0b026e016c04dca5dce70214b3c4b1f20468c8b6fa9307688fed"
+            "d8b10e786c03b3c4b1f2046898cec7e707788fedd8b10e786c01d7e09b900201010002"
+            "01000101040102abcd0701000000000000000000000000000000000101040001010001"
+            "02010202000000000000000100000000000000010105000000000000000100010104ab"
+            "cdef010300000000000000020000000000000001000100060400000000000000030000"
+            "0000000000000100020200000000000000000009000000000000000200010500000000"
+            "0000000400000000000000000100050006000000000000000500000000000000000100"
+            "0301010101040007000000000000000600000000000000000100040101040100000000"
+            "00000004000000000000000100010003000000000000000c00000000000000"));
+    CandidArgs in;
+    in.append(CandidTypePrincipal{child});
+    in.append(CandidTypeOptNat64{std::optional<uint64_t>{20}});
+    check_eq(
+        run_text(mockIC, "info_child", info_child, in, caller),
+        "total=12; controllers=2; module_hash=abcd; changes=creation(1,env)/user "
+        "code_deployment(upgrade,abcdef01)/canister@5 code_uninstall/canister "
+        "load_snapshot(0001,2,metadata_upload)/user controllers_change(0)/user "
+        "settings_change(1)/user rename_canister(aaaaa-aa->2vxsx-fae,1)/user",
+        "canister_info: every kind of change");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "canister_info"),
+        "4449444c026c02b3c4b1f20468f9bcd2e807016e780100010a00000000000000020101011400000000000000",
+        "canister_info: the argument");
+    CandidArgs in_all;
+    in_all.append(CandidTypePrincipal{child});
+    in_all.append(CandidTypeOptNat64{std::optional<uint64_t>{}});
+    run_text(mockIC, "info_child all", info_child, in_all, caller);
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "canister_info"),
+        "4449444c026c02b3c4b1f20468f9bcd2e807016e780100010a0000000000000002010100",
+        "canister_info: the argument, no count");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // canister_info with a kind of change that icpp-pro does not know: traps
+    mockIC.expect_call(
+        "aaaaa-aa", "canister_info",
+        MockIC::MockResponse::reply(
+            "4449444c176c04d7e09b90020181cfaef40a029ff4c1b60b048fedd8b10e786d686e03"
+            "6d7b6d056c04d6f68e800178c0c3dff50278e6b384d80406c2b9dbda0a0a6b0280d1e8"
+            "900207dced83b40b086c018fc1d4fb06686c02c0c3dff50209b3c4b1f204686e786b08"
+            "9f90dedf020bd798fbac040cbd81f4ce040e8cb1bb9a0511c89cb4c90a1398f795de0a"
+            "15acd2c7a20c1690c6909a0f7f6c02d7e09b900201c2e7e2ce0b026c02e3a683c3040d"
+            "81cfaef40a036b03c8bb8a707f9ce9c699067f9baaebec087f6c05c0c3dff50278dbe1"
+            "c691030f9ed9c0ad081082bff3a50d78b6b897890f036b0291a0c58d0370a4f794e508"
+            "706e686c02d7e09b900212c2e7e2ce0b026e016c04dca5dce70214b3c4b1f20468c8b6"
+            "fa9307688fedd8b10e786c03b3c4b1f2046898cec7e707788fedd8b10e786c01d7e09b"
+            "9002016c01787d01000000010100000000000000000000000000000000010104060101"
+            "00000000000000"));
+    CandidArgs in;
+    in.append(CandidTypePrincipal{child});
+    in.append(CandidTypeOptNat64{std::optional<uint64_t>{}});
+    mockIC.run_trap_test("info_child future change", info_child, hex(in), true,
+                         caller,
+                         "does not match any of the expected Variant ids");
+    mockIC.clear_expected_calls();
   }
   {
     // An HTTPS outcall: the response set with expect_call

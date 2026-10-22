@@ -132,6 +132,79 @@ struct IC_CanisterStatus {
   IC_QueryStats query_stats;
 };
 
+// How install_code and install_chunked_code install a module: Install into an
+// empty canister, Reinstall (the state is cleared), or Upgrade (the state is
+// kept), with the upgrade's options
+enum class IC_WasmMemoryPersistence { Keep, Replace };
+struct IC_InstallMode {
+  enum class Kind { Install, Reinstall, Upgrade };
+  Kind kind{Kind::Install};
+  std::optional<bool> skip_pre_upgrade;                            // Upgrade
+  std::optional<IC_WasmMemoryPersistence> wasm_memory_persistence; // Upgrade
+};
+
+// Where a change of a canister came from, in its history (canister_info)
+struct IC_ChangeOrigin {
+  enum class Kind { FromUser, FromCanister };
+  Kind kind{Kind::FromUser};
+  std::string user_id;                      // FromUser
+  std::string canister_id;                  // FromCanister
+  std::optional<uint64_t> canister_version; // FromCanister
+};
+
+// What a change of a canister was, in its history (canister_info). A new kind
+// that the IC adds traps until icpp-pro knows it.
+struct IC_ChangeDetails {
+  enum class Kind {
+    Creation,
+    CodeUninstall,
+    CodeDeployment,
+    LoadSnapshot,
+    ControllersChange,
+    SettingsChange,
+    RenameCanister
+  };
+  Kind kind{Kind::Creation};
+  // Creation, ControllersChange
+  std::vector<std::string> controllers;
+  // SettingsChange: the controllers, when they changed
+  std::optional<std::vector<std::string>> settings_controllers;
+  // Creation, SettingsChange
+  std::optional<IC_Blob> environment_variables_hash;
+  // CodeDeployment
+  IC_InstallMode::Kind mode{IC_InstallMode::Kind::Install};
+  IC_Blob module_hash;
+  // LoadSnapshot
+  enum class SnapshotSource { TakenFromCanister, MetadataUpload };
+  std::optional<std::string> from_canister_id;
+  IC_Blob snapshot_id;
+  uint64_t snapshot_canister_version{0};
+  uint64_t taken_at_timestamp{0};
+  SnapshotSource snapshot_source{SnapshotSource::TakenFromCanister};
+  // RenameCanister
+  std::string renamed_canister_id;
+  uint64_t renamed_total_num_changes{0};
+  std::string rename_to_canister_id;
+  uint64_t rename_to_version{0};
+  uint64_t rename_to_total_num_changes{0};
+  std::string requested_by;
+};
+
+struct IC_Change {
+  uint64_t timestamp_nanos{0};
+  uint64_t canister_version{0};
+  IC_ChangeOrigin origin;
+  IC_ChangeDetails details;
+};
+
+// The public information of any canister, from canister_info
+struct IC_CanisterInfo {
+  uint64_t total_num_changes{0};
+  std::vector<IC_Change> recent_changes; // oldest first
+  std::optional<IC_Blob> module_hash;    // empty: no code installed
+  std::vector<std::string> controllers;  // principal texts
+};
+
 // Calls to the management canister (aaaaa-aa), the IC's system API. Each
 // helper encodes the Candid argument, attaches the cycles the call costs, and
 // decodes the reply.
@@ -178,6 +251,48 @@ public:
   // Moves cycles from this canister to any canister, e.g. a top-up
   static IC_Task<IC_CallResult<void>>
   deposit_cycles(CandidTypePrincipal canister_id, __uint128_t cycles);
+
+  // Installs a wasm module (raw, or gzip-compressed) into a canister this
+  // canister controls, with arg as the init or post_upgrade argument (Candid
+  // bytes). A module larger than about 2 MiB goes through the chunk store:
+  // upload_chunk, then install_chunked_code.
+  static IC_Task<IC_CallResult<void>>
+  install_code(CandidTypePrincipal canister_id, IC_InstallMode mode,
+               IC_Blob wasm_module, IC_Blob arg = {});
+
+  // The chunk store of a canister (at most 1 MiB per chunk): upload_chunk
+  // returns the chunk's sha256 hash, stored_chunks lists the hashes.
+  static IC_Task<IC_CallResult<IC_Blob>>
+  upload_chunk(CandidTypePrincipal canister_id, IC_Blob chunk);
+  static IC_Task<IC_CallResult<void>>
+  clear_chunk_store(CandidTypePrincipal canister_id);
+  static IC_Task<IC_CallResult<std::vector<IC_Blob>>>
+  stored_chunks(CandidTypePrincipal canister_id);
+
+  // Installs a module from chunks in the chunk store of store_canister (by
+  // default the target itself), in the order of chunk_hashes;
+  // wasm_module_hash is the sha256 of the whole module.
+  static IC_Task<IC_CallResult<void>>
+  install_chunked_code(CandidTypePrincipal target_canister, IC_InstallMode mode,
+                       std::vector<IC_Blob> chunk_hashes,
+                       IC_Blob wasm_module_hash, IC_Blob arg = {},
+                       std::optional<CandidTypePrincipal> store_canister = {});
+
+  // Removes the code and the state of a canister this canister controls.
+  static IC_Task<IC_CallResult<void>>
+  uninstall_code(CandidTypePrincipal canister_id);
+
+  // The custom section "icp:public <name>" of any canister's module, or
+  // "icp:private <name>" of a canister this canister controls.
+  static IC_Task<IC_CallResult<IC_Blob>>
+  canister_metadata(CandidTypePrincipal canister_id, std::string name);
+
+  // The public information of any canister: its controllers, its module hash
+  // and its most recent changes: num_requested_changes of them (at most 20),
+  // none when it is not set.
+  static IC_Task<IC_CallResult<IC_CanisterInfo>>
+  canister_info(CandidTypePrincipal canister_id,
+                std::optional<uint64_t> num_requested_changes = {});
 
   // Threshold ECDSA (secp256k1 or secp256r1): the private key is spread over the nodes of
   // a signing subnet and never exists in one place. The public key gives a

@@ -996,6 +996,158 @@ IC_Task<IC_CallResult<void>> IC_Management::upload_canister_snapshot_data(
   co_return IC_CallResult<void>{};
 }
 
+IC_Task<IC_CallResult<std::vector<IC_CanisterLogRecord>>>
+IC_Management::fetch_canister_logs(CandidTypePrincipal canister_id,
+                                   std::optional<IC_LogFilter> filter) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  if (filter.has_value()) {
+    CandidTypeRecord range;
+    range.append("start", CandidTypeNat64{filter->start});
+    range.append("end", CandidTypeNat64{filter->end});
+    arg.append("filter",
+               CandidTypeOptVariant{CandidTypeVariant{
+                   filter->kind == IC_LogFilter::Kind::ByTimestampNanos
+                       ? "by_timestamp_nanos"
+                       : "by_idx",
+                   range}});
+  }
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "fetch_canister_logs")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  std::vector<uint64_t> idx, timestamp_nanos;
+  std::vector<IC_Blob> content;
+  CandidTypeRecord record;
+  record.append("idx", CandidTypeVecNat64{&idx});
+  record.append("timestamp_nanos", CandidTypeVecNat64{&timestamp_nanos});
+  record.append("content", CandidTypeVecBlob{&content});
+  CandidTypeRecord result;
+  result.append("canister_log_records", CandidTypeVecRecord{&record});
+  r->decode(result);
+  std::vector<IC_CanisterLogRecord> records;
+  for (size_t i = 0; i < idx.size(); ++i) {
+    records.push_back({idx[i], timestamp_nanos[i], content[i]});
+  }
+  co_return records;
+}
+
+IC_Task<IC_CallResult<IC_CanisterMetrics>>
+IC_Management::canister_metrics(CandidTypePrincipal canister_id) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "canister_metrics")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  IC_CanisterMetrics metrics;
+  IC_CyclesConsumed &c = metrics.cycles_consumed;
+  CandidTypeRecord consumed;
+  consumed.append_optional("memory", CandidTypeNat{&c.memory});
+  consumed.append_optional("compute_allocation",
+                           CandidTypeNat{&c.compute_allocation});
+  consumed.append_optional("ingress_induction",
+                           CandidTypeNat{&c.ingress_induction});
+  consumed.append_optional("instructions", CandidTypeNat{&c.instructions});
+  consumed.append_optional("request_and_response_transmission",
+                           CandidTypeNat{&c.request_and_response_transmission});
+  consumed.append_optional("uninstall", CandidTypeNat{&c.uninstall});
+  consumed.append_optional("canister_creation",
+                           CandidTypeNat{&c.canister_creation});
+  consumed.append_optional("http_outcalls", CandidTypeNat{&c.http_outcalls});
+  consumed.append_optional("burned_cycles", CandidTypeNat{&c.burned_cycles});
+  CandidTypeRecord result;
+  result.append("cycles_consumed", consumed);
+  r->decode(result);
+  co_return metrics;
+}
+
+IC_Task<IC_CallResult<IC_SubnetInfo>>
+IC_Management::subnet_info(CandidTypePrincipal subnet_id) {
+  CandidTypeRecord arg;
+  arg.append("subnet_id", subnet_id);
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "subnet_info").with_arg(arg);
+  if (!r) co_return r.error();
+  IC_SubnetInfo info;
+  CandidTypeRecord result;
+  result.append("replica_version", CandidTypeText{&info.replica_version});
+  result.append_optional("registry_version",
+                         CandidTypeNat64{&info.registry_version});
+  r->decode(result);
+  co_return info;
+}
+
+IC_Task<IC_CallResult<IC_SubnetMetrics>>
+IC_Management::subnet_metrics(CandidTypePrincipal subnet_id) {
+  CandidTypeRecord arg;
+  arg.append("subnet_id", subnet_id);
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "subnet_metrics")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  // Experimental in the IC: every field may be absent
+  IC_SubnetMetrics m;
+  CandidTypeRecord result;
+  result.append_optional("block_height", CandidTypeNat{&m.block_height});
+  result.append_optional("num_canisters", CandidTypeNat{&m.num_canisters});
+  result.append_optional("canister_state_bytes",
+                         CandidTypeNat{&m.canister_state_bytes});
+  result.append_optional("consumed_cycles_total",
+                         CandidTypeNat{&m.consumed_cycles_total});
+  result.append_optional("update_transactions_total",
+                         CandidTypeNat{&m.update_transactions_total});
+  result.append_optional("million_round_instructions_total",
+                         CandidTypeNat{&m.million_round_instructions_total});
+  r->decode(result);
+  co_return m;
+}
+
+IC_Task<IC_CallResult<std::vector<IC_NodeMetricsHistoryEntry>>>
+IC_Management::node_metrics_history(CandidTypePrincipal subnet_id,
+                                    uint64_t start_at_timestamp_nanos) {
+  CandidTypeRecord arg;
+  arg.append("subnet_id", subnet_id);
+  arg.append("start_at_timestamp_nanos",
+             CandidTypeNat64{start_at_timestamp_nanos});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "node_metrics_history")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  // vec record { timestamp_nanos : nat64; node_metrics : vec node_metrics }
+  std::vector<IC_NodeMetricsHistoryEntry> history;
+  uint64_t timestamp_nanos{0};
+  std::vector<std::string> node_ids;
+  std::vector<uint64_t> proposed, failures;
+  // A CandidTypeVecRecord decodes through a pointer to its record, so the
+  // record must live as long as the decode
+  CandidTypeRecord node_metrics;
+  node_metrics.append("node_id", CandidTypeVecPrincipal{&node_ids});
+  node_metrics.append("num_blocks_proposed_total",
+                      CandidTypeVecNat64{&proposed});
+  node_metrics.append("num_block_failures_total",
+                      CandidTypeVecNat64{&failures});
+  r->decode(CandidTypeVecOf(
+      [&]() -> CandidType {
+        timestamp_nanos = 0;
+        node_ids.clear();
+        proposed.clear();
+        failures.clear();
+        CandidTypeRecord entry;
+        entry.append("timestamp_nanos", CandidTypeNat64{&timestamp_nanos});
+        entry.append("node_metrics", CandidTypeVecRecord{&node_metrics});
+        return entry;
+      },
+      [&]() {
+        IC_NodeMetricsHistoryEntry entry{timestamp_nanos, {}};
+        for (size_t i = 0; i < node_ids.size(); ++i) {
+          entry.node_metrics.push_back({node_ids[i], proposed[i], failures[i]});
+        }
+        history.push_back(entry);
+      }));
+  co_return history;
+}
+
 IC_Task<IC_CallResult<IC_PublicKey>> IC_Management::ecdsa_public_key(
     IC_EcdsaKeyId key, std::vector<IC_Blob> derivation_path,
     std::optional<CandidTypePrincipal> canister_id) {

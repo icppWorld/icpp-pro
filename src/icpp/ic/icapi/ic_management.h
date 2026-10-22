@@ -264,6 +264,66 @@ struct IC_SnapshotData {
   IC_Blob hash;
 };
 
+// Which log records fetch_canister_logs returns: those with an index, or a
+// timestamp in nanoseconds, from start (inclusive) to end (exclusive)
+struct IC_LogFilter {
+  enum class Kind { ByIdx, ByTimestampNanos };
+  Kind kind{Kind::ByIdx};
+  uint64_t start{0};
+  uint64_t end{0};
+};
+
+// A line in the log of a canister, e.g. from ic0.debug_print or a trap
+struct IC_CanisterLogRecord {
+  uint64_t idx{0};
+  uint64_t timestamp_nanos{0};
+  IC_Blob content;
+};
+
+// The cycles a canister consumed, by kind, from canister_metrics
+struct IC_CyclesConsumed {
+  __uint128_t memory{0};
+  __uint128_t compute_allocation{0};
+  __uint128_t ingress_induction{0};
+  __uint128_t instructions{0};
+  __uint128_t request_and_response_transmission{0};
+  __uint128_t uninstall{0};
+  __uint128_t canister_creation{0};
+  __uint128_t http_outcalls{0};
+  __uint128_t burned_cycles{0};
+};
+struct IC_CanisterMetrics {
+  IC_CyclesConsumed cycles_consumed;
+};
+
+// A subnet, from subnet_info
+struct IC_SubnetInfo {
+  std::string replica_version;
+  uint64_t registry_version{0};
+};
+
+// The metrics of a subnet, from subnet_metrics (experimental in the IC)
+struct IC_SubnetMetrics {
+  __uint128_t block_height{0};
+  __uint128_t num_canisters{0};
+  __uint128_t canister_state_bytes{0};
+  __uint128_t consumed_cycles_total{0};
+  __uint128_t update_transactions_total{0};
+  __uint128_t million_round_instructions_total{0};
+};
+
+// The block metrics of the nodes of a subnet, one entry per day, from
+// node_metrics_history (experimental in the IC)
+struct IC_NodeMetrics {
+  std::string node_id;
+  uint64_t num_blocks_proposed_total{0};
+  uint64_t num_block_failures_total{0};
+};
+struct IC_NodeMetricsHistoryEntry {
+  uint64_t timestamp_nanos{0};
+  std::vector<IC_NodeMetrics> node_metrics;
+};
+
 // Calls to the management canister (aaaaa-aa), the IC's system API. Each
 // helper encodes the Candid argument, attaches the cycles the call costs, and
 // decodes the reply.
@@ -385,6 +445,29 @@ public:
   upload_canister_snapshot_data(CandidTypePrincipal canister_id,
                                 IC_Blob snapshot_id, IC_SnapshotData kind,
                                 IC_Blob chunk);
+
+  // The log of a canister, oldest first: of a canister this canister
+  // controls, or one whose log_visibility allows it. Without a filter, the
+  // most recent records that fit in one reply.
+  static IC_Task<IC_CallResult<std::vector<IC_CanisterLogRecord>>>
+  fetch_canister_logs(CandidTypePrincipal canister_id,
+                      std::optional<IC_LogFilter> filter = {});
+
+  // The cycles a canister this canister controls has consumed, by kind
+  static IC_Task<IC_CallResult<IC_CanisterMetrics>>
+  canister_metrics(CandidTypePrincipal canister_id);
+
+  // A subnet: its replica version and registry version (subnet_info), its
+  // metrics (subnet_metrics), and the block metrics of its nodes since a time
+  // (node_metrics_history, at most 60 entries). The subnet of this canister
+  // is IC_API::get_subnet_self().
+  static IC_Task<IC_CallResult<IC_SubnetInfo>>
+  subnet_info(CandidTypePrincipal subnet_id);
+  static IC_Task<IC_CallResult<IC_SubnetMetrics>>
+  subnet_metrics(CandidTypePrincipal subnet_id);
+  static IC_Task<IC_CallResult<std::vector<IC_NodeMetricsHistoryEntry>>>
+  node_metrics_history(CandidTypePrincipal subnet_id,
+                       uint64_t start_at_timestamp_nanos);
 
   // Threshold ECDSA (secp256k1 or secp256r1): the private key is spread over the nodes of
   // a signing subnet and never exists in one place. The public key gives a

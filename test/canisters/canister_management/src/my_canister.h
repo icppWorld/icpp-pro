@@ -58,3 +58,11 @@ void upload_snapshot_data_child()
     WASM_SYMBOL_EXPORTED("canister_update upload_snapshot_data_child");
 void copy_snapshot_child()
     WASM_SYMBOL_EXPORTED("canister_update copy_snapshot_child");
+
+// The observability helpers (observability.cpp)
+void logs_child() WASM_SYMBOL_EXPORTED("canister_update logs_child");
+void metrics_child() WASM_SYMBOL_EXPORTED("canister_update metrics_child");
+void subnet_info_of() WASM_SYMBOL_EXPORTED("canister_update subnet_info_of");
+void subnet_metrics_of()
+    WASM_SYMBOL_EXPORTED("canister_update subnet_metrics_of");
+void node_metrics_of() WASM_SYMBOL_EXPORTED("canister_update node_metrics_of");

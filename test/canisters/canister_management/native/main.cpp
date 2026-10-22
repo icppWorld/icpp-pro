@@ -879,6 +879,155 @@ int main() {
         "upload_canister_snapshot_metadata: the argument");
     mockIC.clear_expected_calls();
   }
+  // ---------------------------------------------------------------------
+  // The observability helpers. The arguments are pinned as icpp encodes
+  // them, each checked with didc against test/ic.did; the replies are didc
+  // encode-d from the types of test/ic.did.
+  auto logs_in = [&](const char *filter, uint64_t start, uint64_t end) {
+    CandidArgs in;
+    in.append(CandidTypePrincipal{child});
+    in.append(CandidTypeText{filter});
+    in.append(CandidTypeNat64{start});
+    in.append(CandidTypeNat64{end});
+    return in;
+  };
+  {
+    // fetch_canister_logs: records with binary content, then none; each
+    // kind of filter
+    mockIC.expect_call(
+        "aaaaa-aa", "fetch_canister_logs",
+        MockIC::MockResponse::reply(
+            "4449444c046c01ef92c2c406016d026c03bd88c00278d6f68e800178b99adecb01036d"
+            "7b01000200000000000000000a00000000000000026869010000000000000014000000"
+            "0000000003610062"));
+    check_eq(run_text(mockIC, "logs_child", logs_child, logs_in("none", 0, 0),
+                      caller),
+             std::string("0:hi|1:a") + '\0' + "b",
+             "fetch_canister_logs: the records");
+    check_eq(mockIC.last_call_arg_hex("aaaaa-aa", "fetch_canister_logs"),
+             "4449444c016c01b3c4b1f204680100010a00000000000000020101",
+             "fetch_canister_logs: no filter");
+    run_text(mockIC, "logs_child by_idx", logs_child, logs_in("by_idx", 1, 5),
+             caller);
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "fetch_canister_logs"),
+        "4449444c056c02b3c4b1f20468b8bfd4a908046c02db87b40278e2e8ada008786b0195adc3cc01016b006e020100010a00000000000000020101010005000000000000000100000000000000",
+        "fetch_canister_logs: by_idx");
+    run_text(mockIC, "logs_child by_timestamp_nanos", logs_child,
+             logs_in("by_timestamp_nanos", 10, 20), caller);
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "fetch_canister_logs"),
+        "4449444c056c02b3c4b1f20468b8bfd4a908046c02db87b40278e2e8ada008786b01aee38ad30e016b006e020100010a00000000000000020101010014000000000000000a00000000000000",
+        "fetch_canister_logs: by_timestamp_nanos");
+    mockIC.expect_call(
+        "aaaaa-aa", "fetch_canister_logs",
+        MockIC::MockResponse::reply(
+            "4449444c046c01ef92c2c406016d026c03bd88c00278d6f68e800178b99adecb01036d"
+            "7b010000"));
+    check_eq(run_text(mockIC, "logs_child empty", logs_child,
+                      logs_in("none", 0, 0), caller),
+             "", "fetch_canister_logs: none");
+    mockIC.expect_call(
+        "aaaaa-aa", "fetch_canister_logs",
+        MockIC::MockResponse::reject(5, "Caller is not allowed to read logs"));
+    check_eq(run_text(mockIC, "logs_child rejected", logs_child,
+                      logs_in("none", 0, 0), caller),
+             "rej:5:Caller is not allowed to read logs",
+             "fetch_canister_logs: the reject");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // fetch_canister_logs: 1,000 records
+    CandidTypeRecord records;
+    std::vector<uint64_t> idx, ts;
+    std::vector<IC_Blob> content;
+    for (uint64_t i = 0; i < 1000; ++i) {
+      idx.push_back(i);
+      ts.push_back(1000 + i);
+      content.push_back(IC_Blob{'x'});
+    }
+    CandidTypeRecord record;
+    record.append("idx", CandidTypeVecNat64{idx});
+    record.append("timestamp_nanos", CandidTypeVecNat64{ts});
+    record.append("content", CandidTypeVecBlob{content});
+    CandidTypeRecord result;
+    result.append("canister_log_records", CandidTypeVecRecord{record});
+    CandidArgs reply;
+    reply.append(result);
+    mockIC.expect_call("aaaaa-aa", "fetch_canister_logs",
+                       MockIC::MockResponse::reply(hex(reply)));
+    std::string text = run_text(mockIC, "logs_child 1000", logs_child,
+                                logs_in("none", 0, 0), caller);
+    check(text.rfind("0:x|1:x|", 0) == 0 &&
+              text.size() >= 999 * std::string("|999:x").size() / 2 &&
+              text.substr(text.size() - 6) == "|999:x",
+          "fetch_canister_logs: 1,000 records");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // canister_metrics
+    mockIC.expect_call(
+        "aaaaa-aa", "canister_metrics",
+        MockIC::MockResponse::reply(
+            "4449444c026c01dac7a0f407016c098196ff257df7c0b33b7dfea3d7a9047d9ef3cef4"
+            "057da5adfee9067de2b7f3cc087db7a4e2c80a7d8accfeb50c7da882acc60f7d010001"
+            "0709080406030502"));
+    check_eq(
+        run_text(mockIC, "metrics_child", metrics_child, child_in(), caller),
+        "memory=1; compute_allocation=2; ingress_induction=3; "
+        "instructions=4; request_and_response_transmission=5; "
+        "uninstall=6; canister_creation=7; http_outcalls=8; "
+        "burned_cycles=9",
+        "canister_metrics: every kind");
+    check_eq(mockIC.last_call_arg_hex("aaaaa-aa", "canister_metrics"),
+             "4449444c016c01b3c4b1f204680100010a00000000000000020101",
+             "canister_metrics: the argument");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // subnet_info, subnet_metrics, node_metrics_history
+    mockIC.expect_call(
+        "aaaaa-aa", "subnet_info",
+        MockIC::MockResponse::reply(
+            "4449444c016c02d1a5c69c0471d6eef5a006780100066162633132332a000000000000"
+            "00"));
+    check_eq(
+        run_text(mockIC, "subnet_info_of", subnet_info_of, child_in(), caller),
+        "replica_version=abc123; registry_version=42", "subnet_info");
+    check_eq(mockIC.last_call_arg_hex("aaaaa-aa", "subnet_info"),
+             "4449444c016c01bd869d8b04680100010a00000000000000020101",
+             "subnet_info: the argument");
+    mockIC.expect_call(
+        "aaaaa-aa", "subnet_metrics",
+        MockIC::MockResponse::reply(
+            "4449444c016c06a5aec280067d89cde9bd067dd0e28cad0b7dd9afeeac0d7df3db89e6"
+            "0d7deebad9d90e7d0100030405010206"));
+    check_eq(run_text(mockIC, "subnet_metrics_of", subnet_metrics_of,
+                      child_in(), caller),
+             "block_height=1; num_canisters=2; canister_state_bytes=3; "
+             "consumed_cycles_total=4; update_transactions_total=5; "
+             "million_round_instructions_total=6",
+             "subnet_metrics");
+    check_eq(mockIC.last_call_arg_hex("aaaaa-aa", "subnet_metrics"),
+             "4449444c016c01bd869d8b04680100010a00000000000000020101",
+             "subnet_metrics: the argument");
+    mockIC.expect_call(
+        "aaaaa-aa", "node_metrics_history",
+        MockIC::MockResponse::reply(
+            "4449444c046d016c02d6f68e800178c6afcfec0d026d036c03f9a8847478b8aaccb701"
+            "688bf094df0a7801000264000000000000000201000000000000000100050000000000"
+            "000000000000000000000101040600000000000000c80000000000000000"));
+    CandidArgs in;
+    in.append(CandidTypePrincipal{child});
+    in.append(CandidTypeNat64{uint64_t(50)});
+    check_eq(run_text(mockIC, "node_metrics_of", node_metrics_of, in, caller),
+             "100:aaaaa-aa/5/1,2vxsx-fae/6/0|200:", "node_metrics_history");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "node_metrics_history"),
+        "4449444c016c02c7fba82878bd869d8b046801003200000000000000010a00000000000000020101",
+        "node_metrics_history: the argument");
+    mockIC.clear_expected_calls();
+  }
   {
     // An HTTPS outcall: the response set with expect_call
     CandidTypeRecord header;

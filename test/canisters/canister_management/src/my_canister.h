@@ -40,3 +40,21 @@ void install_chunked_child()
 void uninstall_child() WASM_SYMBOL_EXPORTED("canister_update uninstall_child");
 void metadata_child() WASM_SYMBOL_EXPORTED("canister_update metadata_child");
 void info_child() WASM_SYMBOL_EXPORTED("canister_update info_child");
+
+// The snapshot helpers (snapshots.cpp)
+void take_snapshot_child()
+    WASM_SYMBOL_EXPORTED("canister_update take_snapshot_child");
+void load_snapshot_child()
+    WASM_SYMBOL_EXPORTED("canister_update load_snapshot_child");
+void list_snapshots_child()
+    WASM_SYMBOL_EXPORTED("canister_update list_snapshots_child");
+void delete_snapshot_child()
+    WASM_SYMBOL_EXPORTED("canister_update delete_snapshot_child");
+void snapshot_metadata_child()
+    WASM_SYMBOL_EXPORTED("canister_update snapshot_metadata_child");
+void read_snapshot_data_child()
+    WASM_SYMBOL_EXPORTED("canister_update read_snapshot_data_child");
+void upload_snapshot_data_child()
+    WASM_SYMBOL_EXPORTED("canister_update upload_snapshot_data_child");
+void copy_snapshot_child()
+    WASM_SYMBOL_EXPORTED("canister_update copy_snapshot_child");

@@ -353,6 +353,72 @@ void finish_change(IC_Change &c, const ChangeScratch &x) {
     d.environment_variables_hash = x.settings_hash;
 }
 
+// An opt blob field: left out of the record when it has no value
+void append_opt_blob(CandidTypeRecord &record, const char *name,
+                     const std::optional<IC_Blob> &blob) {
+  if (blob.has_value())
+    record.append(name, CandidTypeOptVec{CandidTypeVecNat8{*blob}});
+}
+
+// record { id : blob; taken_at_timestamp : nat64; total_size : nat64 }
+CandidTypeRecord snapshot_type(IC_Snapshot &snapshot) {
+  CandidTypeRecord r;
+  r.append("id", CandidTypeVecNat8{&snapshot.id});
+  r.append("taken_at_timestamp", CandidTypeNat64{&snapshot.taken_at_timestamp});
+  r.append("total_size", CandidTypeNat64{&snapshot.total_size});
+  return r;
+}
+
+// variant { i32 : int32; i64 : int64; f32 : float32; f64 : float64; v128 : nat }
+CandidTypeVariant global_value(const IC_SnapshotGlobal &g) {
+  using K = IC_SnapshotGlobal::Kind;
+  const char *label = g.kind == K::I64    ? "i64"
+                      : g.kind == K::F32  ? "f32"
+                      : g.kind == K::F64  ? "f64"
+                      : g.kind == K::V128 ? "v128"
+                                          : "i32";
+  // Every case, so that all elements of the vec have the same type
+  CandidTypeVariant v{std::string(label)};
+  v.append("i32", CandidTypeInt32{g.i32});
+  v.append("i64", CandidTypeInt64{g.i64});
+  v.append("f32", CandidTypeFloat32{g.f32});
+  v.append("f64", CandidTypeFloat64{g.f64});
+  v.append("v128", CandidTypeNat{g.v128});
+  return v;
+}
+
+const char *hook_status_label(IC_LowWasmMemoryHookStatus s) {
+  switch (s) {
+  case IC_LowWasmMemoryHookStatus::Ready:
+    return "ready";
+  case IC_LowWasmMemoryHookStatus::Executed:
+    return "executed";
+  case IC_LowWasmMemoryHookStatus::ConditionNotSatisfied:
+    break;
+  }
+  return "condition_not_satisfied";
+}
+
+// read_canister_snapshot_data's kind (with_size) or
+// upload_canister_snapshot_data's kind
+CandidTypeVariant snapshot_data_kind(const IC_SnapshotData &kind,
+                                     bool with_size) {
+  using K = IC_SnapshotData::Kind;
+  if (kind.kind == K::WasmChunk) {
+    if (!with_size) return CandidTypeVariant{"wasm_chunk"};
+    CandidTypeRecord chunk;
+    chunk.append("hash", CandidTypeVecNat8{kind.hash});
+    return CandidTypeVariant{"wasm_chunk", chunk};
+  }
+  CandidTypeRecord range;
+  range.append("offset", CandidTypeNat64{kind.offset});
+  if (with_size) range.append("size", CandidTypeNat64{kind.size});
+  const char *label = kind.kind == K::WasmMemory     ? "wasm_memory"
+                      : kind.kind == K::StableMemory ? "stable_memory"
+                                                     : "wasm_module";
+  return CandidTypeVariant{label, range};
+}
+
 // A call with argument record { canister_id } and an empty reply
 IC_Task<IC_CallResult<void>>
 call_for_canister(const char *method, CandidTypePrincipal canister_id) {
@@ -705,6 +771,229 @@ IC_Management::canister_info(CandidTypePrincipal canister_id,
   r->decode(result);
   if (has_module_hash) info.module_hash = module_hash;
   co_return info;
+}
+
+IC_Task<IC_CallResult<IC_Snapshot>>
+IC_Management::take_canister_snapshot(CandidTypePrincipal canister_id,
+                                      std::optional<IC_Blob> replace_snapshot,
+                                      std::optional<bool> uninstall_code) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  append_opt_blob(arg, "replace_snapshot", replace_snapshot);
+  if (uninstall_code.has_value())
+    arg.append("uninstall_code", CandidTypeOptBool{*uninstall_code});
+  arg.append("sender_canister_version",
+             CandidTypeOptNat64{ic0_canister_version()});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "take_canister_snapshot")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  IC_Snapshot snapshot;
+  r->decode(snapshot_type(snapshot));
+  co_return snapshot;
+}
+
+IC_Task<IC_CallResult<void>>
+IC_Management::load_canister_snapshot(CandidTypePrincipal canister_id,
+                                      IC_Blob snapshot_id) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  arg.append("snapshot_id", CandidTypeVecNat8{snapshot_id});
+  arg.append("sender_canister_version",
+             CandidTypeOptNat64{ic0_canister_version()});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "load_canister_snapshot")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  co_return IC_CallResult<void>{};
+}
+
+IC_Task<IC_CallResult<std::vector<IC_Snapshot>>>
+IC_Management::list_canister_snapshots(CandidTypePrincipal canister_id) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "list_canister_snapshots")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  std::vector<IC_Snapshot> snapshots;
+  IC_Snapshot snapshot;
+  r->decode(CandidTypeVecOf(
+      [&]() -> CandidType {
+        snapshot = {};
+        return snapshot_type(snapshot);
+      },
+      [&]() { snapshots.push_back(snapshot); }));
+  co_return snapshots;
+}
+
+IC_Task<IC_CallResult<void>>
+IC_Management::delete_canister_snapshot(CandidTypePrincipal canister_id,
+                                        IC_Blob snapshot_id) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  arg.append("snapshot_id", CandidTypeVecNat8{snapshot_id});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "delete_canister_snapshot")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  co_return IC_CallResult<void>{};
+}
+
+IC_Task<IC_CallResult<IC_SnapshotMetadata>>
+IC_Management::read_canister_snapshot_metadata(CandidTypePrincipal canister_id,
+                                               IC_Blob snapshot_id) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  arg.append("snapshot_id", CandidTypeVecNat8{snapshot_id});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(),
+                                     "read_canister_snapshot_metadata")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+
+  IC_SnapshotMetadata md;
+  std::string source_label;
+  CandidTypeVariant source{&source_label};
+  source.append("taken_from_canister", CandidTypeReserved{});
+  source.append("metadata_upload", CandidTypeReserved{});
+
+  IC_SnapshotGlobal global;
+  std::string global_label;
+  CandidTypeVecOf globals(
+      [&]() -> CandidType {
+        global = {};
+        global_label.clear();
+        CandidTypeVariant v{&global_label};
+        v.append("i32", CandidTypeInt32{&global.i32});
+        v.append("i64", CandidTypeInt64{&global.i64});
+        v.append("f32", CandidTypeFloat32{&global.f32});
+        v.append("f64", CandidTypeFloat64{&global.f64});
+        v.append("v128", CandidTypeNat{&global.v128});
+        return v;
+      },
+      [&]() {
+        using K = IC_SnapshotGlobal::Kind;
+        global.kind = global_label == "i64"    ? K::I64
+                      : global_label == "f32"  ? K::F32
+                      : global_label == "f64"  ? K::F64
+                      : global_label == "v128" ? K::V128
+                                               : K::I32;
+        md.globals.push_back(global);
+      });
+
+  CandidTypeRecord chunk_hash;
+  chunk_hash.append("hash", CandidTypeVecBlob{&md.wasm_chunk_store});
+
+  std::string timer_label;
+  uint64_t timer_timestamp{0};
+  bool has_timer{false};
+  CandidTypeVariant timer{&timer_label};
+  timer.append("inactive", CandidTypeNull{});
+  timer.append("active", CandidTypeNat64{&timer_timestamp});
+
+  std::string hook_label;
+  bool has_hook{false};
+  CandidTypeVariant hook{&hook_label};
+  hook.append("condition_not_satisfied", CandidTypeNull{});
+  hook.append("ready", CandidTypeNull{});
+  hook.append("executed", CandidTypeNull{});
+
+  CandidTypeRecord result;
+  result.append_optional("source", source);
+  result.append("taken_at_timestamp", CandidTypeNat64{&md.taken_at_timestamp});
+  result.append("wasm_module_size", CandidTypeNat64{&md.wasm_module_size});
+  result.append("globals", globals);
+  result.append("wasm_memory_size", CandidTypeNat64{&md.wasm_memory_size});
+  result.append("stable_memory_size", CandidTypeNat64{&md.stable_memory_size});
+  result.append("wasm_chunk_store", CandidTypeVecRecord{&chunk_hash});
+  result.append("canister_version", CandidTypeNat64{&md.canister_version});
+  result.append("certified_data", CandidTypeVecNat8{&md.certified_data});
+  result.append("global_timer", CandidTypeOptVariant{&timer, &has_timer});
+  result.append("on_low_wasm_memory_hook_status",
+                CandidTypeOptVariant{&hook, &has_hook});
+  r->decode(result);
+
+  if (source_label == "metadata_upload")
+    md.source = IC_ChangeDetails::SnapshotSource::MetadataUpload;
+  if (has_timer)
+    md.global_timer = IC_GlobalTimer{timer_label == "active", timer_timestamp};
+  if (has_hook) {
+    md.on_low_wasm_memory_hook_status =
+        hook_label == "ready" ? IC_LowWasmMemoryHookStatus::Ready
+        : hook_label == "executed"
+            ? IC_LowWasmMemoryHookStatus::Executed
+            : IC_LowWasmMemoryHookStatus::ConditionNotSatisfied;
+  }
+  co_return md;
+}
+
+IC_Task<IC_CallResult<IC_Blob>>
+IC_Management::read_canister_snapshot_data(CandidTypePrincipal canister_id,
+                                           IC_Blob snapshot_id,
+                                           IC_SnapshotData kind) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  arg.append("snapshot_id", CandidTypeVecNat8{snapshot_id});
+  arg.append("kind", snapshot_data_kind(kind, true));
+  co_return co_await call_for_blob(
+      IC_Call::bounded_wait(management(), "read_canister_snapshot_data")
+          .with_arg(arg),
+      "chunk");
+}
+
+IC_Task<IC_CallResult<IC_Blob>>
+IC_Management::upload_canister_snapshot_metadata(
+    CandidTypePrincipal canister_id, IC_SnapshotMetadata metadata,
+    std::optional<IC_Blob> replace_snapshot) {
+  std::vector<CandidType> globals;
+  for (const auto &g : metadata.globals)
+    globals.push_back(global_value(g));
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  append_opt_blob(arg, "replace_snapshot", replace_snapshot);
+  arg.append("wasm_module_size", CandidTypeNat64{metadata.wasm_module_size});
+  arg.append("globals",
+             CandidTypeVecOf(global_value(IC_SnapshotGlobal{}), globals));
+  arg.append("wasm_memory_size", CandidTypeNat64{metadata.wasm_memory_size});
+  arg.append("stable_memory_size",
+             CandidTypeNat64{metadata.stable_memory_size});
+  arg.append("certified_data", CandidTypeVecNat8{metadata.certified_data});
+  if (metadata.global_timer.has_value()) {
+    arg.append(
+        "global_timer",
+        CandidTypeOptVariant{
+            metadata.global_timer->active
+                ? CandidTypeVariant{"active",
+                                    CandidTypeNat64{
+                                        metadata.global_timer->timestamp}}
+                : CandidTypeVariant{"inactive"}});
+  }
+  if (metadata.on_low_wasm_memory_hook_status.has_value()) {
+    arg.append("on_low_wasm_memory_hook_status",
+               CandidTypeOptVariant{CandidTypeVariant{hook_status_label(
+                   *metadata.on_low_wasm_memory_hook_status)}});
+  }
+  co_return co_await call_for_blob(
+      IC_Call::bounded_wait(management(), "upload_canister_snapshot_metadata")
+          .with_arg(arg),
+      "snapshot_id");
+}
+
+IC_Task<IC_CallResult<void>> IC_Management::upload_canister_snapshot_data(
+    CandidTypePrincipal canister_id, IC_Blob snapshot_id, IC_SnapshotData kind,
+    IC_Blob chunk) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  arg.append("snapshot_id", CandidTypeVecNat8{snapshot_id});
+  arg.append("kind", snapshot_data_kind(kind, false));
+  arg.append("chunk", CandidTypeVecNat8{chunk});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(),
+                                     "upload_canister_snapshot_data")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  co_return IC_CallResult<void>{};
 }
 
 IC_Task<IC_CallResult<IC_PublicKey>> IC_Management::ecdsa_public_key(

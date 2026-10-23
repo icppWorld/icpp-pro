@@ -365,5 +365,5 @@ icpp build-native
 ```
 
 Now, as the command output explains, you can:
-- Run the `mockic.exe`
+- Run the `mockic.exe` with `icpp run-native`, under a memory guard
 - Debug it in VS Code + CodeLLDB

@@ -49,7 +49,7 @@ make install-icp
 # Native build (for debugging) - from a canister directory:
 cd test/canisters/canister_1
 icpp build-native
-./build-native/mockic.exe
+icpp run-native   # runs ./build-native/mockic.exe under the memory guard
 
 # WASM build + deploy + pytest against local network.
 # Deploy as the same identity the tests run as, so the caller of a test is the
@@ -125,7 +125,13 @@ Every canister supports two build targets configured in `icpp.toml`:
 ## Testing
 
 Tests run in two modes:
-1. **Native:** Build with `icpp build-native`, run `mockic.exe` directly
+1. **Native:** Build with `icpp build-native`, run it with `icpp run-native`.
+   Never run `mockic.exe` directly: natively nothing caps its memory, so a bug that
+   allocates without limit fills the host's memory within minutes. `icpp run-native`
+   runs it under a memory guard: over `--max-gb` (default 4, the IC's limit for a
+   wasm32 heap; `make all-canister-native` uses `NATIVE_MAX_GB ?= 0.5`), it kills
+   the run, prints an ERROR and fails, in CI too. A debugger on `mockic.exe` is the
+   one exception
 2. **Deployed:** Build WASM, deploy to a local icp network, run pytest with `--network=local`
 
 Pytest fixtures from `conftest_base.py` provide: `network`, `identity`, `principal`, `identity_anonymous`, `identity_default`. Test conftest files import these with `from icpp.conftest_base import *`.

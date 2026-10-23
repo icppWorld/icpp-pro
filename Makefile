@@ -138,8 +138,14 @@ greet-deploy-ic: require-identity
 	cd src/icpp/canisters/greet && icpp build-wasm && icp deploy --environment ic --yes --identity $(IDENTITY)
 
 .PHONY: all-canister-native
+# The native tests run under a memory guard (icpp run-native): a bug that
+# allocates without limit fails the run with an ERROR, instead of filling the
+# host's memory. A healthy run of the test canisters peaks at 14 MiB (arm64,
+# 2026-10-22).
+NATIVE_MAX_GB ?= 0.5
+
 all-canister-native:
-	@python -m scripts.all_canister_native
+	@python -m scripts.all_canister_native --max-gb $(NATIVE_MAX_GB)
 
 ###########################################################################
 # Multi-repo ceremonies - see README-feature-guide.md

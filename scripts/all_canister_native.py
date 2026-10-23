@@ -2,10 +2,10 @@
 
 import argparse
 import sys
-import os
 from pathlib import Path
 import subprocess
 import typer
+from icpp.memory_guard import DEFAULT_MAX_GB
 from icpp.run_shell_cmd import run_shell_cmd
 
 ROOT_PATH = Path(__file__).parent.parent
@@ -18,6 +18,12 @@ def main() -> int:
     canister_paths = canister_paths_2 + canister_paths_1
 
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--max-gb",
+        type=float,
+        default=DEFAULT_MAX_GB,
+        help="memory limit of each native run, in GiB",
+    )
     parser.add_argument(
         "--canister",
         action="append",
@@ -39,9 +45,10 @@ def main() -> int:
                 typer.echo(f"--\nicpp build-native with config {config}")
                 run_shell_cmd("icpp build-native --to-compile all", cwd=canister_path)
 
-                typer.echo("--\nRun mockic.exe")
-                executable_path = os.path.join("build-native", "mockic.exe")
-                run_shell_cmd(executable_path, cwd=canister_path)
+                typer.echo("--\nRun mockic.exe, under the memory guard")
+                run_shell_cmd(
+                    f"icpp run-native --max-gb {args.max_gb}", cwd=canister_path
+                )
 
             except subprocess.CalledProcessError as e:
                 typer.echo("--\nSomething did not pass")
@@ -72,9 +79,10 @@ def main() -> int:
                         "icpp build-native --to-compile mine-no-lib", cwd=canister_path
                     )
 
-                    typer.echo("--\nRun mockic.exe")
-                    executable_path = os.path.join("build-native", "mockic.exe")
-                    run_shell_cmd(executable_path, cwd=canister_path)
+                    typer.echo("--\nRun mockic.exe, under the memory guard")
+                    run_shell_cmd(
+                        f"icpp run-native --max-gb {args.max_gb}", cwd=canister_path
+                    )
 
                 except subprocess.CalledProcessError as e:
                     typer.echo("--\nSomething did not pass")

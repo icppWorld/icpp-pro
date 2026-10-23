@@ -3,6 +3,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "ic_api.h"
 
@@ -17,4 +18,14 @@ inline std::string error_text(const IC_CallError &error) {
 
 inline std::string nat_text(__uint128_t v) {
   return ICPP_HOOKS::to_string_128(v);
+}
+
+inline std::string hex_text(const std::vector<uint8_t> &bytes) {
+  static const char *digits = "0123456789abcdef";
+  std::string s;
+  for (uint8_t b : bytes) {
+    s += digits[b >> 4];
+    s += digits[b & 0xf];
+  }
+  return s;
 }

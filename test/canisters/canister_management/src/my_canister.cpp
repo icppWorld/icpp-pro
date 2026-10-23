@@ -36,7 +36,7 @@ IC_Async create_canister_async() {
   IC_API ic_api(CanisterUpdate{"create_canister"}, false);
   ic_api.from_wire();
   IC_CallResult<CandidTypePrincipal> r =
-      co_await IC_Management::create_canister({}, 100'000'000'000);
+      co_await IC_Management::create_canister({}, 1'000'000'000'000);
   ic_api.to_wire(CandidTypePrincipal{r.value().get_text()});
 }
 void create_canister() { create_canister_async(); }

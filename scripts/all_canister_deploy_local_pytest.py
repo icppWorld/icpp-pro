@@ -148,9 +148,15 @@ def test_canister(
     name = canister_path.name
     notify(f">>>> {name}: started")
     log: List[str] = [f"==== {name}"]
-    test_api_path = canister_path / "test/test_apis.py"
     # A canister opts in to an in-place upgrade by having these tests
     after_upgrade_path = canister_path / "test/test_after_upgrade.py"
+    # Every test file of the canister, except the ones that run after the
+    # upgrade: a canister's tests can be split over several files
+    test_paths = " ".join(
+        str(path.relative_to(canister_path))
+        for path in sorted((canister_path / "test").glob("test_*.py"))
+        if path != after_upgrade_path
+    )
     configs = [file.name for file in canister_path.glob("*.toml")]
 
     try:
@@ -176,9 +182,9 @@ def test_canister(
 
             # pytest runs from the canister directory: that is the icp project
             # root, which is how icp finds icp.yaml and this canister's network.
-            log.append(f"-- pytest {test_api_path}")
+            log.append(f"-- pytest {test_paths}")
             run_step(
-                f"pytest -vv --network=local {test_api_path}",
+                f"pytest -vv --network=local {test_paths}",
                 canister_path,
                 log,
                 stream,
@@ -242,9 +248,9 @@ def test_canister(
                     stream,
                 )
 
-                log.append(f"-- pytest {test_api_path}")
+                log.append(f"-- pytest {test_paths}")
                 run_step(
-                    f"pytest -vv --network=local {test_api_path}",
+                    f"pytest -vv --network=local {test_paths}",
                     canister_path,
                     log,
                     stream,

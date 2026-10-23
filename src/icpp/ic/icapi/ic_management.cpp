@@ -194,6 +194,165 @@ bool append_settings(CandidTypeRecord &record,
   return has_settings;
 }
 
+// canister_install_mode
+CandidTypeVariant install_mode_value(const IC_InstallMode &mode) {
+  if (mode.kind == IC_InstallMode::Kind::Reinstall)
+    return CandidTypeVariant{"reinstall"};
+  if (mode.kind == IC_InstallMode::Kind::Upgrade) {
+    // upgrade : opt record { skip_pre_upgrade : opt bool;
+    //   wasm_memory_persistence : opt variant { keep; replace } }
+    CandidTypeRecord options;
+    if (mode.skip_pre_upgrade.has_value())
+      options.append("skip_pre_upgrade",
+                     CandidTypeOptBool{*mode.skip_pre_upgrade});
+    if (mode.wasm_memory_persistence.has_value())
+      options.append(
+          "wasm_memory_persistence",
+          CandidTypeOptVariant{CandidTypeVariant{
+              *mode.wasm_memory_persistence == IC_WasmMemoryPersistence::Keep
+                  ? "keep"
+                  : "replace"}});
+    return CandidTypeVariant{"upgrade", CandidTypeOptRecord{options}};
+  }
+  return CandidTypeVariant{"install"};
+}
+
+// The type of the change records of canister_info, decoded into change and
+// the scratch labels; finish_change maps the labels
+struct ChangeScratch {
+  std::string origin_label;
+  std::string details_label;
+  std::string mode_label;
+  std::string source_label;
+  bool has_settings_controllers{false};
+  std::vector<std::string> settings_controllers;
+  bool has_creation_hash{false};
+  IC_Blob creation_hash;
+  bool has_settings_hash{false};
+  IC_Blob settings_hash;
+  // The vecs of the opt vec fields: a CandidTypeOptVec decodes through a
+  // pointer to its vec, so they must live as long as the decode
+  CandidTypeVecNat8 creation_hash_vec;
+  CandidTypeVecPrincipal settings_controllers_vec;
+  CandidTypeVecNat8 settings_hash_vec;
+};
+
+CandidType change_type(IC_Change &c, ChangeScratch &x) {
+  IC_ChangeOrigin &o = c.origin;
+  IC_ChangeDetails &d = c.details;
+
+  CandidTypeRecord from_user;
+  from_user.append("user_id", CandidTypePrincipal{&o.user_id});
+  CandidTypeRecord from_canister;
+  from_canister.append("canister_id", CandidTypePrincipal{&o.canister_id});
+  from_canister.append("canister_version",
+                       CandidTypeOptNat64{&o.canister_version});
+  CandidTypeVariant origin{&x.origin_label};
+  origin.append("from_user", from_user);
+  origin.append("from_canister", from_canister);
+
+  CandidTypeRecord creation;
+  creation.append("controllers", CandidTypeVecPrincipal{&d.controllers});
+  x.creation_hash_vec = CandidTypeVecNat8{&x.creation_hash};
+  creation.append("environment_variables_hash",
+                  CandidTypeOptVec{&x.creation_hash_vec, &x.has_creation_hash});
+
+  CandidTypeVariant mode{&x.mode_label};
+  mode.append("install", CandidTypeNull{});
+  mode.append("reinstall", CandidTypeNull{});
+  mode.append("upgrade", CandidTypeNull{});
+  CandidTypeRecord code_deployment;
+  code_deployment.append("mode", mode);
+  code_deployment.append("module_hash", CandidTypeVecNat8{&d.module_hash});
+
+  CandidTypeVariant source{&x.source_label};
+  source.append("taken_from_canister", CandidTypeReserved{});
+  source.append("metadata_upload", CandidTypeReserved{});
+  CandidTypeRecord load_snapshot;
+  load_snapshot.append("from_canister_id",
+                       CandidTypeOptPrincipal{&d.from_canister_id});
+  load_snapshot.append("snapshot_id", CandidTypeVecNat8{&d.snapshot_id});
+  load_snapshot.append("canister_version",
+                       CandidTypeNat64{&d.snapshot_canister_version});
+  load_snapshot.append("taken_at_timestamp",
+                       CandidTypeNat64{&d.taken_at_timestamp});
+  load_snapshot.append_optional("source", source);
+
+  CandidTypeRecord controllers_change;
+  controllers_change.append("controllers",
+                            CandidTypeVecPrincipal{&d.controllers});
+
+  CandidTypeRecord settings_change;
+  x.settings_controllers_vec = CandidTypeVecPrincipal{&x.settings_controllers};
+  settings_change.append("controllers",
+                         CandidTypeOptVec{&x.settings_controllers_vec,
+                                          &x.has_settings_controllers});
+  x.settings_hash_vec = CandidTypeVecNat8{&x.settings_hash};
+  settings_change.append(
+      "environment_variables_hash",
+      CandidTypeOptVec{&x.settings_hash_vec, &x.has_settings_hash});
+
+  CandidTypeRecord rename_to;
+  rename_to.append("canister_id",
+                   CandidTypePrincipal{&d.rename_to_canister_id});
+  rename_to.append("version", CandidTypeNat64{&d.rename_to_version});
+  rename_to.append("total_num_changes",
+                   CandidTypeNat64{&d.rename_to_total_num_changes});
+  CandidTypeRecord rename_canister;
+  rename_canister.append("canister_id",
+                         CandidTypePrincipal{&d.renamed_canister_id});
+  rename_canister.append("total_num_changes",
+                         CandidTypeNat64{&d.renamed_total_num_changes});
+  rename_canister.append("rename_to", rename_to);
+  rename_canister.append("requested_by", CandidTypePrincipal{&d.requested_by});
+
+  // All the cases the replica sends, also settings_change, which is not (yet)
+  // in the published spec: a case that is not declared traps
+  CandidTypeVariant details{&x.details_label};
+  details.append("creation", creation);
+  details.append("code_uninstall", CandidTypeNull{});
+  details.append("code_deployment", code_deployment);
+  details.append("load_snapshot", load_snapshot);
+  details.append("controllers_change", controllers_change);
+  details.append("settings_change", settings_change);
+  details.append("rename_canister", rename_canister);
+
+  CandidTypeRecord change;
+  change.append("timestamp_nanos", CandidTypeNat64{&c.timestamp_nanos});
+  change.append("canister_version", CandidTypeNat64{&c.canister_version});
+  change.append("origin", origin);
+  change.append("details", details);
+  return change;
+}
+
+void finish_change(IC_Change &c, const ChangeScratch &x) {
+  c.origin.kind = x.origin_label == "from_canister"
+                      ? IC_ChangeOrigin::Kind::FromCanister
+                      : IC_ChangeOrigin::Kind::FromUser;
+  using K = IC_ChangeDetails::Kind;
+  IC_ChangeDetails &d = c.details;
+  const std::string &l = x.details_label;
+  d.kind = l == "code_uninstall"       ? K::CodeUninstall
+           : l == "code_deployment"    ? K::CodeDeployment
+           : l == "load_snapshot"      ? K::LoadSnapshot
+           : l == "controllers_change" ? K::ControllersChange
+           : l == "settings_change"    ? K::SettingsChange
+           : l == "rename_canister"    ? K::RenameCanister
+                                       : K::Creation;
+  d.mode = x.mode_label == "reinstall" ? IC_InstallMode::Kind::Reinstall
+           : x.mode_label == "upgrade" ? IC_InstallMode::Kind::Upgrade
+                                       : IC_InstallMode::Kind::Install;
+  d.snapshot_source = x.source_label == "metadata_upload"
+                          ? IC_ChangeDetails::SnapshotSource::MetadataUpload
+                          : IC_ChangeDetails::SnapshotSource::TakenFromCanister;
+  if (x.has_settings_controllers)
+    d.settings_controllers = x.settings_controllers;
+  if (d.kind == K::Creation && x.has_creation_hash)
+    d.environment_variables_hash = x.creation_hash;
+  if (d.kind == K::SettingsChange && x.has_settings_hash)
+    d.environment_variables_hash = x.settings_hash;
+}
+
 // A call with argument record { canister_id } and an empty reply
 IC_Task<IC_CallResult<void>>
 call_for_canister(const char *method, CandidTypePrincipal canister_id) {
@@ -412,6 +571,140 @@ IC_Management::deposit_cycles(CandidTypePrincipal canister_id,
           .with_cycles(cycles);
   if (!r) co_return r.error();
   co_return IC_CallResult<void>{};
+}
+
+IC_Task<IC_CallResult<void>>
+IC_Management::install_code(CandidTypePrincipal canister_id,
+                            IC_InstallMode mode, IC_Blob wasm_module,
+                            IC_Blob arg) {
+  CandidTypeRecord args;
+  args.append("mode", install_mode_value(mode));
+  args.append("canister_id", canister_id);
+  args.append("wasm_module", CandidTypeVecNat8{wasm_module});
+  args.append("arg", CandidTypeVecNat8{arg});
+  args.append("sender_canister_version",
+              CandidTypeOptNat64{ic0_canister_version()});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "install_code")
+          .with_arg(args);
+  if (!r) co_return r.error();
+  co_return IC_CallResult<void>{};
+}
+
+IC_Task<IC_CallResult<IC_Blob>>
+IC_Management::upload_chunk(CandidTypePrincipal canister_id, IC_Blob chunk) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  arg.append("chunk", CandidTypeVecNat8{chunk});
+  co_return co_await call_for_blob(
+      IC_Call::bounded_wait(management(), "upload_chunk").with_arg(arg),
+      "hash");
+}
+
+IC_Task<IC_CallResult<void>>
+IC_Management::clear_chunk_store(CandidTypePrincipal canister_id) {
+  co_return co_await call_for_canister("clear_chunk_store", canister_id);
+}
+
+IC_Task<IC_CallResult<std::vector<IC_Blob>>>
+IC_Management::stored_chunks(CandidTypePrincipal canister_id) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "stored_chunks")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  // vec record { hash : blob }
+  std::vector<IC_Blob> hashes;
+  CandidTypeRecord chunk_hash;
+  chunk_hash.append("hash", CandidTypeVecBlob{&hashes});
+  r->decode(CandidTypeVecRecord{&chunk_hash});
+  co_return hashes;
+}
+
+IC_Task<IC_CallResult<void>> IC_Management::install_chunked_code(
+    CandidTypePrincipal target_canister, IC_InstallMode mode,
+    std::vector<IC_Blob> chunk_hashes, IC_Blob wasm_module_hash, IC_Blob arg,
+    std::optional<CandidTypePrincipal> store_canister) {
+  CandidTypeRecord chunk_hash;
+  chunk_hash.append("hash", CandidTypeVecBlob{chunk_hashes});
+  CandidTypeRecord args;
+  args.append("mode", install_mode_value(mode));
+  args.append("target_canister", target_canister);
+  args.append("store_canister",
+              CandidTypeOptPrincipal{principal_text(store_canister)});
+  args.append("chunk_hashes_list", CandidTypeVecRecord{chunk_hash});
+  args.append("wasm_module_hash", CandidTypeVecNat8{wasm_module_hash});
+  args.append("arg", CandidTypeVecNat8{arg});
+  args.append("sender_canister_version",
+              CandidTypeOptNat64{ic0_canister_version()});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "install_chunked_code")
+          .with_arg(args);
+  if (!r) co_return r.error();
+  co_return IC_CallResult<void>{};
+}
+
+IC_Task<IC_CallResult<void>>
+IC_Management::uninstall_code(CandidTypePrincipal canister_id) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  arg.append("sender_canister_version",
+             CandidTypeOptNat64{ic0_canister_version()});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "uninstall_code")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+  co_return IC_CallResult<void>{};
+}
+
+IC_Task<IC_CallResult<IC_Blob>>
+IC_Management::canister_metadata(CandidTypePrincipal canister_id,
+                                 std::string name) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  arg.append("name", CandidTypeText{name});
+  co_return co_await call_for_blob(
+      IC_Call::bounded_wait(management(), "canister_metadata").with_arg(arg),
+      "value");
+}
+
+IC_Task<IC_CallResult<IC_CanisterInfo>>
+IC_Management::canister_info(CandidTypePrincipal canister_id,
+                             std::optional<uint64_t> num_requested_changes) {
+  CandidTypeRecord arg;
+  arg.append("canister_id", canister_id);
+  arg.append("num_requested_changes",
+             CandidTypeOptNat64{num_requested_changes});
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::bounded_wait(management(), "canister_info")
+          .with_arg(arg);
+  if (!r) co_return r.error();
+
+  IC_CanisterInfo info;
+  IC_Change change;
+  ChangeScratch scratch;
+  IC_Blob module_hash;
+  bool has_module_hash{false};
+  CandidTypeVecNat8 module_hash_vec{&module_hash};
+  CandidTypeRecord result;
+  result.append("total_num_changes", CandidTypeNat64{&info.total_num_changes});
+  result.append("recent_changes", CandidTypeVecOf(
+                                      [&]() -> CandidType {
+                                        change = {};
+                                        scratch = {};
+                                        return change_type(change, scratch);
+                                      },
+                                      [&]() {
+                                        finish_change(change, scratch);
+                                        info.recent_changes.push_back(change);
+                                      }));
+  result.append("module_hash",
+                CandidTypeOptVec{&module_hash_vec, &has_module_hash});
+  result.append("controllers", CandidTypeVecPrincipal{&info.controllers});
+  r->decode(result);
+  if (has_module_hash) info.module_hash = module_hash;
+  co_return info;
 }
 
 IC_Task<IC_CallResult<IC_PublicKey>> IC_Management::ecdsa_public_key(

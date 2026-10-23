@@ -408,7 +408,9 @@ bool MockIC::management_reply(const std::string &method,
   CandidArgs out;
   if (method == "update_settings" || method == "start_canister" ||
       method == "stop_canister" || method == "delete_canister" ||
-      method == "deposit_cycles") {
+      method == "deposit_cycles" || method == "install_code" ||
+      method == "install_chunked_code" || method == "uninstall_code" ||
+      method == "clear_chunk_store") {
     // An empty reply: '()'
   } else if (method == "raw_rand") {
     out.append(CandidTypeVecNat8{bytes(32)});

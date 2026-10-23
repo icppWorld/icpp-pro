@@ -412,11 +412,13 @@ bool MockIC::management_reply(const std::string &method,
       method == "install_chunked_code" || method == "uninstall_code" ||
       method == "clear_chunk_store" || method == "load_canister_snapshot" ||
       method == "delete_canister_snapshot" ||
-      method == "upload_canister_snapshot_data") {
+      method == "upload_canister_snapshot_data" ||
+      method == "provisional_top_up_canister") {
     // An empty reply: '()'
   } else if (method == "raw_rand") {
     out.append(CandidTypeVecNat8{bytes(32)});
-  } else if (method == "create_canister") {
+  } else if (method == "create_canister" ||
+             method == "provisional_create_canister_with_cycles") {
     // A new principal, like those of the local network's canisters
     std::vector<uint8_t> id{
         0, 0, 0, 0, 0, 0x10, 0, (uint8_t)m_management_counter, 1, 1};

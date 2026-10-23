@@ -324,6 +324,51 @@ struct IC_NodeMetricsHistoryEntry {
   std::vector<IC_NodeMetrics> node_metrics;
 };
 
+// A flexible HTTPS outcall (IC_Management::flexible_http_request): the
+// request is sent by total_requests nodes, and the reply is the responses of
+// between min_responses and max_responses of them, each passed through the
+// transform. is_replicated and pricing_version of request are not used.
+struct IC_FlexibleHttpRequest {
+  IC_HttpOutcallRequest request;
+  std::optional<IC_API::HttpOutcallReplicationCounts> replication;
+};
+
+// How much of a resource a node used for a flexible outcall, or whether it
+// went over its limit
+struct IC_HttpUsage {
+  bool reported{false};
+  bool exceeded{false};
+  __uint128_t used{0};
+};
+
+struct IC_HttpNodeDetail {
+  std::string node_id;
+  IC_HttpUsage raw_response_bytes;
+  IC_HttpUsage http_roundtrip_time_ms;
+  IC_HttpUsage transform_instructions;
+  IC_HttpUsage transformed_response_bytes;
+  IC_HttpUsage cycles;
+  std::optional<std::string> error_code;
+  std::optional<std::string> error_message;
+};
+
+// The result of a flexible HTTPS outcall: the responses, or why there are not
+// enough of them. An error is a reply, not a reject.
+struct IC_FlexibleHttpResult {
+  bool ok{false};
+  std::vector<IC_HttpOutcallResponse> responses; // ok
+  enum class GlobalError {
+    None,
+    Timeout,
+    OutOfCycles,
+    ResponsesTooLarge,
+    TooManyRejects
+  };
+  GlobalError global_error{GlobalError::None}; // not ok
+  std::vector<IC_HttpNodeDetail> node_details; // not ok
+  std::string message;                         // not ok
+};
+
 // Calls to the management canister (aaaaa-aa), the IC's system API. Each
 // helper encodes the Candid argument, attaches the cycles the call costs, and
 // decodes the reply.
@@ -504,6 +549,25 @@ public:
   // An HTTPS request to a server on the internet, e.g. a price feed
   static IC_Task<IC_CallResult<IC_HttpOutcallResponse>>
   http_request(IC_HttpOutcallRequest request);
+
+  // An HTTPS request sent by several nodes, whose responses are all
+  // returned, e.g. to compare them in the canister. It pays as it goes: the
+  // cycles attached are the most it can cost (by default), and what it does
+  // not use is refunded.
+  static IC_Task<IC_CallResult<IC_FlexibleHttpResult>>
+  flexible_http_request(IC_FlexibleHttpRequest request,
+                        std::optional<__uint128_t> cycles = {});
+
+  // Only on a local network: creates a canister with amount cycles (by
+  // default the network's default), and tops up any canister. The cycles are
+  // created, not paid for.
+  static IC_Task<IC_CallResult<CandidTypePrincipal>>
+  provisional_create_canister_with_cycles(
+      std::optional<__uint128_t> amount = {}, IC_CanisterSettings settings = {},
+      std::optional<CandidTypePrincipal> specified_id = {});
+  static IC_Task<IC_CallResult<void>>
+  provisional_top_up_canister(CandidTypePrincipal canister_id,
+                              __uint128_t amount);
 }; // docs end: ic_management
 
 #endif // __cpp_impl_coroutine

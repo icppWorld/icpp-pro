@@ -77,6 +77,9 @@ struct IC_HttpOutcallRequest {
   // false: the request is sent by one node instead of every node of the
   // subnet. Cheaper, but the response is not agreed on by consensus.
   std::optional<bool> is_replicated;
+  // 2: pay-as-you-go pricing, where the cycles not used are refunded; 1 or
+  // empty: the original pricing
+  std::optional<uint32_t> pricing_version;
 };
 
 struct IC_HttpOutcallResponse {

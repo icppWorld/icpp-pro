@@ -1027,6 +1027,248 @@ int main() {
         "node_metrics_history: the argument");
     mockIC.clear_expected_calls();
   }
+  // ---------------------------------------------------------------------
+  // The outcall and provisional helpers. The arguments are pinned as icpp
+  // encodes them, each checked with didc against test/ic.did; the replies are
+  // didc encode-d from the types of test/ic.did.
+  const std::string url{"https://example.com/"};
+  auto flexible_in = [&](uint32_t min, uint32_t max, uint32_t total,
+                         bool with_replication) {
+    CandidArgs in;
+    in.append(CandidTypeText{url});
+    in.append(CandidTypeNat32{min});
+    in.append(CandidTypeNat32{max});
+    in.append(CandidTypeNat32{total});
+    in.append(CandidTypeBool{with_replication});
+    return in;
+  };
+  // The most a pay-as-you-go outcall of url can cost, with
+  // max_response_bytes 10,000: the replica's worst case (max_usage_fee)
+  auto budget =
+      [&](IC_API::HttpOutcallType type,
+          std::optional<IC_API::HttpOutcallReplicationCounts> counts) {
+        IC_API::HttpOutcallCostParams params;
+        params.request_bytes = url.size();
+        params.http_roundtrip_time_ms = 60'000;
+        params.raw_response_bytes = 10'000;
+        params.transformed_response_bytes = 10'000 + 1024;
+        params.transform_instructions = 5'000'000'000;
+        params.outcall_type = type;
+        params.flexible_counts = counts;
+        return IC_API::cost_http_request_v2(params);
+      };
+  {
+    // flexible_http_request: ok, with 2 responses
+    mockIC.expect_call(
+        "aaaaa-aa", "flexible_http_request",
+        MockIC::MockResponse::reply(
+            "4449444c126b029cc20101e58eb402066d026c03b2ceef2f7da2f5ed880403c6a4a198"
+            "06046d7b6d056c02f1fee18d0371cbe4fdc704716c03c5a4d8e00507ace1abc60910c7"
+            "ebc4d009716d086c03b4f9903409b8aaccb70168c897a799070e6c05a182a291050a98"
+            "918898060a8daacd94080ca4d9e6b90a0a9595df9c0c0a6e0b6b02d38dcb7670bda4b6"
+            "ed04786e0d6b02d38dcb7670bda4b6ed047d6e0f6c02ade2928e0471c7ebc4d009716e"
+            "116b04a383b4a50170c480bce903709f9efdc90b70a1b5dcc70d7001000002c8010178"
+            "0101310161f7030000"));
+    check_eq(run_text(mockIC, "flexible_get", flexible_get,
+                      flexible_in(1, 2, 2, true), caller),
+             "ok:200,503", "flexible_http_request: ok");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "flexible_http_request"),
+        "4449444c136c05efd6e40271e1edeb4a04e8d6d8930103c6a4a19806078cc8c2ae07096d716c02f1fee18d0301cbe4fdc704016e786b019681ba027f6c006c02f1fee18d0371cbe4fdc704716d066c03dfa28ed60279b7fcbacb0879a5f5e7f508796e086b006b01cb84eba701096c06bba8d4840478a182a2910578989188980678edadc794080da4d9e6b90a789595df9c0c786e0b6b03cb84eba70109f0afad85097fcdb7f5fe097f6c06bba8d4840478a182a2910578989188980678edadc7940810a4d9e6b90a789595df9c0c786e0e6e056e0a01001468747470733a2f2f6578616d706c652e636f6d2f000110270000000000000001020000000200000001000000",
+        "flexible_http_request: the argument");
+    check(mockIC.last_call_cycles("aaaaa-aa", "flexible_http_request") ==
+              budget(IC_API::HttpOutcallType::Flexible,
+                     IC_API::HttpOutcallReplicationCounts{2, 1, 2}),
+          "flexible_http_request: the cycles attached, the worst case");
+    run_text(mockIC, "flexible_get no replication", flexible_get,
+             flexible_in(0, 0, 0, false), caller);
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "flexible_http_request"),
+        "4449444c136c04efd6e40271e1edeb4a04e8d6d8930103c6a4a19806076d716c02f1fee18d0301cbe4fdc704016e786b019681ba027f6c006c02f1fee18d0371cbe4fdc704716d066b006c03dfa28ed60279b7fcbacb0879a5f5e7f508796e096b01cb84eba7010a6c06bba8d4840478a182a2910578989188980678edadc794080da4d9e6b90a789595df9c0c786e0b6b03cb84eba7010af0afad85097fcdb7f5fe097f6c06bba8d4840478a182a2910578989188980678edadc7940810a4d9e6b90a789595df9c0c786e0e6e056e0801001468747470733a2f2f6578616d706c652e636f6d2f0001102700000000000000",
+        "flexible_http_request: the argument, no replication");
+    check(mockIC.last_call_cycles("aaaaa-aa", "flexible_http_request") ==
+              budget(IC_API::HttpOutcallType::Flexible, std::nullopt),
+          "flexible_http_request: the cycles, no replication");
+  }
+  {
+    // flexible_http_request: err, with every kind of global error and of
+    // usage report; then without a global error
+    mockIC.expect_call(
+        "aaaaa-aa", "flexible_http_request",
+        MockIC::MockResponse::reply(
+            "4449444c126b029cc20101e58eb402066d026c03b2ceef2f7da2f5ed880403c6a4a198"
+            "06046d7b6d056c02f1fee18d0371cbe4fdc704716c03c5a4d8e00507ace1abc60910c7"
+            "ebc4d009716d086c03b4f9903409b8aaccb70168c897a799070e6c05a182a291050a98"
+            "918898060a8daacd94080ca4d9e6b90a0a9595df9c0c0a6e0b6b02d38dcb7670bda4b6"
+            "ed04786e0d6b02d38dcb7670bda4b6ed047d6e0f6c02ade2928e0471c7ebc4d009716e"
+            "116b04a383b4a50170c480bce903709f9efdc90b70a1b5dcc70d700100010201010000"
+            "000000000000000101f2dfdae48694c48f9bc96801010a000000000000000100010001"
+            "0c5379735472616e7369656e7404646f776e00000000000101040001030a6e6f742065"
+            "6e6f756768"));
+    check_eq(run_text(mockIC, "flexible_get timeout", flexible_get,
+                      flexible_in(1, 2, 2, true), caller),
+             "err:timeout:aaaaa-aa/10/exceeded/-/0/123456789012345678901234/"
+             "SysTransient=down,2vxsx-fae/-/-/-/-/-/-:not enough",
+             "flexible_http_request: err, timeout");
+    mockIC.expect_call(
+        "aaaaa-aa", "flexible_http_request",
+        MockIC::MockResponse::reply(
+            "4449444c126b029cc20101e58eb402066d026c03b2ceef2f7da2f5ed880403c6a4a198"
+            "06046d7b6d056c02f1fee18d0371cbe4fdc704716c03c5a4d8e00507ace1abc60910c7"
+            "ebc4d009716d086c03b4f9903409b8aaccb70168c897a799070e6c05a182a291050a98"
+            "918898060a8daacd94080ca4d9e6b90a0a9595df9c0c0a6e0b6b02d38dcb7670bda4b6"
+            "ed04786e0d6b02d38dcb7670bda4b6ed047d6e0f6c02ade2928e0471c7ebc4d009716e"
+            "116b04a383b4a50170c480bce903709f9efdc90b70a1b5dcc70d700100010201010000"
+            "000000000000000101f2dfdae48694c48f9bc96801010a000000000000000100010001"
+            "0c5379735472616e7369656e7404646f776e00000000000101040001010a6e6f742065"
+            "6e6f756768"));
+    check_eq(
+        run_text(mockIC, "flexible_get out_of_cycles", flexible_get,
+                 flexible_in(1, 2, 2, true), caller),
+        "err:out_of_cycles:aaaaa-aa/10/exceeded/-/0/123456789012345678901234/"
+        "SysTransient=down,2vxsx-fae/-/-/-/-/-/-:not enough",
+        "flexible_http_request: err, out_of_cycles");
+    mockIC.expect_call(
+        "aaaaa-aa", "flexible_http_request",
+        MockIC::MockResponse::reply(
+            "4449444c126b029cc20101e58eb402066d026c03b2ceef2f7da2f5ed880403c6a4a198"
+            "06046d7b6d056c02f1fee18d0371cbe4fdc704716c03c5a4d8e00507ace1abc60910c7"
+            "ebc4d009716d086c03b4f9903409b8aaccb70168c897a799070e6c05a182a291050a98"
+            "918898060a8daacd94080ca4d9e6b90a0a9595df9c0c0a6e0b6b02d38dcb7670bda4b6"
+            "ed04786e0d6b02d38dcb7670bda4b6ed047d6e0f6c02ade2928e0471c7ebc4d009716e"
+            "116b04a383b4a50170c480bce903709f9efdc90b70a1b5dcc70d700100010201010000"
+            "000000000000000101f2dfdae48694c48f9bc96801010a000000000000000100010001"
+            "0c5379735472616e7369656e7404646f776e00000000000101040001000a6e6f742065"
+            "6e6f756768"));
+    check_eq(
+        run_text(mockIC, "flexible_get responses_too_large", flexible_get,
+                 flexible_in(1, 2, 2, true), caller),
+        "err:responses_too_large:aaaaa-aa/10/exceeded/-/0/123456789012345678901234/"
+        "SysTransient=down,2vxsx-fae/-/-/-/-/-/-:not enough",
+        "flexible_http_request: err, responses_too_large");
+    mockIC.expect_call(
+        "aaaaa-aa", "flexible_http_request",
+        MockIC::MockResponse::reply(
+            "4449444c126b029cc20101e58eb402066d026c03b2ceef2f7da2f5ed880403c6a4a198"
+            "06046d7b6d056c02f1fee18d0371cbe4fdc704716c03c5a4d8e00507ace1abc60910c7"
+            "ebc4d009716d086c03b4f9903409b8aaccb70168c897a799070e6c05a182a291050a98"
+            "918898060a8daacd94080ca4d9e6b90a0a9595df9c0c0a6e0b6b02d38dcb7670bda4b6"
+            "ed04786e0d6b02d38dcb7670bda4b6ed047d6e0f6c02ade2928e0471c7ebc4d009716e"
+            "116b04a383b4a50170c480bce903709f9efdc90b70a1b5dcc70d700100010201010000"
+            "000000000000000101f2dfdae48694c48f9bc96801010a000000000000000100010001"
+            "0c5379735472616e7369656e7404646f776e00000000000101040001020a6e6f742065"
+            "6e6f756768"));
+    check_eq(
+        run_text(mockIC, "flexible_get too_many_rejects", flexible_get,
+                 flexible_in(1, 2, 2, true), caller),
+        "err:too_many_rejects:aaaaa-aa/10/exceeded/-/0/123456789012345678901234/"
+        "SysTransient=down,2vxsx-fae/-/-/-/-/-/-:not enough",
+        "flexible_http_request: err, too_many_rejects");
+    mockIC.expect_call(
+        "aaaaa-aa", "flexible_http_request",
+        MockIC::MockResponse::reply(
+            "4449444c126b029cc20101e58eb402066d026c03b2ceef2f7da2f5ed880403c6a4a198"
+            "06046d7b6d056c02f1fee18d0371cbe4fdc704716c03c5a4d8e00507ace1abc60910c7"
+            "ebc4d009716d086c03b4f9903409b8aaccb70168c897a799070e6c05a182a291050a98"
+            "918898060a8daacd94080ca4d9e6b90a0a9595df9c0c0a6e0b6b02d38dcb7670bda4b6"
+            "ed04786e0d6b02d38dcb7670bda4b6ed047d6e0f6c02ade2928e0471c7ebc4d009716e"
+            "116b04a383b4a50170c480bce903709f9efdc90b70a1b5dcc70d700100010000016d"));
+    check_eq(run_text(mockIC, "flexible_get err none", flexible_get,
+                      flexible_in(1, 2, 2, true), caller),
+             "err:none::m", "flexible_http_request: err, no global error");
+    mockIC.expect_call("aaaaa-aa", "flexible_http_request",
+                       MockIC::MockResponse::reject(
+                           4, "min_responses is larger than max_responses"));
+    check_eq(run_text(mockIC, "flexible_get rejected", flexible_get,
+                      flexible_in(3, 2, 2, true), caller),
+             "rej:4:min_responses is larger than max_responses",
+             "flexible_http_request: the reject");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // http_request with pricing_version 2: the worst case is attached
+    mockIC.expect_call(
+        "aaaaa-aa", "http_request",
+        MockIC::MockResponse::reply(
+            "4449444c046c03b2ceef2f7da2f5ed880401c6a4a19806026d7b6d036c02f1fee18d03"
+            "71cbe4fdc704710100c801026f6b00"));
+    for (int replicated = 1; replicated >= 0; --replicated) {
+      CandidArgs in;
+      in.append(CandidTypeText{url});
+      in.append(CandidTypeBool{replicated == 1});
+      check_eq(run_text(mockIC, "http_get_v2", http_get_v2, in, caller),
+               "status=200; bytes=2", "http_request v2: the reply");
+      check(mockIC.last_call_cycles("aaaaa-aa", "http_request") ==
+                budget(replicated ? IC_API::HttpOutcallType::FullyReplicated
+                                  : IC_API::HttpOutcallType::NonReplicated,
+                       std::nullopt),
+            "http_request v2: the cycles attached, the worst case");
+    }
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "http_request"),
+        "4449444c146c06efd6e40271e1edeb4a04e8d6d8930103c6a4a198060790f8f6fc09089fc593ca0f096d716c02f1fee18d0301cbe4fdc704016e786b019681ba027f6c006c02f1fee18d0371cbe4fdc704716d066e7e6e796b006b01cdb7f5fe097f6c06bba8d4840478a182a2910578989188980678edadc794080da4d9e6b90a789595df9c0c786e0b6c03dfa28ed60279b7fcbacb0879a5f5e7f508796b03cb84eba70110f0afad85097fcdb7f5fe097f6e0e6c06bba8d4840478a182a2910578989188980678edadc7940812a4d9e6b90a789595df9c0c786e0f6e0a01001468747470733a2f2f6578616d706c652e636f6d2f000110270000000000000001000102000000",
+        "http_request v2: the argument");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // provisional_create_canister_with_cycles: the Mock IC replies a new id
+    CandidArgs in;
+    in.append(CandidTypeVecNat{std::vector<__uint128_t>{}});
+    in.append(CandidTypeVecPrincipal{std::vector<std::string>{}});
+    std::string id =
+        run_text(mockIC, "provisional_create", provisional_create, in, caller);
+    check(!id.empty() && id.rfind("rej:", 0) != 0,
+          "provisional_create_canister_with_cycles: a new canister");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa",
+                                 "provisional_create_canister_with_cycles"),
+        "4449444c056c006e7d6c03cae5edbc0c03d8a38ca80d01ca9998b40d046e686e7801020000010100000000000000",
+        "provisional_create_canister_with_cycles: the argument");
+    check(mockIC.last_call_cycles(
+              "aaaaa-aa", "provisional_create_canister_with_cycles") == 0,
+          "provisional_create_canister_with_cycles: no cycles attached");
+    mockIC.expect_call(
+        "aaaaa-aa", "provisional_create_canister_with_cycles",
+        MockIC::MockResponse::reply(
+            "4449444c016c01b3c4b1f204680100010a00000000000000020101"));
+    CandidArgs in_set;
+    in_set.append(
+        CandidTypeVecNat{std::vector<__uint128_t>{5'000'000'000'000}});
+    in_set.append(CandidTypeVecPrincipal{std::vector<std::string>{child}});
+    check_eq(run_text(mockIC, "provisional_create set", provisional_create,
+                      in_set, caller),
+             child, "provisional_create_canister_with_cycles: specified_id");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa",
+                                 "provisional_create_canister_with_cycles"),
+        "4449444c056c006e7d6c03cae5edbc0c03d8a38ca80d01ca9998b40d046e686e78010201010a000000000000000201010180a0e5b9c29101010100000000000000",
+        "provisional_create_canister_with_cycles: the argument, set");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // provisional_top_up_canister: the Mock IC replies '()'
+    CandidArgs in;
+    in.append(CandidTypePrincipal{child});
+    in.append(CandidTypeNat{__uint128_t(1'000'000)});
+    check_eq(
+        run_text(mockIC, "provisional_top_up", provisional_top_up, in, caller),
+        "ok", "provisional_top_up_canister: the reply");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "provisional_top_up_canister"),
+        "4449444c016c02b3c4b1f20468d8a38ca80d7d0100010a00000000000000020101c0843d",
+        "provisional_top_up_canister: the argument");
+    check(mockIC.last_call_cycles("aaaaa-aa", "provisional_top_up_canister") ==
+              0,
+          "provisional_top_up_canister: no cycles attached");
+    mockIC.expect_call(
+        "aaaaa-aa", "provisional_top_up_canister",
+        MockIC::MockResponse::reject(5, "only on a development instance"));
+    check_eq(run_text(mockIC, "provisional_top_up rejected", provisional_top_up,
+                      in, caller),
+             "rej:5:only on a development instance",
+             "provisional_top_up_canister: the reject");
+    mockIC.clear_expected_calls();
+  }
   {
     // An HTTPS outcall: the response set with expect_call
     CandidTypeRecord header;

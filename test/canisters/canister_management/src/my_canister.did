@@ -37,4 +37,9 @@ service : {
   "read_snapshot_data_child" : (principal, blob, text, nat64, nat64, blob) -> (text);
   "upload_snapshot_data_child" : (principal, blob, text, nat64, blob) -> (text);
   "copy_snapshot_child" : (principal, blob) -> (text);
+  "logs_child" : (principal, text, nat64, nat64) -> (text);
+  "metrics_child" : (principal) -> (text);
+  "subnet_info_of" : (principal) -> (text);
+  "subnet_metrics_of" : (principal) -> (text);
+  "node_metrics_of" : (principal, nat64) -> (text);
 };

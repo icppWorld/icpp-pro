@@ -623,6 +623,45 @@ def test__canister_roundtrip_text(network: str, principal: str) -> None:
     assert response == expected_response
 
 
+def test__roundtrip_blob(network: str, principal: str) -> None:
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_blob",
+        canister_argument="4449444c016d7b0100026162",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert response == "4449444c016d7b0100026162"
+
+
+@pytest.mark.parametrize(
+    "method, argument",
+    [
+        # '(101 : nat64)' with 5 of its 8 bytes
+        ("roundtrip_nat64_101", "4449444c000178650000000000"),
+        # a float64 with 4 of its 8 bytes
+        ("roundtrip_float64", "4449444c0001720000000000"),
+        # '(blob "ab")' with the size 2 changed to 5
+        ("roundtrip_blob", "4449444c016d7b0100056162"),
+    ],
+)
+def test__truncated_message_traps(network: str, method: str, argument: str) -> None:
+    # A message that ends before the value it declares traps; it is never
+    # read past its end
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method=method,
+        canister_argument=argument,
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert "Not enough bytes left" in response, response
+
+
 def test__roundtrip_text_to_json_to_text(network: str, principal: str) -> None:
     d = {"project": "?", "C++": 0}
     text_in = dict_to_candid_text(d)

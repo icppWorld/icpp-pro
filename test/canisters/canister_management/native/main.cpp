@@ -50,6 +50,20 @@ void check_eq(const std::string &actual, const std::string &expected,
   check(actual == expected, what);
 }
 
+// read_canister_snapshot_metadata: every kind of global (didc encode -d
+// test/ic.did -t '(read_canister_snapshot_metadata_response)')
+const char *replies_md1() {
+  return "4449444c0b6c0bb08be4a10101c0c3dff50278dbe1c6910303c2b9a19c0304a9c9"
+         "dbae030580f6c7e30407999fb5eb0478bbfeb3af0678f4d0c9ca060982bff3a50d"
+         "78a4cadab30d786d026b0585a5b60273a4aab60272c8b2bf0275e7b7bf0274818f"
+         "92f1047d6b0291a0c58d0370a4f794e508706d7b6e066b02c68399b20178ebaec0"
+         "d1067f6e086b03a2efe5f1037f8fc9effa0b7fe3c0eab50e7f6d0a6c01cedfa0a8"
+         "0404010005020000008003ffffffffffffff7f000000c03f01000000000000f83f"
+         "04ffffffffffffffffffffffffffffffffffff0307000000000000000101ce0100"
+         "2a000000000000000102030000000000000000000000000000000101aa05000000"
+         "000000000200000000000000";
+}
+
 // Runs a method with a principal argument, and returns its text reply
 std::string run_text(MockIC &mockIC, const std::string &name, void (*fn)(),
                      CandidArgs in, const std::string &caller) {
@@ -631,6 +645,238 @@ int main() {
     mockIC.run_trap_test("info_child future change", info_child, hex(in), true,
                          caller,
                          "does not match any of the expected Variant ids");
+    mockIC.clear_expected_calls();
+  }
+  // ---------------------------------------------------------------------
+  // The snapshot helpers. The arguments are pinned as icpp encodes them,
+  // each checked with didc against test/ic.did; the replies are didc
+  // encode-d from the types of test/ic.did.
+  auto snapshot_in = [&](const IC_Blob &id) {
+    CandidArgs in;
+    in.append(CandidTypePrincipal{child});
+    in.append(CandidTypeVecNat8{id});
+    return in;
+  };
+  {
+    // take_canister_snapshot, without and with its options
+    mockIC.expect_call(
+        "aaaaa-aa", "take_canister_snapshot",
+        MockIC::MockResponse::reply(
+            "4449444c026c03dbb70101dc84e196077882bff3a50d786d7b01001200000000000000"
+            "0101010000000000000000001000000000000000002a36fe9c9717"));
+    for (int options = 0; options < 2; ++options) {
+      CandidArgs in;
+      in.append(CandidTypePrincipal{child});
+      in.append(CandidTypeVecBlob{options ? std::vector<IC_Blob>{{7, 7}}
+                                          : std::vector<IC_Blob>{}});
+      in.append(CandidTypeOptBool{options ? std::optional<bool>{true}
+                                          : std::optional<bool>{}});
+      check_eq(run_text(mockIC, "take_snapshot_child", take_snapshot_child, in,
+                        caller),
+               "000000000000000101010000000000000000:4096",
+               "take_canister_snapshot: the snapshot");
+      check_eq(
+          mockIC.last_call_arg_hex("aaaaa-aa", "take_canister_snapshot"),
+          options
+              ? "4449444c056c04efc1e4cf0102b3c4b1f20468eabb9ad30903ca9998b40d046d7b6e016e7e6e78010001020707010a000000000000000201010101010100000000000000"
+              : "4449444c026c02b3c4b1f20468ca9998b40d016e780100010a00000000000000020101010100000000000000",
+          "take_canister_snapshot: the argument");
+    }
+    mockIC.clear_expected_calls();
+  }
+  {
+    // list_canister_snapshots: two snapshots, then none
+    mockIC.expect_call(
+        "aaaaa-aa", "list_canister_snapshots",
+        MockIC::MockResponse::reply(
+            "4449444c036d016c03dbb70102dc84e196077882bff3a50d786d7b0100020201026400"
+            "0000000000000100000000000000020304c8000000000000000200000000000000"));
+    check_eq(run_text(mockIC, "list_snapshots_child", list_snapshots_child,
+                      child_in(), caller),
+             "0102:100,0304:200", "list_canister_snapshots: two");
+    mockIC.expect_call(
+        "aaaaa-aa", "list_canister_snapshots",
+        MockIC::MockResponse::reply(
+            "4449444c036d016c03dbb70102dc84e196077882bff3a50d786d7b010000"));
+    check_eq(run_text(mockIC, "list_snapshots_child none", list_snapshots_child,
+                      child_in(), caller),
+             "", "list_canister_snapshots: none");
+    check_eq(mockIC.last_call_arg_hex("aaaaa-aa", "list_canister_snapshots"),
+             "4449444c016c01b3c4b1f204680100010a00000000000000020101",
+             "list_canister_snapshots: the argument");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // load and delete: the Mock IC replies '()'
+    check_eq(run_text(mockIC, "load_snapshot_child", load_snapshot_child,
+                      snapshot_in(IC_Blob{1, 2}), caller),
+             "ok", "load_canister_snapshot: the reply");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "load_canister_snapshot"),
+        "4449444c036c03b3c4b1f20468ca9998b40d02b6b897890f016d7b6e780100010a00000000000000020101010100000000000000020102",
+        "load_canister_snapshot: the argument");
+    check_eq(run_text(mockIC, "delete_snapshot_child", delete_snapshot_child,
+                      snapshot_in(IC_Blob{1, 2}), caller),
+             "ok", "delete_canister_snapshot: the reply");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "delete_canister_snapshot"),
+        "4449444c026c02b3c4b1f20468b6b897890f016d7b0100010a00000000000000020101020102",
+        "delete_canister_snapshot: the argument");
+  }
+  {
+    // load_canister_snapshot of a running canister: rejected
+    mockIC.expect_call(
+        "aaaaa-aa", "load_canister_snapshot",
+        MockIC::MockResponse::reject(5, "Canister is not stopped"));
+    check_eq(run_text(mockIC, "load_snapshot_child rejected",
+                      load_snapshot_child, snapshot_in(IC_Blob{1, 2}), caller),
+             "rej:5:Canister is not stopped",
+             "load_canister_snapshot: the reject");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // read_canister_snapshot_metadata: every kind of global, at its extremes;
+    // an active timer and a hook status; then an inactive timer and no hook;
+    // then no timer
+    const char *replies[] = {
+        "4449444c0b6c0bb08be4a10101c0c3dff50278dbe1c6910303c2b9a19c0304a9c9dbae"
+        "030580f6c7e30407999fb5eb0478bbfeb3af0678f4d0c9ca060982bff3a50d78a4cada"
+        "b30d786d026b0585a5b60273a4aab60272c8b2bf0275e7b7bf0274818f92f1047d6b02"
+        "91a0c58d0370a4f794e508706d7b6e066b02c68399b20178ebaec0d1067f6e086b03a2"
+        "efe5f1037f8fc9effa0b7fe3c0eab50e7f6d0a6c01cedfa0a804040100050200000080"
+        "03ffffffffffffff7f000000c03f01000000000000f83f04ffffffffffffffffffffff"
+        "ffffffffffffff0307000000000000000101ce01002a00000000000000010203000000"
+        "0000000000000000000000000101aa05000000000000000200000000000000",
+        "4449444c0b6c0bb08be4a10101c0c3dff50278dbe1c6910303c2b9a19c0304a9c9dbae"
+        "030580f6c7e30407999fb5eb0478bbfeb3af0678f4d0c9ca060982bff3a50d78a4cada"
+        "b30d786d026b0585a5b60273a4aab60272c8b2bf0275e7b7bf0274818f92f1047d6b02"
+        "91a0c58d0370a4f794e508706d7b6e066b02c68399b20178ebaec0d1067f6e086b03a2"
+        "efe5f1037f8fc9effa0b7fe3c0eab50e7f6d0a6c01cedfa0a804040100050200000080"
+        "03ffffffffffffff7f000000807f01000000000000f87f04ffffffffffffffffffffff"
+        "ffffffffffffff0307000000000000000101ce01002a00000000000000010203000000"
+        "0000000000000000000000000101aa05000000000000000200000000000000",
+        "4449444c0b6c0bb08be4a10101c0c3dff50278dbe1c6910303c2b9a19c0304a9c9dbae"
+        "030580f6c7e30407999fb5eb0478bbfeb3af0678f4d0c9ca060982bff3a50d78a4cada"
+        "b30d786d026b0585a5b60273a4aab60272c8b2bf0275e7b7bf0274818f92f1047d6b02"
+        "91a0c58d0370a4f794e508706d7b6e066b02c68399b20178ebaec0d1067f6e086b03a2"
+        "efe5f1037f8fc9effa0b7fe3c0eab50e7f6d0a6c01cedfa0a804040100000800000000"
+        "0000000000010100000000000000000000000000000000000006000000000000000000"
+        "000000000000",
+        "4449444c0b6c0bb08be4a10101c0c3dff50278dbe1c6910303c2b9a19c0304a9c9dbae"
+        "030580f6c7e30407999fb5eb0478bbfeb3af0678f4d0c9ca060982bff3a50d78a4cada"
+        "b30d786d026b0585a5b60273a4aab60272c8b2bf0275e7b7bf0274818f92f1047d6b02"
+        "91a0c58d0370a4f794e508706d7b6e066b02c68399b20178ebaec0d1067f6e086b03a2"
+        "efe5f1037f8fc9effa0b7fe3c0eab50e7f6d0a6c01cedfa0a804040100000800000000"
+        "0000000100000101000000000000000000000000000000000006000000000000000000"
+        "000000000000"};
+    const char *expected[] = {
+        "source=taken_from_canister; taken_at=5; wasm_module_size=3; "
+        "globals=i32:-2147483648,i64:9223372036854775807,f32:1.500000,"
+        "f64:1.500000,v128:340282366920938463463374607431768211455; "
+        "wasm_memory_size=2; stable_memory_size=0; chunks=1; "
+        "canister_version=7; certified_data=ce; timer=active@42; hook=ready",
+        "source=taken_from_canister; taken_at=5; wasm_module_size=3; "
+        "globals=i32:-2147483648,i64:9223372036854775807,f32:inf,f64:nan,"
+        "v128:340282366920938463463374607431768211455; wasm_memory_size=2; "
+        "stable_memory_size=0; chunks=1; canister_version=7; "
+        "certified_data=ce; timer=active@42; hook=ready",
+        "source=metadata_upload; taken_at=6; wasm_module_size=0; globals=; "
+        "wasm_memory_size=0; stable_memory_size=0; chunks=0; "
+        "canister_version=8; certified_data=; timer=inactive; hook=none",
+        "source=taken_from_canister; taken_at=6; wasm_module_size=0; "
+        "globals=; wasm_memory_size=0; stable_memory_size=0; chunks=0; "
+        "canister_version=8; certified_data=; timer=none; hook=executed"};
+    for (int i = 0; i < 4; ++i) {
+      mockIC.expect_call("aaaaa-aa", "read_canister_snapshot_metadata",
+                         MockIC::MockResponse::reply(replies[i]));
+      check_eq(
+          run_text(mockIC, "snapshot_metadata_child", snapshot_metadata_child,
+                   snapshot_in(IC_Blob{1, 2}), caller),
+          expected[i], "read_canister_snapshot_metadata " + std::to_string(i));
+    }
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa", "read_canister_snapshot_metadata"),
+        "4449444c026c02b3c4b1f20468b6b897890f016d7b0100010a00000000000000020101020102",
+        "read_canister_snapshot_metadata: the argument");
+    mockIC.clear_expected_calls();
+  }
+  {
+    // read_canister_snapshot_data: every kind
+    mockIC.expect_call("aaaaa-aa", "read_canister_snapshot_data",
+                       MockIC::MockResponse::reply(
+                           "4449444c026c01ed8c8bae04016d7b010003616263"));
+    const char *kinds[] = {"wasm_module", "wasm_memory", "stable_memory",
+                           "wasm_chunk"};
+    const char *args[] = {
+        "4449444c046c03d4c2a7b80403b3c4b1f20468b6b897890f016d7b6c02c1c1cee2047893affe8106786b01a79fc97e0201000003000000000000000a00000000000000010a00000000000000020101020102",
+        "4449444c046c03d4c2a7b80403b3c4b1f20468b6b897890f016d7b6c02c1c1cee2047893affe8106786b01fccbfb9d050201000003000000000000000a00000000000000010a00000000000000020101020102",
+        "4449444c046c03d4c2a7b80403b3c4b1f20468b6b897890f016d7b6c02c1c1cee2047893affe8106786b01c586d397090201000003000000000000000a00000000000000010a00000000000000020101020102",
+        "4449444c046c03d4c2a7b80403b3c4b1f20468b6b897890f016d7b6c01cedfa0a804016b01d2c7b5c00f0201000001aa010a00000000000000020101020102"};
+    for (int i = 0; i < 4; ++i) {
+      CandidArgs in;
+      in.append(CandidTypePrincipal{child});
+      in.append(CandidTypeVecNat8{IC_Blob{1, 2}});
+      in.append(CandidTypeText{kinds[i]});
+      in.append(CandidTypeNat64{uint64_t(10)});
+      in.append(CandidTypeNat64{uint64_t(3)});
+      in.append(CandidTypeVecNat8{IC_Blob{0xaa}});
+      check_eq(
+          run_text(mockIC, std::string("read_snapshot_data_child ") + kinds[i],
+                   read_snapshot_data_child, in, caller),
+          "616263", std::string("read_canister_snapshot_data: ") + kinds[i]);
+      check_eq(
+          mockIC.last_call_arg_hex("aaaaa-aa", "read_canister_snapshot_data"),
+          args[i],
+          std::string("read_canister_snapshot_data: the argument, ") +
+              kinds[i]);
+    }
+    mockIC.clear_expected_calls();
+  }
+  {
+    // upload_canister_snapshot_data: every kind; the Mock IC replies '()'
+    const char *kinds[] = {"wasm_module", "wasm_memory", "stable_memory",
+                           "wasm_chunk"};
+    const char *args[] = {
+        "4449444c046c04ed8c8bae0401d4c2a7b80403b3c4b1f20468b6b897890f016d7b6c0193affe8106786b01a79fc97e020100026162000a00000000000000010a00000000000000020101020102",
+        "4449444c046c04ed8c8bae0401d4c2a7b80403b3c4b1f20468b6b897890f016d7b6c0193affe8106786b01fccbfb9d05020100026162000a00000000000000010a00000000000000020101020102",
+        "4449444c046c04ed8c8bae0401d4c2a7b80403b3c4b1f20468b6b897890f016d7b6c0193affe8106786b01c586d39709020100026162000a00000000000000010a00000000000000020101020102",
+        "4449444c036c04ed8c8bae0401d4c2a7b80402b3c4b1f20468b6b897890f016d7b6b01d2c7b5c00f7f010002616200010a00000000000000020101020102"};
+    for (int i = 0; i < 4; ++i) {
+      CandidArgs in;
+      in.append(CandidTypePrincipal{child});
+      in.append(CandidTypeVecNat8{IC_Blob{1, 2}});
+      in.append(CandidTypeText{kinds[i]});
+      in.append(CandidTypeNat64{uint64_t(10)});
+      in.append(CandidTypeVecNat8{IC_Blob{0x61, 0x62}});
+      check_eq(run_text(mockIC,
+                        std::string("upload_snapshot_data_child ") + kinds[i],
+                        upload_snapshot_data_child, in, caller),
+               "ok", std::string("upload_canister_snapshot_data: ") + kinds[i]);
+      check_eq(
+          mockIC.last_call_arg_hex("aaaaa-aa", "upload_canister_snapshot_data"),
+          args[i],
+          std::string("upload_canister_snapshot_data: the argument, ") +
+              kinds[i]);
+    }
+  }
+  {
+    // A copy of a snapshot: read its metadata and data, upload them
+    mockIC.expect_call("aaaaa-aa", "read_canister_snapshot_metadata",
+                       MockIC::MockResponse::reply(replies_md1()));
+    mockIC.expect_call("aaaaa-aa", "upload_canister_snapshot_metadata",
+                       MockIC::MockResponse::reply(
+                           "4449444c026c01b6b897890f016d7b0100020909"));
+    mockIC.expect_call("aaaaa-aa", "read_canister_snapshot_data",
+                       MockIC::MockResponse::reply(
+                           "4449444c026c01ed8c8bae04016d7b010003616263"));
+    check_eq(run_text(mockIC, "copy_snapshot_child", copy_snapshot_child,
+                      snapshot_in(IC_Blob{1, 2}), caller),
+             "0909", "a copy of a snapshot: the new id");
+    check_eq(
+        mockIC.last_call_arg_hex("aaaaa-aa",
+                                 "upload_canister_snapshot_metadata"),
+        "4449444c096b0585a5b60273a4aab60272c8b2bf0275e7b7bf0274818f92f1047d6c08b08be4a10102c2b9a19c0303a9c9dbae030680f6c7e30408999fb5eb0478b3c4b1f20468bbfeb3af0678a4cadab30d786d006d7b6b01c68399b201786b006e046b01e3c0eab50e7f6e07010105020000008003ffffffffffffff7f000000c03f01000000000000f83f04ffffffffffffffffffffffffffffffffffff0301ce01002a0000000000000001000300000000000000010a0000000000000002010100000000000000000200000000000000",
+        "upload_canister_snapshot_metadata: the argument");
     mockIC.clear_expected_calls();
   }
   {

@@ -410,7 +410,9 @@ bool MockIC::management_reply(const std::string &method,
       method == "stop_canister" || method == "delete_canister" ||
       method == "deposit_cycles" || method == "install_code" ||
       method == "install_chunked_code" || method == "uninstall_code" ||
-      method == "clear_chunk_store") {
+      method == "clear_chunk_store" || method == "load_canister_snapshot" ||
+      method == "delete_canister_snapshot" ||
+      method == "upload_canister_snapshot_data") {
     // An empty reply: '()'
   } else if (method == "raw_rand") {
     out.append(CandidTypeVecNat8{bytes(32)});

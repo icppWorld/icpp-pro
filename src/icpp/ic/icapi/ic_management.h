@@ -205,6 +205,65 @@ struct IC_CanisterInfo {
   std::vector<std::string> controllers;  // principal texts
 };
 
+// A snapshot of a canister: its wasm module, memories, chunk store and some
+// of its state, taken with take_canister_snapshot
+struct IC_Snapshot {
+  IC_Blob id;
+  uint64_t taken_at_timestamp{0}; // nanoseconds since 1970
+  uint64_t total_size{0};         // bytes
+};
+
+// A wasm global of a snapshot
+struct IC_SnapshotGlobal {
+  enum class Kind { I32, I64, F32, F64, V128 };
+  Kind kind{Kind::I32};
+  int32_t i32{0};
+  int64_t i64{0};
+  float f32{0};
+  double f64{0};
+  __uint128_t v128{0};
+};
+
+struct IC_GlobalTimer {
+  bool active{false};
+  uint64_t timestamp{0}; // nanoseconds since 1970, when active
+};
+
+enum class IC_LowWasmMemoryHookStatus {
+  ConditionNotSatisfied,
+  Ready,
+  Executed
+};
+
+// The metadata of a snapshot, from read_canister_snapshot_metadata; also the
+// argument of upload_canister_snapshot_metadata, which uses its sizes,
+// globals, certified data, global timer and hook status
+struct IC_SnapshotMetadata {
+  IC_ChangeDetails::SnapshotSource source{
+      IC_ChangeDetails::SnapshotSource::TakenFromCanister};
+  uint64_t taken_at_timestamp{0};
+  uint64_t wasm_module_size{0};
+  std::vector<IC_SnapshotGlobal> globals;
+  uint64_t wasm_memory_size{0};
+  uint64_t stable_memory_size{0};
+  std::vector<IC_Blob> wasm_chunk_store; // the hashes of its chunks
+  uint64_t canister_version{0};
+  IC_Blob certified_data;
+  std::optional<IC_GlobalTimer> global_timer;
+  std::optional<IC_LowWasmMemoryHookStatus> on_low_wasm_memory_hook_status;
+};
+
+// Which part of a snapshot to read or upload: a range of the wasm module, the
+// wasm memory or the stable memory (read: offset and size; upload: offset),
+// or a chunk of the chunk store (read: hash)
+struct IC_SnapshotData {
+  enum class Kind { WasmModule, WasmMemory, StableMemory, WasmChunk };
+  Kind kind{Kind::WasmModule};
+  uint64_t offset{0};
+  uint64_t size{0};
+  IC_Blob hash;
+};
+
 // Calls to the management canister (aaaaa-aa), the IC's system API. Each
 // helper encodes the Candid argument, attaches the cycles the call costs, and
 // decodes the reply.
@@ -293,6 +352,39 @@ public:
   static IC_Task<IC_CallResult<IC_CanisterInfo>>
   canister_info(CandidTypePrincipal canister_id,
                 std::optional<uint64_t> num_requested_changes = {});
+
+  // Snapshots of a canister this canister controls. A snapshot is taken of,
+  // and loaded into, a stopped canister. take_canister_snapshot can replace
+  // an earlier one, and uninstall the code once the snapshot is taken.
+  static IC_Task<IC_CallResult<IC_Snapshot>>
+  take_canister_snapshot(CandidTypePrincipal canister_id,
+                         std::optional<IC_Blob> replace_snapshot = {},
+                         std::optional<bool> uninstall_code = {});
+  static IC_Task<IC_CallResult<void>>
+  load_canister_snapshot(CandidTypePrincipal canister_id, IC_Blob snapshot_id);
+  static IC_Task<IC_CallResult<std::vector<IC_Snapshot>>>
+  list_canister_snapshots(CandidTypePrincipal canister_id);
+  static IC_Task<IC_CallResult<void>>
+  delete_canister_snapshot(CandidTypePrincipal canister_id,
+                           IC_Blob snapshot_id);
+
+  // Reading a snapshot, e.g. to download it (with snapshot_visibility, also
+  // a snapshot of a canister this canister does not control), and uploading
+  // one, e.g. to restore it elsewhere: first the metadata, which gives the
+  // new snapshot's id, then the data in chunks.
+  static IC_Task<IC_CallResult<IC_SnapshotMetadata>>
+  read_canister_snapshot_metadata(CandidTypePrincipal canister_id,
+                                  IC_Blob snapshot_id);
+  static IC_Task<IC_CallResult<IC_Blob>>
+  read_canister_snapshot_data(CandidTypePrincipal canister_id,
+                              IC_Blob snapshot_id, IC_SnapshotData kind);
+  static IC_Task<IC_CallResult<IC_Blob>> upload_canister_snapshot_metadata(
+      CandidTypePrincipal canister_id, IC_SnapshotMetadata metadata,
+      std::optional<IC_Blob> replace_snapshot = {});
+  static IC_Task<IC_CallResult<void>>
+  upload_canister_snapshot_data(CandidTypePrincipal canister_id,
+                                IC_Blob snapshot_id, IC_SnapshotData kind,
+                                IC_Blob chunk);
 
   // Threshold ECDSA (secp256k1 or secp256r1): the private key is spread over the nodes of
   // a signing subnet and never exists in one place. The public key gives a

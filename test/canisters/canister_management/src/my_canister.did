@@ -29,4 +29,12 @@ service : {
   "uninstall_child" : (principal) -> (text);
   "metadata_child" : (principal, text) -> (text);
   "info_child" : (principal, opt nat64) -> (text);
+  "take_snapshot_child" : (principal, vec blob, opt bool) -> (text);
+  "load_snapshot_child" : (principal, blob) -> (text);
+  "list_snapshots_child" : (principal) -> (text);
+  "delete_snapshot_child" : (principal, blob) -> (text);
+  "snapshot_metadata_child" : (principal, blob) -> (text);
+  "read_snapshot_data_child" : (principal, blob, text, nat64, nat64, blob) -> (text);
+  "upload_snapshot_data_child" : (principal, blob, text, nat64, blob) -> (text);
+  "copy_snapshot_child" : (principal, blob) -> (text);
 };

@@ -63,6 +63,7 @@ service: {
     "roundtrip_int64_101_neg" : (int64) -> (int64) query;
     "roundtrip_int64_1_000_000_000_000_000_001_neg" : (int64) -> (int64) query;
     "roundtrip_text" : (text) -> (text) query;
+    "roundtrip_blob" : (blob) -> (blob) query;
     "roundtrip_text_to_json_to_text" : (text) -> (text) query;
     "roundtrip_text_to_json_to_text_long_message" : (text) -> (text) query;
     "roundtrip_reserved" : (reserved) -> (reserved) query;

@@ -595,6 +595,48 @@ int main() {
                   "4449444c0001711248656c6c6f20432b2b2043616e6973746572",
                   "4449444c0001711248656c6c6f20432b2b2043616e6973746572",
                   silent_on_trap, my_principal);
+  // '(blob "ab")' -> '(blob "ab")'
+  mockIC.run_test("roundtrip_blob", roundtrip_blob, "4449444c016d7b0100026162",
+                  "4449444c016d7b0100026162", silent_on_trap, my_principal);
+
+  // A message that ends before the value it declares: a trap, never a read
+  // past its end. One case per fixed-width type, each with fewer bytes than
+  // the type's width.
+  mockIC.run_trap_test("nat8 truncated (0 of 1 bytes)", roundtrip_nat8_101,
+                       "4449444c00017b", silent_on_trap, my_principal,
+                       "Not enough bytes left");
+  mockIC.run_trap_test("nat16 truncated (1 of 2 bytes)", roundtrip_nat16_101,
+                       "4449444c00017a65", silent_on_trap, my_principal,
+                       "Not enough bytes left");
+  mockIC.run_trap_test("nat32 truncated (2 of 4 bytes)", roundtrip_nat32_101,
+                       "4449444c0001796500", silent_on_trap, my_principal,
+                       "Not enough bytes left");
+  mockIC.run_trap_test("nat64 truncated (5 of 8 bytes)", roundtrip_nat64_101,
+                       "4449444c000178650000000000", silent_on_trap,
+                       my_principal, "Not enough bytes left");
+  mockIC.run_trap_test("int8 truncated (0 of 1 bytes)", roundtrip_int8_101,
+                       "4449444c000177", silent_on_trap, my_principal,
+                       "Not enough bytes left");
+  mockIC.run_trap_test("int16 truncated (1 of 2 bytes)", roundtrip_int16_101,
+                       "4449444c00017665", silent_on_trap, my_principal,
+                       "Not enough bytes left");
+  mockIC.run_trap_test("int32 truncated (3 of 4 bytes)", roundtrip_int32_101,
+                       "4449444c000175650000", silent_on_trap, my_principal,
+                       "Not enough bytes left");
+  mockIC.run_trap_test("int64 truncated (7 of 8 bytes)", roundtrip_int64_101,
+                       "4449444c00017465000000000000", silent_on_trap,
+                       my_principal, "Not enough bytes left");
+  mockIC.run_trap_test("float32 truncated (2 of 4 bytes)", roundtrip_float32,
+                       "4449444c0001730000", silent_on_trap, my_principal,
+                       "Not enough bytes left");
+  mockIC.run_trap_test("float64 truncated (4 of 8 bytes)", roundtrip_float64,
+                       "4449444c0001720000000000", silent_on_trap, my_principal,
+                       "Not enough bytes left");
+  // A blob whose size is larger than the bytes left: '(blob "ab")' with the
+  // size 2 changed to 5
+  mockIC.run_trap_test("blob size larger than the bytes left", roundtrip_blob,
+                       "4449444c016d7b0100056162", silent_on_trap, my_principal,
+                       "Not enough bytes left");
   // '("{\"project\": \"?\", \"C++\": 0}")' -> '("{\"C++\":20,\"project\":\"icpp\"}")'
   mockIC.run_test(
       "roundtrip_text_to_json_to_text", roundtrip_text_to_json_to_text,

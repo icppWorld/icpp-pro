@@ -28,7 +28,12 @@ def logs(
     )
     if reply.startswith(("rej:", "err:")):
         return [reply]
-    return reply.split("|") if reply else []
+    # '<idx>:<content in hex>|...' -> ['<idx>:<content>', ...]
+    records = []
+    for record in reply.split("|") if reply else []:
+        idx, content = record.split(":", 1)
+        records.append(f"{idx}:{bytes.fromhex(content).decode(errors='replace')}")
+    return records
 
 
 def skip_if_unsupported(reply: str) -> None:

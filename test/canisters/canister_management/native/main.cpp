@@ -892,18 +892,17 @@ int main() {
     return in;
   };
   {
-    // fetch_canister_logs: records with binary content, then none; each
-    // kind of filter
+    // fetch_canister_logs: records with binary content (a '|' and a zero
+    // byte), then none; each kind of filter
     mockIC.expect_call(
         "aaaaa-aa", "fetch_canister_logs",
         MockIC::MockResponse::reply(
             "4449444c046c01ef92c2c406016d026c03bd88c00278d6f68e800178b99adecb01036d"
             "7b01000200000000000000000a00000000000000026869010000000000000014000000"
-            "0000000003610062"));
+            "0000000004617c0062"));
     check_eq(run_text(mockIC, "logs_child", logs_child, logs_in("none", 0, 0),
                       caller),
-             std::string("0:hi|1:a") + '\0' + "b",
-             "fetch_canister_logs: the records");
+             "0:6869|1:617c0062", "fetch_canister_logs: the records");
     check_eq(mockIC.last_call_arg_hex("aaaaa-aa", "fetch_canister_logs"),
              "4449444c016c01b3c4b1f204680100010a00000000000000020101",
              "fetch_canister_logs: no filter");
@@ -958,9 +957,9 @@ int main() {
                        MockIC::MockResponse::reply(hex(reply)));
     std::string text = run_text(mockIC, "logs_child 1000", logs_child,
                                 logs_in("none", 0, 0), caller);
-    check(text.rfind("0:x|1:x|", 0) == 0 &&
-              text.size() >= 999 * std::string("|999:x").size() / 2 &&
-              text.substr(text.size() - 6) == "|999:x",
+    check(text.rfind("0:78|1:78|", 0) == 0 &&
+              text.size() >= 999 * std::string("|999:78").size() / 2 &&
+              text.substr(text.size() - 7) == "|999:78",
           "fetch_canister_logs: 1,000 records");
     mockIC.clear_expected_calls();
   }

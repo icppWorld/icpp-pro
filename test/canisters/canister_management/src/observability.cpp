@@ -10,8 +10,9 @@
 #include "ic_api.h"
 #include "test_helpers.h"
 
-// '(canister_id, filter, start, end)' -> '("<idx>:<content>|...")'; filter
-// is "none", "by_idx" or "by_timestamp_nanos"
+// '(canister_id, filter, start, end)' -> '("<idx>:<content in hex>|...")';
+// filter is "none", "by_idx" or "by_timestamp_nanos". The content is in hex,
+// so a record can hold any byte, also the delimiters
 IC_Async logs_child_async() {
   IC_API ic_api(CanisterUpdate{"logs_child"}, false);
   std::string canister_id, filter_kind;
@@ -40,7 +41,7 @@ IC_Async logs_child_async() {
   for (size_t i = 0; i < r->size(); ++i) {
     const IC_CanisterLogRecord &record = (*r)[i];
     text += (i ? "|" : "") + std::to_string(record.idx) + ":" +
-            std::string(record.content.begin(), record.content.end());
+            hex_text(record.content);
   }
   ic_api.to_wire(CandidTypeText{text});
 }

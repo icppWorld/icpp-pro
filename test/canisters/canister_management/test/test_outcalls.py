@@ -41,11 +41,18 @@ def skip_without_internet(reply: str) -> None:
         pytest.skip(f"the HTTPS outcall did not reach the internet: {reply}")
 
 
+def skip_on_server_error(status: str) -> None:
+    # The outcall worked: the server had a problem (seen on CI: 503)
+    if status.isdigit() and int(status) >= 500:
+        pytest.skip(f"example.com answered {status}")
+
+
 def test__flexible_http_request(network: str) -> None:
     reply = flexible(network, 1, 1, 1)
     skip_without_internet(reply)
     assert reply.startswith("ok:"), reply
     statuses = reply[len("ok:") :].split(",")
+    skip_on_server_error(statuses[0])
     assert len(statuses) == 1 and statuses[0] == "200", reply
 
 
@@ -65,6 +72,7 @@ def test__http_request_pay_as_you_go(network: str) -> None:
     for replicated in ("true", "false"):
         reply = text(call(network, "http_get_v2", f'("{URL}", {replicated})'))
         skip_without_internet(reply)
+        skip_on_server_error(reply.split(";")[0].removeprefix("status="))
         assert reply.startswith("status=200; bytes="), reply
         assert int(reply.split("bytes=")[1]) > 0, reply
 

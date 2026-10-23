@@ -8,6 +8,7 @@ $ pytest --network=local
 
 # pylint: disable=missing-function-docstring, unused-import, wildcard-import, unused-wildcard-import
 
+import hashlib
 from typing import Dict, List
 
 from .test_apis import blob_arg, call
@@ -103,18 +104,31 @@ def test__read_data(network: str) -> None:
 
 def test__copy_load_delete(network: str) -> None:
     child = stopped_child_with_code(network)
+    # A chunk in its chunk store, so the copy has one to copy too
+    chunk = WASM[:60]
+    chunk_hash = text(
+        call(network, "upload_chunk_child", f'(principal "{child}", {blob_arg(chunk)})')
+    )
+    assert chunk_hash == hashlib.sha256(chunk).hexdigest(), chunk_hash
     original = take(network, child).split(":")[0]
+    assert metadata(network, child, original)["chunks"] == "1"
     copy = snapshot_call(network, "copy_snapshot_child", child, original)
     assert copy != original and not copy.startswith(("rej:", "err:")), copy
     assert sorted(snapshot_ids(network, child)) == sorted([original, copy])
     md = metadata(network, child, copy)
     assert md["source"] == "metadata_upload", md
     assert int(md["wasm_module_size"]) == len(WASM), md
-    # The copy has the same module
+    assert md["chunks"] == "1", md
+    # The copy has the same module, and the same chunk
     copied = read(network, child, copy, "wasm_module", 0, len(WASM))
     assert bytes.fromhex(copied) == WASM
 
+    # Loading the copy restores the chunk store
+    assert text(call(network, "clear_chunks_child", f'(principal "{child}")')) == "ok"
+    assert text(call(network, "stored_chunks_child", f'(principal "{child}")')) == ""
     assert snapshot_call(network, "load_snapshot_child", child, copy) == "ok"
+    stored = text(call(network, "stored_chunks_child", f'(principal "{child}")'))
+    assert stored == chunk_hash, stored
     assert changes(network, child)[-1].startswith(f"load_snapshot({copy},"), info(
         network, child
     )

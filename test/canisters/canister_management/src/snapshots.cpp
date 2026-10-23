@@ -240,8 +240,8 @@ IC_Async upload_snapshot_data_child_async() {
 void upload_snapshot_data_child() { upload_snapshot_data_child_async(); }
 
 // '(canister_id, snapshot_id)' -> '("<the new snapshot's id>")': reads the
-// snapshot's metadata and data, and uploads them as a new snapshot of the
-// same canister
+// snapshot's metadata and data (its module, memories and chunk store), and
+// uploads them as a new snapshot of the same canister
 IC_Async copy_snapshot_child_async() {
   IC_API ic_api(CanisterUpdate{"copy_snapshot_child"}, false);
   std::string canister_id;
@@ -293,6 +293,28 @@ IC_Async copy_snapshot_child_async() {
         co_return;
       }
       offset += n;
+    }
+  }
+  // The chunks of its wasm chunk store, one by one, by hash
+  for (const IC_Blob &hash : md->wasm_chunk_store) {
+    IC_SnapshotData read;
+    read.kind = IC_SnapshotData::Kind::WasmChunk;
+    read.hash = hash;
+    IC_CallResult<IC_Blob> bytes =
+        co_await IC_Management::read_canister_snapshot_data(canister,
+                                                            snapshot_id, read);
+    if (!bytes) {
+      ic_api.to_wire(CandidTypeText{error_text(bytes.error())});
+      co_return;
+    }
+    IC_SnapshotData upload;
+    upload.kind = IC_SnapshotData::Kind::WasmChunk;
+    IC_CallResult<void> r =
+        co_await IC_Management::upload_canister_snapshot_data(canister, *new_id,
+                                                              upload, *bytes);
+    if (!r) {
+      ic_api.to_wire(CandidTypeText{error_text(r.error())});
+      co_return;
     }
   }
   ic_api.to_wire(CandidTypeText{hex_text(*new_id)});

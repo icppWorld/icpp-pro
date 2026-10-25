@@ -271,6 +271,25 @@ def test__an_entry_writable_by_others_is_never_trusted(
     assert "is writable by others" in capsys.readouterr().out
 
 
+def test__a_failed_copy_leaves_no_partial_library(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A copy that fails halfway (e.g. a full disk) is removed: the build that
+    follows appends to an existing archive (`ar qc`) instead of replacing it."""
+    _, _, key, _ = built_and_published(tmp_path)
+
+    def failing_copy(_src: Path, dst: Path) -> None:
+        Path(dst).write_bytes(b"half a library")
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(library_cache.shutil, "copy2", failing_copy)
+    restored = tmp_path / "restored"
+    restored.mkdir()
+    assert not library_cache.restore(TARGET, key, LIB_FILE, restored)
+    assert "No space left on device" in capsys.readouterr().out
+    assert not (restored / LIB_FILE).exists()
+
+
 def test__a_library_swapped_during_the_copy_is_never_used(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

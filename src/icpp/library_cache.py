@@ -271,6 +271,9 @@ def restore(target: str, key: str, lib_file: str, build_path: Path) -> bool:
         typer.echo(f"Using the cached library {lib_file} ({entry})")
         return True
     except Exception as e:  # pylint: disable=broad-except
+        # A partial copy must not stay: the build that follows appends to an
+        # existing archive (`ar qc`) instead of replacing it
+        copy.unlink(missing_ok=True)
         _warn(f"cannot use {entry}: {e}")
         return False
 

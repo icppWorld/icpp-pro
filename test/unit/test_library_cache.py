@@ -282,7 +282,7 @@ def test__a_failed_copy_leaves_no_partial_library(
         Path(dst).write_bytes(b"half a library")
         raise OSError(28, "No space left on device")
 
-    monkeypatch.setattr(library_cache.shutil, "copy2", failing_copy)
+    monkeypatch.setattr(shutil, "copy2", failing_copy)
     restored = tmp_path / "restored"
     restored.mkdir()
     assert not library_cache.restore(TARGET, key, LIB_FILE, restored)
@@ -299,7 +299,7 @@ def test__a_library_swapped_during_the_copy_is_never_used(
     def swapping_copy(_src: Path, dst: Path) -> None:
         Path(dst).write_bytes(b"not the library that was validated")
 
-    monkeypatch.setattr(library_cache.shutil, "copy2", swapping_copy)
+    monkeypatch.setattr(shutil, "copy2", swapping_copy)
     restored = tmp_path / "restored"
     restored.mkdir()
     assert not library_cache.restore(TARGET, key, LIB_FILE, restored)

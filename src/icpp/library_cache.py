@@ -5,11 +5,17 @@ and reusing it saves about 100 compiles per build. A cached library is used
 only when every input that went into it is provably identical:
 
 - The key is a sha256 over the compile & archive commands, the content of every
-  source, the identity of each compiler (path, `--version`, size, mtime) and
-  the icpp-pro & icpp-candid versions.
+  source, the identity of each compiler (path, `--version`, size, mtime), the
+  environment variables a compiler reads, and the icpp-pro & icpp-candid
+  versions.
 - Each entry records every file the compiler read (from `-MD` dependency
-  files: headers, also the system headers), with its sha256. Before an entry
-  is used, all of them are hashed again, together with the library itself.
+  files: headers, also the system headers) with its sha256, and the file
+  listing of every folder the compiler searches for headers and of every
+  folder a dependency is in. Before an entry is used, all of them are checked
+  again: a changed header, or a new one that would now be found first or
+  satisfy a `__has_include`, makes it a miss.
+- A library is not stored when any of its sources or headers changed while it
+  was being built.
 
 Any doubt makes it a miss, and any error in this module prints a warning and
 falls back to a normal build: the cache can never fail a build.
@@ -21,10 +27,11 @@ Set ICPP_LIBRARY_CACHE=0 to turn the cache off; `rm -rf ~/.icpp/cache` clears it
 Trust: the cache is private to the user, like the compilers in ~/.icpp. Its
 folders are created 0700 and its files 0600, and an entry is refused when any
 level of it is a symlink, belongs to another user or is writable by others. A
-restored library is hashed again after it is copied into the canister folder,
-so a file swapped during the copy is never linked.
+restored library is hashed while it is copied into the canister folder, so a
+file swapped after the validation is never linked.
 """
 
+import functools
 import hashlib
 import json
 import os
@@ -34,6 +41,7 @@ import stat
 import subprocess
 import time
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -43,7 +51,7 @@ import icpp_candid
 from icpp import __version__, config_default
 
 # Bump to invalidate every entry, e.g. when what goes into the key changes
-SCHEMA = 1
+SCHEMA = 2
 
 # The one library that is cached
 CACHED_LIBRARY = "__ic_candid__"
@@ -57,6 +65,24 @@ MAX_BYTES = 2 * 1024**3
 
 # A temporary folder older than this is left over from a build that was killed
 STALE_TMP_SECONDS = 3600
+
+# Environment variables that change what clang, clang++ or ar produce
+COMPILER_ENVIRONMENT = (
+    "CPATH",
+    "C_INCLUDE_PATH",
+    "CPLUS_INCLUDE_PATH",
+    "OBJC_INCLUDE_PATH",
+    "OBJCPLUS_INCLUDE_PATH",
+    "SDKROOT",
+    "DEVELOPER_DIR",
+    "MACOSX_DEPLOYMENT_TARGET",
+    "CCC_OVERRIDE_OPTIONS",
+    "SOURCE_DATE_EPOCH",
+    "ZERO_AR_DATE",
+)
+
+# The listing recorded for a folder that does not exist
+MISSING = "missing"
 
 
 def enabled() -> bool:
@@ -85,6 +111,32 @@ def _sha256_file(path: Path) -> str:
         for block in iter(lambda: f.read(1 << 20), b""):
             h.update(block)
     return h.hexdigest()
+
+
+def _copy_hashed(src: Path, dst: Path) -> str:
+    """Copies src to dst in one pass, and returns the sha256 of what was copied."""
+    h = hashlib.sha256()
+    with open(src, "rb") as fin, open(dst, "wb") as fout:
+        for block in iter(lambda: fin.read(1 << 20), b""):
+            h.update(block)
+            fout.write(block)
+    return h.hexdigest()
+
+
+def _remove(path: Path) -> None:
+    """Removes a folder, or a symlink without following it."""
+    if path.is_symlink():
+        path.unlink(missing_ok=True)
+    else:
+        shutil.rmtree(path, ignore_errors=True)
+
+
+def _listing(folder: str) -> str:
+    """The sha256 of the names in a folder, or MISSING."""
+    if not os.path.isdir(folder):
+        return MISSING
+    names = "\n".join(sorted(os.listdir(folder)))
+    return hashlib.sha256(names.encode()).hexdigest()
 
 
 def _target_root(target: str) -> Path:
@@ -128,6 +180,21 @@ def _private_root(target: str) -> Path:
     return _target_root(target)
 
 
+@functools.lru_cache(maxsize=None)
+def _version_output(path: str, size: int, mtime_ns: int) -> Tuple[str, int]:
+    """`<path> --version`, run once per binary (size & mtime are in the cache key,
+    so a replaced binary is asked again)."""
+    _ = (size, mtime_ns)
+    version = subprocess.run(
+        [path, "--version"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    return version.stdout + version.stderr, version.returncode
+
+
 def _compiler_identity(command: str) -> Dict[str, Any]:
     """Who the compiler of a command is: path, `--version`, size and mtime."""
     program = shlex.split(command, posix=os.name != "nt")[0]
@@ -136,19 +203,13 @@ def _compiler_identity(command: str) -> Dict[str, Any]:
         raise RuntimeError(f"compiler not found: {program}")
     real = Path(found).resolve()
     st = real.stat()
-    version = subprocess.run(
-        [str(real), "--version"],
-        capture_output=True,
-        text=True,
-        timeout=60,
-        check=False,
-    )
+    output, returncode = _version_output(str(real), st.st_size, st.st_mtime_ns)
     return {
         "path": str(real),
         "size": st.st_size,
         "mtime_ns": st.st_mtime_ns,
-        "version": version.stdout + version.stderr,
-        "returncode": version.returncode,
+        "version": output,
+        "returncode": returncode,
     }
 
 
@@ -166,6 +227,7 @@ def compute_key(
         "compilers": {
             name: _compiler_identity(command) for name, command in commands.items()
         },
+        "environment": {name: os.environ.get(name) for name in COMPILER_ENVIRONMENT},
         "sources": sorted(
             (str(Path(s).resolve()), _sha256_file(Path(s))) for s in sources
         ),
@@ -206,17 +268,47 @@ def parse_dep_file(text: str, base: Path) -> List[Path]:
     ]
 
 
-def _validate(entry: Path, key: str, lib_file: str) -> Tuple[Optional[str], str]:
-    """(None, the library's sha256) if the entry may be used, else (why not, "")."""
-    try:
-        return _check(entry, key, lib_file)
-    except Exception as e:  # pylint: disable=broad-except
-        return f"cannot read it: {e}", ""
+def parse_search_dirs(verbose_output: str) -> List[str]:
+    """The header search folders from the output of `clang -E -v`."""
+    folders: List[str] = []
+    inside = False
+    for line in verbose_output.splitlines():
+        if "search starts here:" in line:
+            inside = True
+        elif line.startswith("End of search list."):
+            inside = False
+        elif inside and line.startswith(" "):
+            folder = line.strip().removesuffix(" (framework directory)")
+            folders.append(str(Path(folder).resolve()))
+    return folders
 
 
-def _check(  # pylint: disable=too-many-return-statements
-    entry: Path, key: str, lib_file: str
+def _search_dirs(commands: Dict[str, str]) -> List[str]:
+    """The folders the compilers search for headers, as `-v` reports them."""
+    folders: List[str] = []
+    for name, language in (("cpp", "c++"), ("c", "c")):
+        command = commands.get(name)
+        if not command:
+            continue
+        result = subprocess.run(
+            f"{command} -E -x {language} -v -",
+            shell=True,
+            input="",
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=True,
+        )
+        folders += parse_search_dirs(result.stderr)
+    return folders
+
+
+def _check(
+    entry: Path, key: str, lib_file: str, hash_lib: bool
 ) -> Tuple[Optional[str], str]:
+    """(None, the library's sha256) if the entry may be used, else (why not, "").
+    With hash_lib False the library itself is not hashed: the caller hashes it
+    while copying."""
     manifest_path = entry / MANIFEST
     lib = entry / lib_file
     for path in (entry, manifest_path, lib):
@@ -228,19 +320,38 @@ def _check(  # pylint: disable=too-many-return-statements
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("schema") != SCHEMA or manifest.get("key") != key:
         return "the manifest is for another key", ""
-    lib_sha256 = manifest.get("lib_sha256")
-    if not lib.is_file() or _sha256_file(lib) != lib_sha256:
+    lib_sha256 = str(manifest.get("lib_sha256"))
+    if not lib.is_file() or (hash_lib and _sha256_file(lib) != lib_sha256):
         return f"{lib_file} does not match its sha256", ""
+    return _check_inputs(manifest), lib_sha256
+
+
+def _check_inputs(manifest: Dict[str, Any]) -> Optional[str]:
+    """None if every recorded dependency and folder listing is unchanged."""
     deps = manifest.get("deps")
-    if not isinstance(deps, dict) or not deps:
-        return "no dependencies recorded", ""
+    folders = manifest.get("folders")
+    if not isinstance(deps, dict) or not deps or not isinstance(folders, dict):
+        return "no inputs recorded"
     for path, sha in deps.items():
         p = Path(path)
         if not p.is_file():
-            return f"a dependency is gone: {path}", ""
+            return f"a dependency is gone: {path}"
         if _sha256_file(p) != sha:
-            return f"a dependency changed: {path}", ""
-    return None, str(lib_sha256)
+            return f"a dependency changed: {path}"
+    for folder, listing in folders.items():
+        if _listing(folder) != listing:
+            return f"the files in a header folder changed: {folder}"
+    return None
+
+
+def _validate(
+    entry: Path, key: str, lib_file: str, hash_lib: bool = True
+) -> Tuple[Optional[str], str]:
+    """_check, with any error as the reason."""
+    try:
+        return _check(entry, key, lib_file, hash_lib)
+    except Exception as e:  # pylint: disable=broad-except
+        return f"cannot read it: {e}", ""
 
 
 def restore(target: str, key: str, lib_file: str, build_path: Path) -> bool:
@@ -255,14 +366,13 @@ def restore(target: str, key: str, lib_file: str, build_path: Path) -> bool:
             reason = reason or _untrusted(level)
         lib_sha256 = ""
         if reason is None:
-            reason, lib_sha256 = _validate(entry, key, lib_file)
+            reason, lib_sha256 = _validate(entry, key, lib_file, hash_lib=False)
         if reason is None:
-            shutil.copy2(entry / lib_file, copy)
-            # Checked again after the copy: a file swapped since the
-            # validation is never linked
-            if _sha256_file(copy) != lib_sha256:
+            # Hashed while it is copied: what was copied is what is checked,
+            # so a file swapped since the validation is never linked
+            if _copy_hashed(entry / lib_file, copy) != lib_sha256:
                 copy.unlink()
-                reason = f"{lib_file} changed while it was copied"
+                reason = f"{lib_file} does not match its sha256"
         if reason is not None:
             typer.echo(f"Library cache: not using {entry}: {reason}")
             return False
@@ -278,36 +388,54 @@ def restore(target: str, key: str, lib_file: str, build_path: Path) -> bool:
         return False
 
 
-def publish(
+def _inputs(
+    build_path: Path, commands: Dict[str, str], started_ns: Optional[int]
+) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """The files the compiler read, with their sha256, and the listing of every
+    header search folder and dependency folder. Raises ChangedDuringBuild when a
+    file changed after the build started."""
+    deps: Dict[str, str] = {}
+    for dep_file in sorted(build_path.glob("*.d")):
+        for path in parse_dep_file(dep_file.read_text(encoding="utf-8"), build_path):
+            if str(path) in deps:
+                continue
+            if started_ns is not None and path.stat().st_mtime_ns > started_ns:
+                raise ChangedDuringBuild(str(path))
+            deps[str(path)] = _sha256_file(path)
+    if not deps:
+        raise RuntimeError("no dependency files were written")
+    folders = set(_search_dirs(commands)) | {str(Path(d).parent) for d in deps}
+    return deps, {folder: _listing(folder) for folder in sorted(folders)}
+
+
+class ChangedDuringBuild(Exception):
+    """A source or header changed while the library was being built."""
+
+
+def publish(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     target: str,
     key: str,
     lib_file: str,
     build_path: Path,
     commands: Dict[str, str],
+    started_ns: Optional[int] = None,
 ) -> None:
-    """Stores the library just built, with the files the compiler read."""
+    """Stores the library just built, with what the compiler read. With
+    started_ns, nothing is stored when an input changed after that time."""
     root = _target_root(target)
     tmp = root / f".tmp-{key}-{os.getpid()}-{uuid.uuid4().hex}"
     try:
+        deps, folders = _inputs(build_path, commands, started_ns)
         root = _private_root(target)
-        deps: Dict[str, str] = {}
-        for dep_file in sorted(build_path.glob("*.d")):
-            for path in parse_dep_file(
-                dep_file.read_text(encoding="utf-8"), build_path
-            ):
-                if str(path) not in deps:
-                    deps[str(path)] = _sha256_file(path)
-        if not deps:
-            raise RuntimeError("no dependency files were written")
-
         tmp.mkdir(mode=0o700)
-        shutil.copy2(build_path / lib_file, tmp / lib_file)
+        lib_sha256 = _copy_hashed(build_path / lib_file, tmp / lib_file)
         os.chmod(tmp / lib_file, 0o600)
         manifest = {
             "schema": SCHEMA,
             "key": key,
-            "lib_sha256": _sha256_file(tmp / lib_file),
+            "lib_sha256": lib_sha256,
             "deps": deps,
+            "folders": folders,
             "commands": commands,
             "icpp_pro": __version__,
             "icpp_candid": icpp_candid.__version__,
@@ -323,26 +451,43 @@ def publish(
         if os.path.lexists(entry):
             if _validate(entry, key, lib_file)[0] is None:
                 # Another build published the same key first: keep it
-                shutil.rmtree(tmp)
+                _remove(tmp)
                 return
             stale = root / f".stale-{uuid.uuid4().hex}"
             os.rename(entry, stale)
-            shutil.rmtree(stale, ignore_errors=True)
+            _remove(stale)
         try:
             os.rename(tmp, entry)
         except OSError:
             # Lost a race with another build of the same key
-            shutil.rmtree(tmp, ignore_errors=True)
+            _remove(tmp)
             return
         typer.echo(f"Stored the library in the cache: {entry}")
+    except ChangedDuringBuild as e:
+        _remove(tmp)
+        typer.echo(
+            f"Library cache: not storing the library: {e} changed during the build"
+        )
+        return
+    except Exception as e:  # pylint: disable=broad-except
+        _remove(tmp)
+        _warn(f"cannot store the library: {e}")
+        return
+    try:
         prune(target, keep=key)
     except Exception as e:  # pylint: disable=broad-except
-        shutil.rmtree(tmp, ignore_errors=True)
-        _warn(f"cannot store the library: {e}")
+        typer.echo(f"WARNING: library cache: cannot prune {root}: {e}")
 
 
 def _size(path: Path) -> int:
-    return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+    total = 0
+    for f in path.rglob("*"):
+        try:
+            if f.is_file():
+                total += f.stat().st_size
+        except OSError:
+            pass  # removed by a parallel build
+    return total
 
 
 def prune(target: str, keep: str) -> None:
@@ -352,12 +497,15 @@ def prune(target: str, keep: str) -> None:
     now = time.time()
     entries = []
     for path in root.iterdir():
-        if path.name.startswith("."):
-            if now - path.stat().st_mtime > STALE_TMP_SECONDS:
-                shutil.rmtree(path, ignore_errors=True)
-            continue
-        manifest = path / MANIFEST
-        used = manifest.stat().st_mtime if manifest.exists() else 0.0
+        try:
+            if path.name.startswith("."):
+                if now - path.lstat().st_mtime > STALE_TMP_SECONDS:
+                    _remove(path)
+                continue
+            manifest = path / MANIFEST
+            used = manifest.stat().st_mtime if manifest.exists() else 0.0
+        except OSError:
+            continue  # removed by a parallel build
         entries.append((used, path))
     # `keep` first, then the most recently used
     entries.sort(key=lambda e: (e[1].name == keep, e[0]), reverse=True)
@@ -373,25 +521,61 @@ def prune(target: str, keep: str) -> None:
                 os.rename(path, gone)
             except OSError:
                 continue
-            shutil.rmtree(gone, ignore_errors=True)
+            _remove(gone)
 
 
-def begin(
+@dataclass
+class LibraryBuild:  # pylint: disable=too-many-instance-attributes
+    """One build of a library, with or without the cache."""
+
+    target: str
+    lib_file: str
+    build_path: Path
+    commands: Dict[str, str]
+    key: Optional[str]
+    hit: bool
+    started_ns: int
+
+    @property
+    def with_deps(self) -> bool:
+        """True when the compiles must write dependency files, to publish."""
+        return self.key is not None and not self.hit
+
+    def publish(self) -> None:
+        """Stores the library just built, when the cache is used."""
+        if self.with_deps and self.key is not None:
+            publish(
+                self.target,
+                self.key,
+                self.lib_file,
+                self.build_path,
+                self.commands,
+                self.started_ns,
+            )
+
+
+def start(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     target: str,
     lib_name: str,
     commands: Dict[str, str],
     sources: List[str],
     lib_file: str,
     build_path: Path,
-) -> Tuple[bool, Optional[str]]:
-    """Before building a library: (True, key) when the cached copy was restored
-    into build_path, (False, key) to build and then publish under that key, or
-    (False, None) to build without the cache."""
-    if not is_cached(lib_name):
-        return False, None
+    parallel: bool = True,
+) -> LibraryBuild:
+    """Before building a library: restores the cached copy into build_path when
+    there is a valid one (hit), else tells whether to build for the cache.
+    Only the parallel build writes the dependency files the cache needs."""
+    started_ns = time.time_ns()
+    build = LibraryBuild(
+        target, lib_file, build_path, commands, None, False, started_ns
+    )
+    if not is_cached(lib_name) or not parallel:
+        return build
     try:
-        key = compute_key(target, lib_name, commands, sources)
+        build.key = compute_key(target, lib_name, commands, sources)
     except Exception as e:  # pylint: disable=broad-except
         _warn(f"cannot compute the key: {e}")
-        return False, None
-    return restore(target, key, lib_file, build_path), key
+        return build
+    build.hit = restore(target, build.key, lib_file, build_path)
+    return build

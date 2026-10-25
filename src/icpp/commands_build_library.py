@@ -155,22 +155,23 @@ def build_library(
             )
 
             # The icpp-candid library: reuse an identical earlier build
-            cache_commands = {
-                "cpp": cpp_compile_cmd_mine,
-                "c": c_compile_cmd_mine,
-                "ar": f"{config_default.WASM_AR} {config_default.WASM_ARFLAGS}",
-            }
-            cache_hit, cache_key = library_cache.begin(
+            cache = library_cache.start(
                 "wasm32-wasi",
                 library["lib_name"],
-                cache_commands,
+                {
+                    "cpp": cpp_compile_cmd_mine,
+                    "c": c_compile_cmd_mine,
+                    "ar": f"{config_default.WASM_AR} {config_default.WASM_ARFLAGS}",
+                },
                 cpp_files_list + c_files_list,
                 full_lib_name,
                 build_path,
+                parallel=CONCURRENCY == "multi-threading",
             )
-            if cache_hit:
+            if cache.hit:
+                typer.echo("All done building the static library:")
+                typer.echo(f"{build_path.resolve()}/{full_lib_name}")
                 continue
-            with_deps = cache_key is not None and CONCURRENCY == "multi-threading"
 
             try:
                 # ----------------------------------------------------------------------
@@ -187,7 +188,7 @@ def build_library(
                                 cpp_compile_file_mine,
                                 cpp_compile_cmd=cpp_compile_cmd_mine,
                                 path=build_path,
-                                with_deps=with_deps,
+                                with_deps=cache.with_deps,
                             ),
                             cpp_files_list,
                         )
@@ -215,7 +216,7 @@ def build_library(
                                 c_compile_file_mine,
                                 c_compile_cmd=c_compile_cmd_mine,
                                 path=build_path,
-                                with_deps=with_deps,
+                                with_deps=cache.with_deps,
                             ),
                             c_files_list,
                         )
@@ -242,14 +243,7 @@ def build_library(
                 typer.echo(cmd)
                 run_shell_cmd(cmd, cwd=build_path)
 
-                if with_deps and cache_key is not None:
-                    library_cache.publish(
-                        "wasm32-wasi",
-                        cache_key,
-                        full_lib_name,
-                        build_path,
-                        cache_commands,
-                    )
+                cache.publish()
 
             except subprocess.CalledProcessError as e:
                 sys.exit(e.returncode)

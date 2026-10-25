@@ -1,7 +1,7 @@
 """The library cache reuses a library only when every input is identical, never
 a stale or corrupt one, and it can never fail a build."""
 
-# pylint: disable=missing-function-docstring, redefined-outer-name
+# pylint: disable=missing-function-docstring, redefined-outer-name, protected-access
 
 import json
 import os
@@ -76,7 +76,8 @@ def built_and_published(tmp_path: Path) -> tuple[List[str], Dict[str, str], str,
 def test__key_is_stable_and_follows_every_input(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Same inputs, same key; a source byte, a flag, the compiler or the
+    """Same inputs, same key; a source byte, a flag, the compiler command, the
+    compiler identity (same command), a compiler environment variable or the
     icpp-pro version changes it."""
     src = tmp_path / "src"
     sources = write_sources(src)
@@ -89,13 +90,24 @@ def test__key_is_stable_and_follows_every_input(
     other_compiler = dict(cmds, cpp=cmds["cpp"].replace("clang++", "clang"))
     keys.add(library_cache.compute_key(TARGET, LIB, other_compiler, sources))
     keys.add(library_cache.compute_key("wasm32-wasi", LIB, cmds, sources))
+    real_identity = library_cache._compiler_identity
+    monkeypatch.setattr(
+        library_cache,
+        "_compiler_identity",
+        lambda command: dict(real_identity(command), mtime_ns=1),
+    )
+    keys.add(library_cache.compute_key(TARGET, LIB, cmds, sources))
+    monkeypatch.undo()
+    monkeypatch.setenv("CPLUS_INCLUDE_PATH", "/somewhere/else")
+    keys.add(library_cache.compute_key(TARGET, LIB, cmds, sources))
+    monkeypatch.undo()
     monkeypatch.setattr(library_cache, "__version__", "0.0.0-test")
     keys.add(library_cache.compute_key(TARGET, LIB, cmds, sources))
     monkeypatch.undo()
     source = Path(sources[0])
     source.write_text(source.read_text(encoding="utf-8") + " ", encoding="utf-8")
     keys.add(library_cache.compute_key(TARGET, LIB, cmds, sources))
-    assert len(keys) == 6
+    assert len(keys) == 8
 
 
 def test__a_hit_restores_the_same_library(tmp_path: Path) -> None:
@@ -189,9 +201,10 @@ def test__off_switch(
         monkeypatch.setenv("ICPP_LIBRARY_CACHE", value)
         src = tmp_path / "src"
         sources = write_sources(src)
-        assert library_cache.begin(
+        build_ = library_cache.start(
             TARGET, LIB, commands(src), sources, LIB_FILE, tmp_path
-        ) == (False, None)
+        )
+        assert (build_.hit, build_.key, build_.with_deps) == (False, None, False)
     assert not cache_root.exists()
     monkeypatch.setenv("ICPP_LIBRARY_CACHE", "1")
     assert library_cache.enabled()
@@ -200,9 +213,20 @@ def test__off_switch(
 def test__only_the_icpp_candid_library_is_cached(tmp_path: Path) -> None:
     src = tmp_path / "src"
     sources = write_sources(src)
-    assert library_cache.begin(
+    build_ = library_cache.start(
         TARGET, "my_lib", commands(src), sources, "my_lib.a", tmp_path
-    ) == (False, None)
+    )
+    assert (build_.hit, build_.key) == (False, None)
+
+
+def test__no_cache_without_the_parallel_build(tmp_path: Path) -> None:
+    """Only the parallel build writes the dependency files the cache needs."""
+    src = tmp_path / "src"
+    sources = write_sources(src)
+    build_ = library_cache.start(
+        TARGET, LIB, commands(src), sources, LIB_FILE, tmp_path, parallel=False
+    )
+    assert (build_.hit, build_.key) == (False, None)
 
 
 def test__a_cache_that_cannot_be_written_never_fails_a_build(
@@ -216,9 +240,9 @@ def test__a_cache_that_cannot_be_written_never_fails_a_build(
     build(sources, cmds, build_path)
     cache_root.parent.mkdir(parents=True)
     cache_root.write_text("not a folder", encoding="utf-8")
-    hit, key = library_cache.begin(TARGET, LIB, cmds, sources, LIB_FILE, build_path)
-    assert not hit and key is not None
-    library_cache.publish(TARGET, key, LIB_FILE, build_path, cmds)
+    build_ = library_cache.start(TARGET, LIB, cmds, sources, LIB_FILE, build_path)
+    assert not build_.hit and build_.with_deps
+    build_.publish()
     assert "WARNING: library cache: cannot store the library" in capsys.readouterr().out
     assert cache_root.read_text(encoding="utf-8") == "not a folder"
 
@@ -278,11 +302,11 @@ def test__a_failed_copy_leaves_no_partial_library(
     follows appends to an existing archive (`ar qc`) instead of replacing it."""
     _, _, key, _ = built_and_published(tmp_path)
 
-    def failing_copy(_src: Path, dst: Path) -> None:
+    def failing_copy(_src: Path, dst: Path) -> str:
         Path(dst).write_bytes(b"half a library")
         raise OSError(28, "No space left on device")
 
-    monkeypatch.setattr(shutil, "copy2", failing_copy)
+    monkeypatch.setattr(library_cache, "_copy_hashed", failing_copy)
     restored = tmp_path / "restored"
     restored.mkdir()
     assert not library_cache.restore(TARGET, key, LIB_FILE, restored)
@@ -290,21 +314,91 @@ def test__a_failed_copy_leaves_no_partial_library(
     assert not (restored / LIB_FILE).exists()
 
 
-def test__a_library_swapped_during_the_copy_is_never_used(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+def test__a_library_swapped_after_the_validation_is_never_used(
+    tmp_path: Path, cache_root: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The copy in the canister folder is hashed again; a mismatch: no copy."""
+    """The library is hashed while it is copied, not before: a file that no
+    longer matches its manifest is removed from the canister folder."""
     _, _, key, _ = built_and_published(tmp_path)
-
-    def swapping_copy(_src: Path, dst: Path) -> None:
-        Path(dst).write_bytes(b"not the library that was validated")
-
-    monkeypatch.setattr(shutil, "copy2", swapping_copy)
+    lib = cache_root / key / LIB_FILE
+    lib.write_bytes(b"not the library that was published")
     restored = tmp_path / "restored"
     restored.mkdir()
     assert not library_cache.restore(TARGET, key, LIB_FILE, restored)
-    assert "changed while it was copied" in capsys.readouterr().out
+    assert "does not match its sha256" in capsys.readouterr().out
     assert not (restored / LIB_FILE).exists()
+
+
+def test__a_header_changed_during_the_build_is_not_stored(
+    tmp_path: Path, cache_root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A header edited after the build started: the library is not stored."""
+    src = tmp_path / "src"
+    sources = write_sources(src)
+    cmds = commands(src)
+    build_path = tmp_path / "build"
+    build_ = library_cache.start(TARGET, LIB, cmds, sources, LIB_FILE, build_path)
+    build(sources, cmds, build_path)
+    header = src / "lib.h"
+    later = build_.started_ns + 10**9
+    os.utime(header, ns=(later, later))
+    build_.publish()
+    assert "lib.h changed during the build" in capsys.readouterr().out
+    assert not cache_root.exists() or not list(cache_root.iterdir())
+
+
+def test__a_new_header_in_a_search_folder_is_a_miss(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A new file in a folder the compiler searches could now be found first,
+    or satisfy a __has_include: a miss."""
+    _, _, key, _ = built_and_published(tmp_path)
+    (tmp_path / "src" / "new.h").write_text("int x;\n", encoding="utf-8")
+    assert not library_cache.restore(TARGET, key, LIB_FILE, tmp_path)
+    assert "the files in a header folder changed" in capsys.readouterr().out
+
+
+def test__the_manifest_records_the_compiler_search_folders(
+    tmp_path: Path, cache_root: Path
+) -> None:
+    _, _, key, _ = built_and_published(tmp_path)
+    manifest = json.loads((cache_root / key / "manifest.json").read_text("utf-8"))
+    folders = manifest["folders"]
+    assert str((tmp_path / "src").resolve()) in folders
+    # also the compiler's own folders, e.g. the C++ standard library headers
+    assert len(folders) > 2
+
+
+def test__parse_search_dirs() -> None:
+    text = (
+        "ignoring nonexistent directory /x\n"
+        '#include "..." search starts here:\n'
+        " /q\n"
+        "#include <...> search starts here:\n"
+        " /a/include\n"
+        " /System/Library/Frameworks (framework directory)\n"
+        "End of search list.\n"
+        " /not/a/folder\n"
+    )
+    assert library_cache.parse_search_dirs(text) == [
+        str(Path("/q").resolve()),
+        str(Path("/a/include").resolve()),
+        str(Path("/System/Library/Frameworks").resolve()),
+    ]
+
+
+def test__a_symlinked_entry_is_replaced_and_removed(
+    tmp_path: Path, cache_root: Path
+) -> None:
+    """Publishing over a symlinked entry removes the symlink, not its target."""
+    _, cmds, key, build_path = built_and_published(tmp_path)
+    elsewhere = tmp_path / "elsewhere"
+    shutil.move(str(cache_root / key), elsewhere)
+    (cache_root / key).symlink_to(elsewhere)
+    library_cache.publish(TARGET, key, LIB_FILE, build_path, cmds)
+    assert not (cache_root / key).is_symlink()
+    assert sorted(p.name for p in cache_root.iterdir()) == [key]
+    assert elsewhere.exists()
 
 
 def test__a_missing_compiler_means_no_cache(
@@ -313,10 +407,8 @@ def test__a_missing_compiler_means_no_cache(
     src = tmp_path / "src"
     sources = write_sources(src)
     cmds = dict(commands(src), cpp="no-such-compiler -O0")
-    assert library_cache.begin(TARGET, LIB, cmds, sources, LIB_FILE, tmp_path) == (
-        False,
-        None,
-    )
+    build_ = library_cache.start(TARGET, LIB, cmds, sources, LIB_FILE, tmp_path)
+    assert (build_.hit, build_.key) == (False, None)
     assert "cannot compute the key" in capsys.readouterr().out
 
 

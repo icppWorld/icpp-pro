@@ -182,6 +182,19 @@ def _untrusted(path: Path) -> Optional[str]:
     return None
 
 
+def _tighten(level: Path) -> None:
+    """Makes a cache folder that we own, and that is not a symlink, 0700. Safe:
+    a folder of another user or a symlink is left as it is (and refused), and an
+    entry planted while a folder was open belongs to someone else (refused). It
+    matters for a cache restored by `tar` (CI), which creates the folders above
+    it with the umask, e.g. 0775."""
+    if not hasattr(os, "getuid") or not os.path.lexists(level):
+        return
+    st = level.lstat()
+    if stat.S_ISDIR(st.st_mode) and st.st_uid == os.getuid():
+        os.chmod(level, 0o700)
+
+
 def _private_root(target: str) -> Path:
     """Creates the cache folders as 0700, and checks they can be trusted."""
     config_default.ICPP_ROOT.mkdir(parents=True, exist_ok=True)
@@ -191,11 +204,10 @@ def _private_root(target: str) -> Path:
                 level.mkdir(mode=0o700)
             except FileExistsError:
                 pass  # created by a parallel build
+        _tighten(level)
         reason = _untrusted(level)
         if reason is not None:
             raise RuntimeError(reason)
-        if hasattr(os, "getuid"):
-            os.chmod(level, 0o700)
     return _target_root(target)
 
 
@@ -445,6 +457,7 @@ def restore(target: str, key: str, lib_file: str, build_path: Path) -> bool:
             return False
         reason: Optional[str] = None
         for level in _cache_levels(target):
+            _tighten(level)
             reason = reason or _untrusted(level)
         lib_sha256 = ""
         if reason is None:

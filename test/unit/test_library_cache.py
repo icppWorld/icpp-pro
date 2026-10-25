@@ -665,3 +665,17 @@ def test__a_stray_file_is_removed(cache_root: Path) -> None:
     os.utime(stray, (0, 0))
     library_cache.prune(TARGET, keep="none")
     assert not stray.exists()
+
+
+def test__a_restored_cache_with_open_parent_folders_still_hits(
+    tmp_path: Path, cache_root: Path
+) -> None:
+    """actions/cache (tar) recreates the folders above the target with the umask,
+    e.g. 0775: our own folders are made private again, and the entry is used."""
+    _, _, key, _ = built_and_published(tmp_path)
+    levels = [cache_root.parent.parent, cache_root.parent, cache_root]
+    for level in levels:
+        os.chmod(level, 0o775)
+    assert library_cache.restore(TARGET, key, LIB_FILE, tmp_path)
+    for level in levels:
+        assert stat.S_IMODE(level.stat().st_mode) == 0o700, level

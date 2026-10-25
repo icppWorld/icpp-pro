@@ -13,7 +13,7 @@ import typer
 from icpp import __version__
 from icpp.__main__ import app
 
-from icpp import config_default
+from icpp import config_default, library_cache
 from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
 
 from icpp.decorators import requires_wasi_sdk, requires_rust, requires_native_compiler
@@ -74,23 +74,31 @@ def build_library(
     # cpp_link_flags_defaults_s = config_default.WASM_LDFLAGS
     c_compile_flags_defaults_s = config_default.WASM_CFLAGS
 
-    def cpp_compile_file_mine(file: str, cpp_compile_cmd: str, path: Path) -> None:
+    def cpp_compile_file_mine(
+        file: str, cpp_compile_cmd: str, path: Path, with_deps: bool = False
+    ) -> None:
         # ensure unique *.o names, even if file has same name in a subdirectory
         # pylint: disable=no-member
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
         cmd = f"{cpp_compile_cmd} -c {file} -o {output_file}.o"
+        if with_deps:
+            cmd += f" {library_cache.dep_flags(output_file)}"
         typer.echo(file)
         run_shell_cmd(cmd, cwd=path)
 
-    def c_compile_file_mine(file: str, c_compile_cmd: str, path: Path) -> None:
+    def c_compile_file_mine(
+        file: str, c_compile_cmd: str, path: Path, with_deps: bool = False
+    ) -> None:
         # ensure unique *.o names, even if file has same name in a subdirectory
         # pylint: disable=no-member
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
         cmd = f"{c_compile_cmd} -c {file} -o {output_file}.o"
+        if with_deps:
+            cmd += f" {library_cache.dep_flags(output_file)}"
         typer.echo(file)
         run_shell_cmd(cmd, cwd=path)
 
@@ -146,6 +154,24 @@ def build_library(
                 f"{c_include_flags} {c_compile_flags_s} "
             )
 
+            # The icpp-candid library: reuse an identical earlier build
+            cache_commands = {
+                "cpp": cpp_compile_cmd_mine,
+                "c": c_compile_cmd_mine,
+                "ar": f"{config_default.WASM_AR} {config_default.WASM_ARFLAGS}",
+            }
+            cache_hit, cache_key = library_cache.begin(
+                "wasm32-wasi",
+                library["lib_name"],
+                cache_commands,
+                cpp_files_list + c_files_list,
+                full_lib_name,
+                build_path,
+            )
+            if cache_hit:
+                continue
+            with_deps = cache_key is not None and CONCURRENCY == "multi-threading"
+
             try:
                 # ----------------------------------------------------------------------
                 # compile C++ files, if we have any
@@ -161,6 +187,7 @@ def build_library(
                                 cpp_compile_file_mine,
                                 cpp_compile_cmd=cpp_compile_cmd_mine,
                                 path=build_path,
+                                with_deps=with_deps,
                             ),
                             cpp_files_list,
                         )
@@ -188,6 +215,7 @@ def build_library(
                                 c_compile_file_mine,
                                 c_compile_cmd=c_compile_cmd_mine,
                                 path=build_path,
+                                with_deps=with_deps,
                             ),
                             c_files_list,
                         )
@@ -213,6 +241,15 @@ def build_library(
                 typer.echo(f"Creating the static library: {full_lib_name}")
                 typer.echo(cmd)
                 run_shell_cmd(cmd, cwd=build_path)
+
+                if with_deps and cache_key is not None:
+                    library_cache.publish(
+                        "wasm32-wasi",
+                        cache_key,
+                        full_lib_name,
+                        build_path,
+                        cache_commands,
+                    )
 
             except subprocess.CalledProcessError as e:
                 sys.exit(e.returncode)

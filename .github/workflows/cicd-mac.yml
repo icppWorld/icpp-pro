@@ -135,6 +135,18 @@ jobs:
           echo "Installing rust"
           icpp install-rust
 
+      # The icpp-candid library is cached in ~/.icpp/cache/libraries, keyed on a
+      # hash of all its inputs, and checked again before every use (see
+      # src/icpp/library_cache.py): a restored entry is never used blindly.
+      # Only the wasm entries are kept between runs; the native ones (~400 MiB
+      # each, debug info) are shared within a run only. No restore-keys: when
+      # the library changes, a run starts empty instead of growing the cache.
+      - name: restore-library-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.icpp/cache/libraries/wasm32-wasi
+          key: icpp-libcache-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && 'all' || 'smoke' }}-${{ hashFiles('icpp-candid/src/icpp_candid/**', 'src/icpp/ic/**', 'src/icpp/config_default.py', 'src/icpp/version*.py', 'src/icpp/library_cache.py', 'src/icpp/commands_build_library*.py') }}
+
       # The C++ builds and the canister tests don't depend on the Python
       # version, so all-tests runs on one Python version per OS, and the other
       # versions run smoke-tests (static checks, python tests, greet). On

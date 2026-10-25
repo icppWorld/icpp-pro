@@ -344,6 +344,7 @@ def test__a_header_changed_during_the_build_is_not_stored(
     sources = write_sources(src)
     cmds = commands(src)
     build_path = tmp_path / "build"
+    build_path.mkdir()
     time.sleep(0.05)
     build_ = library_cache.start(TARGET, LIB, cmds, sources, LIB_FILE, build_path)
     build(sources, cmds, build_path)
@@ -464,3 +465,147 @@ def test__parse_dep_file() -> None:
         Path("/base/rel/b.h").resolve(),
         Path("/x/c$.h"),
     ]
+
+
+@pytest.mark.parametrize(
+    "flags, relative",
+    [
+        ("-I/abs/inc -O2", False),
+        ("-I rel/inc", True),
+        ("-Irel/inc", True),
+        ("-isystem ../x", True),
+        ("--sysroot=sys", True),
+        ("-include ./pre.h", True),
+        ("-D X=1 -std=c++20", False),
+    ],
+)
+def test__has_relative_path(flags: str, relative: bool) -> None:
+    assert library_cache.has_relative_path({"cpp": f"clang++ {flags}"}) is relative
+
+
+def test__a_relative_path_flag_puts_the_build_folder_in_the_key(
+    tmp_path: Path,
+) -> None:
+    """-I ../shared means another folder for each canister: no shared key."""
+    src = tmp_path / "src"
+    sources = write_sources(src)
+    a, b = tmp_path / "a" / "build", tmp_path / "b" / "build"
+    a.mkdir(parents=True)
+    b.mkdir(parents=True)
+    relative = dict(commands(src), cpp=commands(src)["cpp"] + " -I ../shared")
+    assert library_cache.compute_key(
+        TARGET, LIB, relative, sources, a
+    ) != library_cache.compute_key(TARGET, LIB, relative, sources, b)
+    absolute = commands(src)
+    assert library_cache.compute_key(
+        TARGET, LIB, absolute, sources, a
+    ) == library_cache.compute_key(TARGET, LIB, absolute, sources, b)
+
+
+def test__the_driver_resolution_is_in_the_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A clang config file or an environment flag changes what -### prints."""
+    src = tmp_path / "src"
+    sources = write_sources(src)
+    cmds = commands(src)
+    key = library_cache.compute_key(TARGET, LIB, cmds, sources)
+    real_driver = library_cache._driver
+    monkeypatch.setattr(
+        library_cache,
+        "_driver",
+        lambda command, language, cwd: real_driver(command, language, cwd)
+        + " --sysroot=/another/sdk",
+    )
+    assert key != library_cache.compute_key(TARGET, LIB, cmds, sources)
+
+
+def test__a_header_that_would_shadow_a_dependency_is_a_miss(
+    tmp_path: Path, cache_root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """lib.h is found in the second -I folder: the first one is probed, the
+    folders after it are not."""
+    first, src = tmp_path / "first", tmp_path / "src"
+    first.mkdir()
+    sources = write_sources(src)
+    cmds = dict(commands(src), cpp=f"clang++ -std=c++17 -O0 -I{first} -I{src}")
+    build_path = tmp_path / "build"
+    build(sources, cmds, build_path)
+    key = library_cache.compute_key(TARGET, LIB, cmds, sources)
+    library_cache.publish(TARGET, key, LIB_FILE, build_path, cmds)
+    manifest = json.loads((cache_root / key / "manifest.json").read_text("utf-8"))
+    probe = str((first / "lib.h").resolve())
+    assert manifest["probes"].get(probe) is False
+    # Only folders before the one it was found in (and the ones that do not
+    # exist, whose position is unknown), never the ones after it
+    after = [
+        f for f in manifest["folders"] if "/include/c++/" in f and os.path.isdir(f)
+    ]
+    assert after
+    assert not any(p.startswith(tuple(after)) for p in manifest["probes"])
+    (first / "lib.h").write_text("constexpr int VALUE = 7;\n", encoding="utf-8")
+    assert not library_cache.restore(TARGET, key, LIB_FILE, tmp_path)
+    assert "not using" in capsys.readouterr().out
+
+
+def test__a_file_that_changes_while_it_is_hashed_is_not_stored(
+    tmp_path: Path,
+    cache_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    src = tmp_path / "src"
+    sources = write_sources(src)
+    cmds = commands(src)
+    build_path = tmp_path / "build"
+    build(sources, cmds, build_path)
+    key = library_cache.compute_key(TARGET, LIB, cmds, sources)
+    monkeypatch.setattr(library_cache, "CHANGED_MARGIN_NS", 0)
+    time.sleep(0.05)
+    started_ns = time.time_ns()
+    real_sha256 = library_cache._sha256_file
+    header = (src / "lib.h").resolve()
+
+    def sha256_while_editing(path: Path) -> str:
+        digest = real_sha256(path)
+        if Path(path) == header:
+            header.write_text("constexpr int VALUE = 9;\n", encoding="utf-8")
+        return digest
+
+    monkeypatch.setattr(library_cache, "_sha256_file", sha256_while_editing)
+    library_cache.publish(TARGET, key, LIB_FILE, build_path, cmds, started_ns)
+    assert "lib.h changed during the build" in capsys.readouterr().out
+    assert not cache_root.exists() or not list(cache_root.iterdir())
+
+
+def test__a_failing_cleanup_never_escapes_restore(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, _, key, _ = built_and_published(tmp_path)
+
+    def failing_copy(_src: Path, _dst: Path) -> str:
+        raise OSError(5, "Input/output error")
+
+    def failing_unlink(_self: Path, missing_ok: bool = False) -> None:
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(library_cache, "_copy_hashed", failing_copy)
+    monkeypatch.setattr(Path, "unlink", failing_unlink)
+    assert not library_cache.restore(TARGET, key, LIB_FILE, tmp_path)
+
+
+def test__start_never_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    src = tmp_path / "src"
+    sources = write_sources(src)
+
+    def broken_restore(*_args: object) -> bool:
+        raise RuntimeError("unexpected")
+
+    monkeypatch.setattr(library_cache, "restore", broken_restore)
+    build_ = library_cache.start(
+        TARGET, LIB, commands(src), sources, LIB_FILE, tmp_path
+    )
+    assert (build_.hit, build_.key) == (False, None)
+    assert "cannot use the cache: unexpected" in capsys.readouterr().out

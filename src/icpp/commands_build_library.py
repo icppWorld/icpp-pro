@@ -247,6 +247,8 @@ def build_library(
                     f"{full_lib_name} *.o"
                 )
 
+                # `ar qc` appends to an existing archive: start from none
+                (build_path / full_lib_name).unlink(missing_ok=True)
                 typer.echo("--")
                 typer.echo(f"Creating the static library: {full_lib_name}")
                 typer.echo(cmd)

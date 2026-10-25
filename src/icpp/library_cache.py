@@ -6,16 +6,22 @@ only when every input that went into it is provably identical:
 
 - The key is a sha256 over the compile & archive commands, the content of every
   source, the identity of each compiler (path, `--version`, size, mtime), the
-  environment variables a compiler reads, and the icpp-pro & icpp-candid
-  versions.
+  compiler driver's fully resolved command line (`-###`: config files, sysroot,
+  include paths, flags from the environment), the environment variables a
+  compiler reads, the build folder when a flag holds a relative path, and the
+  icpp-pro & icpp-candid versions.
 - Each entry records every file the compiler read (from `-MD` dependency
   files: headers, also the system headers) with its sha256, and the file
-  listing of every folder the compiler searches for headers and of every
-  folder a dependency is in. Before an entry is used, all of them are checked
-  again: a changed header, or a new one that would now be found first or
-  satisfy a `__has_include`, makes it a miss.
-- A library is not stored when any of its sources or headers changed while it
-  was being built.
+  listing of every folder the compiler searches for headers (also the ones that
+  do not exist yet) and of every folder a dependency is in, and, for every
+  dependency, whether a header with the same relative path exists in a search
+  folder before the one it was found in. Before an entry is used, all of them
+  are checked again: a changed header, or a new one that would now be found
+  first, makes it a miss. Not covered: a `__has_include` of a path in a
+  subfolder that holds no dependency (the dependency files do not record which
+  missing headers were asked for); turn the cache off when relying on that.
+- A library is not stored when any of its sources, headers or header folders
+  changed while it was being built (by ctime, which cannot be set back).
 
 Any doubt makes it a miss, and any error in this module prints a warning and
 falls back to a normal build: the cache can never fail a build.
@@ -51,7 +57,7 @@ import icpp_candid
 from icpp import __version__, config_default
 
 # Bump to invalidate every entry, e.g. when what goes into the key changes
-SCHEMA = 3
+SCHEMA = 4
 
 # The one library that is cached
 CACHED_LIBRARY = "__ic_candid__"
@@ -204,9 +210,74 @@ def _version_output(path: str, size: int, mtime_ns: int) -> Tuple[str, int]:
     return version.stdout + version.stderr, version.returncode
 
 
+# Flags whose value is a path, as -Ivalue / -I value / --flag=value
+PATH_FLAGS = (
+    "-I",
+    "-isystem",
+    "-iquote",
+    "-idirafter",
+    "-include",
+    "-imacros",
+    "-iprefix",
+    "-iwithprefix",
+    "-isysroot",
+    "-F",
+    "-iframework",
+    "-B",
+    "--sysroot",
+    "--config",
+    "-fsanitize-ignorelist",
+    "-fprofile-instr-use",
+    "-fprofile-use",
+)
+
+
+def _split(command: str) -> List[str]:
+    return shlex.split(command, posix=os.name != "nt")
+
+
+def has_relative_path(commands: Dict[str, str]) -> bool:
+    """True when a path flag in a command holds a relative path: it then depends
+    on the folder the command runs in."""
+    for command in commands.values():
+        tokens = _split(command)
+        for i, token in enumerate(tokens):
+            for flag in PATH_FLAGS:
+                if token == flag and i + 1 < len(tokens):
+                    value = tokens[i + 1]
+                elif token.startswith(flag + "="):
+                    value = token[len(flag) + 1 :]
+                elif token.startswith(flag) and not flag.startswith("--"):
+                    value = token[len(flag) :]
+                else:
+                    continue
+                if value and not os.path.isabs(value):
+                    return True
+    return False
+
+
+def _driver(command: str, language: str, cwd: Path) -> str:
+    """The compiler driver's fully resolved commands for one compile (`-###`):
+    the effect of config files, the sysroot, the include paths and the flags
+    set through the environment."""
+    result = subprocess.run(
+        f"{command} -### -c -x {language} - -o icpp_cache_probe.o",
+        shell=True,
+        input="",
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+        cwd=cwd,
+    )
+    # The folder a compile runs in only goes into the debug info (e.g.
+    # -fdebug-compilation-dir); the key holds it when a path flag is relative
+    return result.stderr.replace(str(cwd.resolve()), "<cwd>")
+
+
 def _compiler_identity(command: str) -> Dict[str, Any]:
     """Who the compiler of a command is: path, `--version`, size and mtime."""
-    program = shlex.split(command, posix=os.name != "nt")[0]
+    program = _split(command)[0]
     found = shutil.which(program)
     if found is None:
         raise RuntimeError(f"compiler not found: {program}")
@@ -223,9 +294,15 @@ def _compiler_identity(command: str) -> Dict[str, Any]:
 
 
 def compute_key(
-    target: str, lib_name: str, commands: Dict[str, str], sources: List[str]
+    target: str,
+    lib_name: str,
+    commands: Dict[str, str],
+    sources: List[str],
+    cwd: Optional[Path] = None,
 ) -> str:
-    """The sha256 of everything that goes into the library, but the headers."""
+    """The sha256 of everything that goes into the library, but the headers.
+    cwd is the folder the compiles run in."""
+    cwd = (cwd or Path.cwd()).resolve()
     data = {
         "schema": SCHEMA,
         "target": target,
@@ -237,6 +314,12 @@ def compute_key(
             name: _compiler_identity(command) for name, command in commands.items()
         },
         "environment": {name: os.environ.get(name) for name in COMPILER_ENVIRONMENT},
+        "drivers": {
+            name: _driver(commands[name], language, cwd)
+            for name, language in (("cpp", "c++"), ("c", "c"))
+            if commands.get(name)
+        },
+        "cwd": str(cwd) if has_relative_path(commands) else None,
         "sources": sorted(
             (str(Path(s).resolve()), _sha256_file(Path(s))) for s in sources
         ),
@@ -272,9 +355,7 @@ def parse_dep_file(text: str, base: Path) -> List[Path]:
         i += 1
     if current:
         words.append(current)
-    return [
-        (base / w).resolve() if not Path(w).is_absolute() else Path(w) for w in words
-    ]
+    return [(base / w).resolve() for w in words]
 
 
 def parse_search_dirs(verbose_output: str) -> List[str]:
@@ -297,8 +378,9 @@ def parse_search_dirs(verbose_output: str) -> List[str]:
     return folders
 
 
-def _search_dirs(commands: Dict[str, str]) -> List[str]:
-    """The folders the compilers search for headers, as `-v` reports them."""
+def _search_dirs(commands: Dict[str, str], cwd: Path) -> List[str]:
+    """The folders the compilers search for headers, in search order, as `-v`
+    reports them."""
     folders: List[str] = []
     for name, language in (("cpp", "c++"), ("c", "c")):
         command = commands.get(name)
@@ -312,8 +394,9 @@ def _search_dirs(commands: Dict[str, str]) -> List[str]:
             text=True,
             timeout=120,
             check=True,
+            cwd=cwd,
         )
-        folders += parse_search_dirs(result.stderr)
+        folders += [f for f in parse_search_dirs(result.stderr) if f not in folders]
     return folders
 
 
@@ -403,9 +486,12 @@ def restore(target: str, key: str, lib_file: str, build_path: Path) -> bool:
             typer.echo(f"Library cache: not using {entry}: {reason}")
             return False
     except Exception as e:  # pylint: disable=broad-except
-        # A partial copy must not stay: the build that follows appends to an
-        # existing archive (`ar qc`) instead of replacing it
-        copy.unlink(missing_ok=True)
+        # A partial copy must not stay (the builder also removes the archive
+        # before it archives, as `ar qc` appends to an existing one)
+        try:
+            copy.unlink(missing_ok=True)
+        except OSError:
+            pass
         _warn(f"cannot use {entry}: {e}")
         return False
     try:
@@ -417,10 +503,30 @@ def restore(target: str, key: str, lib_file: str, build_path: Path) -> bool:
     return True
 
 
-def _changed_since(path: Path, started_ns: Optional[int]) -> bool:
+def _changed_since(st: os.stat_result, started_ns: Optional[int]) -> bool:
     if started_ns is None:
         return False
-    return path.stat().st_ctime_ns > started_ns - CHANGED_MARGIN_NS
+    return st.st_ctime_ns > started_ns - CHANGED_MARGIN_NS
+
+
+def _stable_sha256(path: Path, started_ns: Optional[int]) -> Dict[str, Any]:
+    """The stamp and sha256 of a file that did not change during the build: the
+    stamp is taken before and after hashing, and must be the same and older
+    than the build. Else ChangedDuringBuild."""
+    before = _stamp(path)
+    sha256 = _sha256_file(path)
+    after = _stamp(path)
+    if before != after or _changed_since(path.stat(), started_ns):
+        raise ChangedDuringBuild(str(path))
+    return dict(after, sha256=sha256)
+
+
+def _stable_listing(folder: str, started_ns: Optional[int]) -> str:
+    """The listing of a folder that did not change during the build."""
+    listing = _listing(folder)
+    if listing != MISSING and _changed_since(os.stat(folder), started_ns):
+        raise ChangedDuringBuild(folder)
+    return listing
 
 
 def _inputs(
@@ -429,33 +535,35 @@ def _inputs(
     """What the build depended on:
     - deps: the files the compiler read, with their sha256 and stamp;
     - folders: the listing of every header search folder and dependency folder;
-    - probes: for every dependency and every search folder, whether the same
-      relative path exists there (a header that would shadow it).
-    Raises ChangedDuringBuild when one of them changed after the build started."""
+    - probes: for every dependency, whether the same relative path exists in a
+      search folder before the one it was found in (a header that would shadow
+      it).
+    Raises ChangedDuringBuild when one of them changed after the build started:
+    each is checked after it is read, so a change while reading is caught too."""
     deps: Dict[str, Dict[str, Any]] = {}
     for dep_file in sorted(build_path.glob("*.d")):
         for path in parse_dep_file(dep_file.read_text(encoding="utf-8"), build_path):
-            if str(path) in deps:
-                continue
-            if _changed_since(path, started_ns):
-                raise ChangedDuringBuild(str(path))
-            deps[str(path)] = dict(_stamp(path), sha256=_sha256_file(path))
+            if str(path) not in deps:
+                deps[str(path)] = _stable_sha256(path, started_ns)
     if not deps:
         raise RuntimeError("no dependency files were written")
-    search = _search_dirs(commands)
-    folders: Dict[str, str] = {}
-    for folder in sorted(set(search) | {str(Path(d).parent) for d in deps}):
-        if os.path.isdir(folder) and _changed_since(Path(folder), started_ns):
-            raise ChangedDuringBuild(folder)
-        folders[folder] = _listing(folder)
+    search = _search_dirs(commands, build_path)
+    folders = {
+        folder: _stable_listing(folder, started_ns)
+        for folder in sorted(set(search) | {str(Path(d).parent) for d in deps})
+    }
     probes: Dict[str, bool] = {}
     for dep in deps:
-        for folder in search:
+        for i, folder in enumerate(search):
             if dep.startswith(folder + os.sep):
                 relative = dep[len(folder) + 1 :]
-                for other in search:
-                    probe = os.path.join(other, relative)
+                for earlier in search[:i]:
+                    probe = os.path.join(earlier, relative)
                     probes[probe] = os.path.lexists(probe)
+                    parent = os.path.dirname(probe)
+                    if os.path.isdir(parent):
+                        _stable_listing(parent, started_ns)
+                break
     return deps, folders, probes
 
 
@@ -626,9 +734,15 @@ def start(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     if not is_cached(lib_name) or not parallel:
         return build
     try:
-        build.key = compute_key(target, lib_name, commands, sources)
+        build.key = compute_key(target, lib_name, commands, sources, build_path)
     except Exception as e:  # pylint: disable=broad-except
         _warn(f"cannot compute the key: {e}")
         return build
-    build.hit = restore(target, build.key, lib_file, build_path)
+    try:
+        build.hit = restore(target, build.key, lib_file, build_path)
+    except Exception as e:  # pylint: disable=broad-except
+        # restore handles its own errors; this is the last line of defense, as
+        # the cache must never fail a build
+        _warn(f"cannot use the cache: {e}")
+        build.key = None
     return build

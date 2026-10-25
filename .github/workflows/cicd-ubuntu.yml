@@ -138,7 +138,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.icpp/cache/libraries/wasm32-wasi
-          key: icpp-libcache-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && 'all' || 'smoke' }}-${{ hashFiles('icpp-candid/src/icpp_candid/**', 'src/icpp/ic/**', 'src/icpp/config_default.py', 'src/icpp/version*.py', 'src/icpp/library_cache.py', 'src/icpp/commands_build_library*.py') }}
+          key: icpp-libcache-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && 'all' || 'smoke' }}-${{ hashFiles('icpp-candid/src/icpp_candid/**', 'src/icpp/ic/**', 'src/icpp/config_default.py', 'src/icpp/version*.py', 'src/icpp/library_cache.py', 'src/icpp/commands_build_library*.py', 'src/icpp/canisters/**/icpp*.toml', 'test/canisters/**/icpp*.toml') }}
 
       # The C++ builds and the canister tests don't depend on the Python
       # version, so all-tests runs on one Python version per OS, and the other

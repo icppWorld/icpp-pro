@@ -177,6 +177,12 @@ def build_library(
                 full_lib_name,
                 build_path,
                 parallel=CONCURRENCY == "multi-threading",
+                own_flags=bool(
+                    f"{cpp_include_flags}{c_include_flags}"
+                    f"{cpp_compile_flags_s}{c_compile_flags_s}".strip()
+                    or cpp_compile_flags_defaults_s != config_default.WASM_CPPFLAGS
+                    or c_compile_flags_defaults_s != config_default.WASM_CFLAGS
+                ),
             )
             if cache.hit:
                 report_done(build_path, full_lib_name)

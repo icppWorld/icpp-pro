@@ -126,7 +126,7 @@ def test__the_manifest_records_the_headers_read(
     """The header comes from the -MD dependency files, also system headers."""
     _, _, key, _ = built_and_published(tmp_path)
     deps = json.loads((cache_root / key / "manifest.json").read_text())["deps"]
-    assert str((tmp_path / "src" / "lib.h").resolve()) in deps
+    assert str(tmp_path / "src" / "lib.h") in deps
 
 
 def test__a_changed_header_is_a_miss(
@@ -375,7 +375,7 @@ def test__the_manifest_records_the_compiler_search_folders(
     _, _, key, _ = built_and_published(tmp_path)
     manifest = json.loads((cache_root / key / "manifest.json").read_text("utf-8"))
     folders = manifest["folders"]
-    assert str((tmp_path / "src").resolve()) in folders
+    assert str(tmp_path / "src") in folders
     # also the compiler's own folders, e.g. the C++ standard library headers
     assert len(folders) > 2
 
@@ -391,11 +391,13 @@ def test__parse_search_dirs() -> None:
         "End of search list.\n"
         " /not/a/folder\n"
     )
-    assert library_cache.parse_search_dirs(text) == [
-        str(Path("/x").resolve()),
-        str(Path("/q").resolve()),
-        str(Path("/a/include").resolve()),
-        str(Path("/System/Library/Frameworks").resolve()),
+    text += "#include <...> search starts here:\n ../rel\nEnd of search list.\n"
+    assert library_cache.parse_search_dirs(text, Path("/base/build")) == [
+        "/x",
+        "/q",
+        "/a/include",
+        "/System/Library/Frameworks",
+        "/base/rel",
     ]
 
 
@@ -462,44 +464,27 @@ def test__parse_dep_file() -> None:
     assert library_cache.parse_dep_file(text, Path("/base")) == [
         Path("/x/a.cpp"),
         Path("/x/my dir/h.h"),
-        Path("/base/rel/b.h").resolve(),
+        Path("/base/rel/b.h"),
         Path("/x/c$.h"),
     ]
 
 
-@pytest.mark.parametrize(
-    "flags, relative",
-    [
-        ("-I/abs/inc -O2", False),
-        ("-I rel/inc", True),
-        ("-Irel/inc", True),
-        ("-isystem ../x", True),
-        ("--sysroot=sys", True),
-        ("-include ./pre.h", True),
-        ("-D X=1 -std=c++20", False),
-    ],
-)
-def test__has_relative_path(flags: str, relative: bool) -> None:
-    assert library_cache.has_relative_path({"cpp": f"clang++ {flags}"}) is relative
-
-
-def test__a_relative_path_flag_puts_the_build_folder_in_the_key(
-    tmp_path: Path,
-) -> None:
-    """-I ../shared means another folder for each canister: no shared key."""
+def test__own_flags_put_the_build_folder_in_the_key(tmp_path: Path) -> None:
+    """A canister's own flags may hold relative paths (in any spelling): its
+    build folder is in the key. Without own flags, canisters share the key."""
     src = tmp_path / "src"
     sources = write_sources(src)
     a, b = tmp_path / "a" / "build", tmp_path / "b" / "build"
     a.mkdir(parents=True)
     b.mkdir(parents=True)
-    relative = dict(commands(src), cpp=commands(src)["cpp"] + " -I ../shared")
+    own = dict(commands(src), cpp=commands(src)["cpp"] + " -Wp,-I../shared")
     assert library_cache.compute_key(
-        TARGET, LIB, relative, sources, a
-    ) != library_cache.compute_key(TARGET, LIB, relative, sources, b)
-    absolute = commands(src)
+        TARGET, LIB, own, sources, a, own_flags=True
+    ) != library_cache.compute_key(TARGET, LIB, own, sources, b, own_flags=True)
+    default = commands(src)
     assert library_cache.compute_key(
-        TARGET, LIB, absolute, sources, a
-    ) == library_cache.compute_key(TARGET, LIB, absolute, sources, b)
+        TARGET, LIB, default, sources, a
+    ) == library_cache.compute_key(TARGET, LIB, default, sources, b)
 
 
 def test__the_driver_resolution_is_in_the_key(
@@ -534,7 +519,7 @@ def test__a_header_that_would_shadow_a_dependency_is_a_miss(
     key = library_cache.compute_key(TARGET, LIB, cmds, sources)
     library_cache.publish(TARGET, key, LIB_FILE, build_path, cmds)
     manifest = json.loads((cache_root / key / "manifest.json").read_text("utf-8"))
-    probe = str((first / "lib.h").resolve())
+    probe = str(first / "lib.h")
     assert manifest["probes"].get(probe) is False
     # Only folders before the one it was found in (and the ones that do not
     # exist, whose position is unknown), never the ones after it
@@ -564,7 +549,7 @@ def test__a_file_that_changes_while_it_is_hashed_is_not_stored(
     time.sleep(0.05)
     started_ns = time.time_ns()
     real_sha256 = library_cache._sha256_file
-    header = (src / "lib.h").resolve()
+    header = src / "lib.h"
 
     def sha256_while_editing(path: Path) -> str:
         digest = real_sha256(path)
@@ -609,3 +594,74 @@ def test__start_never_raises(
     )
     assert (build_.hit, build_.key) == (False, None)
     assert "cannot use the cache: unexpected" in capsys.readouterr().out
+
+
+def test__a_symlinked_header_that_now_points_elsewhere_is_a_miss(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The path the compiler opened is checked, not the old target: a symlink
+    retargeted to a newer version (e.g. a package upgrade) makes it a miss."""
+    src = tmp_path / "src"
+    sources = write_sources(src)
+    v1, v2 = tmp_path / "v1", tmp_path / "v2"
+    v1.mkdir()
+    v2.mkdir()
+    (v1 / "lib.h").write_text((src / "lib.h").read_text("utf-8"), encoding="utf-8")
+    (v2 / "lib.h").write_text("constexpr int VALUE = 2;\nint a();\nint b();\n", "utf-8")
+    (src / "lib.h").unlink()
+    (src / "lib.h").symlink_to(v1 / "lib.h")
+    cmds = commands(src)
+    build_path = tmp_path / "build"
+    build(sources, cmds, build_path)
+    key = library_cache.compute_key(TARGET, LIB, cmds, sources)
+    library_cache.publish(TARGET, key, LIB_FILE, build_path, cmds)
+    assert library_cache.restore(TARGET, key, LIB_FILE, tmp_path)
+    (src / "lib.h").unlink()
+    (src / "lib.h").symlink_to(v2 / "lib.h")
+    assert not library_cache.restore(TARGET, key, LIB_FILE, tmp_path)
+    assert "a dependency changed" in capsys.readouterr().out
+
+
+def test__each_language_is_probed_in_its_own_search_order(
+    tmp_path: Path, cache_root: Path
+) -> None:
+    """A folder only the C compiler searches first is probed for C, though it
+    is not in the C++ search order at all."""
+    c_only, src = tmp_path / "c_only", tmp_path / "src"
+    c_only.mkdir()
+    sources = write_sources(src)
+    cmds = dict(commands(src), c=f"clang -I{c_only} -I{src}")
+    build_path = tmp_path / "build"
+    build(sources, cmds, build_path)
+    key = library_cache.compute_key(TARGET, LIB, cmds, sources)
+    library_cache.publish(TARGET, key, LIB_FILE, build_path, cmds)
+    manifest = json.loads((cache_root / key / "manifest.json").read_text("utf-8"))
+    assert str(c_only / "lib.h") in manifest["probes"]
+
+
+def test__prune_counts_only_the_entries_it_keeps(
+    cache_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One large entry over the limit is removed; the smaller older ones that
+    still fit stay."""
+    monkeypatch.setattr(library_cache, "MAX_BYTES", 2000)
+    cache_root.mkdir(parents=True)
+    for i, size in enumerate([300, 1500, 400, 500]):  # key0 oldest ... key3 newest
+        entry = cache_root / f"key{i}"
+        entry.mkdir()
+        (entry / "lib.a").write_bytes(b"x" * size)
+        (entry / "manifest.json").write_text("{}")
+        os.utime(entry / "manifest.json", (1000 + i, 1000 + i))
+    library_cache.prune(TARGET, keep="key3")
+    # key3 500 + key2 400 = 900; key1 would make 2400 > 2000: removed;
+    # key0 300 still fits: 1200
+    assert sorted(p.name for p in cache_root.iterdir()) == ["key0", "key2", "key3"]
+
+
+def test__a_stray_file_is_removed(cache_root: Path) -> None:
+    cache_root.mkdir(parents=True)
+    stray = cache_root / ".stale-file"
+    stray.write_text("x")
+    os.utime(stray, (0, 0))
+    library_cache.prune(TARGET, keep="none")
+    assert not stray.exists()

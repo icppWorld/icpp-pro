@@ -8,8 +8,9 @@ only when every input that went into it is provably identical:
   source, the identity of each compiler (path, `--version`, size, mtime), the
   compiler driver's fully resolved command line (`-###`: config files, sysroot,
   include paths, flags from the environment), the environment variables a
-  compiler reads, the build folder when a flag holds a relative path, and the
-  icpp-pro & icpp-candid versions.
+  compiler reads, the build folder when the canister passes flags of its own
+  (they may hold relative paths, in any spelling), and the icpp-pro &
+  icpp-candid versions.
 - Each entry records every file the compiler read (from `-MD` dependency
   files: headers, also the system headers) with its sha256, and the file
   listing of every folder the compiler searches for headers (also the ones that
@@ -57,7 +58,7 @@ import icpp_candid
 from icpp import __version__, config_default
 
 # Bump to invalidate every entry, e.g. when what goes into the key changes
-SCHEMA = 4
+SCHEMA = 5
 
 # The one library that is cached
 CACHED_LIBRARY = "__ic_candid__"
@@ -112,8 +113,8 @@ def dep_flags(output_file: str) -> str:
     return f"-MD -MF {output_file}.d"
 
 
-def _warn(message: str) -> None:
-    typer.echo(f"WARNING: library cache: {message}. Building without it.")
+def _warn(message: str, after: str = "Building without it.") -> None:
+    typer.echo(f"WARNING: library cache: {message}. {after}")
 
 
 def _sha256_file(path: Path) -> str:
@@ -139,11 +140,14 @@ def _copy_hashed(src: Path, dst: Path) -> str:
 
 
 def _remove(path: Path) -> None:
-    """Removes a folder, or a symlink without following it."""
-    if path.is_symlink():
-        path.unlink(missing_ok=True)
-    else:
-        shutil.rmtree(path, ignore_errors=True)
+    """Removes a folder, a file, or a symlink without following it."""
+    try:
+        if path.is_symlink() or not path.is_dir():
+            path.unlink(missing_ok=True)
+        else:
+            shutil.rmtree(path, ignore_errors=True)
+    except OSError:
+        pass  # removed by a parallel build, or not ours to remove
 
 
 def _listing(folder: str) -> str:
@@ -210,50 +214,8 @@ def _version_output(path: str, size: int, mtime_ns: int) -> Tuple[str, int]:
     return version.stdout + version.stderr, version.returncode
 
 
-# Flags whose value is a path, as -Ivalue / -I value / --flag=value
-PATH_FLAGS = (
-    "-I",
-    "-isystem",
-    "-iquote",
-    "-idirafter",
-    "-include",
-    "-imacros",
-    "-iprefix",
-    "-iwithprefix",
-    "-isysroot",
-    "-F",
-    "-iframework",
-    "-B",
-    "--sysroot",
-    "--config",
-    "-fsanitize-ignorelist",
-    "-fprofile-instr-use",
-    "-fprofile-use",
-)
-
-
 def _split(command: str) -> List[str]:
     return shlex.split(command, posix=os.name != "nt")
-
-
-def has_relative_path(commands: Dict[str, str]) -> bool:
-    """True when a path flag in a command holds a relative path: it then depends
-    on the folder the command runs in."""
-    for command in commands.values():
-        tokens = _split(command)
-        for i, token in enumerate(tokens):
-            for flag in PATH_FLAGS:
-                if token == flag and i + 1 < len(tokens):
-                    value = tokens[i + 1]
-                elif token.startswith(flag + "="):
-                    value = token[len(flag) + 1 :]
-                elif token.startswith(flag) and not flag.startswith("--"):
-                    value = token[len(flag) :]
-                else:
-                    continue
-                if value and not os.path.isabs(value):
-                    return True
-    return False
 
 
 def _driver(command: str, language: str, cwd: Path) -> str:
@@ -293,15 +255,18 @@ def _compiler_identity(command: str) -> Dict[str, Any]:
     }
 
 
-def compute_key(
+def compute_key(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     target: str,
     lib_name: str,
     commands: Dict[str, str],
     sources: List[str],
     cwd: Optional[Path] = None,
+    own_flags: bool = False,
 ) -> str:
     """The sha256 of everything that goes into the library, but the headers.
-    cwd is the folder the compiles run in."""
+    cwd is the folder the compiles run in. With own_flags (the canister passes
+    flags of its own, which may hold relative paths) cwd is in the key, so only
+    the same canister shares the entry."""
     cwd = (cwd or Path.cwd()).resolve()
     data = {
         "schema": SCHEMA,
@@ -319,12 +284,19 @@ def compute_key(
             for name, language in (("cpp", "c++"), ("c", "c"))
             if commands.get(name)
         },
-        "cwd": str(cwd) if has_relative_path(commands) else None,
+        "cwd": str(cwd) if own_flags else None,
         "sources": sorted(
             (str(Path(s).resolve()), _sha256_file(Path(s))) for s in sources
         ),
     }
     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+
+
+def _normalized(base: Path, path: str) -> Path:
+    """An absolute, normalized path, as the compiler opened it: relative to base,
+    without following symlinks (a symlink that now points elsewhere must look
+    changed)."""
+    return Path(os.path.normpath(os.path.join(base, path)))
 
 
 def parse_dep_file(text: str, base: Path) -> List[Path]:
@@ -355,10 +327,10 @@ def parse_dep_file(text: str, base: Path) -> List[Path]:
         i += 1
     if current:
         words.append(current)
-    return [(base / w).resolve() for w in words]
+    return [_normalized(base, w) for w in words]
 
 
-def parse_search_dirs(verbose_output: str) -> List[str]:
+def parse_search_dirs(verbose_output: str, base: Path) -> List[str]:
     """The header search folders from the output of `clang -E -v`, also the ones
     that do not exist (yet)."""
     folders: List[str] = []
@@ -367,21 +339,22 @@ def parse_search_dirs(verbose_output: str) -> List[str]:
         if line.startswith("ignoring nonexistent directory "):
             # Recorded as missing: a folder created later could then shadow
             folder = line.removeprefix("ignoring nonexistent directory ").strip('"')
-            folders.append(str(Path(folder).resolve()))
+            folders.append(str(_normalized(base, folder)))
         elif "search starts here:" in line:
             inside = True
         elif line.startswith("End of search list."):
             inside = False
         elif inside and line.startswith(" "):
             folder = line.strip().removesuffix(" (framework directory)")
-            folders.append(str(Path(folder).resolve()))
+            folders.append(str(_normalized(base, folder)))
     return folders
 
 
-def _search_dirs(commands: Dict[str, str], cwd: Path) -> List[str]:
-    """The folders the compilers search for headers, in search order, as `-v`
-    reports them."""
-    folders: List[str] = []
+def _search_dirs(commands: Dict[str, str], cwd: Path) -> Dict[str, List[str]]:
+    """Per language, the folders its compiler searches for headers, in search
+    order, as `-v` reports them (relative ones resolved against cwd, where the
+    compiles run)."""
+    orders: Dict[str, List[str]] = {}
     for name, language in (("cpp", "c++"), ("c", "c")):
         command = commands.get(name)
         if not command:
@@ -396,8 +369,8 @@ def _search_dirs(commands: Dict[str, str], cwd: Path) -> List[str]:
             check=True,
             cwd=cwd,
         )
-        folders += [f for f in parse_search_dirs(result.stderr) if f not in folders]
-    return folders
+        orders[name] = parse_search_dirs(result.stderr, cwd)
+    return orders
 
 
 def _check(
@@ -547,24 +520,35 @@ def _inputs(
                 deps[str(path)] = _stable_sha256(path, started_ns)
     if not deps:
         raise RuntimeError("no dependency files were written")
-    search = _search_dirs(commands, build_path)
+    orders = _search_dirs(commands, build_path)
+    searched = {folder for order in orders.values() for folder in order}
     folders = {
         folder: _stable_listing(folder, started_ns)
-        for folder in sorted(set(search) | {str(Path(d).parent) for d in deps})
+        for folder in sorted(searched | {str(Path(d).parent) for d in deps})
     }
     probes: Dict[str, bool] = {}
-    for dep in deps:
-        for i, folder in enumerate(search):
-            if dep.startswith(folder + os.sep):
-                relative = dep[len(folder) + 1 :]
-                for earlier in search[:i]:
-                    probe = os.path.join(earlier, relative)
-                    probes[probe] = os.path.lexists(probe)
-                    parent = os.path.dirname(probe)
-                    if os.path.isdir(parent):
-                        _stable_listing(parent, started_ns)
-                break
+    # Per language: the C and the C++ compiler each search in their own order
+    for search in orders.values():
+        for dep in deps:
+            probes.update(_probes(dep, search, started_ns))
     return deps, folders, probes
+
+
+def _probes(dep: str, search: List[str], started_ns: Optional[int]) -> Dict[str, bool]:
+    """Whether the dependency's relative path exists in each search folder before
+    the one it was found in: such a header would be found first."""
+    probes: Dict[str, bool] = {}
+    for i, folder in enumerate(search):
+        if dep.startswith(folder + os.sep):
+            relative = dep[len(folder) + 1 :]
+            for earlier in search[:i]:
+                probe = os.path.join(earlier, relative)
+                probes[probe] = os.path.lexists(probe)
+                parent = os.path.dirname(probe)
+                if os.path.isdir(parent):
+                    _stable_listing(parent, started_ns)
+            break
+    return probes
 
 
 class ChangedDuringBuild(Exception):
@@ -614,8 +598,11 @@ def publish(  # pylint: disable=too-many-arguments, too-many-positional-argument
                 _remove(tmp)
                 return
             stale = root / f".stale-{uuid.uuid4().hex}"
-            os.rename(entry, stale)
-            _remove(stale)
+            try:
+                os.rename(entry, stale)
+                _remove(stale)
+            except FileNotFoundError:
+                pass  # a parallel build already moved it away
         try:
             os.rename(tmp, entry)
         except OSError:
@@ -631,7 +618,7 @@ def publish(  # pylint: disable=too-many-arguments, too-many-positional-argument
         return
     except Exception as e:  # pylint: disable=broad-except
         _remove(tmp)
-        _warn(f"cannot store the library: {e}")
+        _warn(f"cannot store the library: {e}", "The build itself is fine.")
         return
     try:
         prune(target, keep=key)
@@ -669,19 +656,19 @@ def prune(target: str, keep: str) -> None:
         entries.append((used, path))
     # `keep` first, then the most recently used
     entries.sort(key=lambda e: (e[1].name == keep, e[0]), reverse=True)
-    total = 0
-    for count, (_, path) in enumerate(entries, start=1):
-        total += _size(path)
-        if path.name == keep:
+    kept, total = 0, 0
+    for _, path in entries:
+        size = _size(path)
+        if path.name == keep or (kept < MAX_ENTRIES and total + size <= MAX_BYTES):
+            kept, total = kept + 1, total + size
             continue
-        if count > MAX_ENTRIES or total > MAX_BYTES:
-            # Rename first, so a reader never sees a half-deleted entry
-            gone = root / f".stale-{uuid.uuid4().hex}"
-            try:
-                os.rename(path, gone)
-            except OSError:
-                continue
-            _remove(gone)
+        # Rename first, so a reader never sees a half-deleted entry
+        gone = root / f".stale-{uuid.uuid4().hex}"
+        try:
+            os.rename(path, gone)
+        except OSError:
+            continue
+        _remove(gone)
 
 
 @dataclass
@@ -723,6 +710,7 @@ def start(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     lib_file: str,
     build_path: Path,
     parallel: bool = True,
+    own_flags: bool = False,
 ) -> LibraryBuild:
     """Before building a library: restores the cached copy into build_path when
     there is a valid one (hit), else tells whether to build for the cache.
@@ -734,7 +722,9 @@ def start(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     if not is_cached(lib_name) or not parallel:
         return build
     try:
-        build.key = compute_key(target, lib_name, commands, sources, build_path)
+        build.key = compute_key(
+            target, lib_name, commands, sources, build_path, own_flags
+        )
     except Exception as e:  # pylint: disable=broad-except
         _warn(f"cannot compute the key: {e}")
         return build

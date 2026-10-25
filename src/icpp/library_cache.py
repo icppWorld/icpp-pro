@@ -51,7 +51,7 @@ import icpp_candid
 from icpp import __version__, config_default
 
 # Bump to invalidate every entry, e.g. when what goes into the key changes
-SCHEMA = 2
+SCHEMA = 3
 
 # The one library that is cached
 CACHED_LIBRARY = "__ic_candid__"
@@ -84,6 +84,11 @@ COMPILER_ENVIRONMENT = (
 # The listing recorded for a folder that does not exist
 MISSING = "missing"
 
+# A file or folder whose ctime is later than the start of the build, less this
+# margin, changed during the build: the library is not stored. (Inode times can
+# lag the clock by a few ms; erring this way only means storing less.)
+CHANGED_MARGIN_NS = 2 * 10**9
+
 
 def enabled() -> bool:
     """False when ICPP_LIBRARY_CACHE is 0, false, no or off."""
@@ -106,11 +111,15 @@ def _warn(message: str) -> None:
 
 
 def _sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
     with open(path, "rb") as f:
-        for block in iter(lambda: f.read(1 << 20), b""):
-            h.update(block)
-    return h.hexdigest()
+        return hashlib.file_digest(f, "sha256").hexdigest()
+
+
+def _stamp(path: Path) -> Dict[str, int]:
+    """Size, mtime and ctime. ctime changes with every write and cannot be set
+    back, so an unchanged stamp means unchanged content."""
+    st = path.stat()
+    return {"size": st.st_size, "mtime_ns": st.st_mtime_ns, "ctime_ns": st.st_ctime_ns}
 
 
 def _copy_hashed(src: Path, dst: Path) -> str:
@@ -269,11 +278,16 @@ def parse_dep_file(text: str, base: Path) -> List[Path]:
 
 
 def parse_search_dirs(verbose_output: str) -> List[str]:
-    """The header search folders from the output of `clang -E -v`."""
+    """The header search folders from the output of `clang -E -v`, also the ones
+    that do not exist (yet)."""
     folders: List[str] = []
     inside = False
     for line in verbose_output.splitlines():
-        if "search starts here:" in line:
+        if line.startswith("ignoring nonexistent directory "):
+            # Recorded as missing: a folder created later could then shadow
+            folder = line.removeprefix("ignoring nonexistent directory ").strip('"')
+            folders.append(str(Path(folder).resolve()))
+        elif "search starts here:" in line:
             inside = True
         elif line.startswith("End of search list."):
             inside = False
@@ -327,20 +341,32 @@ def _check(
 
 
 def _check_inputs(manifest: Dict[str, Any]) -> Optional[str]:
-    """None if every recorded dependency and folder listing is unchanged."""
+    """None if every recorded dependency, folder listing and probe is unchanged."""
     deps = manifest.get("deps")
     folders = manifest.get("folders")
-    if not isinstance(deps, dict) or not deps or not isinstance(folders, dict):
+    probes = manifest.get("probes")
+    if (
+        not isinstance(deps, dict)
+        or not deps
+        or not isinstance(folders, dict)
+        or not isinstance(probes, dict)
+    ):
         return "no inputs recorded"
-    for path, sha in deps.items():
+    for path, recorded in deps.items():
         p = Path(path)
         if not p.is_file():
             return f"a dependency is gone: {path}"
-        if _sha256_file(p) != sha:
-            return f"a dependency changed: {path}"
+        stamp = _stamp(p)
+        if any(value != recorded.get(name) for name, value in stamp.items()):
+            # Not provably unchanged: compare the content
+            if _sha256_file(p) != recorded.get("sha256"):
+                return f"a dependency changed: {path}"
     for folder, listing in folders.items():
         if _listing(folder) != listing:
             return f"the files in a header folder changed: {folder}"
+    for path, exists in probes.items():
+        if os.path.lexists(path) != exists:
+            return f"a header that could shadow a dependency changed: {path}"
     return None
 
 
@@ -376,36 +402,61 @@ def restore(target: str, key: str, lib_file: str, build_path: Path) -> bool:
         if reason is not None:
             typer.echo(f"Library cache: not using {entry}: {reason}")
             return False
-        # Mark it as recently used, so pruning removes other entries first
-        os.utime(entry / MANIFEST)
-        typer.echo(f"Using the cached library {lib_file} ({entry})")
-        return True
     except Exception as e:  # pylint: disable=broad-except
         # A partial copy must not stay: the build that follows appends to an
         # existing archive (`ar qc`) instead of replacing it
         copy.unlink(missing_ok=True)
         _warn(f"cannot use {entry}: {e}")
         return False
+    try:
+        # Mark it as recently used, so pruning removes other entries first
+        os.utime(entry / MANIFEST)
+    except OSError:
+        pass  # only the pruning order
+    typer.echo(f"Using the cached library {lib_file} ({entry})")
+    return True
+
+
+def _changed_since(path: Path, started_ns: Optional[int]) -> bool:
+    if started_ns is None:
+        return False
+    return path.stat().st_ctime_ns > started_ns - CHANGED_MARGIN_NS
 
 
 def _inputs(
     build_path: Path, commands: Dict[str, str], started_ns: Optional[int]
-) -> Tuple[Dict[str, str], Dict[str, str]]:
-    """The files the compiler read, with their sha256, and the listing of every
-    header search folder and dependency folder. Raises ChangedDuringBuild when a
-    file changed after the build started."""
-    deps: Dict[str, str] = {}
+) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, str], Dict[str, bool]]:
+    """What the build depended on:
+    - deps: the files the compiler read, with their sha256 and stamp;
+    - folders: the listing of every header search folder and dependency folder;
+    - probes: for every dependency and every search folder, whether the same
+      relative path exists there (a header that would shadow it).
+    Raises ChangedDuringBuild when one of them changed after the build started."""
+    deps: Dict[str, Dict[str, Any]] = {}
     for dep_file in sorted(build_path.glob("*.d")):
         for path in parse_dep_file(dep_file.read_text(encoding="utf-8"), build_path):
             if str(path) in deps:
                 continue
-            if started_ns is not None and path.stat().st_mtime_ns > started_ns:
+            if _changed_since(path, started_ns):
                 raise ChangedDuringBuild(str(path))
-            deps[str(path)] = _sha256_file(path)
+            deps[str(path)] = dict(_stamp(path), sha256=_sha256_file(path))
     if not deps:
         raise RuntimeError("no dependency files were written")
-    folders = set(_search_dirs(commands)) | {str(Path(d).parent) for d in deps}
-    return deps, {folder: _listing(folder) for folder in sorted(folders)}
+    search = _search_dirs(commands)
+    folders: Dict[str, str] = {}
+    for folder in sorted(set(search) | {str(Path(d).parent) for d in deps}):
+        if os.path.isdir(folder) and _changed_since(Path(folder), started_ns):
+            raise ChangedDuringBuild(folder)
+        folders[folder] = _listing(folder)
+    probes: Dict[str, bool] = {}
+    for dep in deps:
+        for folder in search:
+            if dep.startswith(folder + os.sep):
+                relative = dep[len(folder) + 1 :]
+                for other in search:
+                    probe = os.path.join(other, relative)
+                    probes[probe] = os.path.lexists(probe)
+    return deps, folders, probes
 
 
 class ChangedDuringBuild(Exception):
@@ -425,7 +476,7 @@ def publish(  # pylint: disable=too-many-arguments, too-many-positional-argument
     root = _target_root(target)
     tmp = root / f".tmp-{key}-{os.getpid()}-{uuid.uuid4().hex}"
     try:
-        deps, folders = _inputs(build_path, commands, started_ns)
+        deps, folders, probes = _inputs(build_path, commands, started_ns)
         root = _private_root(target)
         tmp.mkdir(mode=0o700)
         lib_sha256 = _copy_hashed(build_path / lib_file, tmp / lib_file)
@@ -436,6 +487,7 @@ def publish(  # pylint: disable=too-many-arguments, too-many-positional-argument
             "lib_sha256": lib_sha256,
             "deps": deps,
             "folders": folders,
+            "probes": probes,
             "commands": commands,
             "icpp_pro": __version__,
             "icpp_candid": icpp_candid.__version__,
@@ -543,15 +595,16 @@ class LibraryBuild:  # pylint: disable=too-many-instance-attributes
 
     def publish(self) -> None:
         """Stores the library just built, when the cache is used."""
-        if self.with_deps and self.key is not None:
-            publish(
-                self.target,
-                self.key,
-                self.lib_file,
-                self.build_path,
-                self.commands,
-                self.started_ns,
-            )
+        if self.key is None or self.hit:
+            return
+        publish(
+            self.target,
+            self.key,
+            self.lib_file,
+            self.build_path,
+            self.commands,
+            self.started_ns,
+        )
 
 
 def start(  # pylint: disable=too-many-arguments, too-many-positional-arguments

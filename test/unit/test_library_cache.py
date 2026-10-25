@@ -9,6 +9,7 @@ import shutil
 import stat
 import subprocess
 import threading
+import time
 from pathlib import Path
 from typing import Dict, List
 
@@ -241,8 +242,9 @@ def test__a_cache_that_cannot_be_written_never_fails_a_build(
     cache_root.parent.mkdir(parents=True)
     cache_root.write_text("not a folder", encoding="utf-8")
     build_ = library_cache.start(TARGET, LIB, cmds, sources, LIB_FILE, build_path)
-    assert not build_.hit and build_.with_deps
-    build_.publish()
+    assert not build_.hit and build_.with_deps and build_.key is not None
+    # Without a start time: the sources were written just before this build
+    library_cache.publish(TARGET, build_.key, LIB_FILE, build_path, cmds)
     assert "WARNING: library cache: cannot store the library" in capsys.readouterr().out
     assert cache_root.read_text(encoding="utf-8") == "not a folder"
 
@@ -330,18 +332,26 @@ def test__a_library_swapped_after_the_validation_is_never_used(
 
 
 def test__a_header_changed_during_the_build_is_not_stored(
-    tmp_path: Path, cache_root: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    cache_root: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A header edited after the build started: the library is not stored."""
+    """A header changed after the build started, even with its old mtime kept
+    (as `cp -p` or `tar` do): its ctime gives it away, nothing is stored."""
+    monkeypatch.setattr(library_cache, "CHANGED_MARGIN_NS", 0)
     src = tmp_path / "src"
     sources = write_sources(src)
     cmds = commands(src)
     build_path = tmp_path / "build"
+    time.sleep(0.05)
     build_ = library_cache.start(TARGET, LIB, cmds, sources, LIB_FILE, build_path)
     build(sources, cmds, build_path)
+    time.sleep(0.05)
     header = src / "lib.h"
-    later = build_.started_ns + 10**9
-    os.utime(header, ns=(later, later))
+    old = header.stat()
+    header.write_text(header.read_text("utf-8"), encoding="utf-8")
+    os.utime(header, ns=(old.st_atime_ns, old.st_mtime_ns))
     build_.publish()
     assert "lib.h changed during the build" in capsys.readouterr().out
     assert not cache_root.exists() or not list(cache_root.iterdir())
@@ -371,7 +381,7 @@ def test__the_manifest_records_the_compiler_search_folders(
 
 def test__parse_search_dirs() -> None:
     text = (
-        "ignoring nonexistent directory /x\n"
+        'ignoring nonexistent directory "/x"\n'
         '#include "..." search starts here:\n'
         " /q\n"
         "#include <...> search starts here:\n"
@@ -381,6 +391,7 @@ def test__parse_search_dirs() -> None:
         " /not/a/folder\n"
     )
     assert library_cache.parse_search_dirs(text) == [
+        str(Path("/x").resolve()),
         str(Path("/q").resolve()),
         str(Path("/a/include").resolve()),
         str(Path("/System/Library/Frameworks").resolve()),

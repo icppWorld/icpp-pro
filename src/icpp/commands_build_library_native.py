@@ -74,6 +74,16 @@ def build_library_native(
     # cpp_link_flags_defaults_s = config_default.NATIVE_LDFLAGS
     c_compile_flags_defaults_s = config_default.NATIVE_CFLAGS
 
+    def report_done(build_path: Path, full_lib_name: str) -> None:
+        typer.echo("--")
+        typer.echo("All done building the native static library:")
+        typer.echo(f"{build_path.resolve()}/{full_lib_name}")
+        try:
+            typer.echo("✔️")
+        except UnicodeEncodeError:
+            typer.echo(" ")
+        typer.echo("-----")
+
     def cpp_compile_file_mine(
         file: str, cpp_compile_cmd: str, path: Path, with_deps: bool = False
     ) -> None:
@@ -214,8 +224,7 @@ def build_library_native(
                 parallel=CONCURRENCY == "multi-threading",
             )
             if cache.hit:
-                typer.echo("All done building the native static library:")
-                typer.echo(f"{build_path.resolve()}/{full_lib_name}")
+                report_done(build_path, full_lib_name)
                 continue
 
             try:
@@ -300,14 +309,4 @@ def build_library_native(
                 )
                 sys.exit(1)
 
-            # ----------------------------------------------------------------------
-            typer.echo("--")
-            typer.echo("All done building the native static library:")
-            typer.echo(f"{build_path.resolve()}/{full_lib_name}")
-            try:
-                typer.echo("✔️")
-            except UnicodeEncodeError:
-                typer.echo(" ")
-
-            # ----------------------------------------------------------------------
-            typer.echo("-----")
+            report_done(build_path, full_lib_name)

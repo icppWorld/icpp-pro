@@ -19,8 +19,9 @@ sha256 over:
   text, and the path of a folder;
 - the icpp-pro & icpp-candid versions.
 
-The key is computed again after a build, before the library is stored: when
-anything changed during the build, nothing is stored.
+A library is not stored when one of the files its compiles read (from the
+`-MD` dependency files they write) changed after the build started: by ctime,
+which every write updates, with a margin of a few seconds.
 
 Any doubt makes it a miss, and any error in this module prints a warning and
 falls back to a normal build: the cache can never fail a build.
@@ -73,6 +74,11 @@ MAX_BYTES = 2 * 1024**3
 # A temporary folder older than this is left over from a build that was killed
 STALE_TMP_SECONDS = 3600
 
+# A file whose ctime is later than the start of the build, less this margin,
+# changed during the build: the library is not stored. (Inode times can lag the
+# clock a little; erring this way only means storing less.)
+CHANGED_MARGIN_NS = 2 * 10**9
+
 
 def enabled() -> bool:
     """False when ICPP_LIBRARY_CACHE is 0, false, no or off."""
@@ -83,6 +89,59 @@ def enabled() -> bool:
 def is_cached(lib_name: str) -> bool:
     """True for the library that is cached, when the cache is on."""
     return lib_name == CACHED_LIBRARY and enabled()
+
+
+def dep_flags(output_file: str) -> str:
+    """The compile flags that write the dependency file of one object."""
+    return f"-MD -MF {output_file}.d"
+
+
+def parse_dep_file(text: str, base: Path) -> List[Path]:
+    """The prerequisites of a make rule written by `-MD`, as absolute paths."""
+    text = text.replace("\\\r\n", " ").replace("\\\n", " ")
+    _, sep, rest = text.partition(": ")
+    if not sep:
+        _, _, rest = text.partition(":\n")
+    words: List[str] = []
+    current = ""
+    i = 0
+    while i < len(rest):
+        c = rest[i]
+        if c == "\\" and i + 1 < len(rest) and rest[i + 1] in " #\\":
+            current += rest[i + 1]
+            i += 2
+            continue
+        if c == "$" and i + 1 < len(rest) and rest[i + 1] == "$":
+            current += "$"
+            i += 2
+            continue
+        if c.isspace():
+            if current:
+                words.append(current)
+            current = ""
+        else:
+            current += c
+        i += 1
+    if current:
+        words.append(current)
+    return [Path(os.path.normpath(os.path.join(base, w))) for w in words]
+
+
+def changed_during_build(build_path: Path, started_ns: int) -> Optional[str]:
+    """A file a compile read that changed after the build started, if any; also
+    when the dependency files are missing (then nothing proves otherwise)."""
+    dep_files = sorted(build_path.glob("*.d"))
+    if not dep_files:
+        return "no dependency files"
+    seen = set()
+    for dep_file in dep_files:
+        for path in parse_dep_file(dep_file.read_text(encoding="utf-8"), build_path):
+            if path in seen:
+                continue
+            seen.add(path)
+            if path.stat().st_ctime_ns > started_ns - CHANGED_MARGIN_NS:
+                return str(path)
+    return None
 
 
 def _warn(message: str, after: str = "Building without it.") -> None:
@@ -529,28 +588,26 @@ class LibraryBuild:  # pylint: disable=too-many-instance-attributes
     c_sources: Sequence[str] = field(default_factory=list)
     key: Optional[str] = None
     hit: bool = False
+    started_ns: int = 0
+
+    @property
+    def with_deps(self) -> bool:
+        """True when the compiles must write dependency files, for publish()."""
+        return self.key is not None and not self.hit
 
     def publish(self) -> None:
-        """Stores the library just built, unless the cache is not used, or an
-        input changed during the build (the key is computed again)."""
-        if self.key is None or self.hit:
+        """Stores the library just built, unless the cache is not used, or a file
+        the compiles read changed during the build."""
+        if not self.with_deps or self.key is None:
             return
         try:
-            key_after = compute_key(
-                self.target,
-                self.lib_name,
-                self.commands,
-                self.cpp_sources,
-                self.build_path,
-                self.c_sources,
-            )
+            changed = changed_during_build(self.build_path, self.started_ns)
         except Exception as e:  # pylint: disable=broad-except
-            _warn(f"cannot check the inputs again: {e}", "The build itself is fine.")
-            return
-        if key_after != self.key:
+            changed = f"(cannot check: {e})"
+        if changed is not None:
             typer.echo(
-                "Library cache: not storing the library: "
-                "an input changed during the build"
+                f"Library cache: not storing the library: {changed} "
+                "changed during the build"
             )
             return
         publish(self.target, self.key, self.lib_file, self.build_path, self.commands)
@@ -571,6 +628,7 @@ def start(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     build = LibraryBuild(
         target, lib_name, lib_file, build_path, commands, sources[0], sources[1]
     )
+    build.started_ns = time.time_ns()
     if not is_cached(lib_name):
         return build
     try:

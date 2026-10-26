@@ -9,6 +9,7 @@ import shutil
 import stat
 import subprocess
 import threading
+import time
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -48,13 +49,15 @@ def commands(src: Path, flags: str = "-O0", include: str = "") -> Dict[str, str]
 
 
 def build(sources: List[str], cmds: Dict[str, str], build_path: Path) -> None:
-    """Builds like the library builders do: objects, then an archive."""
+    """Builds like the library builders do: objects with their dependency
+    files, then an archive."""
     if build_path.exists():
         shutil.rmtree(build_path)
     build_path.mkdir(parents=True)
     for source in sources:
+        name = Path(source).stem
         subprocess.run(
-            f"{cmds['cpp']} -c {source} -o {Path(source).stem}.o",
+            f"{cmds['cpp']} -c {source} -o {name}.o {library_cache.dep_flags(name)}",
             shell=True,
             check=True,
             cwd=build_path,
@@ -77,6 +80,8 @@ def key(cmds: Dict[str, str], sources: List[str], cwd: Path) -> str:
 def cache_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(config_default, "ICPP_ROOT", tmp_path / "icpp-root")
     monkeypatch.delenv("ICPP_LIBRARY_CACHE", raising=False)
+    # The tests write their sources just before they build
+    monkeypatch.setattr(library_cache, "CHANGED_MARGIN_NS", 0)
     for name in ("CPATH", "CPLUS_INCLUDE_PATH"):
         monkeypatch.delenv(name, raising=False)
     return tmp_path / "icpp-root" / "cache" / "libraries" / TARGET
@@ -337,6 +342,7 @@ def test__start_then_publish_then_start_is_a_hit(tmp_path: Path) -> None:
     cmds = commands(src)
     build_path = tmp_path / "build"
     build_path.mkdir()
+    time.sleep(0.05)
     first = library_cache.start(TARGET, LIB, cmds, (sources, []), LIB_FILE, build_path)
     assert not first.hit and first.key is not None
     build(sources, cmds, build_path)
@@ -350,8 +356,29 @@ def test__start_then_publish_then_start_is_a_hit(tmp_path: Path) -> None:
 def test__an_input_changed_during_the_build_is_not_stored(
     tmp_path: Path, cache_root: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The key is computed again before storing: a header edited while the
-    library was being built makes it differ, and nothing is stored."""
+    """A header edited after the build started, even with its old mtime kept
+    (as `cp -p` or `tar` do): its ctime gives it away, nothing is stored."""
+    src = tmp_path / "src"
+    sources = write_sources(src)
+    cmds = commands(src)
+    build_path = tmp_path / "build"
+    build_path.mkdir()
+    time.sleep(0.05)
+    build_ = library_cache.start(TARGET, LIB, cmds, (sources, []), LIB_FILE, build_path)
+    build(sources, cmds, build_path)
+    header = src / "lib.h"
+    old = header.stat()
+    header.write_text(header.read_text("utf-8"), encoding="utf-8")
+    os.utime(header, ns=(old.st_atime_ns, old.st_mtime_ns))
+    build_.publish()
+    assert "lib.h changed during the build" in capsys.readouterr().out
+    assert not cache_root.exists() or not list(cache_root.iterdir())
+
+
+def test__no_dependency_files_means_nothing_is_stored(
+    tmp_path: Path, cache_root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Without the dependency files nothing proves the inputs held still."""
     src = tmp_path / "src"
     sources = write_sources(src)
     cmds = commands(src)
@@ -359,10 +386,22 @@ def test__an_input_changed_during_the_build_is_not_stored(
     build_path.mkdir()
     build_ = library_cache.start(TARGET, LIB, cmds, (sources, []), LIB_FILE, build_path)
     build(sources, cmds, build_path)
-    write_sources(src, header_value=9)  # "during the build"
+    for dep_file in build_path.glob("*.d"):
+        dep_file.unlink()
     build_.publish()
-    assert "an input changed during the build" in capsys.readouterr().out
+    assert "no dependency files changed during the build" in capsys.readouterr().out
     assert not cache_root.exists() or not list(cache_root.iterdir())
+
+
+def test__parse_dep_file() -> None:
+    """Make syntax: line continuations, escaped spaces and $$, relative paths."""
+    text = "a.o: /x/a.cpp /x/my\\ dir/h.h \\\n  rel/b.h /x/c$$.h\n"
+    assert library_cache.parse_dep_file(text, Path("/base")) == [
+        Path("/x/a.cpp"),
+        Path("/x/my dir/h.h"),
+        Path("/base/rel/b.h"),
+        Path("/x/c$.h"),
+    ]
 
 
 @pytest.mark.parametrize("damage", ["truncate_lib", "garble_manifest", "no_manifest"])

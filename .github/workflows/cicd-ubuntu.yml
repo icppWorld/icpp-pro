@@ -144,7 +144,7 @@ jobs:
         id: candid-key
         run: |
           echo "ICPP_CANDID_LIBRARY_DIR=${{ runner.temp }}/candid-library" >> "$GITHUB_ENV"
-          echo "key=candid-lib-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && 'all' || 'smoke' }}-${{ hashFiles('icpp-candid/src/icpp_candid/**', 'src/icpp/ic/**', 'src/icpp/version*.py', 'src/icpp/config_default.py', 'src/icpp/icpp_toml.py', 'src/icpp/candid_library.py', 'src/icpp/commands_build_library*.py', 'src/icpp/canisters/**/icpp*.toml', 'test/canisters/**/icpp*.toml') }}" >> "$GITHUB_OUTPUT"
+          echo "key=candid-lib-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && 'all' || 'smoke' }}-${{ hashFiles('icpp-candid/src/icpp_candid/**', 'src/icpp/ic/**', 'src/icpp/version*.py', 'src/icpp/config_default.py', 'src/icpp/icpp_toml.py', 'src/icpp/candid_library.py', 'src/icpp/commands_build_library*.py', 'src/icpp/canisters/**/icpp*.toml', 'test/canisters/**/icpp*.toml', '!**/__pycache__/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: restore-candid-library
         id: candid-library

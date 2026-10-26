@@ -12,10 +12,11 @@ sha256 over:
 - the exact compile & archive commands, and the compiler driver's fully
   resolved command line (`-###`: config files, sysroot, flags set through the
   environment), for what codegen does with that text;
-- the identity of each compiler (path, `--version`, size, mtime);
-- the build folder, when the canister passes flags of its own (a flag may name
-  a file that is not in the preprocessed text, e.g. a profile, by a relative
-  path);
+- the identity of each compiler (path, `--version`, size, mtime; on macOS of
+  the real tool behind the xcrun shim);
+- every file or folder a command names (resolved from the build folder): the
+  content of a file, e.g. a profile or a plugin that is not in the preprocessed
+  text, and the path of a folder;
 - the icpp-pro & icpp-candid versions.
 
 The key is computed again after a build, before the library is stored: when
@@ -44,11 +45,12 @@ import shlex
 import shutil
 import stat
 import subprocess
+import sys
 import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import typer
 
@@ -56,7 +58,7 @@ import icpp_candid
 from icpp import __version__, config_default
 
 # Bump to invalidate every entry, e.g. when what goes into the key changes
-SCHEMA = 6
+SCHEMA = 7
 
 # The one library that is cached
 CACHED_LIBRARY = "__ic_candid__"
@@ -125,15 +127,14 @@ def _cache_levels(target: str) -> List[Path]:
 
 def _untrusted(path: Path) -> Optional[str]:
     """None if path may be trusted, else why not: a symlink, owned by another
-    user, or writable by group or others. (No uids on Windows: only symlinks.)"""
+    user, or writable by group or others."""
     st = path.lstat()
     if stat.S_ISLNK(st.st_mode):
         return f"{path} is a symlink"
-    if hasattr(os, "getuid"):
-        if st.st_uid != os.getuid():
-            return f"{path} belongs to another user"
-        if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
-            return f"{path} is writable by others"
+    if st.st_uid != os.getuid():
+        return f"{path} belongs to another user"
+    if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        return f"{path} is writable by others"
     return None
 
 
@@ -143,7 +144,7 @@ def _tighten(level: Path) -> None:
     entry planted while a folder was open belongs to someone else (refused). It
     matters for a cache restored by `tar` (CI), which creates the folders above
     it with the umask, e.g. 0775."""
-    if not hasattr(os, "getuid") or not os.path.lexists(level):
+    if not os.path.lexists(level):
         return
     st = level.lstat()
     if stat.S_ISDIR(st.st_mode) and st.st_uid == os.getuid():
@@ -167,7 +168,11 @@ def _private_root(target: str) -> Path:
 
 
 def _split(command: str) -> List[str]:
-    return shlex.split(command, posix=os.name != "nt")
+    return shlex.split(command)
+
+
+# Preprocessing runs in parallel; canisters may build in parallel too
+MAX_WORKERS = max(1, (os.cpu_count() or 2) // 2)
 
 
 @functools.lru_cache(maxsize=None)
@@ -185,13 +190,56 @@ def _version_output(path: str, size: int, mtime_ns: int) -> Tuple[str, int]:
     return version.stdout + version.stderr, version.returncode
 
 
+def _behind_xcrun(path: Path, program: str) -> Path:
+    """On macOS, /usr/bin/clang, ar, ... are xcrun shims that stay the same when
+    the Command Line Tools or Xcode are updated: the real tool behind them."""
+    if sys.platform != "darwin" or path.parent != Path("/usr/bin"):
+        return path
+    result = subprocess.run(
+        ["xcrun", "--find", Path(program).name],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    found = result.stdout.strip()
+    return Path(found).resolve() if result.returncode == 0 and found else path
+
+
+def _named_paths(commands: Dict[str, str], cwd: Path) -> List[Tuple[str, str]]:
+    """Every file or folder a command names, resolved from cwd as the compiler
+    resolves it: (path, sha256 of the content) for a file, (path, "folder") for
+    a folder. A candidate is each argument, the part after its first `=`, and the
+    part after a short flag (e.g. -Ipath). The compiler itself is in the
+    identity instead."""
+    named: Dict[str, str] = {}
+    for command in commands.values():
+        for token in _split(command)[1:]:
+            candidates = [token]
+            if "=" in token:
+                candidates.append(token.split("=", 1)[1])
+            if token.startswith("-") and not token.startswith("--"):
+                candidates.append(token[2:])
+            for candidate in candidates:
+                if not candidate or candidate.startswith("-"):
+                    continue
+                path = os.path.normpath(os.path.join(cwd, candidate))
+                if path in named:
+                    continue
+                if os.path.isfile(path):
+                    named[path] = _sha256_file(Path(path))
+                elif os.path.isdir(path):
+                    named[path] = "folder"
+    return sorted(named.items())
+
+
 def _compiler_identity(command: str) -> Dict[str, Any]:
     """Who the compiler of a command is: path, `--version`, size and mtime."""
     program = _split(command)[0]
     found = shutil.which(program)
     if found is None:
         raise RuntimeError(f"compiler not found: {program}")
-    real = Path(found).resolve()
+    real = _behind_xcrun(Path(found).resolve(), program)
     st = real.stat()
     output, returncode = _version_output(str(real), st.st_size, st.st_mtime_ns)
     return {
@@ -226,7 +274,7 @@ def _preprocessed_sha256(command: str, source: str, cwd: Path) -> str:
     """The sha256 of the preprocessed output of one source: the text the
     compiler compiles, with every header it would include."""
     result = subprocess.run(
-        f"{command} -E {shlex.quote(source)}",
+        f"{command} -E {source}",
         shell=True,
         capture_output=True,
         timeout=600,
@@ -239,14 +287,16 @@ def _preprocessed_sha256(command: str, source: str, cwd: Path) -> str:
 
 
 def _preprocessed(
-    commands: Dict[str, str], sources: List[str], cwd: Path
+    commands: Dict[str, str],
+    cpp_sources: Sequence[str],
+    c_sources: Sequence[str],
+    cwd: Path,
 ) -> List[Tuple[str, str]]:
-    """(source, sha256 of its preprocessed output), sorted, for every source:
-    .c files with the C command, the others with the C++ command."""
-    jobs = [
-        (s, commands["c"] if s.endswith(".c") else commands["cpp"]) for s in sources
-    ]
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    """(source, sha256 of its preprocessed output), sorted, for every source,
+    with the command the builder compiles it with."""
+    jobs = [(s, commands["cpp"]) for s in cpp_sources]
+    jobs += [(s, commands["c"]) for s in c_sources]
+    with concurrent.futures.ThreadPoolExecutor(MAX_WORKERS) as executor:
         digests = executor.map(
             lambda job: _preprocessed_sha256(job[1], job[0], cwd), jobs
         )
@@ -257,13 +307,12 @@ def compute_key(  # pylint: disable=too-many-arguments, too-many-positional-argu
     target: str,
     lib_name: str,
     commands: Dict[str, str],
-    sources: List[str],
+    cpp_sources: Sequence[str],
     cwd: Optional[Path] = None,
-    own_flags: bool = False,
+    c_sources: Sequence[str] = (),
 ) -> str:
     """The sha256 of everything that goes into the library. cwd is the folder the
-    compiles run in. With own_flags (the canister passes flags of its own) cwd
-    is in the key, so only the same canister shares the entry."""
+    compiles run in."""
     cwd = (cwd or Path.cwd()).resolve()
     data = {
         "schema": SCHEMA,
@@ -280,8 +329,8 @@ def compute_key(  # pylint: disable=too-many-arguments, too-many-positional-argu
             for name, language in (("cpp", "c++"), ("c", "c"))
             if commands.get(name)
         },
-        "cwd": str(cwd) if own_flags else None,
-        "sources": _preprocessed(commands, sources, cwd),
+        "named": _named_paths(commands, cwd),
+        "sources": _preprocessed(commands, cpp_sources, c_sources, cwd),
     }
     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
@@ -476,8 +525,8 @@ class LibraryBuild:  # pylint: disable=too-many-instance-attributes
     lib_file: str
     build_path: Path
     commands: Dict[str, str]
-    sources: List[str] = field(default_factory=list)
-    own_flags: bool = False
+    cpp_sources: Sequence[str] = field(default_factory=list)
+    c_sources: Sequence[str] = field(default_factory=list)
     key: Optional[str] = None
     hit: bool = False
 
@@ -491,9 +540,9 @@ class LibraryBuild:  # pylint: disable=too-many-instance-attributes
                 self.target,
                 self.lib_name,
                 self.commands,
-                self.sources,
+                self.cpp_sources,
                 self.build_path,
-                self.own_flags,
+                self.c_sources,
             )
         except Exception as e:  # pylint: disable=broad-except
             _warn(f"cannot check the inputs again: {e}", "The build itself is fine.")
@@ -511,22 +560,29 @@ def start(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     target: str,
     lib_name: str,
     commands: Dict[str, str],
-    sources: List[str],
+    sources: Tuple[Sequence[str], Sequence[str]],
     lib_file: str,
     build_path: Path,
-    own_flags: bool = False,
 ) -> LibraryBuild:
     """Before building a library: restores the cached copy into build_path when
     there is a valid one (hit), else returns what publish() needs after the
-    build. Never raises."""
+    build. sources are the C++ and the C sources. build_path must be empty: a
+    leftover object would end up in the archive. Never raises."""
     build = LibraryBuild(
-        target, lib_name, lib_file, build_path, commands, sources, own_flags
+        target, lib_name, lib_file, build_path, commands, sources[0], sources[1]
     )
     if not is_cached(lib_name):
         return build
     try:
+        if any(build_path.iterdir()):
+            _warn(f"{build_path} is not empty")
+            return build
+    except OSError as e:
+        _warn(f"cannot read {build_path}: {e}")
+        return build
+    try:
         build.key = compute_key(
-            target, lib_name, commands, sources, build_path, own_flags
+            target, lib_name, commands, sources[0], build_path, sources[1]
         )
     except Exception as e:  # pylint: disable=broad-except
         _warn(f"cannot compute the key: {e}")

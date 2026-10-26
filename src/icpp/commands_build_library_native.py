@@ -210,15 +210,9 @@ def build_library_native(
                     "c": c_compile_cmd_mine,
                     "ar": f"{config_default.NATIVE_AR} {config_default.NATIVE_ARFLAGS}",
                 },
-                cpp_files_list + c_files_list,
+                (cpp_files_list, c_files_list),
                 full_lib_name,
                 build_path,
-                own_flags=bool(
-                    f"{cpp_include_flags}{c_include_flags}"
-                    f"{cpp_compile_flags_s}{c_compile_flags_s}".strip()
-                    or cpp_compile_flags_defaults_s != config_default.NATIVE_CPPFLAGS
-                    or c_compile_flags_defaults_s != config_default.NATIVE_CFLAGS
-                ),
             )
             if cache.hit:
                 report_done(build_path, full_lib_name)

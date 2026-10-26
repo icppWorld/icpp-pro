@@ -62,6 +62,13 @@ def build(sources: List[str], cmds: Dict[str, str], build_path: Path) -> None:
     subprocess.run(f"ar qc {LIB_FILE} *.o", shell=True, check=True, cwd=build_path)
 
 
+def empty_dir(tmp_path: Path) -> Path:
+    """A new, empty build folder, as the builders hand to start()."""
+    folder = tmp_path / "empty-build"
+    folder.mkdir(exist_ok=True)
+    return folder
+
+
 def key(cmds: Dict[str, str], sources: List[str], cwd: Path) -> str:
     return library_cache.compute_key(TARGET, LIB, cmds, sources, cwd)
 
@@ -214,24 +221,76 @@ def test__a_relative_include_path_from_the_environment_is_per_canister(
     )
 
 
-def test__own_flags_put_the_build_folder_in_the_key(tmp_path: Path) -> None:
-    """A canister's own flags may name files that are not in the preprocessed
-    text, by a relative path: its build folder is in the key. Without own flags,
-    canisters share the key."""
+def test__a_file_named_by_a_flag_is_in_the_key(tmp_path: Path) -> None:
+    """A profile, plugin or ignorelist named by a flag is not in the preprocessed
+    text: its content is in the key, resolved from the build folder."""
+    src = tmp_path / "src"
+    sources = write_sources(src)
+    build_path = tmp_path / "build"
+    build_path.mkdir()
+    (build_path / "prof").mkdir()
+    profile = build_path / "prof" / "ignore.txt"
+    profile.write_text("fun:a\n", encoding="utf-8")
+    cmds = commands(src, "-O0 -fsanitize-ignorelist=prof/ignore.txt")
+    k = key(cmds, sources, build_path)
+    profile.write_text("fun:b\n", encoding="utf-8")
+    assert k != key(cmds, sources, build_path)
+
+
+def test__canisters_with_only_macros_share_the_key(tmp_path: Path) -> None:
+    """-D flags name no file: canisters with the same macros share the entry."""
     src = tmp_path / "src"
     sources = write_sources(src)
     a, b = tmp_path / "a" / "build", tmp_path / "b" / "build"
     a.mkdir(parents=True)
     b.mkdir(parents=True)
-    cmds = commands(src)
-
-    def own(cwd: Path) -> str:
-        return library_cache.compute_key(
-            TARGET, LIB, cmds, sources, cwd, own_flags=True
-        )
-
-    assert own(a) != own(b)
+    cmds = commands(src, "-O0 -D JSON_HAS_FILESYSTEM=0 -DX=1")
     assert key(cmds, sources, a) == key(cmds, sources, b)
+
+
+def test__a_relative_folder_flag_is_per_canister(tmp_path: Path) -> None:
+    """-I ../shared resolves to another folder for each canister."""
+    src = tmp_path / "src"
+    sources = write_sources(src)
+    for canister in ("a", "b"):
+        (tmp_path / canister / "build").mkdir(parents=True)
+        (tmp_path / canister / "shared").mkdir()
+    cmds = commands(src, "-O0 -I ../shared")
+    assert key(cmds, sources, tmp_path / "a" / "build") != key(
+        cmds, sources, tmp_path / "b" / "build"
+    )
+
+
+def test__a_c_file_compiled_as_cpp_is_preprocessed_as_cpp(tmp_path: Path) -> None:
+    """The source lists, not the extension, say which compiler: a header seen
+    only under __cplusplus changes the key when the .c file is a C++ source."""
+    src = tmp_path / "src"
+    write_sources(src)
+    c_file = src / "c.c"
+    c_file.write_text(
+        "#ifdef __cplusplus\n#include <lib.h>\n#endif\nint c(void) { return 0; }\n",
+        encoding="utf-8",
+    )
+    cmds = commands(src)
+    k = library_cache.compute_key(TARGET, LIB, cmds, [str(c_file)], tmp_path)
+    write_sources(src, header_value=3)
+    assert k != library_cache.compute_key(TARGET, LIB, cmds, [str(c_file)], tmp_path)
+
+
+def test__a_build_folder_that_is_not_empty_means_no_cache(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A leftover object would end up in the archive, and then in the cache."""
+    src = tmp_path / "src"
+    sources = write_sources(src)
+    build_path = tmp_path / "build"
+    build_path.mkdir()
+    (build_path / "old.o").write_bytes(b"left over")
+    build_ = library_cache.start(
+        TARGET, LIB, commands(src), (sources, []), LIB_FILE, build_path
+    )
+    assert (build_.hit, build_.key) == (False, None)
+    assert "is not empty" in capsys.readouterr().out
 
 
 def test__a_source_that_does_not_preprocess_means_no_cache(
@@ -241,7 +300,7 @@ def test__a_source_that_does_not_preprocess_means_no_cache(
     sources = write_sources(src)
     (src / "lib.h").unlink()
     build_ = library_cache.start(
-        TARGET, LIB, commands(src), sources, LIB_FILE, tmp_path
+        TARGET, LIB, commands(src), (sources, []), LIB_FILE, empty_dir(tmp_path)
     )
     assert (build_.hit, build_.key) == (False, None)
     assert "cannot compute the key: cannot preprocess" in capsys.readouterr().out
@@ -253,7 +312,9 @@ def test__a_missing_compiler_means_no_cache(
     src = tmp_path / "src"
     sources = write_sources(src)
     cmds = dict(commands(src), cpp="no-such-compiler -O0")
-    build_ = library_cache.start(TARGET, LIB, cmds, sources, LIB_FILE, tmp_path)
+    build_ = library_cache.start(
+        TARGET, LIB, cmds, (sources, []), LIB_FILE, empty_dir(tmp_path)
+    )
     assert (build_.hit, build_.key) == (False, None)
     assert "cannot compute the key" in capsys.readouterr().out
 
@@ -276,11 +337,13 @@ def test__start_then_publish_then_start_is_a_hit(tmp_path: Path) -> None:
     cmds = commands(src)
     build_path = tmp_path / "build"
     build_path.mkdir()
-    first = library_cache.start(TARGET, LIB, cmds, sources, LIB_FILE, build_path)
+    first = library_cache.start(TARGET, LIB, cmds, (sources, []), LIB_FILE, build_path)
     assert not first.hit and first.key is not None
     build(sources, cmds, build_path)
     first.publish()
-    second = library_cache.start(TARGET, LIB, cmds, sources, LIB_FILE, build_path)
+    shutil.rmtree(build_path)  # as the builders do before every build
+    build_path.mkdir()
+    second = library_cache.start(TARGET, LIB, cmds, (sources, []), LIB_FILE, build_path)
     assert second.hit and second.key == first.key
 
 
@@ -294,7 +357,7 @@ def test__an_input_changed_during_the_build_is_not_stored(
     cmds = commands(src)
     build_path = tmp_path / "build"
     build_path.mkdir()
-    build_ = library_cache.start(TARGET, LIB, cmds, sources, LIB_FILE, build_path)
+    build_ = library_cache.start(TARGET, LIB, cmds, (sources, []), LIB_FILE, build_path)
     build(sources, cmds, build_path)
     write_sources(src, header_value=9)  # "during the build"
     build_.publish()
@@ -354,7 +417,7 @@ def test__off_switch(
     for value in ("0", "false", "No", "off"):
         monkeypatch.setenv("ICPP_LIBRARY_CACHE", value)
         build_ = library_cache.start(
-            TARGET, LIB, commands(src), sources, LIB_FILE, tmp_path
+            TARGET, LIB, commands(src), (sources, []), LIB_FILE, empty_dir(tmp_path)
         )
         assert (build_.hit, build_.key) == (False, None)
         build_.publish()
@@ -367,7 +430,7 @@ def test__only_the_icpp_candid_library_is_cached(tmp_path: Path) -> None:
     src = tmp_path / "src"
     sources = write_sources(src)
     build_ = library_cache.start(
-        TARGET, "my_lib", commands(src), sources, "my_lib.a", tmp_path
+        TARGET, "my_lib", commands(src), (sources, []), "my_lib.a", tmp_path
     )
     assert (build_.hit, build_.key) == (False, None)
 
@@ -514,7 +577,7 @@ def test__start_never_raises(
 
     monkeypatch.setattr(library_cache, "restore", broken_restore)
     build_ = library_cache.start(
-        TARGET, LIB, commands(src), sources, LIB_FILE, tmp_path
+        TARGET, LIB, commands(src), (sources, []), LIB_FILE, empty_dir(tmp_path)
     )
     assert (build_.hit, build_.key) == (False, None)
     assert "cannot use the cache: unexpected" in capsys.readouterr().out

@@ -84,31 +84,23 @@ def build_library_native(
             typer.echo(" ")
         typer.echo("-----")
 
-    def cpp_compile_file_mine(
-        file: str, cpp_compile_cmd: str, path: Path, with_deps: bool = False
-    ) -> None:
+    def cpp_compile_file_mine(file: str, cpp_compile_cmd: str, path: Path) -> None:
         # ensure unique *.o names, even if file has same name in a subdirectory
         # pylint: disable=no-member
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
         cmd = f"{cpp_compile_cmd} -c {file} -o {output_file}.o"
-        if with_deps:
-            cmd += f" {library_cache.dep_flags(output_file)}"
         typer.echo(file)
         run_shell_cmd(cmd, cwd=path)
 
-    def c_compile_file_mine(
-        file: str, c_compile_cmd: str, path: Path, with_deps: bool = False
-    ) -> None:
+    def c_compile_file_mine(file: str, c_compile_cmd: str, path: Path) -> None:
         # ensure unique *.o names, even if file has same name in a subdirectory
         # pylint: disable=no-member
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
         cmd = f"{c_compile_cmd} -c {file} -o {output_file}.o"
-        if with_deps:
-            cmd += f" {library_cache.dep_flags(output_file)}"
         typer.echo(file)
         run_shell_cmd(cmd, cwd=path)
 
@@ -221,7 +213,6 @@ def build_library_native(
                 cpp_files_list + c_files_list,
                 full_lib_name,
                 build_path,
-                parallel=CONCURRENCY == "multi-threading",
                 own_flags=bool(
                     f"{cpp_include_flags}{c_include_flags}"
                     f"{cpp_compile_flags_s}{c_compile_flags_s}".strip()
@@ -248,7 +239,6 @@ def build_library_native(
                                 cpp_compile_file_mine,
                                 cpp_compile_cmd=cpp_compile_cmd_mine,
                                 path=build_path,
-                                with_deps=cache.with_deps,
                             ),
                             cpp_files_list,
                         )
@@ -276,7 +266,6 @@ def build_library_native(
                                 c_compile_file_mine,
                                 c_compile_cmd=c_compile_cmd_mine,
                                 path=build_path,
-                                with_deps=cache.with_deps,
                             ),
                             c_files_list,
                         )

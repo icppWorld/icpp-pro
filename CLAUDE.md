@@ -112,8 +112,8 @@ Every canister supports two build targets configured in `icpp.toml`:
 - Rust (for wasi2ic converter)
 - icp-cli (Internet Computer SDK, `npm install -g @icp-sdk/icp-cli`)
 - `cache/libraries/` - the icpp-candid library build cache (`src/icpp/library_cache.py`):
-  keyed on a hash of every input, re-checked before every use, pruned to 8 entries / 2 GiB per
-  target. `ICPP_LIBRARY_CACHE=0` turns it off; deleting the folder clears it
+  keyed on the preprocessed sources, commands and compiler, private (0700), pruned to
+  8 entries / 2 GiB per target. `ICPP_LIBRARY_CACHE=0` turns it off; deleting the folder clears it
 
 ## Code Quality
 

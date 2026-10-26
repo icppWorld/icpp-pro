@@ -14,11 +14,12 @@ import typer
 from icpp import __version__
 from icpp.__main__ import app
 
-from icpp import config_default
+from icpp import config_default, candid_library
 from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
 
 from icpp.decorators import requires_native_compiler
 from icpp.options_build import (
+    CandidLibraryDirOption,
     config_callback,
 )
 
@@ -42,6 +43,7 @@ def build_library_native(
             help="lib_name to build. If not specified, all libraries are built."
         ),
     ] = None,
+    candid_library_dir: CandidLibraryDirOption = None,
 ) -> None:
     """Builds one or more native static debug libraries."""
 
@@ -191,6 +193,29 @@ def build_library_native(
                 f"{c_include_flags} {c_compile_flags_s} "
             )
 
+            # The icpp-candid library: reuse the one saved in the folder, if any
+            candid_folder = candid_library.folder(candid_library_dir)
+            candid_stamp = None
+            if candid_folder is not None and library["lib_name"] == "__ic_candid__":
+                candid_stamp = candid_library.stamp(
+                    "native",
+                    {
+                        "cpp": cpp_compile_cmd_mine,
+                        "c": c_compile_cmd_mine,
+                        "ar": (
+                            f"{config_default.NATIVE_AR} "
+                            f"{config_default.NATIVE_ARFLAGS}"
+                        ),
+                    },
+                )
+                if candid_library.restore(
+                    candid_folder, "native", candid_stamp[1], full_lib_name, build_path
+                ):
+                    typer.echo("--")
+                    typer.echo("All done building the native static library:")
+                    typer.echo(f"{build_path.resolve()}/{full_lib_name}")
+                    continue
+
             try:
                 # ----------------------------------------------------------------------
                 # compile C++ files, if we have any
@@ -254,10 +279,22 @@ def build_library_native(
                     f"{full_lib_name} *.o"
                 )
 
+                # `ar qc` appends to an existing archive: start from none
+                (build_path / full_lib_name).unlink(missing_ok=True)
                 typer.echo("--")
                 typer.echo(f"Creating the static library: {full_lib_name}")
                 typer.echo(cmd)
                 run_shell_cmd(cmd, cwd=build_path)
+
+                if candid_folder is not None and candid_stamp is not None:
+                    candid_library.save(
+                        candid_folder,
+                        "native",
+                        candid_stamp[1],
+                        candid_stamp[0],
+                        full_lib_name,
+                        build_path,
+                    )
 
             except subprocess.CalledProcessError as e:
                 sys.exit(e.returncode)

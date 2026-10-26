@@ -18,6 +18,7 @@ from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
 
 from icpp.decorators import requires_wasi_sdk, requires_rust, requires_native_compiler
 from icpp.options_build import (
+    CandidLibraryDirOption,
     config_callback,
     to_compile_callback,
     option_to_compile_values_string,
@@ -61,6 +62,7 @@ def build_wasm(
             callback=generate_bindings_callback,
         ),
     ] = "yes",
+    candid_library_dir: CandidLibraryDirOption = None,
 ) -> None:
     """Builds the wasm."""
 
@@ -70,7 +72,7 @@ def build_wasm(
     # ----------------------------------------------------------------------
     # First build the libraries
     if to_compile != "mine-no-lib":
-        build_library(config)
+        build_library(config, candid_library_dir=candid_library_dir)
 
     # ----------------------------------------------------------------------
     typer.echo("----------------------------")

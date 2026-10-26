@@ -132,7 +132,9 @@ def test__a_failed_copy_leaves_no_partial_library(
     assert not (other / LIB_FILE).exists()
 
 
-def test__parallel_saves_leave_one_entry(tmp_path: Path, built: Path) -> None:
+def test__parallel_saves_leave_one_entry(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     root = tmp_path / "folder"
     data, key = candid_library.stamp(TARGET, commands(), SOURCES)
     threads = [
@@ -147,6 +149,7 @@ def test__parallel_saves_leave_one_entry(tmp_path: Path, built: Path) -> None:
     for t in threads:
         t.join()
     assert [p.name for p in (root / TARGET).iterdir()] == [key]
+    assert "cannot save" not in capsys.readouterr().out
     assert candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
 
 

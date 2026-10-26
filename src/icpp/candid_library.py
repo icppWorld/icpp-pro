@@ -196,8 +196,8 @@ def save(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         if reason is not None:
             raise RuntimeError(reason)
         for level in (root, root / target):
-            if not os.path.lexists(level):
-                level.mkdir(mode=0o700)
+            # exist_ok: a parallel build may create it first; checked below
+            level.mkdir(mode=0o700, exist_ok=True)
             _tighten(level)
             reason = _untrusted(level)
             if reason is not None:

@@ -5,6 +5,7 @@ it can never fail a build."""
 # pylint: disable=missing-function-docstring, redefined-outer-name
 
 import os
+import platform
 import shutil
 import stat
 import subprocess
@@ -50,7 +51,7 @@ def saved(root: Path, build_path: Path, flags: str = "-O0") -> str:
     return key
 
 
-def test__the_stamp_follows_commands_sources_target_and_versions(
+def test__the_stamp_follows_commands_sources_target_host_compilers_and_versions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     keys = {candid_library.stamp(TARGET, commands(), SOURCES)[1]}
@@ -61,9 +62,15 @@ def test__the_stamp_follows_commands_sources_target_and_versions(
         candid_library.stamp(TARGET, dict(commands(), ar="llvm-ar qc"), SOURCES)[1]
     )
     keys.add(candid_library.stamp(TARGET, commands(), SOURCES + ["/src/c.cpp"])[1])
+    with monkeypatch.context() as m:
+        m.setattr(candid_library, "_compiler_version", lambda command: "other 1.0")
+        keys.add(candid_library.stamp(TARGET, commands(), SOURCES)[1])
+    with monkeypatch.context() as m:
+        m.setattr(platform, "machine", lambda: "other-arch")
+        keys.add(candid_library.stamp(TARGET, commands(), SOURCES)[1])
     monkeypatch.setattr(candid_library, "__version__", "0.0.0-test")
     keys.add(candid_library.stamp(TARGET, commands(), SOURCES)[1])
-    assert len(keys) == 6
+    assert len(keys) == 8
 
 
 def test__save_then_restore_gives_the_same_library(

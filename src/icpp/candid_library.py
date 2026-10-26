@@ -3,9 +3,10 @@ user or CI chooses, instead of building it again for every canister.
 
 Turned on by `--candid-library-dir DIR`, or by ICPP_CANDID_LIBRARY_DIR. Off, the
 build is exactly as before. With a folder, a build uses the library saved there
-for its exact compile & archive commands, its list of source files, the target
-and the icpp-pro & icpp-candid versions (the stamp), or builds the library and
-saves it there.
+for its exact compile & archive commands, its list of source files, the target,
+the host (OS and architecture), the `--version` of its compilers and the
+icpp-pro & icpp-candid versions (the stamp), or builds the library and saves
+it there.
 
 Nothing checks the sources or headers: whoever sets the folder guarantees that
 they do not change while the folder is in use. `make all-tests` uses a fresh
@@ -23,6 +24,9 @@ sticky (like /tmp), so that nobody else can swap the folder.
 import hashlib
 import json
 import os
+import platform
+import shlex
+import subprocess
 import shutil
 import stat
 import uuid
@@ -43,6 +47,21 @@ def folder(option: Optional[str]) -> Optional[Path]:
     return Path(option).expanduser() if option else None
 
 
+def _compiler_version(command: str) -> str:
+    """The `--version` of the compiler a command runs; "" when it has none."""
+    try:
+        result = subprocess.run(
+            [shlex.split(command)[0], "--version"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return ""
+    return result.stdout if result.returncode == 0 else ""
+
+
 def stamp(
     target: str, commands: Dict[str, str], sources: Sequence[str]
 ) -> Tuple[Dict[str, Any], str]:
@@ -53,6 +72,12 @@ def stamp(
         "icpp_pro": __version__,
         "icpp_candid": icpp_candid.__version__,
         "target": target,
+        "host": [platform.system(), platform.machine()],
+        "compilers": {
+            name: _compiler_version(commands[name])
+            for name in ("cpp", "c")
+            if name in commands
+        },
         "commands": commands,
         "sources": sorted(str(s) for s in sources),
     }

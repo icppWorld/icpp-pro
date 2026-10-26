@@ -159,6 +159,7 @@ def build_library(
                         "c": c_compile_cmd_mine,
                         "ar": f"{config_default.WASM_AR} {config_default.WASM_ARFLAGS}",
                     },
+                    cpp_files_list + c_files_list,
                 )
                 if candid_library.restore(
                     candid_folder,

@@ -142,14 +142,17 @@ jobs:
       # the folder starts empty and a stale library is never restored. Native
       # libraries (~400 MiB each, the system compiler) are shared within a run.
       - name: candid-library-folder
-        run: echo "ICPP_CANDID_LIBRARY_DIR=${{ runner.temp }}/candid-library" >> "$GITHUB_ENV"
+        id: candid-key
+        run: |
+          echo "ICPP_CANDID_LIBRARY_DIR=${{ runner.temp }}/candid-library" >> "$GITHUB_ENV"
+          echo "key=candid-lib-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && 'all' || 'smoke' }}-${{ hashFiles('icpp-candid/src/icpp_candid/**', 'src/icpp/ic/**', 'src/icpp/version*.py', 'src/icpp/config_default.py', 'src/icpp/icpp_toml.py', 'src/icpp/candid_library.py', 'src/icpp/commands_build_library*.py') }}" >> "$GITHUB_OUTPUT"
 
       - name: restore-candid-library
         id: candid-library
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/candid-library/wasm32-wasi
-          key: candid-lib-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && 'all' || 'smoke' }}-${{ hashFiles('icpp-candid/src/icpp_candid/**', 'src/icpp/ic/**', 'src/icpp/version*.py', 'src/icpp/config_default.py', 'src/icpp/candid_library.py', 'src/icpp/commands_build_library*.py') }}
+          key: ${{ steps.candid-key.outputs.key }}
 
       # The C++ builds and the canister tests don't depend on the Python
       # version, so all-tests runs on one Python version per OS, and the other
@@ -177,4 +180,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/candid-library/wasm32-wasi
-          key: candid-lib-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && 'all' || 'smoke' }}-${{ hashFiles('icpp-candid/src/icpp_candid/**', 'src/icpp/ic/**', 'src/icpp/version*.py', 'src/icpp/config_default.py', 'src/icpp/candid_library.py', 'src/icpp/commands_build_library*.py') }}
+          key: ${{ steps.candid-key.outputs.key }}

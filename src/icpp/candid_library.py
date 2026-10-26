@@ -3,8 +3,9 @@ user or CI chooses, instead of building it again for every canister.
 
 Turned on by `--candid-library-dir DIR`, or by ICPP_CANDID_LIBRARY_DIR. Off, the
 build is exactly as before. With a folder, a build uses the library saved there
-for its exact compile & archive commands, the target and the icpp-pro &
-icpp-candid versions (the stamp), or builds the library and saves it there.
+for its exact compile & archive commands, its list of source files, the target
+and the icpp-pro & icpp-candid versions (the stamp), or builds the library and
+saves it there.
 
 Nothing checks the sources or headers: whoever sets the folder guarantees that
 they do not change while the folder is in use. `make all-tests` uses a fresh
@@ -17,7 +18,7 @@ import os
 import shutil
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 import typer
 
@@ -33,14 +34,18 @@ def folder(option: Optional[str]) -> Optional[Path]:
     return Path(option).expanduser() if option else None
 
 
-def stamp(target: str, commands: Dict[str, str]) -> Tuple[Dict[str, Any], str]:
+def stamp(
+    target: str, commands: Dict[str, str], sources: Sequence[str]
+) -> Tuple[Dict[str, Any], str]:
     """What a saved library must match to be reused, and its sha256 (the name of
-    the subfolder it is saved in)."""
+    the subfolder it is saved in). sources is the list of files it compiles:
+    their names, not their content."""
     data = {
         "icpp_pro": __version__,
         "icpp_candid": icpp_candid.__version__,
         "target": target,
         "commands": commands,
+        "sources": sorted(str(s) for s in sources),
     }
     return data, hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 

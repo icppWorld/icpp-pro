@@ -18,6 +18,7 @@ from icpp.__main__ import app
 
 LIB_FILE = "__ic_candid__.a"
 TARGET = "native"
+SOURCES = ["/src/a.cpp", "/src/b.cpp"]
 
 
 def commands(flags: str = "-O0") -> Dict[str, str]:
@@ -40,22 +41,25 @@ def built(tmp_path: Path) -> Path:
 
 
 def saved(root: Path, build_path: Path, flags: str = "-O0") -> str:
-    data, key = candid_library.stamp(TARGET, commands(flags))
+    data, key = candid_library.stamp(TARGET, commands(flags), SOURCES)
     candid_library.save(root, TARGET, key, data, LIB_FILE, build_path)
     return key
 
 
-def test__the_stamp_follows_commands_target_and_versions(
+def test__the_stamp_follows_commands_sources_target_and_versions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    keys = {candid_library.stamp(TARGET, commands())[1]}
-    assert candid_library.stamp(TARGET, commands())[1] in keys
-    keys.add(candid_library.stamp(TARGET, commands("-O2"))[1])
-    keys.add(candid_library.stamp("wasm32-wasi", commands())[1])
-    keys.add(candid_library.stamp(TARGET, dict(commands(), ar="llvm-ar qc"))[1])
+    keys = {candid_library.stamp(TARGET, commands(), SOURCES)[1]}
+    assert candid_library.stamp(TARGET, commands(), SOURCES)[1] in keys
+    keys.add(candid_library.stamp(TARGET, commands("-O2"), SOURCES)[1])
+    keys.add(candid_library.stamp("wasm32-wasi", commands(), SOURCES)[1])
+    keys.add(
+        candid_library.stamp(TARGET, dict(commands(), ar="llvm-ar qc"), SOURCES)[1]
+    )
+    keys.add(candid_library.stamp(TARGET, commands(), SOURCES + ["/src/c.cpp"])[1])
     monkeypatch.setattr(candid_library, "__version__", "0.0.0-test")
-    keys.add(candid_library.stamp(TARGET, commands())[1])
-    assert len(keys) == 5
+    keys.add(candid_library.stamp(TARGET, commands(), SOURCES)[1])
+    assert len(keys) == 6
 
 
 def test__save_then_restore_gives_the_same_library(
@@ -73,12 +77,12 @@ def test__save_then_restore_gives_the_same_library(
 def test__other_flags_are_not_reused(tmp_path: Path, built: Path) -> None:
     root = tmp_path / "folder"
     saved(root, built, "-O0")
-    other_key = candid_library.stamp(TARGET, commands("-O2"))[1]
+    other_key = candid_library.stamp(TARGET, commands("-O2"), SOURCES)[1]
     assert not candid_library.restore(root, TARGET, other_key, LIB_FILE, tmp_path)
 
 
 def test__nothing_saved_is_no_hit(tmp_path: Path) -> None:
-    key = candid_library.stamp(TARGET, commands())[1]
+    key = candid_library.stamp(TARGET, commands(), SOURCES)[1]
     assert not candid_library.restore(
         tmp_path / "none", TARGET, key, LIB_FILE, tmp_path
     )
@@ -118,7 +122,7 @@ def test__a_failed_copy_leaves_no_partial_library(
 
 def test__parallel_saves_leave_one_entry(tmp_path: Path, built: Path) -> None:
     root = tmp_path / "folder"
-    data, key = candid_library.stamp(TARGET, commands())
+    data, key = candid_library.stamp(TARGET, commands(), SOURCES)
     threads = [
         threading.Thread(
             target=candid_library.save,

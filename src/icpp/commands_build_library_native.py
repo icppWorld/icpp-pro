@@ -207,6 +207,7 @@ def build_library_native(
                             f"{config_default.NATIVE_ARFLAGS}"
                         ),
                     },
+                    cpp_files_list + c_files_list,
                 )
                 if candid_library.restore(
                     candid_folder, "native", candid_stamp[1], full_lib_name, build_path

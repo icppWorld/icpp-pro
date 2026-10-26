@@ -169,6 +169,21 @@ def test__no_folder_means_off(monkeypatch: pytest.MonkeyPatch) -> None:
     assert candid_library.folder("~/x") == Path("~/x").expanduser()
 
 
+def test__a_relative_folder_is_made_absolute_without_resolving_symlinks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "real").mkdir()
+    (tmp_path / "link").symlink_to(tmp_path / "real")
+    monkeypatch.chdir(tmp_path / "link")
+    assert candid_library.folder("x") == Path(os.getcwd()) / "x"
+    assert candid_library.folder("x").is_absolute()  # type: ignore[union-attr]
+
+
+def test__an_unknown_user_folder_is_off(capsys: pytest.CaptureFixture[str]) -> None:
+    assert candid_library.folder("~no-such-user-icpp/x") is None
+    assert "not reusing the library" in capsys.readouterr().out
+
+
 @pytest.mark.parametrize(
     "command", ["build-wasm", "build-native", "build-library", "build-library-native"]
 )

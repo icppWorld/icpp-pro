@@ -43,8 +43,15 @@ STAMP = "stamp.json"
 
 def folder(option: Optional[str]) -> Optional[Path]:
     """The folder from the option (which typer also fills from the environment
-    variable), or None when reuse is off."""
-    return Path(option).expanduser() if option else None
+    variable), or None when reuse is off. Made absolute without resolving
+    symlinks, so the trust checks see its real parent."""
+    if not option:
+        return None
+    try:
+        return Path(os.path.abspath(Path(option).expanduser()))
+    except RuntimeError as e:  # ~user that does not exist
+        _warn(f"{option}: {e}; not reusing the library")
+        return None
 
 
 def _compiler_version(command: str) -> str:

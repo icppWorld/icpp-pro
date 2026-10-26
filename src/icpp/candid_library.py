@@ -10,12 +10,21 @@ saves it there.
 Nothing checks the sources or headers: whoever sets the folder guarantees that
 they do not change while the folder is in use. `make all-tests` uses a fresh
 folder per run; CI keys its cached folder on the hashes of the sources.
+
+Trust: a saved library is linked into a canister, so a planted one would be
+code injection. The folder must be private to the user: everything is created
+0700 / 0600, and the folder, its subfolders and the saved files are refused
+when one of them is a symlink, belongs to another user, or is writable by
+others (our own folders are made 0700 first, e.g. after a `tar` restore in CI).
+The folder's parent must belong to us or to root, and be closed to others or
+sticky (like /tmp), so that nobody else can swap the folder.
 """
 
 import hashlib
 import json
 import os
 import shutil
+import stat
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple
@@ -64,14 +73,69 @@ def _warn(message: str) -> None:
     typer.echo(f"WARNING: candid library folder: {message}")
 
 
+def _tighten(path: Path) -> None:
+    """Makes a folder that we own, and that is not a symlink, 0700."""
+    if os.path.lexists(path):
+        st = path.lstat()
+        if stat.S_ISDIR(st.st_mode) and st.st_uid == os.getuid():
+            os.chmod(path, 0o700)
+
+
+def _untrusted(path: Path) -> Optional[str]:
+    """None if path may be trusted, else why not."""
+    st = path.lstat()
+    if stat.S_ISLNK(st.st_mode):
+        return f"{path} is a symlink"
+    if st.st_uid != os.getuid():
+        return f"{path} belongs to another user"
+    if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        return f"{path} is writable by others"
+    return None
+
+
+def _safe_parent(root: Path) -> Optional[str]:
+    """None when nobody else can swap the folder: its parent belongs to us or
+    to root, and others cannot write to it, or it is sticky (like /tmp)."""
+    parent = root.parent
+    st = parent.stat()
+    if st.st_uid not in (os.getuid(), 0):
+        return f"{parent} belongs to another user"
+    if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and not st.st_mode & stat.S_ISVTX:
+        return f"{parent} is writable by others"
+    return None
+
+
+def _trusted_folders(root: Path, target: str) -> Optional[str]:
+    """None when the folder and its target subfolder exist and may be trusted
+    (our own are made 0700 first), else why not."""
+    reason = _safe_parent(root)
+    if reason is not None:
+        return reason
+    for level in (root, root / target):
+        if not os.path.lexists(level):
+            return f"{level} does not exist"
+        _tighten(level)
+        reason = _untrusted(level)
+        if reason is not None:
+            return reason
+    return None
+
+
 def restore(root: Path, target: str, key: str, lib_file: str, build_path: Path) -> bool:
     """Copies the saved library for key into build_path. True when it did; a
     copy that does not match its sha256 is removed, and the library is built."""
     entry = root / target / key
     copy = build_path / lib_file
     try:
-        if not (entry / STAMP).is_file() or not (entry / lib_file).is_file():
+        if not os.path.lexists(entry):
             return False
+        for reason in (
+            _trusted_folders(root, target),
+            *(_untrusted(p) for p in (entry, entry / STAMP, entry / lib_file)),
+        ):
+            if reason is not None:
+                _warn(f"not using {entry}: {reason}; building it")
+                return False
         saved = json.loads((entry / STAMP).read_text(encoding="utf-8"))
         if _copy_hashed(entry / lib_file, copy) != saved.get("lib_sha256"):
             copy.unlink()
@@ -101,12 +165,27 @@ def save(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     copy. When another build saved the same key first, that copy is kept."""
     tmp = root / target / f".tmp-{uuid.uuid4().hex}"
     try:
-        tmp.mkdir(parents=True)
+        # Level by level: nothing is created inside a folder that is not trusted
+        root.parent.mkdir(parents=True, exist_ok=True)
+        reason = _safe_parent(root)
+        if reason is not None:
+            raise RuntimeError(reason)
+        for level in (root, root / target):
+            if not os.path.lexists(level):
+                level.mkdir(mode=0o700)
+            _tighten(level)
+            reason = _untrusted(level)
+            if reason is not None:
+                raise RuntimeError(reason)
+        tmp.mkdir(mode=0o700)
         lib_sha256 = _copy_hashed(build_path / lib_file, tmp / lib_file)
         (tmp / STAMP).write_text(
             json.dumps(dict(data, lib_sha256=lib_sha256), indent=1, sort_keys=True),
             encoding="utf-8",
         )
+        for file in (tmp / lib_file, tmp / STAMP):
+            os.chmod(file, 0o600)
+        os.chmod(tmp, 0o700)
         entry = root / target / key
         try:
             os.rename(tmp, entry)

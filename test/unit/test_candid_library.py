@@ -4,17 +4,21 @@ it can never fail a build."""
 
 # pylint: disable=missing-function-docstring, redefined-outer-name
 
+import os
 import shutil
+import stat
 import subprocess
 import threading
 from pathlib import Path
 from typing import Dict
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 from icpp import candid_library
 from icpp.__main__ import app
+from icpp.options_build import CandidLibraryDirOption
 
 LIB_FILE = "__ic_candid__.a"
 TARGET = "native"
@@ -166,26 +170,136 @@ def test__the_option_and_its_environment_variable(command: str) -> None:
 
 
 def test__the_option_wins_over_the_environment_variable(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """typer fills the option from the variable only when it is not given."""
+    """On a standalone app with the same option: no toolchain, no module state."""
+    probe = typer.Typer()
     seen: Dict[str, str | None] = {}
 
-    def fake_build_library(config: str, candid_library_dir: str | None = None) -> None:
-        seen["config"] = config
+    @probe.command()
+    def build(candid_library_dir: CandidLibraryDirOption = None) -> None:
         seen["dir"] = candid_library_dir
 
-    import icpp.commands_build_wasm as build_wasm_module  # pylint: disable=import-outside-toplevel
+    monkeypatch.setenv("ICPP_CANDID_LIBRARY_DIR", "from-env")
+    CliRunner().invoke(probe, [])
+    assert seen["dir"] == "from-env"
+    CliRunner().invoke(probe, ["--candid-library-dir", "from-option"])
+    assert seen["dir"] == "from-option"
+    monkeypatch.delenv("ICPP_CANDID_LIBRARY_DIR")
+    CliRunner().invoke(probe, [])
+    assert seen["dir"] is None
 
-    monkeypatch.setattr(build_wasm_module, "build_library", fake_build_library)
-    monkeypatch.setenv("ICPP_CANDID_LIBRARY_DIR", str(tmp_path / "from-env"))
-    monkeypatch.chdir(tmp_path)
-    shutil.copy(
-        Path(build_wasm_module.__file__).parent / "canisters/greet/icpp.toml", "."
-    )
-    for args, expected in (
-        (["build-wasm"], str(tmp_path / "from-env")),
-        (["build-wasm", "--candid-library-dir", "from-option"], "from-option"),
-    ):
-        CliRunner().invoke(app, args)
-        assert seen.get("dir") == expected, (args, seen)
+
+# ---------------------------------------------------------------------------
+# Trust: a saved library is linked into a canister
+
+
+def test__the_folder_is_private(tmp_path: Path, built: Path) -> None:
+    """Folders 0700, files 0600, whatever the umask."""
+    root = tmp_path / "folder"
+    old = os.umask(0o022)
+    try:
+        key = saved(root, built)
+    finally:
+        os.umask(old)
+    entry = root / TARGET / key
+    for folder in (root, root / TARGET, entry):
+        assert stat.S_IMODE(folder.stat().st_mode) == 0o700, folder
+    for file in entry.iterdir():
+        assert stat.S_IMODE(file.stat().st_mode) == 0o600, file
+
+
+@pytest.mark.parametrize("where", ["root", "target", "entry", "library", "stamp"])
+def test__a_symlink_is_never_trusted(
+    tmp_path: Path, built: Path, where: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A planted symlink could point at a library someone else controls."""
+    root = tmp_path / "folder"
+    key = saved(root, built)
+    paths = {
+        "root": root,
+        "target": root / TARGET,
+        "entry": root / TARGET / key,
+        "library": root / TARGET / key / LIB_FILE,
+        "stamp": root / TARGET / key / "stamp.json",
+    }
+    path = paths[where]
+    elsewhere = tmp_path / "elsewhere"
+    shutil.move(str(path), elsewhere)
+    path.symlink_to(elsewhere)
+    other = tmp_path / "other-canister"
+    other.mkdir()
+    real_root = root if where != "root" else elsewhere
+    assert real_root.exists()
+    assert not candid_library.restore(root, TARGET, key, LIB_FILE, other)
+    assert not (other / LIB_FILE).exists()
+    assert "is a symlink" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("where", ["entry", "library", "stamp"])
+def test__a_saved_copy_writable_by_others_is_never_trusted(
+    tmp_path: Path, built: Path, where: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = tmp_path / "folder"
+    key = saved(root, built)
+    entry = root / TARGET / key
+    path = {"entry": entry, "library": entry / LIB_FILE, "stamp": entry / "stamp.json"}[
+        where
+    ]
+    os.chmod(path, 0o775 if where == "entry" else 0o664)
+    assert not candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
+    assert "is writable by others" in capsys.readouterr().out
+
+
+def test__open_folders_of_our_own_are_made_private_again(
+    tmp_path: Path, built: Path
+) -> None:
+    """A `tar` restore (actions/cache) creates the folders with the umask, e.g.
+    0775: our own folders are made 0700 again, and the library is used."""
+    root = tmp_path / "folder"
+    key = saved(root, built)
+    for folder in (root, root / TARGET):
+        os.chmod(folder, 0o775)
+    assert candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
+    for folder in (root, root / TARGET):
+        assert stat.S_IMODE(folder.stat().st_mode) == 0o700, folder
+
+
+def test__a_symlinked_folder_is_not_saved_into(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    root = tmp_path / "folder"
+    root.symlink_to(elsewhere)
+    saved(root, built)
+    assert "is a symlink" in capsys.readouterr().out
+    assert not any(elsewhere.iterdir())
+
+
+def test__a_folder_whose_parent_others_can_write_is_refused(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Someone who can write the parent could swap the folder for theirs."""
+    parent = tmp_path / "open"
+    parent.mkdir()
+    os.chmod(parent, 0o777)
+    try:
+        saved(parent / "folder", built)
+        assert "is writable by others" in capsys.readouterr().out
+        assert not (parent / "folder" / TARGET).exists()
+    finally:
+        os.chmod(parent, 0o755)
+
+
+def test__a_sticky_parent_like_tmp_is_fine(tmp_path: Path, built: Path) -> None:
+    """/tmp is writable by all but sticky: nobody can rename our folder."""
+    parent = tmp_path / "sticky"
+    parent.mkdir()
+    os.chmod(parent, 0o1777)
+    try:
+        root = parent / "folder"
+        key = saved(root, built)
+        assert candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
+    finally:
+        os.chmod(parent, 0o755)

@@ -6,6 +6,7 @@ it can never fail a build."""
 
 import os
 import platform
+import re
 import shutil
 import stat
 import subprocess
@@ -172,8 +173,10 @@ def test__the_option_and_its_environment_variable(command: str) -> None:
     """Each build command has --candid-library-dir, also set by the variable."""
     result = CliRunner().invoke(app, [command, "--help"], env={"COLUMNS": "200"})
     assert result.exit_code == 0, result.output
-    assert "--candid-library-dir" in result.output
-    assert "ICPP_CANDID_LIBRARY_DIR" in result.output
+    # CI forces color, which splits the names with ANSI codes
+    text = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    assert "--candid-library-dir" in text
+    assert "ICPP_CANDID_LIBRARY_DIR" in text
 
 
 def test__the_option_wins_over_the_environment_variable(

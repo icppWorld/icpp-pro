@@ -298,6 +298,19 @@ def test__a_build_folder_that_is_not_empty_means_no_cache(
     assert "is not empty" in capsys.readouterr().out
 
 
+def test__an_output_flag_in_the_command_cannot_hide_the_preprocessed_text(
+    tmp_path: Path,
+) -> None:
+    """A canister flag `-o <file>` would send the -E output there, and an empty
+    stdout would be hashed: the probe sends it to stdout explicitly."""
+    src = tmp_path / "src"
+    sources = write_sources(src)
+    cmds = commands(src, "-O0 -o /dev/null")
+    k = key(cmds, sources, tmp_path)
+    write_sources(src, header_value=5)
+    assert k != key(cmds, sources, tmp_path)
+
+
 def test__a_source_that_does_not_preprocess_means_no_cache(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

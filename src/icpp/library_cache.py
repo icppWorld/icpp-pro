@@ -333,7 +333,8 @@ def _preprocessed_sha256(command: str, source: str, cwd: Path) -> str:
     """The sha256 of the preprocessed output of one source: the text the
     compiler compiles, with every header it would include."""
     result = subprocess.run(
-        f"{command} -E {source}",
+        # `-o -` last: a canister flag such as -o <file> must not take the output
+        f"{command} -E {source} -o -",
         shell=True,
         capture_output=True,
         timeout=600,

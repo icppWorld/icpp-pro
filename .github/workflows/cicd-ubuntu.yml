@@ -136,7 +136,8 @@ jobs:
       # Saved by every run (key by run id) and restored from the latest one of
       # this OS and job kind; pruning keeps it at 8 entries / 2 GiB.
       - name: restore-library-cache
-        uses: actions/cache@v4
+        id: library-cache
+        uses: actions/cache/restore@v4
         with:
           path: ~/.icpp/cache/libraries/wasm32-wasi
           key: icpp-libcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && 'all' || 'smoke' }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -160,3 +161,11 @@ jobs:
         shell: bash -l {0}
         run: |
           make smoke-tests
+
+      # Saved also when a test failed: the libraries it built are still valid
+      - name: save-library-cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.icpp/cache/libraries/wasm32-wasi
+          key: icpp-libcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && 'all' || 'smoke' }}-${{ github.run_id }}-${{ github.run_attempt }}

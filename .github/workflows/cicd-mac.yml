@@ -26,6 +26,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+# Least privilege: the jobs only read the repository
+permissions:
+  contents: read
+
 jobs:
   all-mac:
     name: all-mac
@@ -60,7 +64,7 @@ jobs:
 
     steps:
       # https://github.com/marketplace/actions/setup-miniconda
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
         with:
           python-version: ${{ matrix.python-version }}
           # Python 3.14 (and often the newest 3.x line generally) is not
@@ -75,13 +79,15 @@ jobs:
       # -------------------------------------------------------------------
       # Checkout icpp-pro & icpp-candid as nested directory
       - name: checkout icpp-pro
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: checkout icpp-candid
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           repository: icppWorld/icpp-candid
           path: icpp-candid
           fetch-depth: 0

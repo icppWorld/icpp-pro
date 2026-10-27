@@ -72,12 +72,20 @@ summary:
 # A sequential recipe, not a prerequisite list: with `make -j` prerequisites
 # run in parallel, so the cheap checks would no longer gate the expensive
 # ones and a broken build would still compile eight canisters before failing.
+# The canister builds of one test run share one icpp-candid library folder
+# (src/icpp/candid_library.py): the library is built once per set of compile
+# flags and reused by every other canister. Safe because the sources do not
+# change during a run. A folder the caller already set (CI) is used as is; else
+# a fresh one per run, removed at the end.
+define WITH_CANDID_LIBRARY_DIR
+	@if [ -n "$$ICPP_CANDID_LIBRARY_DIR" ]; then $(1); else d=$$(mktemp -d); trap 'rm -rf "$$d"' EXIT; export ICPP_CANDID_LIBRARY_DIR="$$d"; $(1); fi
+endef
+
 .PHONY: all-tests
 all-tests:
 	$(MAKE) all-static
 	$(MAKE) python-test
-	$(MAKE) all-canister-native
-	$(MAKE) all-canister-deploy-local-pytest
+	$(call WITH_CANDID_LIBRARY_DIR,$(MAKE) all-canister-native && $(MAKE) all-canister-deploy-local-pytest)
 
 # The quick variant CI runs on the Python versions that don't run all-tests:
 # the C++ builds & canister tests don't depend on the Python version, the
@@ -86,8 +94,7 @@ all-tests:
 smoke-tests:
 	$(MAKE) all-static
 	$(MAKE) python-test
-	@python -m scripts.all_canister_native --canister greet
-	$(MAKE) all-canister-deploy-local-pytest CANISTERS=greet
+	$(call WITH_CANDID_LIBRARY_DIR,python -m scripts.all_canister_native --canister greet && $(MAKE) all-canister-deploy-local-pytest CANISTERS=greet)
 .PHONY: all-canister-deploy-local-pytest
 # JOBS = how many canisters to build & test concurrently. Each canister has its
 # own local network on an ephemeral port, so they do not collide. The default is

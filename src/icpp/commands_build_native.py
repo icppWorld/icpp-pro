@@ -17,6 +17,7 @@ from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
 
 from icpp.decorators import requires_native_compiler
 from icpp.options_build import (
+    CandidLibraryDirOption,
     config_callback,
     to_compile_callback,
     option_to_compile_values_string,
@@ -47,6 +48,7 @@ def build_native(
             callback=to_compile_callback,
         ),
     ] = "all",
+    candid_library_dir: CandidLibraryDirOption = None,
 ) -> None:
     """Builds a native debug executable."""
 
@@ -56,7 +58,7 @@ def build_native(
     # ----------------------------------------------------------------------
     # First build the libraries
     if to_compile != "mine-no-lib":
-        build_library_native(config)
+        build_library_native(config, candid_library_dir=candid_library_dir)
 
     # ----------------------------------------------------------------------
     typer.echo("----------------------------")

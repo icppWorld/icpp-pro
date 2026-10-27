@@ -134,6 +134,13 @@ Tests run in two modes:
    one exception
 2. **Deployed:** Build WASM, deploy to a local icp network, run pytest with `--network=local`
 
+`make all-tests` and `make smoke-tests` build the icpp-candid library once per set of
+compile flags and reuse it in every other canister, through a fresh
+`ICPP_CANDID_LIBRARY_DIR` folder per run (`--candid-library-dir` on the build commands;
+`src/icpp/candid_library.py`). CI also keeps the wasm ones between runs, keyed on the
+source hashes. Nothing checks the sources, so never point it at a folder that outlives a
+change to them.
+
 Pytest fixtures from `conftest_base.py` provide: `network`, `identity`, `principal`, `identity_anonymous`, `identity_default`. Test conftest files import these with `from icpp.conftest_base import *`.
 
 **Tests must be told which identity to run as** — `pytest --identity <name>` or

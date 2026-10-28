@@ -137,15 +137,16 @@ IC_Async slow_async() {
 }
 void slow() { slow_async(); }
 
-// Replies once release() was called, or after 10 minutes - a safety cap,
-// long enough that a slow CI runner never reaches it during the upgrade test:
+// Replies once release() was called, or after 15 minutes - a safety cap,
+// longer than the upgrade test waits before its release (up to 605s), so a
+// slow CI runner never reaches it:
 // '()' -> '()'. A release that came before hold() started counts too: natively,
 // the Mock IC delivers the hold call only after the test called release.
 // hold() uses the release up when it returns.
 IC_Async hold_async() {
   IC_API ic_api(CanisterUpdate{"hold"}, false);
   ic_api.from_wire();
-  uint64_t until = IC_API::time() + 600'000'000'000;
+  uint64_t until = IC_API::time() + 900'000'000'000;
   while (!g_released && IC_API::time() < until) {
     IC_CallResult<void> r = co_await ic_api.yield_fresh_budget();
     r.value();

@@ -510,12 +510,13 @@ def icp_canister(
 
 
 def upgrade(
-    network: str, identity: str, canister: str
+    network: str, identity: str, canister: str, timeout_seconds: int = 300
 ) -> subprocess.CompletedProcess[str]:
     return icp_canister(
         network,
         identity,
         f"install {canister} --mode upgrade --wasm {WASM_PATH.resolve()}",
+        timeout_seconds,
     )
 
 
@@ -591,23 +592,26 @@ def test__upgrade_waits_while_call_in_flight(network: str, identity: str) -> Non
     # flight - covered by the native tests.)
     # While canister_b holds the call open, it self-yields every round, which
     # slows the local replica down: hence the long timeouts, and update calls
-    # (query=False) for get_state.
+    # (query=False) for get_state. A timeout only stops the icp client, the call
+    # itself stays queued; 120s was too short for release on a slow CI runner.
     b = principal(network, "canister_b")
     assert call(network, "canister_a", "start_held_call", f'(principal "{b}")') == "()"
-    state = call(network, "canister_a", "get_state", timeout_seconds=120, query=False)
+    state = call(network, "canister_a", "get_state", timeout_seconds=300, query=False)
     assert "1 : nat32" in state
 
     results: List[subprocess.CompletedProcess[str]] = []
     upgrading = threading.Thread(
-        target=lambda: results.append(upgrade(network, identity, "canister_a"))
+        target=lambda: results.append(
+            upgrade(network, identity, "canister_a", timeout_seconds=900)
+        )
     )
     upgrading.start()
     time.sleep(5)
     assert upgrading.is_alive(), "the upgrade did not wait for the call in flight"
 
-    assert call(network, "canister_b", "release", timeout_seconds=120) == "()"
-    upgrading.join(timeout=180)
+    assert call(network, "canister_b", "release", timeout_seconds=300) == "()"
+    upgrading.join(timeout=600)
     assert not upgrading.is_alive()
     assert results[0].returncode == 0, results[0].stdout + results[0].stderr
-    state = call(network, "canister_a", "get_state", timeout_seconds=120, query=False)
+    state = call(network, "canister_a", "get_state", timeout_seconds=300, query=False)
     assert "0 : nat32" in state

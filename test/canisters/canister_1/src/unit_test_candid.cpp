@@ -396,6 +396,17 @@ __attribute__((noinline)) uint64_t encode_decode_k(uint64_t n) {
   return instructions;
 }
 
+// The fewest instructions of 3 runs. On wasm every run counts the same;
+// natively the counter is wall-clock time, and the fastest run leaves out
+// what the host did meanwhile and the first run's heap growth.
+uint64_t encode_decode_k_fastest(uint64_t n) {
+  uint64_t fastest = std::numeric_limits<uint64_t>::max();
+  for (int run = 0; run < 3; ++run) {
+    fastest = std::min(fastest, encode_decode_k(n));
+  }
+  return fastest;
+}
+
 __attribute__((noinline)) void test_vec_of_decode() {
   // didc encode -t '(vec record { id: nat64; note: opt text; kind: variant { a; b: nat }; tags: vec text; inner: record { q: text } })'
   { // 2 elements: '(vec { record { id = 1; note = opt "n1"; kind = variant { a }; tags = vec { "x"; "y" }; inner = record { q = "q1" } }; record { id = 2; note = null; kind = variant { b = 300 }; tags = vec {}; inner = record { q = "q2" } } })'
@@ -618,8 +629,8 @@ __attribute__((noinline)) void test_vec_of_decode() {
   }
 
   { // 1,000 elements, and the decode is linear in the number of elements
-    uint64_t instructions_100 = encode_decode_k(100);
-    uint64_t instructions_1000 = encode_decode_k(1000);
+    uint64_t instructions_100 = encode_decode_k_fastest(100);
+    uint64_t instructions_1000 = encode_decode_k_fastest(1000);
     check(instructions_1000 < 20 * instructions_100,
           "vec_of 1,000 elements decode is not linear: " +
               std::to_string(instructions_100) + " for 100, " +

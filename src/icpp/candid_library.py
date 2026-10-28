@@ -121,7 +121,7 @@ def _untrusted(path: Path) -> Optional[str]:
     if st.st_uid != os.getuid():
         return f"{path} belongs to another user"
     if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
-        return f"{path} is writable by others"
+        return f"{path} is writable by its group or by others"
     return None
 
 
@@ -133,7 +133,7 @@ def _safe_parent(root: Path) -> Optional[str]:
     if st.st_uid not in (os.getuid(), 0):
         return f"{parent} belongs to another user"
     if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and not st.st_mode & stat.S_ISVTX:
-        return f"{parent} is writable by others"
+        return f"{parent} is writable by its group or by others"
     return None
 
 
@@ -197,8 +197,13 @@ def save(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     copy. When another build saved the same key first, that copy is kept."""
     tmp = root / target / f".tmp-{uuid.uuid4().hex}"
     try:
-        # Level by level: nothing is created inside a folder that is not trusted
-        root.parent.mkdir(parents=True, exist_ok=True)
+        # Level by level: nothing is created inside a folder that is not trusted.
+        # Missing parents are ours too, so 0700: with the default permissions a
+        # umask of 002 makes them group-writable, and the parent check below
+        # would refuse the folder we just made.
+        for parent in reversed([root.parent, *root.parent.parents]):
+            if not os.path.lexists(parent):
+                parent.mkdir(mode=0o700, exist_ok=True)
         reason = _safe_parent(root)
         if reason is not None:
             raise RuntimeError(reason)

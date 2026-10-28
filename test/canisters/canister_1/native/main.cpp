@@ -12,6 +12,7 @@
 #include "ic_api.h"
 #include "icpp_hooks.h"
 #include "mock_ic.h"
+#include "vec_bytes.h"
 
 // Native-only scenarios for the 128-bit cycles & certified-data APIs. Not
 // canister exports - they drive IC_API through entry points & mock state
@@ -692,6 +693,25 @@ int main() {
                        roundtrip_vec_record, "4449444c026d016c00010080897a",
                        silent_on_trap, my_principal,
                        "take no bytes on the wire");
+  // '(vec { record { record { ... } } })': a chain of 200 record types, each
+  // with one field of the next, ending in 'record {}'. Checking if the vec's
+  // elements take no bytes recurses down the chain.
+  auto append = [](VecBytes &v, std::initializer_list<uint8_t> bytes) {
+    for (uint8_t b : bytes)
+      v.append_byte(std::byte{b});
+  };
+  {
+    VecBytes chain;
+    append(chain, {'D', 'I', 'D', 'L', 0xca, 0x01, 0x6d, 0x01}); // 202 types
+    for (int i = 2; i <= 201; ++i) {
+      append(chain, {0x6c, 0x01, 0x00});
+      chain.append_sleb128(__int128_t(i));
+    }
+    append(chain, {0x6c, 0x00, 0x01, 0x00, 0x01});
+    mockIC.run_trap_test("chain of 200 record types", roundtrip_vec_of_items,
+                         chain.as_hex_string(), silent_on_trap, my_principal,
+                         "nested deeper than 128 levels");
+  }
   // '("{\"project\": \"?\", \"C++\": 0}")' -> '("{\"C++\":20,\"project\":\"icpp\"}")'
   mockIC.run_test(
       "roundtrip_text_to_json_to_text", roundtrip_text_to_json_to_text,

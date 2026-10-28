@@ -662,6 +662,22 @@ def test__truncated_message_traps(network: str, method: str, argument: str) -> N
     assert "Not enough bytes left" in response, response
 
 
+def _sleb128_hex(n: int) -> str:
+    out = b""
+    while True:
+        b, n = n & 0x7F, n >> 7
+        if (n == 0 and not b & 0x40) or (n == -1 and b & 0x40):
+            return (out + bytes([b])).hex()
+        out += bytes([b | 0x80])
+
+
+_RECORD_CHAIN = (
+    "4449444cca016d01"
+    + "".join("6c0100" + _sleb128_hex(i) for i in range(2, 202))
+    + "6c00010001"
+)
+
+
 @pytest.mark.parametrize(
     "method, argument, expected",
     [
@@ -690,6 +706,9 @@ def test__truncated_message_traps(network: str, method: str, argument: str) -> N
             "4449444c016c0100000100",
             "nested deeper than 128 levels",
         ),
+        # '(vec { record { record { ... } } })': a chain of 200 record types,
+        # each with one field of the next, ending in 'record {}'
+        ("roundtrip_vec_of_items", _RECORD_CHAIN, "nested deeper than 128 levels"),
         # 2,000,000 elements of 'vec record {}', which take no bytes on the wire
         (
             "roundtrip_vec_of_items",

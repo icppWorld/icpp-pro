@@ -320,6 +320,52 @@ def test__a_folder_whose_parent_others_can_write_is_refused(
         os.chmod(parent, 0o755)
 
 
+def test__an_open_folder_higher_up_is_refused(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Someone who can write any folder above could rename what is below it."""
+    open_ = tmp_path / "open"
+    (open_ / "mine").mkdir(parents=True)
+    os.chmod(open_ / "mine", 0o700)
+    root = open_ / "mine" / "folder"
+    key = saved(root, built)  # saved while it is closed
+    os.chmod(open_, 0o777)
+    try:
+        assert not candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
+        assert "is writable by its group or by others" in capsys.readouterr().out
+    finally:
+        os.chmod(open_, 0o755)
+
+
+def test__nothing_is_created_under_an_open_folder(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    open_ = tmp_path / "open"
+    open_.mkdir()
+    os.chmod(open_, 0o777)
+    try:
+        saved(open_ / "new" / "folder", built)
+        assert "is writable by its group or by others" in capsys.readouterr().out
+        assert not (open_ / "new").exists()
+    finally:
+        os.chmod(open_, 0o755)
+
+
+def test__a_symlinked_parent_is_checked_where_it_leads(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    open_ = tmp_path / "open"
+    (open_ / "target").mkdir(parents=True)
+    os.chmod(open_, 0o777)
+    (tmp_path / "link").symlink_to(open_ / "target")
+    try:
+        saved(tmp_path / "link" / "folder", built)
+        assert "is writable by its group or by others" in capsys.readouterr().out
+        assert not (open_ / "target" / "folder").exists()
+    finally:
+        os.chmod(open_, 0o755)
+
+
 def test__missing_parents_are_private_also_with_umask_002(
     tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -31,7 +31,7 @@ import shutil
 import stat
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional, Sequence, Set, Tuple
 
 import typer
 
@@ -126,14 +126,28 @@ def _untrusted(path: Path) -> Optional[str]:
 
 
 def _safe_parent(root: Path) -> Optional[str]:
-    """None when nobody else can swap the folder: its parent belongs to us or
-    to root, and others cannot write to it, or it is sticky (like /tmp)."""
-    parent = root.parent
-    st = parent.stat()
-    if st.st_uid not in (os.getuid(), 0):
-        return f"{parent} belongs to another user"
-    if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and not st.st_mode & stat.S_ISVTX:
-        return f"{parent} is writable by its group or by others"
+    """None when nobody else can swap the folder or anything above it: every
+    existing folder from its parent up to /, also where a symlink leads, belongs
+    to us or to root, and its group and others cannot write to it, unless it is
+    sticky (like /tmp). Then a path checked stays the same path for the files
+    read or written after the check."""
+    todo = [root.parent]
+    seen: Set[Path] = set()
+    while todo:
+        start = todo.pop()
+        for level in (start, *start.parents):
+            if level in seen or not os.path.lexists(level):
+                continue
+            seen.add(level)
+            st = level.lstat()
+            if st.st_uid not in (os.getuid(), 0):
+                return f"{level} belongs to another user"
+            if stat.S_ISLNK(st.st_mode):
+                todo.append(level.parent / os.readlink(level))
+            elif st.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and not (
+                st.st_mode & stat.S_ISVTX
+            ):
+                return f"{level} is writable by its group or by others"
     return None
 
 
@@ -198,9 +212,12 @@ def save(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     tmp = root / target / f".tmp-{uuid.uuid4().hex}"
     try:
         # Level by level: nothing is created inside a folder that is not trusted.
-        # Missing parents are ours too, so 0700: with the default permissions a
-        # umask of 002 makes them group-writable, and the parent check below
-        # would refuse the folder we just made.
+        # The existing folders above are checked first. Missing parents are ours,
+        # so 0700: with the default permissions a umask of 002 makes them
+        # group-writable, and the check would refuse the folder we just made.
+        reason = _safe_parent(root)
+        if reason is not None:
+            raise RuntimeError(reason)
         for parent in reversed([root.parent, *root.parent.parents]):
             if not os.path.lexists(parent):
                 parent.mkdir(mode=0o700, exist_ok=True)

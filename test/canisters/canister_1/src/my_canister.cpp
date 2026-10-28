@@ -371,6 +371,13 @@ void roundtrip_blob() {
   ic_api.to_wire(CandidTypeVecNat8{in});
 }
 
+void roundtrip_vec_blob() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  std::vector<std::vector<uint8_t>> in;
+  ic_api.from_wire(CandidTypeVecBlob{&in});
+  ic_api.to_wire(CandidTypeVecBlob{in});
+}
+
 void roundtrip_text_to_json_to_text() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
 

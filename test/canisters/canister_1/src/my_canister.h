@@ -101,6 +101,8 @@ void roundtrip_int64_1_000_000_000_000_000_001_neg() WASM_SYMBOL_EXPORTED(
     "canister_query roundtrip_int64_1_000_000_000_000_000_001_neg");
 void roundtrip_text() WASM_SYMBOL_EXPORTED("canister_query roundtrip_text");
 void roundtrip_blob() WASM_SYMBOL_EXPORTED("canister_query roundtrip_blob");
+void roundtrip_vec_blob()
+    WASM_SYMBOL_EXPORTED("canister_query roundtrip_vec_blob");
 void roundtrip_text_to_json_to_text()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_text_to_json_to_text");
 void roundtrip_text_to_json_to_text_long_message() WASM_SYMBOL_EXPORTED(

@@ -637,6 +637,39 @@ int main() {
   mockIC.run_trap_test("blob size larger than the bytes left", roundtrip_blob,
                        "4449444c016d7b0100056162", silent_on_trap, my_principal,
                        "Not enough bytes left");
+  // '(vec { blob "ab" })'
+  mockIC.run_test("roundtrip_vec_blob", roundtrip_vec_blob,
+                  "4449444c026d016d7b010001026162", "4449444c026d7b6d00010101026162",
+                  silent_on_trap, my_principal);
+  // Malformed messages trap; none is read past its end or out of a table.
+  // A vec blob whose blob declares 5 bytes and has 2
+  mockIC.run_trap_test("vec blob: blob size larger than the bytes left",
+                       roundtrip_vec_blob, "4449444c026d016d7b010001056162",
+                       silent_on_trap, my_principal, "Not enough bytes left");
+  // Shorter than the magic number
+  mockIC.run_trap_test("3 bytes, shorter than DIDL", roundtrip_blob, "444944",
+                       silent_on_trap, my_principal, "does not start with DIDL");
+  // A vec whose content type is index 5, with 1 type table
+  mockIC.run_trap_test("content type index not in the type tables",
+                       roundtrip_blob, "4449444c016d0500", silent_on_trap,
+                       my_principal, "is not in the type table section");
+  // An argument of type index 5, with no type tables
+  mockIC.run_trap_test("argument type index not in the type tables",
+                       roundtrip_blob, "4449444c000105", silent_on_trap,
+                       my_principal, "is not in the type table section");
+  // A type table entry that is a type index, not a type constructor
+  mockIC.run_trap_test("type table entry that is a type index", roundtrip_blob,
+                       "4449444c02016c0000", silent_on_trap, my_principal,
+                       "must be a type constructor");
+  // A content type index of 2^32, which would wrap around to 0 as an int
+  mockIC.run_trap_test("type index too large for an int", roundtrip_blob,
+                       "4449444c016d8080808010010000", silent_on_trap,
+                       my_principal, "is out of range");
+  // '(opt vec { record {} })' to a method that expects an opt vec nat16
+  mockIC.run_trap_test("opt vec record where opt vec nat16 is expected",
+                       roundtrip_opt_vec_nat16,
+                       "4449444c036e016d026c0001000101", silent_on_trap,
+                       my_principal, "an opt vec record, where an opt vec");
   // '("{\"project\": \"?\", \"C++\": 0}")' -> '("{\"C++\":20,\"project\":\"icpp\"}")'
   mockIC.run_test(
       "roundtrip_text_to_json_to_text", roundtrip_text_to_json_to_text,

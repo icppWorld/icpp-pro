@@ -662,6 +662,63 @@ def test__truncated_message_traps(network: str, method: str, argument: str) -> N
     assert "Not enough bytes left" in response, response
 
 
+@pytest.mark.parametrize(
+    "method, argument, expected",
+    [
+        # '(vec { blob "ab" })' with the blob's size 2 changed to 5
+        (
+            "roundtrip_vec_blob",
+            "4449444c026d016d7b010001056162",
+            "Not enough bytes left",
+        ),
+        # shorter than the magic number
+        ("roundtrip_blob", "444944", "does not start with DIDL"),
+        # a vec whose content type is index 5, with 1 type table
+        ("roundtrip_blob", "4449444c016d0500", "is not in the type table section"),
+        # an argument of type index 5, with no type tables
+        ("roundtrip_blob", "4449444c000105", "is not in the type table section"),
+        # a type table entry that is a type index, not a type constructor
+        ("roundtrip_blob", "4449444c02016c0000", "must be a type constructor"),
+        # a content type index of 2^32, which would wrap around to 0 as an int
+        ("roundtrip_blob", "4449444c016d8080808010010000", "is out of range"),
+        # '(opt vec { record {} })' where an opt vec nat16 is expected
+        (
+            "roundtrip_opt_vec_nat16",
+            "4449444c036e016d026c0001000101",
+            "an opt vec record, where an opt vec",
+        ),
+    ],
+)
+def test__malformed_message_traps(
+    network: str, method: str, argument: str, expected: str
+) -> None:
+    # A malformed message traps; it is never read past its end, and no index
+    # from the wire is used outside the type tables
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method=method,
+        canister_argument=argument,
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert expected in response, response
+
+
+def test__roundtrip_vec_blob(network: str) -> None:
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_vec_blob",
+        canister_argument="4449444c026d016d7b010001026162",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert response == "4449444c026d7b6d00010101026162"
+
+
 def test__roundtrip_text_to_json_to_text(network: str, principal: str) -> None:
     d = {"project": "?", "C++": 0}
     text_in = dict_to_candid_text(d)

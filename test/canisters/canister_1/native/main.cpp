@@ -676,6 +676,22 @@ int main() {
                        roundtrip_opt_vec_nat16,
                        "4449444c036e016d026c0001000101", silent_on_trap,
                        my_principal, "an opt vec record, where an opt vec");
+  // Limits, so a message cannot make the decoder recurse or loop without end.
+  // A record whose only field is of its own type: 'record { 0 : t0 }' for t0,
+  // with no value bytes, recursing at the same offset
+  mockIC.run_trap_test("record nested in itself", roundtrip_vec_of_shared,
+                       "4449444c016c0100000100", silent_on_trap, my_principal,
+                       "nested deeper than 128 levels");
+  // 2,000,000 elements of 'vec record {}', which take no bytes on the wire,
+  // to a vec_of and to a vec record decoder
+  mockIC.run_trap_test("2,000,000 zero width elements (vec_of)",
+                       roundtrip_vec_of_items, "4449444c026d016c00010080897a",
+                       silent_on_trap, my_principal,
+                       "take no bytes on the wire");
+  mockIC.run_trap_test("2,000,000 zero width elements (vec record)",
+                       roundtrip_vec_record, "4449444c026d016c00010080897a",
+                       silent_on_trap, my_principal,
+                       "take no bytes on the wire");
   // '("{\"project\": \"?\", \"C++\": 0}")' -> '("{\"C++\":20,\"project\":\"icpp\"}")'
   mockIC.run_test(
       "roundtrip_text_to_json_to_text", roundtrip_text_to_json_to_text,

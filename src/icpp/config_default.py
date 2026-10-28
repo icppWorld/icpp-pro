@@ -141,6 +141,10 @@ WASM_CPPFLAGS = WASM_CFLAGS
 WASM_LDFLAGS = (
     " -mexec-model=reactor "
     " -Wl,--lto-O3 -Wl,--strip-debug -Wl,--stack-first -Wl,--export-dynamic "
+    # A 1 MiB stack, as Rust canisters have, instead of wasm-ld's 64 KiB. The
+    # Candid decoder's nesting limit (128 levels) must trap before the stack
+    # runs out. With --stack-first an overflow traps as "heap out of bounds"
+    " -Wl,-z,stack-size=1048576 "
     # Force the built-in canister_global_timer dispatcher to be linked in and
     # exported. It lives in __ic_candid__.a and would otherwise be dropped
     # by the WASM linker's archive-selection rules (no caller references it

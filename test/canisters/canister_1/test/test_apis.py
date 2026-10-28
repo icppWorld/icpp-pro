@@ -683,6 +683,24 @@ def test__truncated_message_traps(network: str, method: str, argument: str) -> N
         ("roundtrip_blob", "4449444c017d010000", "must be a type constructor"),
         # a content type index of 2^32, which would wrap around to 0 as an int
         ("roundtrip_blob", "4449444c016d8080808010010000", "is out of range"),
+        # a record whose only field is of its own type, with no value bytes:
+        # it would recurse at the same offset without end
+        (
+            "roundtrip_vec_of_shared",
+            "4449444c016c0100000100",
+            "nested deeper than 128 levels",
+        ),
+        # 2,000,000 elements of 'vec record {}', which take no bytes on the wire
+        (
+            "roundtrip_vec_of_items",
+            "4449444c026d016c00010080897a",
+            "take no bytes on the wire",
+        ),
+        (
+            "roundtrip_vec_record",
+            "4449444c026d016c00010080897a",
+            "take no bytes on the wire",
+        ),
         # '(opt vec { record {} })' where an opt vec nat16 is expected
         (
             "roundtrip_opt_vec_nat16",

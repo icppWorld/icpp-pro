@@ -679,6 +679,8 @@ def test__truncated_message_traps(network: str, method: str, argument: str) -> N
         ("roundtrip_blob", "4449444c000105", "is not in the type table section"),
         # a type table entry that is a type index, not a type constructor
         ("roundtrip_blob", "4449444c02016c0000", "must be a type constructor"),
+        # a type table entry that is a primitive (nat), not a type constructor
+        ("roundtrip_blob", "4449444c017d010000", "must be a type constructor"),
         # a content type index of 2^32, which would wrap around to 0 as an int
         ("roundtrip_blob", "4449444c016d8080808010010000", "is out of range"),
         # '(opt vec { record {} })' where an opt vec nat16 is expected

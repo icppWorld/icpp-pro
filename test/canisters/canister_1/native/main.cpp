@@ -639,8 +639,9 @@ int main() {
                        "Not enough bytes left");
   // '(vec { blob "ab" })'
   mockIC.run_test("roundtrip_vec_blob", roundtrip_vec_blob,
-                  "4449444c026d016d7b010001026162", "4449444c026d7b6d00010101026162",
-                  silent_on_trap, my_principal);
+                  "4449444c026d016d7b010001026162",
+                  "4449444c026d7b6d00010101026162", silent_on_trap,
+                  my_principal);
   // Malformed messages trap; none is read past its end or out of a table.
   // A vec blob whose blob declares 5 bytes and has 2
   mockIC.run_trap_test("vec blob: blob size larger than the bytes left",
@@ -648,7 +649,8 @@ int main() {
                        silent_on_trap, my_principal, "Not enough bytes left");
   // Shorter than the magic number
   mockIC.run_trap_test("3 bytes, shorter than DIDL", roundtrip_blob, "444944",
-                       silent_on_trap, my_principal, "does not start with DIDL");
+                       silent_on_trap, my_principal,
+                       "does not start with DIDL");
   // A vec whose content type is index 5, with 1 type table
   mockIC.run_trap_test("content type index not in the type tables",
                        roundtrip_blob, "4449444c016d0500", silent_on_trap,
@@ -660,6 +662,10 @@ int main() {
   // A type table entry that is a type index, not a type constructor
   mockIC.run_trap_test("type table entry that is a type index", roundtrip_blob,
                        "4449444c02016c0000", silent_on_trap, my_principal,
+                       "must be a type constructor");
+  // A type table entry that is a primitive (nat), not a type constructor
+  mockIC.run_trap_test("type table entry that is a primitive", roundtrip_blob,
+                       "4449444c017d010000", silent_on_trap, my_principal,
                        "must be a type constructor");
   // A content type index of 2^32, which would wrap around to 0 as an int
   mockIC.run_trap_test("type index too large for an int", roundtrip_blob,

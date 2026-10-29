@@ -677,6 +677,18 @@ _RECORD_CHAIN = (
     + "6c00010001"
 )
 
+# '(vec nat16, opt t0)', where t0 is the first of a chain of 60 record types,
+# each with two fields of the next, ending in 'record {}': 2^60 records to
+# decode from no value bytes, in the additional opt argument
+_SHARED_RECORDS = (
+    "4449444c3f"
+    + "".join("6c0200" + _sleb128_hex(i) + "01" + _sleb128_hex(i) for i in range(1, 61))
+    + "6c006e006d7a"
+    # 2 arguments: t62 and t61; the values: 'vec { 101 }' and the opt's tag
+    + "023e3d"
+    + "01650001"
+)
+
 
 @pytest.mark.parametrize(
     "method, argument, expected",
@@ -720,6 +732,20 @@ _RECORD_CHAIN = (
             "4449444c026d016c00010080897a",
             "take no bytes on the wire",
         ),
+        ("roundtrip_vec_nat16", _SHARED_RECORDS, "take no bytes on the wire"),
+        # '(vec { "a"; "b" })' where a vec nat16 is expected
+        (
+            "roundtrip_vec_nat16",
+            "4449444c016d7101000201610162",
+            "Wrong opcode found on wire",
+        ),
+        # '(record { names = vec { 1 : nat16 }; values = vec { "a" } })' where a
+        # record { names : vec text; values : vec text } is expected
+        (
+            "roundtrip_record_vec_text",
+            "4449444c036c02e287dcfd0401c89f92b409026d716d7a0100010161010100",
+            "Wrong type on wire",
+        ),
         # '(opt vec { record {} })' where an opt vec nat16 is expected. It used
         # to dereference a null pointer. The Candid spec decodes an opt whose
         # content does not match as null; icpp-candid traps instead, until the
@@ -746,6 +772,22 @@ def test__malformed_message_traps(
         network=network,
     )
     assert expected in response, response
+
+
+def test__additional_opt_vec_record_argument(network: str) -> None:
+    # '(vec { 101; 102; 103 } : vec nat16, opt vec { record { 5 : nat8 } })':
+    # the additional argument is decoded and discarded, and leaves no type
+    # behind in the reply
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_vec_nat16",
+        canister_argument="4449444c046d7a6c01007b6d016e0202000303650066006700010105",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert response == "4449444c016d7a010003650066006700"
 
 
 def test__roundtrip_vec_blob(network: str) -> None:

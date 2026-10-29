@@ -79,6 +79,9 @@ private:
   struct Stored {
     Entry entry;
     DeadlineIndex::iterator it;
+    // False for a one-shot due in the running batch: it was taken out of the
+    // deadline index, and `it` no longer points into it
+    bool indexed{true};
   };
 
   uint64_t insert(uint64_t deadline_ns, uint64_t period_ns,

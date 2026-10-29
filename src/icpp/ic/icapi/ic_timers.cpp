@@ -52,7 +52,7 @@ uint64_t IcTimers::add_recurring(uint64_t period_ns, std::function<void()> cb) {
 bool IcTimers::cancel(uint64_t id) {
   auto sit = m_by_id.find(id);
   if (sit == m_by_id.end()) return false;
-  m_by_deadline.erase(sit->second.it);
+  if (sit->second.indexed) m_by_deadline.erase(sit->second.it);
   m_by_id.erase(sit);
   arm_next();
   return true;
@@ -138,6 +138,7 @@ void IcTimers::dispatch_due(uint64_t now_ns) {
       //   (b) cancel(id) called from another callback in this batch can
       //       remove it and prevent it from firing.
       m_by_deadline.erase(it);
+      sit->second.indexed = false;
     }
   }
 

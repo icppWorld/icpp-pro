@@ -274,6 +274,34 @@ int main() {
       "[cancel-from-cb] ic0_global_timer_set delta (clear's disarm)",
       cnt_f - cnt_e, 1);
 
+  // ---- Cancel one due one-shot from a callback --------------------------
+  // T1 and T2 are one-shots due in the same batch, T1 first. The gather phase
+  // takes both out of the deadline index; T1 then cancels T2, which must not
+  // erase T2's deadline-index iterator a second time, and T2 must not fire.
+  ic0mock_set_time_override(2000);
+  uint64_t c1_count = 0, c2_count = 0;
+  uint64_t c2_id = 0;
+  bool c2_cancelled = false;
+  IC_API::set_timer(100, [&c1_count, &c2_id, &c2_cancelled]() {
+    ++c1_count;
+    c2_cancelled = IC_API::cancel_timer(c2_id);
+  });
+  c2_id = IC_API::set_timer(100, [&c2_count]() { ++c2_count; });
+  ic0mock_set_time_override(2100);
+  mockIC.run_test("[cancel-one-from-cb] canister_global_timer",
+                  canister_global_timer, EMPTY_CANDID, "", silent_on_trap,
+                  my_principal);
+  extra_failures +=
+      expect_eq_u64("[cancel-one-from-cb] T1 callback ran", c1_count, 1);
+  extra_failures += expect_eq_u64(
+      "[cancel-one-from-cb] cancel_timer(T2) returned true", c2_cancelled, 1);
+  extra_failures += expect_eq_u64(
+      "[cancel-one-from-cb] T2 callback was cancelled (did NOT run)", c2_count,
+      0);
+  extra_failures +=
+      expect_eq_u64("[cancel-one-from-cb] registry empty after dispatch",
+                    IcTimers::instance().size(), 0);
+
   // Drive again — registry is empty so no callbacks should fire.
   mockIC.run_test("[cancel-from-cb] canister_global_timer (second, no-op)",
                   canister_global_timer, EMPTY_CANDID, "", silent_on_trap,

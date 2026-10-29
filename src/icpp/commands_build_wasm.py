@@ -439,13 +439,27 @@ def generate_javascript_bindings(
     out_path = declarations_path / canister
     typer.echo(f"{out_path.resolve()}")
 
+    # A write through a symlink would land outside the project: check every
+    # path below the project folder, from its src folder down
+    out_files = [out_path / f"{canister}.{s}" for s in ("did", "did.js", "did.d.ts")]
+    for path in [declarations_path.parent, declarations_path, out_path, *out_files]:
+        if path.is_symlink():
+            typer.echo(
+                f"ERROR: {path} is a symlink.\n"
+                f"       Remove it, so icpp can write the bindings in the project."
+            )
+            sys.exit(1)
+
     try:
         out_path.mkdir(parents=True, exist_ok=True)
-        shutil.copy(did_path, out_path / f"{canister}.did")
-        for target, suffix in (("js", "did.js"), ("ts", "did.d.ts")):
+        # copyfile, not copy: copy writes into a directory at that path, and
+        # through a symlink in it. copymode keeps the permissions, as copy did
+        shutil.copyfile(did_path, out_files[0])
+        shutil.copymode(did_path, out_files[0])
+        for target, out_file in (("js", out_files[1]), ("ts", out_files[2])):
             cmd = f"didc bind {shlex.quote(str(did_path))} --target {target}"
             bindings = run_shell_cmd(cmd, capture_output=True)
-            with open(out_path / f"{canister}.{suffix}", "w", encoding="utf-8") as file:
+            with open(out_file, "w", encoding="utf-8") as file:
                 file.write(bindings)
     except subprocess.CalledProcessError as e:
         typer.echo(f"ERROR: failed to generate the bindings: \n{e.output}")

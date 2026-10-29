@@ -164,6 +164,91 @@ def test__a_symlinked_build_folder_is_refused_when_it_is_not_deleted(
     assert "is a symlink" in capsys.readouterr().out
 
 
+def stub_didc(monkeypatch: pytest.MonkeyPatch) -> None:
+    """didc is found, and binds without running."""
+    monkeypatch.setattr("icpp.commands_build_wasm.shutil.which", lambda _: "didc")
+    monkeypatch.setattr(
+        "icpp.commands_build_wasm.run_shell_cmd", lambda *_a, **_k: "bindings"
+    )
+
+
+@pytest.mark.parametrize(
+    "link", ["src", "declarations", "my_canister", "my_canister.did.js"]
+)
+def test__bindings_are_not_written_through_a_symlink(
+    tmp_path: Path,
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    link: str,
+) -> None:
+    from icpp.commands_build_wasm import generate_javascript_bindings
+
+    target = tmp_path / "elsewhere"
+    target.mkdir()
+    (target / "keep.txt").write_text("keep", encoding="utf-8")
+    declarations = project / "src" / "declarations"
+    did_path = project / "my_canister.did"
+    did_path.write_text("service : {}", encoding="utf-8")
+    if link == "src":
+        (project / "src").rmdir()
+    paths = {
+        "src": project / "src",
+        "declarations": declarations,
+        "my_canister": declarations / "my_canister",
+        "my_canister.did.js": declarations / "my_canister" / "my_canister.did.js",
+    }
+    paths[link].parent.mkdir(parents=True, exist_ok=True)
+    paths[link].symlink_to(target / "keep.txt" if link.endswith(".js") else target)
+    stub_didc(monkeypatch)
+    with pytest.raises(SystemExit):
+        generate_javascript_bindings(did_path, "my_canister", declarations)
+    assert f"{paths[link]} is a symlink" in capsys.readouterr().out
+    assert sorted(p.name for p in target.iterdir()) == ["keep.txt"]
+    assert (target / "keep.txt").read_text(encoding="utf-8") == "keep"
+
+
+def test__the_did_is_not_copied_into_a_directory_at_its_path(
+    tmp_path: Path,
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from icpp.commands_build_wasm import generate_javascript_bindings
+
+    # A directory named like the .did output, holding a symlink named like the
+    # .did input: a copy into the directory would write through the symlink
+    target = tmp_path / "keep.txt"
+    target.write_text("keep", encoding="utf-8")
+    did_path = project / "my_canister.did"
+    did_path.write_text("service : {}", encoding="utf-8")
+    declarations = project / "src" / "declarations"
+    did_folder = declarations / "my_canister" / "my_canister.did"
+    did_folder.mkdir(parents=True)
+    (did_folder / "my_canister.did").symlink_to(target)
+    stub_didc(monkeypatch)
+    with pytest.raises(SystemExit):
+        generate_javascript_bindings(did_path, "my_canister", declarations)
+    assert "failed to write the bindings" in capsys.readouterr().out
+    assert target.read_text(encoding="utf-8") == "keep"
+
+
+def test__the_did_keeps_its_permissions(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from icpp.commands_build_wasm import generate_javascript_bindings
+
+    did_path = project / "my_canister.did"
+    did_path.write_text("service : {}", encoding="utf-8")
+    did_path.chmod(0o600)
+    declarations = project / "src" / "declarations"
+    stub_didc(monkeypatch)
+    generate_javascript_bindings(did_path, "my_canister", declarations)
+    out = declarations / "my_canister" / "my_canister.did"
+    assert out.read_text(encoding="utf-8") == "service : {}"
+    assert out.stat().st_mode & 0o777 == 0o600
+
+
 def test__the_package_attribute_is_restored() -> None:
     # Runs after the tests above: none left its icpp_toml behind
     assert getattr(icpp, "icpp_toml", None) is sys.modules.get("icpp.icpp_toml")

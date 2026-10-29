@@ -52,12 +52,10 @@ def rmtree_force(path: Union[str, Path]) -> None:
         shutil.rmtree(path, onerror=remove_readonly)
 
 
-def delete_build_folder(path: Path) -> None:
-    """Deletes a build folder, so the build starts clean.
+def refuse_symlinked_folder(path: Path) -> None:
+    """Exits with an ERROR when a build folder is a symlink.
 
-    Exits with an ERROR when it cannot: a build on top of the old folder would
-    link stale objects into the result. A symlink is refused, so the delete
-    never follows it out of the project.
+    A delete in it, or in a folder below it, would happen outside the project.
     """
     if path.is_symlink():
         typer.echo(
@@ -65,6 +63,16 @@ def delete_build_folder(path: Path) -> None:
             f"       Remove it, so icpp can create a real folder."
         )
         sys.exit(1)
+
+
+def delete_build_folder(path: Path) -> None:
+    """Deletes a build folder, so the build starts clean.
+
+    Exits with an ERROR when it cannot: a build on top of the old folder would
+    link stale objects into the result. A symlink is refused, so the delete
+    never follows it out of the project.
+    """
+    refuse_symlinked_folder(path)
     if not path.exists():
         return
     try:

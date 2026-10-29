@@ -13,6 +13,7 @@ Regressions:
 # pylint: disable=missing-function-docstring, import-outside-toplevel, redefined-outer-name
 
 import importlib
+import inspect
 import os
 import shlex
 import sys
@@ -21,6 +22,7 @@ from types import ModuleType
 
 import pytest
 
+import icpp
 from icpp import config_default
 from icpp.utils import delete_build_folder
 
@@ -30,7 +32,12 @@ def load_icpp_toml(monkeypatch: pytest.MonkeyPatch, toml_text: str) -> ModuleTyp
     project = Path(os.getcwd())
     (project / "icpp.toml").write_text(toml_text, encoding="utf-8")
     monkeypatch.setattr(config_default, "ICPP_TOML_PATH", project / "icpp.toml")
-    monkeypatch.delitem(sys.modules, "icpp.icpp_toml", raising=False)
+    # The import sets both the sys.modules entry and the package attribute:
+    # set each first, so the teardown restores it or removes it
+    monkeypatch.setitem(sys.modules, "icpp.icpp_toml", None)
+    monkeypatch.delitem(sys.modules, "icpp.icpp_toml")
+    monkeypatch.setattr(icpp, "icpp_toml", None, raising=False)
+    monkeypatch.delattr(icpp, "icpp_toml")
     return importlib.import_module("icpp.icpp_toml")
 
 
@@ -100,6 +107,27 @@ def test__a_symlinked_build_folder_is_refused(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         delete_build_folder(build)
     assert (target / "keep.txt").exists()
+
+
+def test__a_library_in_a_symlinked_build_root_is_not_deleted(
+    tmp_path: Path, project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from icpp.commands_build_library import build_library
+
+    target = tmp_path / "elsewhere"
+    (target / "libhello").mkdir(parents=True)
+    (target / "libhello" / "keep.txt").write_text("keep", encoding="utf-8")
+    (project / "build-library").symlink_to(target, target_is_directory=True)
+    toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
+    load_icpp_toml(monkeypatch, toml_text)
+    with pytest.raises(SystemExit):
+        inspect.unwrap(build_library)(lib_name="libhello")
+    assert (target / "libhello" / "keep.txt").exists()
+
+
+def test__the_package_attribute_is_restored() -> None:
+    # Runs after the tests above: none left its icpp_toml behind
+    assert getattr(icpp, "icpp_toml", None) is sys.modules.get("icpp.icpp_toml")
 
 
 def test__a_build_folder_that_cannot_be_deleted_exits(

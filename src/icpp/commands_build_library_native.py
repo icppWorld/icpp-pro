@@ -16,7 +16,7 @@ from icpp.__main__ import app
 
 from icpp import config_default, candid_library
 from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
-from icpp.utils import delete_build_folder
+from icpp.utils import delete_build_folder, refuse_symlinked_folder
 
 from icpp.decorators import requires_native_compiler
 from icpp.options_build import (
@@ -59,6 +59,8 @@ def build_library_native(
     build_root_path = icpp_toml.icpp_toml_path.parent / "build-library-native"
     # typer.echo(f"Build folder: {build_root_path.resolve()}")
 
+    # The library folders below it are deleted too, also for a single library
+    refuse_symlinked_folder(build_root_path)
     if lib_name is None:
         if build_root_path.exists():
             typer.echo(f"Deleting the folder: {build_root_path} ")

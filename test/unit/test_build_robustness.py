@@ -130,6 +130,23 @@ def test__a_library_in_a_symlinked_build_root_is_not_deleted(
     assert (target / "libhello" / "keep.txt").exists()
 
 
+def test__a_dangling_symlink_as_library_folder_is_refused(
+    tmp_path: Path,
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from icpp.commands_build_library import build_library
+
+    (project / "build-library").mkdir()
+    (project / "build-library" / "libhello").symlink_to(tmp_path / "missing")
+    toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
+    load_icpp_toml(monkeypatch, toml_text)
+    with pytest.raises(SystemExit):
+        inspect.unwrap(build_library)(lib_name="libhello")
+    assert "is a symlink" in capsys.readouterr().out
+
+
 def test__a_symlinked_build_folder_is_refused_when_it_is_not_deleted(
     tmp_path: Path,
     project: Path,

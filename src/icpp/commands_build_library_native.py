@@ -130,6 +130,8 @@ def build_library_native(
             build_path = build_root_path / library["lib_name"]
             typer.echo(f"Native library build folder: {build_path.resolve()}")
 
+            # Before exists(): it is False for a dangling symlink
+            refuse_symlinked_folder(build_path)
             if build_path.exists():
                 # typer.echo("Deleting the build folder.")
                 delete_build_folder(build_path)

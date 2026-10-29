@@ -672,7 +672,10 @@ int main() {
   mockIC.run_trap_test("type index too large for an int", roundtrip_blob,
                        "4449444c016d8080808010010000", silent_on_trap,
                        my_principal, "is out of range");
-  // '(opt vec { record {} })' to a method that expects an opt vec nat16
+  // '(opt vec { record {} })' to a method that expects an opt vec nat16. It
+  // used to dereference a null pointer. The Candid spec decodes an opt whose
+  // content does not match as null; icpp-candid traps instead, until the opt
+  // coercion rules are done (roadmap 7.3, the compliance suite)
   mockIC.run_trap_test("opt vec record where opt vec nat16 is expected",
                        roundtrip_opt_vec_nat16,
                        "4449444c036e016d026c0001000101", silent_on_trap,

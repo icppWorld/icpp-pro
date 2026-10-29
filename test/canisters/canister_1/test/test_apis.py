@@ -720,7 +720,10 @@ _RECORD_CHAIN = (
             "4449444c026d016c00010080897a",
             "take no bytes on the wire",
         ),
-        # '(opt vec { record {} })' where an opt vec nat16 is expected
+        # '(opt vec { record {} })' where an opt vec nat16 is expected. It used
+        # to dereference a null pointer. The Candid spec decodes an opt whose
+        # content does not match as null; icpp-candid traps instead, until the
+        # opt coercion rules are done (roadmap 7.3, the compliance suite)
         (
             "roundtrip_opt_vec_nat16",
             "4449444c036e016d026c0001000101",

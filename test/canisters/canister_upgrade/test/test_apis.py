@@ -2,7 +2,7 @@
 
 First deploy the canister, then run:
 
-$ pytest --network=[local/ic] test/test_apis.py
+$ pytest --network=local test/test_apis.py
 
 After a fresh install only canister_init has run. Upgrade the canister in
 place and run test/test_after_upgrade.py to check the upgrade hooks.

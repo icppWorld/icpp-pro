@@ -3,7 +3,7 @@
 First deploy the canister and run test/test_apis.py, then upgrade it with
 `icp deploy --mode upgrade` and run:
 
-$ pytest --network=[local/ic] test/test_after_upgrade.py
+$ pytest --network=local test/test_after_upgrade.py
 
 canister_pre_upgrade and canister_post_upgrade each construct an IC_API. A
 pre_upgrade that traps aborts the upgrade, so these counts prove that

@@ -12,6 +12,7 @@
 #include "ic_api.h"
 #include "icpp_hooks.h"
 #include "mock_ic.h"
+#include "vec_bytes.h"
 
 // Native-only scenarios for the 128-bit cycles & certified-data APIs. Not
 // canister exports - they drive IC_API through entry points & mock state
@@ -637,6 +638,83 @@ int main() {
   mockIC.run_trap_test("blob size larger than the bytes left", roundtrip_blob,
                        "4449444c016d7b0100056162", silent_on_trap, my_principal,
                        "Not enough bytes left");
+  // '(vec { blob "ab" })'
+  mockIC.run_test("roundtrip_vec_blob", roundtrip_vec_blob,
+                  "4449444c026d016d7b010001026162",
+                  "4449444c026d7b6d00010101026162", silent_on_trap,
+                  my_principal);
+  // Malformed messages trap; none is read past its end or out of a table.
+  // A vec blob whose blob declares 5 bytes and has 2
+  mockIC.run_trap_test("vec blob: blob size larger than the bytes left",
+                       roundtrip_vec_blob, "4449444c026d016d7b010001056162",
+                       silent_on_trap, my_principal, "Not enough bytes left");
+  // Shorter than the magic number
+  mockIC.run_trap_test("3 bytes, shorter than DIDL", roundtrip_blob, "444944",
+                       silent_on_trap, my_principal,
+                       "does not start with DIDL");
+  // A vec whose content type is index 5, with 1 type table
+  mockIC.run_trap_test("content type index not in the type tables",
+                       roundtrip_blob, "4449444c016d0500", silent_on_trap,
+                       my_principal, "is not in the type table section");
+  // An argument of type index 5, with no type tables
+  mockIC.run_trap_test("argument type index not in the type tables",
+                       roundtrip_blob, "4449444c000105", silent_on_trap,
+                       my_principal, "is not in the type table section");
+  // A type table entry that is a type index, not a type constructor
+  mockIC.run_trap_test("type table entry that is a type index", roundtrip_blob,
+                       "4449444c02016c0000", silent_on_trap, my_principal,
+                       "must be a type constructor");
+  // A type table entry that is a primitive (nat), not a type constructor
+  mockIC.run_trap_test("type table entry that is a primitive", roundtrip_blob,
+                       "4449444c017d010000", silent_on_trap, my_principal,
+                       "must be a type constructor");
+  // A content type index of 2^32, which would wrap around to 0 as an int
+  mockIC.run_trap_test("type index too large for an int", roundtrip_blob,
+                       "4449444c016d8080808010010000", silent_on_trap,
+                       my_principal, "is out of range");
+  // '(opt vec { record {} })' to a method that expects an opt vec nat16. It
+  // used to dereference a null pointer. The Candid spec decodes an opt whose
+  // content does not match as null; icpp-candid traps instead, until the opt
+  // coercion rules are done (roadmap 7.3, the compliance suite)
+  mockIC.run_trap_test("opt vec record where opt vec nat16 is expected",
+                       roundtrip_opt_vec_nat16,
+                       "4449444c036e016d026c0001000101", silent_on_trap,
+                       my_principal, "an opt vec record, where an opt vec");
+  // Limits, so a message cannot make the decoder recurse or loop without end.
+  // A record whose only field is of its own type: 'record { 0 : t0 }' for t0,
+  // with no value bytes, recursing at the same offset
+  mockIC.run_trap_test("record nested in itself", roundtrip_vec_of_shared,
+                       "4449444c016c0100000100", silent_on_trap, my_principal,
+                       "nested deeper than 128 levels");
+  // 2,000,000 elements of 'vec record {}', which take no bytes on the wire,
+  // to a vec_of and to a vec record decoder
+  mockIC.run_trap_test("2,000,000 zero width elements (vec_of)",
+                       roundtrip_vec_of_items, "4449444c026d016c00010080897a",
+                       silent_on_trap, my_principal,
+                       "take no bytes on the wire");
+  mockIC.run_trap_test("2,000,000 zero width elements (vec record)",
+                       roundtrip_vec_record, "4449444c026d016c00010080897a",
+                       silent_on_trap, my_principal,
+                       "take no bytes on the wire");
+  // '(vec { record { record { ... } } })': a chain of 200 record types, each
+  // with one field of the next, ending in 'record {}'. Checking if the vec's
+  // elements take no bytes recurses down the chain.
+  auto append = [](VecBytes &v, std::initializer_list<uint8_t> bytes) {
+    for (uint8_t b : bytes)
+      v.append_byte(std::byte{b});
+  };
+  {
+    VecBytes chain;
+    append(chain, {'D', 'I', 'D', 'L', 0xca, 0x01, 0x6d, 0x01}); // 202 types
+    for (int i = 2; i <= 201; ++i) {
+      append(chain, {0x6c, 0x01, 0x00});
+      chain.append_sleb128(__int128_t(i));
+    }
+    append(chain, {0x6c, 0x00, 0x01, 0x00, 0x01});
+    mockIC.run_trap_test("chain of 200 record types", roundtrip_vec_of_items,
+                         chain.as_hex_string(), silent_on_trap, my_principal,
+                         "nested deeper than 128 levels");
+  }
   // '("{\"project\": \"?\", \"C++\": 0}")' -> '("{\"C++\":20,\"project\":\"icpp\"}")'
   mockIC.run_test(
       "roundtrip_text_to_json_to_text", roundtrip_text_to_json_to_text,

@@ -662,6 +662,105 @@ def test__truncated_message_traps(network: str, method: str, argument: str) -> N
     assert "Not enough bytes left" in response, response
 
 
+def _sleb128_hex(n: int) -> str:
+    out = b""
+    while True:
+        b, n = n & 0x7F, n >> 7
+        if (n == 0 and not b & 0x40) or (n == -1 and b & 0x40):
+            return (out + bytes([b])).hex()
+        out += bytes([b | 0x80])
+
+
+_RECORD_CHAIN = (
+    "4449444cca016d01"
+    + "".join("6c0100" + _sleb128_hex(i) for i in range(2, 202))
+    + "6c00010001"
+)
+
+
+@pytest.mark.parametrize(
+    "method, argument, expected",
+    [
+        # '(vec { blob "ab" })' with the blob's size 2 changed to 5
+        (
+            "roundtrip_vec_blob",
+            "4449444c026d016d7b010001056162",
+            "Not enough bytes left",
+        ),
+        # shorter than the magic number
+        ("roundtrip_blob", "444944", "does not start with DIDL"),
+        # a vec whose content type is index 5, with 1 type table
+        ("roundtrip_blob", "4449444c016d0500", "is not in the type table section"),
+        # an argument of type index 5, with no type tables
+        ("roundtrip_blob", "4449444c000105", "is not in the type table section"),
+        # a type table entry that is a type index, not a type constructor
+        ("roundtrip_blob", "4449444c02016c0000", "must be a type constructor"),
+        # a type table entry that is a primitive (nat), not a type constructor
+        ("roundtrip_blob", "4449444c017d010000", "must be a type constructor"),
+        # a content type index of 2^32, which would wrap around to 0 as an int
+        ("roundtrip_blob", "4449444c016d8080808010010000", "is out of range"),
+        # a record whose only field is of its own type, with no value bytes:
+        # it would recurse at the same offset without end
+        (
+            "roundtrip_vec_of_shared",
+            "4449444c016c0100000100",
+            "nested deeper than 128 levels",
+        ),
+        # '(vec { record { record { ... } } })': a chain of 200 record types,
+        # each with one field of the next, ending in 'record {}'
+        ("roundtrip_vec_of_items", _RECORD_CHAIN, "nested deeper than 128 levels"),
+        # 2,000,000 elements of 'vec record {}', which take no bytes on the wire
+        (
+            "roundtrip_vec_of_items",
+            "4449444c026d016c00010080897a",
+            "take no bytes on the wire",
+        ),
+        (
+            "roundtrip_vec_record",
+            "4449444c026d016c00010080897a",
+            "take no bytes on the wire",
+        ),
+        # '(opt vec { record {} })' where an opt vec nat16 is expected. It used
+        # to dereference a null pointer. The Candid spec decodes an opt whose
+        # content does not match as null; icpp-candid traps instead, until the
+        # opt coercion rules are done (roadmap 7.3, the compliance suite)
+        (
+            "roundtrip_opt_vec_nat16",
+            "4449444c036e016d026c0001000101",
+            "an opt vec record, where an opt vec",
+        ),
+    ],
+)
+def test__malformed_message_traps(
+    network: str, method: str, argument: str, expected: str
+) -> None:
+    # A malformed message traps; it is never read past its end, and no index
+    # from the wire is used outside the type tables
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method=method,
+        canister_argument=argument,
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert expected in response, response
+
+
+def test__roundtrip_vec_blob(network: str) -> None:
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="roundtrip_vec_blob",
+        canister_argument="4449444c026d016d7b010001026162",
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert response == "4449444c026d7b6d00010101026162"
+
+
 def test__roundtrip_text_to_json_to_text(network: str, principal: str) -> None:
     d = {"project": "?", "C++": 0}
     text_in = dict_to_candid_text(d)

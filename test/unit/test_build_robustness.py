@@ -154,7 +154,7 @@ def test__a_build_folder_is_deleted(tmp_path: Path) -> None:
     delete_build_folder(build)  # a missing folder is fine
 
 
-def test__the_project_folder_comes_last_on_sys_path(
+def test__icpp_does_not_put_the_project_folder_on_sys_path(
     project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from icpp import __main__ as icpp_main
@@ -162,4 +162,28 @@ def test__the_project_folder_comes_last_on_sys_path(
     monkeypatch.setattr(sys, "path", list(sys.path))
     monkeypatch.setattr(icpp_main, "app", lambda **_kwargs: None)
     icpp_main.main()
-    assert sys.path[-1] == str(project)
+    assert str(project) not in sys.path
+
+
+def test__a_post_wasm_function_package_wins_over_an_installed_one(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from icpp.call_function_from_name import call_function
+
+    # A project package named like a standard library module
+    (project / "colorsys").mkdir()
+    (project / "colorsys" / "__init__.py").write_text("", encoding="utf-8")
+    (project / "colorsys" / "hook.py").write_text(
+        "from pathlib import Path\n\n"
+        "def run() -> None:\n"
+        "    Path('ran.txt').write_text('yes')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    # Set each first, so the teardown restores it or removes it
+    for name in ["colorsys", "colorsys.hook"]:
+        monkeypatch.setitem(sys.modules, name, None)
+        monkeypatch.delitem(sys.modules, name)
+    call_function("colorsys.hook.run")
+    assert (project / "ran.txt").read_text(encoding="utf-8") == "yes"
+    assert str(project) not in sys.path

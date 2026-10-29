@@ -164,7 +164,9 @@ def test__a_symlinked_build_folder_is_refused_when_it_is_not_deleted(
     assert "is a symlink" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("link", ["declarations", "my_canister", "my_canister.did.js"])
+@pytest.mark.parametrize(
+    "link", ["src", "declarations", "my_canister", "my_canister.did.js"]
+)
 def test__bindings_are_not_written_through_a_symlink(
     tmp_path: Path, project: Path, monkeypatch: pytest.MonkeyPatch, link: str
 ) -> None:
@@ -174,15 +176,18 @@ def test__bindings_are_not_written_through_a_symlink(
     target.mkdir()
     (target / "keep.txt").write_text("keep", encoding="utf-8")
     declarations = project / "src" / "declarations"
+    did_path = project / "my_canister.did"
+    did_path.write_text("service : {}", encoding="utf-8")
+    if link == "src":
+        (project / "src").rmdir()
     paths = {
+        "src": project / "src",
         "declarations": declarations,
         "my_canister": declarations / "my_canister",
         "my_canister.did.js": declarations / "my_canister" / "my_canister.did.js",
     }
     paths[link].parent.mkdir(parents=True, exist_ok=True)
     paths[link].symlink_to(target / "keep.txt" if link.endswith(".js") else target)
-    did_path = project / "src" / "my_canister.did"
-    did_path.write_text("service : {}", encoding="utf-8")
     monkeypatch.setattr("icpp.commands_build_wasm.shutil.which", lambda _: "didc")
     with pytest.raises(SystemExit):
         generate_javascript_bindings(did_path, "my_canister", declarations)

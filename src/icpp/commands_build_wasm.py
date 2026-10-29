@@ -439,9 +439,10 @@ def generate_javascript_bindings(
     out_path = declarations_path / canister
     typer.echo(f"{out_path.resolve()}")
 
-    # A write through a symlink would land outside the project
+    # A write through a symlink would land outside the project: check every
+    # path below the project folder, from its src folder down
     out_files = [out_path / f"{canister}.{s}" for s in ("did", "did.js", "did.d.ts")]
-    for path in [declarations_path, out_path, *out_files]:
+    for path in [declarations_path.parent, declarations_path, out_path, *out_files]:
         if path.is_symlink():
             typer.echo(
                 f"ERROR: {path} is a symlink.\n"

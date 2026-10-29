@@ -254,7 +254,8 @@ def _is_query_in_did(did_text: str, method: str) -> Optional[bool]:
     ):
         arrow = text.find("->", match.end())
         if arrow == -1:
-            continue
+            # No later declaration has one either
+            return None
         i = arrow + 2
         while i < len(text) and text[i].isspace():
             i += 1
@@ -301,8 +302,8 @@ def _candid_text(
     if did_text is None:
         try:
             did_text = _run_icp(
-                f" canister metadata {canister_name} candid:service "
-                f" --environment {network} ",
+                f" canister metadata {shlex.quote(canister_name)} candid:service "
+                f" --environment {shlex.quote(network)} ",
                 project_root,
                 timeout_seconds,
                 identity=identity,
@@ -348,7 +349,7 @@ def _run_icp(
     if identity is not None:
         cmd += f"--identity {shlex.quote(identity)} "
     if project_root is not None:
-        cmd += f"--project-root-override {str(project_root)} "
+        cmd += f"--project-root-override {shlex.quote(str(project_root))} "
     # icp launches an interactive prompt when it is missing an argument. Close
     # stdin so it can never block a test run waiting for input.
     return run_shell_cmd(
@@ -419,10 +420,10 @@ def call_canister_api(
 
     arg = (
         f" canister call "
-        f" {canister_name} "
-        f" {canister_method} "
-        f" '{argument}' "
-        f" --environment {network} "
+        f" {shlex.quote(canister_name)} "
+        f" {shlex.quote(canister_method)} "
+        f" {shlex.quote(argument)} "
+        f" --environment {shlex.quote(network)} "
         f" --args-format {_ARGS_FORMATS[canister_input]} "
         f" --output {_OUTPUT_FORMATS[canister_output]} "
     )
@@ -566,7 +567,8 @@ def get_canister_id(
     # were deployed from elsewhere and linked into the project.
     try:
         response = _run_icp(
-            f" canister status {canister_name} --environment {network} --json ",
+            f" canister status {shlex.quote(canister_name)} "
+            f" --environment {shlex.quote(network)} --json ",
             project_root,
             timeout_seconds,
             identity=identity or _identity(),
@@ -593,7 +595,7 @@ def get_local_webserver_port(
 
     try:
         response = _run_icp(
-            f" network status --environment {network} --json ",
+            f" network status --environment {shlex.quote(network)} --json ",
             project_root,
             timeout_seconds,
         )
@@ -640,7 +642,9 @@ def network_status(
     project_root = None if icp_yaml is None else icp_yaml.parent
 
     try:
-        response = _run_icp(f" network ping --environment {network} ", project_root)
+        response = _run_icp(
+            f" network ping --environment {shlex.quote(network)} ", project_root
+        )
     except subprocess.CalledProcessError:
         if network == "ic":
             msg = (

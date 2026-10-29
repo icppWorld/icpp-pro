@@ -400,7 +400,7 @@ public:
     size_t len = str.size() + 1;
     *p_data = new char[len];
     std::copy(str.begin(), str.end(), *p_data);
-    (*p_data)[len] = '\0'; // Add null terminator.
+    (*p_data)[str.size()] = '\0'; // Add null terminator.
   }
 
   template <typename T>

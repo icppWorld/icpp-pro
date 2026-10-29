@@ -55,7 +55,8 @@ def rmtree_force(path: Union[str, Path]) -> None:
 def refuse_symlinked_folder(path: Path) -> None:
     """Exits with an ERROR when a build folder is a symlink.
 
-    A delete in it, or in a folder below it, would happen outside the project.
+    A delete in it, or in a folder below it, and the files a build writes in it,
+    would happen outside the project.
     """
     if path.is_symlink():
         typer.echo(

@@ -23,6 +23,9 @@ from types import ModuleType
 import pytest
 
 import icpp
+
+# Imports the build commands in the order the icpp command does
+from icpp import __main__ as icpp_main
 from icpp import config_default
 from icpp.utils import delete_build_folder
 
@@ -127,6 +130,23 @@ def test__a_library_in_a_symlinked_build_root_is_not_deleted(
     assert (target / "libhello" / "keep.txt").exists()
 
 
+def test__a_symlinked_build_folder_is_refused_when_it_is_not_deleted(
+    tmp_path: Path,
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from icpp.commands_build_native import build_native
+
+    target = tmp_path / "elsewhere"
+    target.mkdir()
+    (project / "build-native").symlink_to(target, target_is_directory=True)
+    load_icpp_toml(monkeypatch, WASM_TABLE)
+    with pytest.raises(SystemExit):
+        inspect.unwrap(build_native)(to_compile="mine-no-lib")
+    assert "is a symlink" in capsys.readouterr().out
+
+
 def test__the_package_attribute_is_restored() -> None:
     # Runs after the tests above: none left its icpp_toml behind
     assert getattr(icpp, "icpp_toml", None) is sys.modules.get("icpp.icpp_toml")
@@ -157,8 +177,6 @@ def test__a_build_folder_is_deleted(tmp_path: Path) -> None:
 def test__icpp_does_not_put_the_project_folder_on_sys_path(
     project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from icpp import __main__ as icpp_main
-
     monkeypatch.setattr(sys, "path", list(sys.path))
     monkeypatch.setattr(icpp_main, "app", lambda **_kwargs: None)
     icpp_main.main()

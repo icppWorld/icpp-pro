@@ -16,7 +16,7 @@ from icpp.__main__ import app
 from icpp import config_default
 from icpp.icpp_pro_message import icpp_pro_message
 from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
-from icpp.utils import delete_build_folder
+from icpp.utils import delete_build_folder, refuse_symlinked_folder
 
 from icpp.decorators import requires_wasi_sdk, requires_rust, requires_native_compiler
 from icpp.options_build import (
@@ -84,6 +84,8 @@ def build_wasm(
     build_path = icpp_toml.icpp_toml_path.parent / "build"
     typer.echo(f"Build folder: {build_path.resolve()}")
 
+    # Also when it is not deleted: the build writes into it
+    refuse_symlinked_folder(build_path)
     if to_compile == "all":
         if build_path.exists():
             typer.echo(f"Deleting the folder: {build_path}")

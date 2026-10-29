@@ -35,6 +35,21 @@ static void native_refunded_in_reject_callback() {
   ic_api.to_wire();
 }
 
+// The deprecated store_string_orthogonal: the terminator goes right after the
+// copied string, inside the allocation
+static void native_store_string_orthogonal() {
+  IC_API ic_api(CanisterUpdate{"native_store_string_orthogonal"}, false);
+  char *p_data = nullptr;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+  ic_api.store_string_orthogonal("abc", &p_data);
+  ic_api.store_string_orthogonal("de", &p_data);
+#pragma clang diagnostic pop
+  if (std::string(p_data) != "de") ICPP_HOOKS::trap("stored string != de");
+  delete[] p_data;
+  ic_api.to_wire();
+}
+
 static void native_refunded_from_update() {
   IC_API ic_api(CanisterUpdate{"native_refunded_from_update"}, false);
   (void)ic_api.get_msg_cycles_refunded(); // must trap: wrong entry point
@@ -1702,6 +1717,10 @@ int main() {
   mockIC.run_test("native_cycles_accept_flow", native_cycles_accept_flow,
                   "4449444c0000", "4449444c0000", silent_on_trap, my_principal);
   mockIC.set_msg_cycles_available(0);
+
+  mockIC.run_test("native_store_string_orthogonal",
+                  native_store_string_orthogonal, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
 
   mockIC.set_msg_cycles_refunded(750);
   mockIC.run_test("native_refunded_in_reject_callback",

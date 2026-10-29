@@ -42,9 +42,8 @@ networks:
       port: 0
 
 environments:
-  # The names of these environments are the values you pass to pytest as
-  # `--network=[local/ic]`.
+  # The name of this environment is the value you pass to pytest as
+  # `--network=local`. This test canister is never deployed to the IC, so it
+  # has no `ic` environment.
   - name: local
     network: local
-  - name: ic
-    network: ic

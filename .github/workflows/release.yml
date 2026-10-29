@@ -41,9 +41,10 @@ jobs:
       # match would publish that branch to PyPI.
       - name: assert the tagged commit is on main
         run: |
-          git fetch --no-tags origin main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::tagged commit $GITHUB_SHA is not an ancestor of origin/main - release only from main"
+          # Full ref names: a tag named origin/main would win over the short name
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main; then
+            echo "::error::tagged commit $GITHUB_SHA is not an ancestor of refs/remotes/origin/main - release only from main"
             exit 1
           fi
 

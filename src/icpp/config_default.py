@@ -7,6 +7,7 @@ import sys
 import platform
 from pathlib import Path
 import getpass
+import shlex
 import icpp_candid  # pylint: disable = unused-import
 from icpp import (
     __version_wasi_sdk__,
@@ -116,18 +117,30 @@ IC_HEADER_FILES_LIST = [
     + list(ICPP_CANDID_PATH.glob("vendors/cppcodec/*/*.hpp"))
 ]
 
-IC_C_FILES = " ".join(IC_C_FILES_LIST) + " "
-IC_CPP_FILES = " ".join(IC_CPP_FILES_LIST) + " "
-IC_HEADER_FILES = " ".join(IC_HEADER_FILES_LIST) + " "
+IC_C_FILES = " ".join(map(shlex.quote, IC_C_FILES_LIST)) + " "
+IC_CPP_FILES = " ".join(map(shlex.quote, IC_CPP_FILES_LIST)) + " "
+IC_HEADER_FILES = " ".join(map(shlex.quote, IC_HEADER_FILES_LIST)) + " "
 
 SYSROOT = WASI_SDK_COMPILER_ROOT / "share/wasi-sysroot"
 
+
+def _include_flags(ic0_dir: str) -> str:
+    """The -I flags for icpp's own headers, quoted for the shell."""
+    dirs = [
+        f"{ICPP_DIR}/ic/canister",
+        f"{ICPP_DIR}/ic/icapi",
+        f"{ICPP_DIR}/ic/pro",
+        f"{ICPP_DIR}/ic/{ic0_dir}",
+        f"{ICPP_CANDID_PATH}/candid",
+        f"{ICPP_CANDID_PATH}/hooks",
+        f"{ICPP_CANDID_PATH}/vendors",
+    ]
+    return " " + " ".join(f"-I {shlex.quote(d)}" for d in dirs) + " "
+
+
 WASM_C_REQUIRED_FLAGS = (
-    f" --target=wasm32-wasi --sysroot {SYSROOT} "
-    f" -I {ICPP_DIR}/ic/canister -I {ICPP_DIR}/ic/icapi "
-    f" -I {ICPP_DIR}/ic/pro -I {ICPP_DIR}/ic/ic0 "
-    f" -I {ICPP_CANDID_PATH}/candid -I {ICPP_CANDID_PATH}/hooks "
-    f" -I {ICPP_CANDID_PATH}/vendors "
+    f" --target=wasm32-wasi --sysroot {shlex.quote(str(SYSROOT))} "
+    + _include_flags("ic0")
 )
 WASM_CPP_REQUIRED_FLAGS = WASM_C_REQUIRED_FLAGS + " -std=c++20 "
 
@@ -193,21 +206,16 @@ MOCKIC_HEADER_FILES_LIST = [
     + list(ICPP_CANDID_PATH.glob("vendors/cppcodec/*/*.hpp"))
 ]
 
-MOCKIC_C_FILES = " ".join(MOCKIC_C_FILES_LIST) + " "
-MOCKIC_CPP_FILES = " ".join(MOCKIC_CPP_FILES_LIST) + " "
-MOCKIC_HEADER_FILES = " ".join(MOCKIC_HEADER_FILES_LIST) + " "
+MOCKIC_C_FILES = " ".join(map(shlex.quote, MOCKIC_C_FILES_LIST)) + " "
+MOCKIC_CPP_FILES = " ".join(map(shlex.quote, MOCKIC_CPP_FILES_LIST)) + " "
+MOCKIC_HEADER_FILES = " ".join(map(shlex.quote, MOCKIC_HEADER_FILES_LIST)) + " "
 
 NATIVE_COMPILER = "Clang"
 NATIVE_C = "clang"
 NATIVE_CPP = "clang++"
 NATIVE_AR = "ar"
 
-NATIVE_C_REQUIRED_FLAGS = (
-    f" -I {ICPP_DIR}/ic/canister -I {ICPP_DIR}/ic/icapi "
-    f" -I {ICPP_DIR}/ic/pro -I {ICPP_DIR}/ic/ic0mock "
-    f" -I {ICPP_CANDID_PATH}/candid -I {ICPP_CANDID_PATH}/hooks "
-    f" -I {ICPP_CANDID_PATH}/vendors "
-)
+NATIVE_C_REQUIRED_FLAGS = _include_flags("ic0mock")
 NATIVE_CPP_REQUIRED_FLAGS = NATIVE_C_REQUIRED_FLAGS + " -std=c++20 "
 
 NATIVE_CFLAGS = " -g -D ICPP_VERBOSE=0 "

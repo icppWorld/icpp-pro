@@ -5,7 +5,7 @@ import functools
 import os
 import sys
 import subprocess
-import shutil
+import shlex
 from typing import Annotated, Optional
 from pathlib import Path
 import typer
@@ -15,6 +15,7 @@ from icpp.__main__ import app
 
 from icpp import config_default, candid_library
 from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
+from icpp.utils import delete_build_folder, refuse_symlinked_folder
 
 from icpp.decorators import requires_wasi_sdk, requires_rust, requires_native_compiler
 from icpp.options_build import (
@@ -58,13 +59,12 @@ def build_library(
     build_root_path = icpp_toml.icpp_toml_path.parent / "build-library"
     # typer.echo(f"Build folder: {build_root_path.resolve()}")
 
+    # The library folders below it are deleted too, also for a single library
+    refuse_symlinked_folder(build_root_path)
     if lib_name is None:
         if build_root_path.exists():
             typer.echo(f"Deleting the folder: {build_root_path} ")
-            try:
-                shutil.rmtree(build_root_path)
-            except OSError as e:
-                typer.echo(f"ERROR: During delete of {build_root_path}:\n {e.strerror}")
+            delete_build_folder(build_root_path)
 
     if not build_root_path.exists():
         build_root_path.mkdir()
@@ -82,7 +82,10 @@ def build_library(
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
-        cmd = f"{cpp_compile_cmd} -c {file} -o {output_file}.o"
+        cmd = (
+            f"{cpp_compile_cmd} -c {shlex.quote(file)} "
+            f"-o {shlex.quote(output_file + '.o')}"
+        )
         typer.echo(file)
         run_shell_cmd(cmd, cwd=path)
 
@@ -92,7 +95,10 @@ def build_library(
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
-        cmd = f"{c_compile_cmd} -c {file} -o {output_file}.o"
+        cmd = (
+            f"{c_compile_cmd} -c {shlex.quote(file)} "
+            f"-o {shlex.quote(output_file + '.o')}"
+        )
         typer.echo(file)
         run_shell_cmd(cmd, cwd=path)
 
@@ -103,12 +109,11 @@ def build_library(
             build_path = build_root_path / library["lib_name"]
             typer.echo(f"Library build folder: {build_path.resolve()}")
 
+            # Before exists(): it is False for a dangling symlink
+            refuse_symlinked_folder(build_path)
             if build_path.exists():
                 # typer.echo("Deleting the build folder.")
-                try:
-                    shutil.rmtree(build_path)
-                except OSError as e:
-                    typer.echo(f"ERROR: During delete of {build_path}:\n {e.strerror}")
+                delete_build_folder(build_path)
 
             if not build_path.exists():
                 build_path.mkdir()
@@ -134,7 +139,7 @@ def build_library(
                 c_compile_flags_defaults_s = library["c_compile_flags_defaults_s"]
 
             cpp_compile_cmd_mine = (
-                f"{config_default.WASM_CPP} "
+                f"{shlex.quote(str(config_default.WASM_CPP))} "
                 f"{config_default.WASM_CPP_REQUIRED_FLAGS} "
                 f"{cpp_compile_flags_defaults_s} "
                 f"{cpp_include_flags} "
@@ -142,7 +147,7 @@ def build_library(
             )
 
             c_compile_cmd_mine = (
-                f"{config_default.WASM_C} "
+                f"{shlex.quote(str(config_default.WASM_C))} "
                 f"{config_default.WASM_C_REQUIRED_FLAGS} "
                 f"{c_compile_flags_defaults_s} "
                 f"{c_include_flags} {c_compile_flags_s} "
@@ -157,7 +162,10 @@ def build_library(
                     {
                         "cpp": cpp_compile_cmd_mine,
                         "c": c_compile_cmd_mine,
-                        "ar": f"{config_default.WASM_AR} {config_default.WASM_ARFLAGS}",
+                        "ar": (
+                            f"{shlex.quote(str(config_default.WASM_AR))} "
+                            f"{config_default.WASM_ARFLAGS}"
+                        ),
                     },
                     cpp_files_list + c_files_list,
                 )
@@ -231,7 +239,7 @@ def build_library(
                 # ----------------------------------------------------------------------
                 # create the library
                 cmd = (
-                    f"{config_default.WASM_AR} "
+                    f"{shlex.quote(str(config_default.WASM_AR))} "
                     f"{config_default.WASM_ARFLAGS} "
                     f"{full_lib_name} *.o"
                 )

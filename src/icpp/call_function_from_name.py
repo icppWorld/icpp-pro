@@ -1,6 +1,8 @@
 """Calls a function referenced by a string"""
 
 import importlib
+import os
+import sys
 
 
 def call_function(full_function_name: str) -> None:
@@ -24,6 +26,18 @@ def call_function(full_function_name: str) -> None:
 
     if full_function_name is not None and full_function_name.strip() != "":
         module_name, function_name = full_function_name.rsplit(".", 1)
-        module = importlib.import_module(module_name)
-        function = getattr(module, function_name)
-        function()
+        # The project folder is on the path only while the function is imported
+        # and runs, so a file in the project can't shadow a module that icpp
+        # itself imports
+        project_folder = os.getcwd()
+        sys.path.insert(1, project_folder)
+        try:
+            module = importlib.import_module(module_name)
+            function = getattr(module, function_name)
+            function()
+        finally:
+            # The entry inserted above, also if the folder was on the path before
+            if sys.path[1:2] == [project_folder]:
+                del sys.path[1]
+            else:
+                sys.path.remove(project_folder)

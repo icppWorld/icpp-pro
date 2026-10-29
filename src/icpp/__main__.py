@@ -9,8 +9,6 @@ the main flow, calling other parts as needed
 reference: https://realpython.com/pypi-publish-python-package/
 """
 
-import os
-import sys
 import typer
 
 # Instantiate the Typer app globally with app = typer.Typer().
@@ -34,10 +32,6 @@ from icpp import commands_install_rust
 
 def main() -> None:
     """Entry point of program"""
-
-    # Add this to find user's extensions in sub-folders
-    sys.path.insert(1, os.getcwd())  # pylint: disable=no-member
-
     app(prog_name="icpp")
 
 

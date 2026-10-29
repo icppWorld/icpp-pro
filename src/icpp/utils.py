@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Union
 
+import typer
+
 
 def remove_readonly(func: Callable[..., Any], path: str, _exc_info: Any) -> None:
     """shutil.rmtree onerror / onexc callback: clear the readonly bit and retry.
@@ -48,3 +50,34 @@ def rmtree_force(path: Union[str, Path]) -> None:
     else:
         # pylint: disable-next=deprecated-argument
         shutil.rmtree(path, onerror=remove_readonly)
+
+
+def refuse_symlinked_folder(path: Path) -> None:
+    """Exits with an ERROR when a build folder is a symlink.
+
+    A delete in it, or in a folder below it, and the files a build writes in it,
+    would happen outside the project.
+    """
+    if path.is_symlink():
+        typer.echo(
+            f"ERROR: The build folder {path} is a symlink.\n"
+            f"       Remove it, so icpp can create a real folder."
+        )
+        sys.exit(1)
+
+
+def delete_build_folder(path: Path) -> None:
+    """Deletes a build folder, so the build starts clean.
+
+    Exits with an ERROR when it cannot: a build on top of the old folder would
+    link stale objects into the result. A symlink is refused, so the delete
+    never follows it out of the project.
+    """
+    refuse_symlinked_folder(path)
+    if not path.exists():
+        return
+    try:
+        shutil.rmtree(path)
+    except OSError as e:
+        typer.echo(f"ERROR: During delete of {path}:\n {e.strerror}")
+        sys.exit(1)

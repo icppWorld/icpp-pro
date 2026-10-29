@@ -38,6 +38,16 @@ static void native_refunded_in_reject_callback() {
 
 // The deprecated store_string_orthogonal: the terminator goes right after the
 // copied string, inside the allocation
+// A vec record whose field is a blob: '(vec record { b : blob })' -> '(vec blob)'
+static void native_vec_record_blob() {
+  IC_API ic_api(CanisterQuery{"native_vec_record_blob"}, false);
+  std::vector<std::vector<uint8_t>> blobs;
+  CandidTypeRecord r_in;
+  r_in.append("b", CandidTypeVecBlob{&blobs});
+  ic_api.from_wire(CandidTypeVecRecord{&r_in});
+  ic_api.to_wire(CandidTypeVecBlob{blobs});
+}
+
 static void native_store_string_orthogonal() {
   IC_API ic_api(CanisterUpdate{"native_store_string_orthogonal"}, false);
   char *p_data = nullptr;
@@ -730,6 +740,52 @@ int main() {
                          chain.as_hex_string(), silent_on_trap, my_principal,
                          "nested deeper than 128 levels");
   }
+  // A chain of 60 record types, each with two fields of the next, ending in
+  // 'record {}': 2^60 records to decode from no value bytes. Sent as an
+  // additional opt argument after a 'vec nat16', decoded and discarded.
+  {
+    VecBytes shared;
+    append(shared, {'D', 'I', 'D', 'L', 63}); // 63 types
+    for (int i = 1; i <= 60; ++i) {
+      append(shared, {0x6c, 0x02, 0x00});
+      shared.append_sleb128(__int128_t(i));
+      append(shared, {0x01});
+      shared.append_sleb128(__int128_t(i));
+    }
+    append(shared, {0x6c, 0x00, 0x6e, 0x00, 0x6d, 0x7a}); // t60, t61, t62
+    append(shared, {0x02, 62, 61, 0x01, 0x65, 0x00, 0x01});
+    mockIC.run_trap_test("2^60 shared zero width records", roundtrip_vec_nat16,
+                         shared.as_hex_string(), silent_on_trap, my_principal,
+                         "take no bytes on the wire");
+  }
+  // An additional '(opt vec record { 0 : nat8 })' argument, decoded and
+  // discarded, leaves no type behind in the reply:
+  // '(vec { 101; 102; 103 } : vec nat16, opt vec { record { 5 : nat8 } })'
+  // -> '(vec { 101; 102; 103 } : vec nat16)'
+  mockIC.run_test("additional opt vec record argument", roundtrip_vec_nat16,
+                  "4449444c046d7a6c01007b6d016e0202000303650066006700010105",
+                  "4449444c016d7a010003650066006700", silent_on_trap,
+                  my_principal);
+  // A vec, or a vec in a record, of another element type than expected:
+  // '(vec { "a"; "b" })' to a 'vec nat16', and
+  // '(record { name = vec { 1 : nat16 } })' to a 'record { name : vec text }'
+  mockIC.run_trap_test("vec text to vec nat16", roundtrip_vec_nat16,
+                       "4449444c016d7101000201610162", silent_on_trap,
+                       my_principal, "Wrong opcode found on wire");
+  mockIC.run_trap_test(
+      "record vec nat16 to record vec text", roundtrip_record_vec_text,
+      "4449444c026c01cbe4fdc704016d7a0100010100", silent_on_trap, my_principal,
+      "Did not receive expected field");
+  // A vec record with a blob field: '(vec { record { b = blob "\01\02" } })'
+  // -> '(vec { blob "\01\02" })'; a 'vec vec nat8' field instead traps
+  mockIC.run_test("vec record with a blob field", native_vec_record_blob,
+                  "4449444c036d016c0162026d7b010001020102",
+                  "4449444c026d7b6d00010101020102", silent_on_trap,
+                  my_principal);
+  mockIC.run_trap_test("vec record with a vec vec nat8 field",
+                       native_vec_record_blob,
+                       "4449444c046d016c0162026d036d7b010001010101",
+                       silent_on_trap, my_principal, "Wrong type on wire");
   // '("{\"project\": \"?\", \"C++\": 0}")' -> '("{\"C++\":20,\"project\":\"icpp\"}")'
   mockIC.run_test(
       "roundtrip_text_to_json_to_text", roundtrip_text_to_json_to_text,

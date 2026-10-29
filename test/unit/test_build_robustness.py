@@ -164,6 +164,32 @@ def test__a_symlinked_build_folder_is_refused_when_it_is_not_deleted(
     assert "is a symlink" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("link", ["declarations", "my_canister", "my_canister.did.js"])
+def test__bindings_are_not_written_through_a_symlink(
+    tmp_path: Path, project: Path, monkeypatch: pytest.MonkeyPatch, link: str
+) -> None:
+    from icpp.commands_build_wasm import generate_javascript_bindings
+
+    target = tmp_path / "elsewhere"
+    target.mkdir()
+    (target / "keep.txt").write_text("keep", encoding="utf-8")
+    declarations = project / "src" / "declarations"
+    paths = {
+        "declarations": declarations,
+        "my_canister": declarations / "my_canister",
+        "my_canister.did.js": declarations / "my_canister" / "my_canister.did.js",
+    }
+    paths[link].parent.mkdir(parents=True, exist_ok=True)
+    paths[link].symlink_to(target / "keep.txt" if link.endswith(".js") else target)
+    did_path = project / "src" / "my_canister.did"
+    did_path.write_text("service : {}", encoding="utf-8")
+    monkeypatch.setattr("icpp.commands_build_wasm.shutil.which", lambda _: "didc")
+    with pytest.raises(SystemExit):
+        generate_javascript_bindings(did_path, "my_canister", declarations)
+    assert sorted(p.name for p in target.iterdir()) == ["keep.txt"]
+    assert (target / "keep.txt").read_text(encoding="utf-8") == "keep"
+
+
 def test__the_package_attribute_is_restored() -> None:
     # Runs after the tests above: none left its icpp_toml behind
     assert getattr(icpp, "icpp_toml", None) is sys.modules.get("icpp.icpp_toml")

@@ -768,14 +768,15 @@ int main() {
                   my_principal);
   // A vec, or a vec in a record, of another element type than expected:
   // '(vec { "a"; "b" })' to a 'vec nat16', and
-  // '(record { name = vec { 1 : nat16 } })' to a 'record { name : vec text }'
+  // '(record { names = vec { 1 : nat16 }; values = vec { "a" } })' to a
+  // 'record { names : vec text; values : vec text }'
   mockIC.run_trap_test("vec text to vec nat16", roundtrip_vec_nat16,
                        "4449444c016d7101000201610162", silent_on_trap,
                        my_principal, "Wrong opcode found on wire");
   mockIC.run_trap_test(
       "record vec nat16 to record vec text", roundtrip_record_vec_text,
-      "4449444c026c01cbe4fdc704016d7a0100010100", silent_on_trap, my_principal,
-      "Did not receive expected field");
+      "4449444c036c02e287dcfd0401c89f92b409026d716d7a0100010161010100",
+      silent_on_trap, my_principal, "Wrong type on wire");
   // A vec record with a blob field: '(vec { record { b = blob "\01\02" } })'
   // -> '(vec { blob "\01\02" })'; a 'vec vec nat8' field instead traps
   mockIC.run_test("vec record with a blob field", native_vec_record_blob,

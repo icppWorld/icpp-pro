@@ -739,12 +739,12 @@ _SHARED_RECORDS = (
             "4449444c016d7101000201610162",
             "Wrong opcode found on wire",
         ),
-        # '(record { name = vec { 1 : nat16 } })' where a record { name : vec text }
-        # is expected
+        # '(record { names = vec { 1 : nat16 }; values = vec { "a" } })' where a
+        # record { names : vec text; values : vec text } is expected
         (
             "roundtrip_record_vec_text",
-            "4449444c026c01cbe4fdc704016d7a0100010100",
-            "Did not receive expected field",
+            "4449444c036c02e287dcfd0401c89f92b409026d716d7a0100010161010100",
+            "Wrong type on wire",
         ),
         # '(opt vec { record {} })' where an opt vec nat16 is expected. It used
         # to dereference a null pointer. The Candid spec decodes an opt whose

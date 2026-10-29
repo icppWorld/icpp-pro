@@ -5,6 +5,7 @@ import sys
 import os
 from pathlib import Path
 import subprocess
+import shlex
 import shutil
 from typing import Annotated
 import typer
@@ -15,6 +16,7 @@ from icpp.__main__ import app
 from icpp import config_default
 from icpp.icpp_pro_message import icpp_pro_message
 from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
+from icpp.utils import delete_build_folder
 
 from icpp.decorators import requires_wasi_sdk, requires_rust, requires_native_compiler
 from icpp.options_build import (
@@ -85,10 +87,7 @@ def build_wasm(
     if to_compile == "all":
         if build_path.exists():
             typer.echo(f"Deleting the folder: {build_path}")
-            try:
-                shutil.rmtree(build_path)
-            except OSError as e:
-                typer.echo(f"ERROR: During delete of {build_path}:\n {e.strerror}")
+            delete_build_folder(build_path)
 
     if not build_path.exists():
         build_path.mkdir()
@@ -134,14 +133,16 @@ def build_wasm(
 
     def cpp_compile_cmd_default() -> str:
         cmd = (
-            f"{config_default.WASM_CPP} {config_default.WASM_CPP_REQUIRED_FLAGS} "
+            f"{shlex.quote(str(config_default.WASM_CPP))} "
+            f"{config_default.WASM_CPP_REQUIRED_FLAGS} "
             f"{cpp_compile_flags_defaults_s} "
         )
         return cmd
 
     def c_compile_cmd_default() -> str:
         cmd = (
-            f"{config_default.WASM_C} {config_default.WASM_C_REQUIRED_FLAGS} "
+            f"{shlex.quote(str(config_default.WASM_C))} "
+            f"{config_default.WASM_C_REQUIRED_FLAGS} "
             f"{c_compile_flags_defaults_s} "
         )
         return cmd
@@ -164,7 +165,10 @@ def build_wasm(
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
-        cmd = f"{cpp_compile_cmd_mine()} -c {file} -o {output_file}.o"
+        cmd = (
+            f"{cpp_compile_cmd_mine()} -c {shlex.quote(file)} "
+            f"-o {shlex.quote(output_file + '.o')}"
+        )
         typer.echo(file)
         run_shell_cmd(cmd, cwd=build_path)
 
@@ -174,7 +178,10 @@ def build_wasm(
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
-        cmd = f"{c_compile_cmd_mine()} -c {file} -o {output_file}.o"
+        cmd = (
+            f"{c_compile_cmd_mine()} -c {shlex.quote(file)} "
+            f"-o {shlex.quote(output_file + '.o')}"
+        )
         typer.echo(file)
         run_shell_cmd(cmd, cwd=build_path)
 
@@ -215,7 +222,7 @@ def build_wasm(
         # link it into a wasi compatible wasm
 
         cmd = (
-            f"{config_default.WASM_CPP} "
+            f"{shlex.quote(str(config_default.WASM_CPP))} "
             f"{config_default.WASM_CPP_REQUIRED_FLAGS} "
             f"{cpp_link_flags_defaults_s} "
             f"{cpp_link_flags_s} "
@@ -223,7 +230,7 @@ def build_wasm(
         )
 
         # The rust system libraries
-        cmd += f"{config_default.IC_WASI_POLYFILL} "
+        cmd += f"{shlex.quote(str(config_default.IC_WASI_POLYFILL))} "
 
         # The project libraries
         for library in icpp_toml.libraries:
@@ -234,7 +241,7 @@ def build_wasm(
                 / library["lib_name"]
                 / full_lib_name
             ).resolve()
-            cmd += f"{full_lib_path} "
+            cmd += f"{shlex.quote(str(full_lib_path))} "
 
         cmd += f"-o {icpp_toml.build_wasm['canister']}_wasi.wasm "
 
@@ -247,7 +254,7 @@ def build_wasm(
         # converting it into an IC compatible wasm using wasi2ic
 
         cmd = (
-            f"{config_default.WASI2IC} "
+            f"{shlex.quote(str(config_default.WASI2IC))} "
             f"{icpp_toml.build_wasm['canister']}_wasi.wasm "
             f"{icpp_toml.build_wasm['canister']}.wasm "
         )
@@ -294,9 +301,10 @@ def build_wasm(
         typer.echo("Adding custom sections to the wasm file...")
 
         # ---
+        section = shlex.quote("icp:public candid:service=" + str(did_path))
         cmd = (
-            f"{config_default.LLVM_OBJCOPY} "
-            f'--add-section="icp:public candid:service"="{str(did_path)}" '
+            f"{shlex.quote(str(config_default.LLVM_OBJCOPY))} "
+            f"--add-section={section} "
             f"{icpp_toml.build_wasm['canister']}.wasm "
             f"{icpp_toml.build_wasm['canister']}.wasm"
         )
@@ -307,9 +315,10 @@ def build_wasm(
         file_path = build_path / "custom_section_cdk_name.txt"
         with open(file_path, "w", encoding="utf-8") as file:
             file.write("icpp-pro")
+        section = shlex.quote("icp:public cdk:name=" + str(file_path.resolve()))
         cmd = (
-            f"{config_default.LLVM_OBJCOPY} "
-            f'--add-section="icp:public cdk:name"="{str(file_path.resolve())}" '
+            f"{shlex.quote(str(config_default.LLVM_OBJCOPY))} "
+            f"--add-section={section} "
             f"{icpp_toml.build_wasm['canister']}.wasm "
             f"{icpp_toml.build_wasm['canister']}.wasm"
         )
@@ -320,9 +329,10 @@ def build_wasm(
         file_path = build_path / "custom_section_cdk_languages.txt"
         with open(file_path, "w", encoding="utf-8") as file:
             file.write("c++")
+        section = shlex.quote("icp:public cdk:languages=" + str(file_path.resolve()))
         cmd = (
-            f"{config_default.LLVM_OBJCOPY} "
-            f'--add-section="icp:public cdk:languages"="{str(file_path.resolve())}" '
+            f"{shlex.quote(str(config_default.LLVM_OBJCOPY))} "
+            f"--add-section={section} "
             f"{icpp_toml.build_wasm['canister']}.wasm "
             f"{icpp_toml.build_wasm['canister']}.wasm"
         )
@@ -333,9 +343,10 @@ def build_wasm(
         file_path = build_path / "custom_section_version.txt"
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(__version__)
+        section = shlex.quote("icp:private icpp:compiler=" + str(file_path.resolve()))
         cmd = (
-            f"{config_default.LLVM_OBJCOPY} "
-            f'--add-section="icp:private icpp:compiler"="{str(file_path.resolve())}" '
+            f"{shlex.quote(str(config_default.LLVM_OBJCOPY))} "
+            f"--add-section={section} "
             f"{icpp_toml.build_wasm['canister']}.wasm "
             f"{icpp_toml.build_wasm['canister']}.wasm"
         )
@@ -353,9 +364,10 @@ def build_wasm(
             file.write(
                 '{ "tech_stack": { "language": {"c++": {} }, "cdk": {"icpp-pro": {} } } }'  # pylint: disable=line-too-long
             )
+        section = shlex.quote("icp:public dfx=" + str(file_path.resolve()))
         cmd = (
-            f"{config_default.LLVM_OBJCOPY} "
-            f'--add-section="icp:public dfx"="{str(file_path.resolve())}" '
+            f"{shlex.quote(str(config_default.LLVM_OBJCOPY))} "
+            f"--add-section={section} "
             f"{icpp_toml.build_wasm['canister']}.wasm "
             f"{icpp_toml.build_wasm['canister']}.wasm"
         )
@@ -429,7 +441,7 @@ def generate_javascript_bindings(
         out_path.mkdir(parents=True, exist_ok=True)
         shutil.copy(did_path, out_path / f"{canister}.did")
         for target, suffix in (("js", "did.js"), ("ts", "did.d.ts")):
-            cmd = f"didc bind {str(did_path)} --target {target}"
+            cmd = f"didc bind {shlex.quote(str(did_path))} --target {target}"
             bindings = run_shell_cmd(cmd, capture_output=True)
             with open(out_path / f"{canister}.{suffix}", "w", encoding="utf-8") as file:
                 file.write(bindings)

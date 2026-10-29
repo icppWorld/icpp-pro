@@ -6,7 +6,7 @@ import sys
 import os
 import copy
 import subprocess
-import shutil
+import shlex
 from typing import Annotated, Optional
 from pathlib import Path
 import typer
@@ -16,6 +16,7 @@ from icpp.__main__ import app
 
 from icpp import config_default, candid_library
 from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
+from icpp.utils import delete_build_folder
 
 from icpp.decorators import requires_native_compiler
 from icpp.options_build import (
@@ -61,10 +62,7 @@ def build_library_native(
     if lib_name is None:
         if build_root_path.exists():
             typer.echo(f"Deleting the folder: {build_root_path} ")
-            try:
-                shutil.rmtree(build_root_path)
-            except OSError as e:
-                typer.echo(f"ERROR: During delete of {build_root_path}:\n {e.strerror}")
+            delete_build_folder(build_root_path)
 
     if not build_root_path.exists():
         build_root_path.mkdir()
@@ -82,7 +80,10 @@ def build_library_native(
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
-        cmd = f"{cpp_compile_cmd} -c {file} -o {output_file}.o"
+        cmd = (
+            f"{cpp_compile_cmd} -c {shlex.quote(file)} "
+            f"-o {shlex.quote(output_file + '.o')}"
+        )
         typer.echo(file)
         run_shell_cmd(cmd, cwd=path)
 
@@ -92,7 +93,10 @@ def build_library_native(
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
-        cmd = f"{c_compile_cmd} -c {file} -o {output_file}.o"
+        cmd = (
+            f"{c_compile_cmd} -c {shlex.quote(file)} "
+            f"-o {shlex.quote(output_file + '.o')}"
+        )
         typer.echo(file)
         run_shell_cmd(cmd, cwd=path)
 
@@ -126,10 +130,7 @@ def build_library_native(
 
             if build_path.exists():
                 # typer.echo("Deleting the build folder.")
-                try:
-                    shutil.rmtree(build_path)
-                except OSError as e:
-                    typer.echo(f"ERROR: During delete of {build_path}:\n {e.strerror}")
+                delete_build_folder(build_path)
 
             if not build_path.exists():
                 build_path.mkdir()

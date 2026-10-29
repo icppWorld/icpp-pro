@@ -6,7 +6,7 @@ import platform
 import os
 from pathlib import Path
 import subprocess
-import shutil
+import shlex
 from typing import Annotated
 import typer
 
@@ -14,6 +14,7 @@ from icpp.__main__ import app
 from icpp import config_default
 from icpp.icpp_pro_message import icpp_pro_message
 from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
+from icpp.utils import delete_build_folder
 
 from icpp.decorators import requires_native_compiler
 from icpp.options_build import (
@@ -71,10 +72,7 @@ def build_native(
     if to_compile == "all":
         if build_path.exists():
             typer.echo("Deleting the build-native folder.")
-            try:
-                shutil.rmtree(build_path)
-            except OSError as e:
-                typer.echo(f"ERROR: During delete of {build_path}:\n {e.strerror}")
+            delete_build_folder(build_path)
 
     if not build_path.exists():
         build_path.mkdir()
@@ -148,7 +146,10 @@ def build_native(
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
-        cmd = f"{cpp_compile_cmd_mine()} -c {file} -o {output_file}.o"
+        cmd = (
+            f"{cpp_compile_cmd_mine()} -c {shlex.quote(file)} "
+            f"-o {shlex.quote(output_file + '.o')}"
+        )
         typer.echo(file)
         run_shell_cmd(cmd, cwd=build_path)
 
@@ -158,7 +159,10 @@ def build_native(
         output_file = (
             f"{file}".replace(f"{os.getcwd()}", "").replace("/", "_").replace("\\", "_")
         )
-        cmd = f"{c_compile_cmd_mine()} -c {file} -o {output_file}.o"
+        cmd = (
+            f"{c_compile_cmd_mine()} -c {shlex.quote(file)} "
+            f"-o {shlex.quote(output_file + '.o')}"
+        )
         typer.echo(file)
         run_shell_cmd(cmd, cwd=build_path)
 
@@ -215,7 +219,7 @@ def build_native(
                 / library["lib_name"]
                 / full_lib_name
             ).resolve()
-            cmd += f"{full_lib_path} "
+            cmd += f"{shlex.quote(str(full_lib_path))} "
 
         cmd += f"-o {executable} "
 

@@ -1,5 +1,7 @@
 """Reads the icpp.toml file"""
 
+import re
+import shlex
 import sys
 import glob
 from pathlib import Path
@@ -56,10 +58,30 @@ def validate(d_in: Dict[Any, Any]) -> None:
         sys.exit(1)
 
 
+# A canister or library name becomes a file and folder name in the build
+NAME_PATTERN = re.compile(r"[A-Za-z0-9_.-]+")
+
+
+def validate_name(key: str, value: Any) -> None:
+    """Exits with an ERROR when a name can't be used as a file name."""
+    if (
+        not isinstance(value, str)
+        or NAME_PATTERN.fullmatch(value) is None
+        or value in (".", "..")
+    ):
+        typer.echo(
+            f"ERROR: '{key}' must be a name of letters, digits, '_', '.' and '-',\n"
+            f"       not '.' or '..', but it is: {value!r}\n"
+            f"       {icpp_toml_path.resolve()}"
+        )
+        sys.exit(1)
+
+
 def read_build_wasm_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
     """Reads and processes the '[build-wasm]' table."""
     d = {}
     d["canister"] = d_in.get("canister", "default")
+    validate_name("canister", d["canister"])
     d["did_path"] = icpp_toml_path.parent / Path(d_in.get("did_path", "")).resolve()
     d["did_file"] = str(d["did_path"]) + " "
 
@@ -94,6 +116,7 @@ def read_libraries(
         library = {}
 
         library["lib_name"] = library_in.get("lib_name", "")
+        validate_name("lib_name", library["lib_name"])
         if library["lib_name"] in seen_lib_names:
             typer.echo(
                 f"ERROR: duplicate 'lib_name' found: {library['lib_name']}\n"
@@ -218,18 +241,25 @@ def read_build_table_common(d: Dict[Any, Any], d_in: Dict[Any, Any]) -> None:
     #
     # all in one compiler uses a long string of strings, not a list
     #
-    d["cpp_files"] = " ".join([str(x) for x in d["cpp_paths"]]) + " "
+    # File names and include folders are quoted for the shell; the flags are
+    # shell text on purpose, so a flag can hold several words
+    d["cpp_files"] = " ".join([shlex.quote(str(x)) for x in d["cpp_paths"]]) + " "
     d["cpp_include_flags"] = (
-        " ".join(["-I " + str(path) for path in d["cpp_include_dirs"]]) + " "
+        " ".join(["-I " + shlex.quote(str(path)) for path in d["cpp_include_dirs"]])
+        + " "
     )
-    d["cpp_header_files"] = " ".join([str(x) for x in d["cpp_header_paths"]]) + " "
+    d["cpp_header_files"] = (
+        " ".join([shlex.quote(str(x)) for x in d["cpp_header_paths"]]) + " "
+    )
     d["cpp_compile_flags_s"] = " ".join([str(x) for x in d["cpp_compile_flags"]]) + " "
 
-    d["c_files"] = " ".join([str(x) for x in d["c_paths"]]) + " "
+    d["c_files"] = " ".join([shlex.quote(str(x)) for x in d["c_paths"]]) + " "
     d["c_include_flags"] = (
-        " ".join(["-I " + str(path) for path in d["c_include_dirs"]]) + " "
+        " ".join(["-I " + shlex.quote(str(path)) for path in d["c_include_dirs"]]) + " "
     )
-    d["c_header_files"] = " ".join([str(x) for x in d["c_header_paths"]]) + " "
+    d["c_header_files"] = (
+        " ".join([shlex.quote(str(x)) for x in d["c_header_paths"]]) + " "
+    )
     d["c_compile_flags_s"] = " ".join([str(x) for x in d["c_compile_flags"]]) + " "
 
     #

@@ -35,8 +35,9 @@ from icpp import commands_install_rust
 def main() -> None:
     """Entry point of program"""
 
-    # Add this to find user's extensions in sub-folders
-    sys.path.insert(1, os.getcwd())  # pylint: disable=no-member
+    # Add this to find user's extensions in sub-folders. Appended, so a file in
+    # the project can't shadow a module that icpp itself imports
+    sys.path.append(os.getcwd())  # pylint: disable=no-member
 
     app(prog_name="icpp")
 

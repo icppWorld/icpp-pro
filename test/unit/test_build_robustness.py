@@ -173,17 +173,24 @@ def test__a_post_wasm_function_package_wins_over_an_installed_one(
     # A project package named like a standard library module
     (project / "colorsys").mkdir()
     (project / "colorsys" / "__init__.py").write_text("", encoding="utf-8")
+    # The hook imports a top-level module of the project when it runs
+    (project / "project_helper.py").write_text("ANSWER = 'yes'\n", "utf-8")
     (project / "colorsys" / "hook.py").write_text(
         "from pathlib import Path\n\n"
         "def run() -> None:\n"
-        "    Path('ran.txt').write_text('yes')\n",
+        "    from project_helper import ANSWER\n"
+        "    Path('ran.txt').write_text(ANSWER)\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(sys, "path", list(sys.path))
     # Set each first, so the teardown restores it or removes it
-    for name in ["colorsys", "colorsys.hook"]:
+    for name in ["colorsys", "colorsys.hook", "project_helper"]:
         monkeypatch.setitem(sys.modules, name, None)
         monkeypatch.delitem(sys.modules, name)
+    # The project folder is not on the path, as for the icpp command, so the
+    # hook finds its helper only while call_function keeps the folder on it
+    sys.path[:] = [p for p in sys.path if p not in ("", ".", str(project))]
+    before = list(sys.path)
     call_function("colorsys.hook.run")
     assert (project / "ran.txt").read_text(encoding="utf-8") == "yes"
-    assert str(project) not in sys.path
+    assert sys.path == before

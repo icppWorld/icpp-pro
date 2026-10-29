@@ -233,6 +233,22 @@ def test__the_did_is_not_copied_into_a_directory_at_its_path(
     assert target.read_text(encoding="utf-8") == "keep"
 
 
+def test__the_did_keeps_its_permissions(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from icpp.commands_build_wasm import generate_javascript_bindings
+
+    did_path = project / "my_canister.did"
+    did_path.write_text("service : {}", encoding="utf-8")
+    did_path.chmod(0o600)
+    declarations = project / "src" / "declarations"
+    stub_didc(monkeypatch)
+    generate_javascript_bindings(did_path, "my_canister", declarations)
+    out = declarations / "my_canister" / "my_canister.did"
+    assert out.read_text(encoding="utf-8") == "service : {}"
+    assert out.stat().st_mode & 0o777 == 0o600
+
+
 def test__the_package_attribute_is_restored() -> None:
     # Runs after the tests above: none left its icpp_toml behind
     assert getattr(icpp, "icpp_toml", None) is sys.modules.get("icpp.icpp_toml")

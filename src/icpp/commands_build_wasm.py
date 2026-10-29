@@ -453,8 +453,9 @@ def generate_javascript_bindings(
     try:
         out_path.mkdir(parents=True, exist_ok=True)
         # copyfile, not copy: copy writes into a directory at that path, and
-        # through a symlink in it
+        # through a symlink in it. copymode keeps the permissions, as copy did
         shutil.copyfile(did_path, out_files[0])
+        shutil.copymode(did_path, out_files[0])
         for target, out_file in (("js", out_files[1]), ("ts", out_files[2])):
             cmd = f"didc bind {shlex.quote(str(did_path))} --target {target}"
             bindings = run_shell_cmd(cmd, capture_output=True)

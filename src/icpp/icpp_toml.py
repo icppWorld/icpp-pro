@@ -58,20 +58,17 @@ def validate(d_in: Dict[Any, Any]) -> None:
         sys.exit(1)
 
 
-# A canister or library name becomes a file and folder name in the build
-NAME_PATTERN = re.compile(r"[A-Za-z0-9_.-]+")
+# A canister or library name becomes a file and folder name in the build, and
+# a command argument: it can't start with '-' (an option) or '.' ('.', '..')
+NAME_PATTERN = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]*")
 
 
 def validate_name(key: str, value: Any) -> None:
     """Exits with an ERROR when a name can't be used as a file name."""
-    if (
-        not isinstance(value, str)
-        or NAME_PATTERN.fullmatch(value) is None
-        or value in (".", "..")
-    ):
+    if not isinstance(value, str) or NAME_PATTERN.fullmatch(value) is None:
         typer.echo(
             f"ERROR: '{key}' must be a name of letters, digits, '_', '.' and '-',\n"
-            f"       not '.' or '..', but it is: {value!r}\n"
+            f"       that starts with a letter, digit or '_', but it is: {value!r}\n"
             f"       {icpp_toml_path.resolve()}"
         )
         sys.exit(1)

@@ -71,7 +71,9 @@ def test__file_names_are_quoted(project: Path, monkeypatch: pytest.MonkeyPatch) 
     ]
 
 
-@pytest.mark.parametrize("lib_name", ["", ".", "..", "../x", "a b", "a;b"])
+@pytest.mark.parametrize(
+    "lib_name", ["", ".", "..", "../x", "a b", "a;b", "-demo", ".hidden"]
+)
 def test__a_bad_lib_name_exits(
     project: Path, monkeypatch: pytest.MonkeyPatch, lib_name: str
 ) -> None:

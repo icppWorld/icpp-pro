@@ -8,13 +8,16 @@ from icpp.run_shell_cmd import run_shell_cmd
 # canister, capturing the quoted string including its escape sequences.
 _MESSAGE_RE = re.compile(r'message\s*=\s*("(?:[^"\\]|\\.)*")')
 
-# One escape sequence in a Candid text literal: `\u{fe0f}` or `\n`, `\"`, ...
-_ESCAPE_RE = re.compile(r"\\(u\{[0-9a-fA-F]{1,6}\}|.)")
+# The escapes in a Candid text literal: a run of UTF-8 bytes as `\e2\9c\93`,
+# or one `\u{fe0f}`, `\n`, `\"`, ...
+_ESCAPE_RE = re.compile(r"((?:\\[0-9a-fA-F]{2})+)|\\(u\{[0-9a-fA-F]{1,6}\}|.)")
 _ESCAPES = {"n": "\n", "r": "\r", "t": "\t", "\\": "\\", '"': '"', "'": "'"}
 
 
 def _unescape(match: re.Match[str]) -> str:
-    escape = match.group(1)
+    hex_bytes, escape = match.groups()
+    if hex_bytes:
+        return bytes.fromhex(hex_bytes.replace("\\", "")).decode("utf-8")
     if escape.startswith("u{"):
         return chr(int(escape[2:-1], 16))
     return _ESCAPES[escape]

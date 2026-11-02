@@ -51,6 +51,7 @@ def test__the_live_reply_prints_with_its_emoji_and_newline(
         (r'"C:\\icpp"', "C:\\icpp"),
         (r'"a\tb\rc\'d"', "a\tb\rc'd"),
         (r'"\u{1F4BB}"', "💻"),
+        (r'"bell \07, check \e2\9c\93"', "bell \x07, check ✓"),
         ('"plain"', "plain"),
     ],
 )
@@ -58,8 +59,16 @@ def test__candid_text_decodes_escapes(quoted: str, text: str) -> None:
     assert candid_text(quoted) == text
 
 
-@pytest.mark.parametrize("quoted", [r'"\x"', r'"\u{110000}"'])
-def test__an_escape_it_does_not_know_raises(quoted: str) -> None:
+def test__a_reply_with_byte_escapes_prints_the_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reply = r'(variant { Ok = record { message = "Docs \e2\9c\93" } })'
+    monkeypatch.setattr(icpp_pro_message, "run_shell_cmd", replying(reply))
+    assert icpp_pro_message.icpp_pro_message() == "Docs ✓"
+
+
+@pytest.mark.parametrize("quoted", [r'"\x"', r'"\u{110000}"', r'"\ff"'])
+def test__an_escape_it_cannot_decode_raises(quoted: str) -> None:
     with pytest.raises((KeyError, ValueError)):
         candid_text(quoted)
 

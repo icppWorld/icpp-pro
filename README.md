@@ -24,7 +24,7 @@ pip install icpp-pro
 
 ## Documentation
 
-The docs can be found [here](https://icpp-pro.onicai.com)
+See the [icpp-pro documentation](https://icpp-pro.onicai.com).
 
 ## Source Code
 

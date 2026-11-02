@@ -11,8 +11,8 @@ name = "icpp-pro"
 description = "C++ Canister Development Kit (CDK) for the Internet Computer"
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [{ name = "icpp-pro", email = "icpp@icpp.world" }]
-maintainers = [{ name = "icpp-pro", email = "icpp@icpp.world" }]
+authors = [{ name = "icpp-pro" }]
+maintainers = [{ name = "icpp-pro" }]
 license = { file = "LICENSE" }
 keywords = [
     "Internet Computer",
@@ -93,7 +93,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://www.onicai.com/"
-Documentation = "https://docs.icpp.world/"
+Documentation = "https://icpp-pro.onicai.com/"
 Repository = "https://github.com/icppWorld/icpp-pro"
 Issues = "https://github.com/icppWorld/icpp-pro/issues"
-Changelog = "https://docs.icpp.world/release-notes.html#changelog"
+Changelog = "https://icpp-pro.onicai.com/release-notes.html#changelog"

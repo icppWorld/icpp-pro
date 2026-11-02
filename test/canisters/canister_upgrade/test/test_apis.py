@@ -26,10 +26,12 @@ def test__record_after_install(network: str, principal: str) -> None:
 
 
 def test__files_before_upgrade(network: str) -> None:
-    # Files that test_after_upgrade.py reads back: one of several MiB, and
-    # one overwritten in place by a smaller file
+    # Files that test_after_upgrade.py reads back: one of several MiB, one
+    # overwritten in place by a smaller file, and one it truncates
     write_file(network, "kept.bin", 5)
     write_file(network, "shrunk.bin", 8)
     write_file(network, "shrunk.bin", 1)
+    write_file(network, "truncated.bin", 2)
     assert_file(network, "kept.bin", 5)
     assert_file(network, "shrunk.bin", 1)
+    assert_file(network, "truncated.bin", 2)

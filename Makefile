@@ -173,13 +173,20 @@ check-sibling-pins:
 # icpp-pro must upgrade in place to a build from this dev tree, state intact.
 # canister_upgrade runs first: it needs no sibling repo and fails fast.
 .PHONY: upgrade-test
-upgrade-test: upgrade-test-canister-upgrade upgrade-test-demos-files
+upgrade-test: upgrade-test-canister-upgrade upgrade-test-canister-upgrade-from-rc2 upgrade-test-demos-files
 
 # The released wasm's canister_pre_upgrade runs on a real replica here - the
 # one path CI's dev->dev upgrade cannot cover. Needs a release >= 6.1.0.
 .PHONY: upgrade-test-canister-upgrade
 upgrade-test-canister-upgrade: icpp-pro-test-identity
 	@python -m scripts.upgrade_test --canister-dir test/canisters/canister_upgrade --pytest-before "pytest -vv --network=local test/test_apis.py" --pytest-after "pytest -vv --network=local test/test_after_upgrade.py"
+
+# The same, from 7.0.0rc2, the last release on stable-fs 0.5.1: its files have
+# 4 KiB V1 chunks, which a release on stable-fs >= 0.13 never writes. Guards
+# https://github.com/wasm-forge/stable-fs/issues/27 (fixed in stable-fs 0.13.1)
+.PHONY: upgrade-test-canister-upgrade-from-rc2
+upgrade-test-canister-upgrade-from-rc2: icpp-pro-test-identity
+	@python -m scripts.upgrade_test --canister-dir test/canisters/canister_upgrade --released-version 7.0.0rc2 --pytest-before "pytest -vv --network=local test/test_apis.py" --pytest-after "pytest -vv --network=local test/test_after_upgrade.py"
 
 .PHONY: upgrade-test-demos-files
 upgrade-test-demos-files: icpp-pro-test-identity

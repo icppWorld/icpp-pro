@@ -12,7 +12,13 @@ constructing IC_API in pre_upgrade does not trap on a real replica.
 
 # pylint: disable=missing-function-docstring
 
-from .upgrade_record import assert_file, get_upgrade_record, number, write_file
+from .upgrade_record import (
+    assert_file,
+    get_upgrade_record,
+    number,
+    truncate_file,
+    write_file,
+)
 
 
 def test__record_after_upgrade(network: str, principal: str) -> None:
@@ -55,3 +61,15 @@ def test__file_overwritten_by_a_smaller_one(network: str) -> None:
     fresh = assert_file(network, "fresh.bin", 1)
     ratio = int(overwritten["instructions"]) / int(fresh["instructions"])
     assert ratio < 2, f"the read of the overwritten file costs {ratio:.1f}x"
+
+
+def test__file_written_before_the_upgrade_shrinks_to_a_chunk_multiple(
+    network: str,
+) -> None:
+    # Shrunk to 1 MiB, a multiple of 4096 bytes, the file keeps its data. A
+    # file written by a canister built with icpp-pro <= 7.0.0rc2 has 4 KiB
+    # V1 chunks, and stable-fs before 0.13.1 zeroed the last kept one:
+    # https://github.com/wasm-forge/stable-fs/issues/27. `make upgrade-test`
+    # upgrades from 7.0.0rc2 to cover it.
+    truncate_file(network, "truncated.bin", 1024 * 1024)
+    assert_file(network, "truncated.bin", 1)

@@ -226,6 +226,7 @@ def build_wasm(
         cmd = (
             f"{shlex.quote(str(config_default.WASM_CPP))} "
             f"{config_default.WASM_CPP_REQUIRED_FLAGS} "
+            f"{config_default.WASM_LD_REQUIRED_FLAGS} "
             f"{cpp_link_flags_defaults_s} "
             f"{cpp_link_flags_s} "
             f"*.o "

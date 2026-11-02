@@ -19,15 +19,11 @@ cpp_compile_flags_defaults = [
     "-D NDEBUG",
     "-D ICPP_VERBOSE=0",
 ]
+# The link flags a canister needs (reactor model, exports, stack, timers) are
+# always applied, before these: this override only drops -Wl,--lto-O3
 cpp_link_flags_defaults = [
-    "-mexec-model=reactor", # required for IC
     # "-Wl,--lto-O3",
-    # "-Wl,--strip-debug",
-    "-Wl,--stack-first",
-    "-Wl,--export-dynamic", # required for IC
-    "-Wl,-z,stack-size=1048576", # decodes Candid nested 128 levels deep
-    "-Wl,-u,canister_global_timer", # required for timers
-    "-Wl,--export=canister_global_timer", # required for timers
+    "-Wl,--strip-debug",
 ]
 c_compile_flags_defaults = [
     # "-O3",

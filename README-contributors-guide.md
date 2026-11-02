@@ -8,7 +8,7 @@ If you are a developer of `icpp-pro` itself, this guide is for you.
 
 See the release-guide files in this repo for details on the release process for each package.
 
-See the [installation instructions](https://docs.icpp.world) for details on the installation process for our users.
+See the [installation instructions](https://icpp-pro.onicai.com) for details on the installation process for our users.
 
 ## Setup
 

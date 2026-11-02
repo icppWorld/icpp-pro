@@ -51,6 +51,7 @@ def test__the_live_reply_prints_with_its_emoji_and_newline(
         (r'"C:\\icpp"', "C:\\icpp"),
         (r'"a\tb\rc\'d"', "a\tb\rc'd"),
         (r'"\u{1F4BB}"', "💻"),
+        (r'"\u{1_f4bb} \u{0000041}"', "💻 A"),
         (r'"bell \07, check \e2\9c\93"', "bell \x07, check ✓"),
         ('"plain"', "plain"),
     ],
@@ -67,7 +68,9 @@ def test__a_reply_with_byte_escapes_prints_the_message(
     assert icpp_pro_message.icpp_pro_message() == "Docs ✓"
 
 
-@pytest.mark.parametrize("quoted", [r'"\x"', r'"\u{110000}"', r'"\ff"'])
+@pytest.mark.parametrize(
+    "quoted", [r'"\x"', r'"\u{110000}"', r'"\u{d800}"', r'"\u{_41}"', r'"\ff"']
+)
 def test__an_escape_it_cannot_decode_raises(quoted: str) -> None:
     with pytest.raises((KeyError, ValueError)):
         candid_text(quoted)

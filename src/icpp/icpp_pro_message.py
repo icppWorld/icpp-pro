@@ -9,8 +9,10 @@ from icpp.run_shell_cmd import run_shell_cmd
 _MESSAGE_RE = re.compile(r'message\s*=\s*("(?:[^"\\]|\\.)*")')
 
 # The escapes in a Candid text literal: a run of UTF-8 bytes as `\e2\9c\93`,
-# or one `\u{fe0f}`, `\n`, `\"`, ...
-_ESCAPE_RE = re.compile(r"((?:\\[0-9a-fA-F]{2})+)|\\(u\{[0-9a-fA-F]{1,6}\}|.)")
+# or one `\u{fe0f}` (hex digits, with an optional `_` between two), `\n`, ...
+_ESCAPE_RE = re.compile(
+    r"((?:\\[0-9a-fA-F]{2})+)|\\(u\{[0-9a-fA-F](?:_?[0-9a-fA-F])*\}|.)"
+)
 _ESCAPES = {"n": "\n", "r": "\r", "t": "\t", "\\": "\\", '"': '"', "'": "'"}
 
 
@@ -19,7 +21,10 @@ def _unescape(match: re.Match[str]) -> str:
     if hex_bytes:
         return bytes.fromhex(hex_bytes.replace("\\", "")).decode("utf-8")
     if escape.startswith("u{"):
-        return chr(int(escape[2:-1], 16))
+        code_point = int(escape[2:-1].replace("_", ""), 16)
+        if 0xD800 <= code_point <= 0xDFFF:
+            raise ValueError(f"\\{escape} is a surrogate, not a character")
+        return chr(code_point)
     return _ESCAPES[escape]
 
 
@@ -28,7 +33,7 @@ def candid_text(quoted: str) -> str:
 
     Candid writes a character it does not print as `\\u{X}`, e.g. `\\u{fe0f}`
     after an emoji, which is not JSON. Raises on an escape it does not know,
-    or on a code point above U+10FFFF.
+    or on a code point that is not a character: a surrogate, or above U+10FFFF.
     """
     return _ESCAPE_RE.sub(_unescape, quoted[1:-1])
 

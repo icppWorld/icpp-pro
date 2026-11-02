@@ -151,9 +151,12 @@ WASM_CFLAGS = (
     " -O3 -flto -fno-exceptions -fvisibility=hidden -D NDEBUG -D ICPP_VERBOSE=0 "
 )
 WASM_CPPFLAGS = WASM_CFLAGS
-WASM_LDFLAGS = (
+# The link flags every canister needs. They come first on the link line, so a
+# `cpp_link_flags_defaults` override cannot drop them, and a flag in
+# `cpp_link_flags` still wins over them, e.g. a larger stack size.
+WASM_LD_REQUIRED_FLAGS = (
     " -mexec-model=reactor "
-    " -Wl,--lto-O3 -Wl,--strip-debug -Wl,--stack-first -Wl,--export-dynamic "
+    " -Wl,--stack-first -Wl,--export-dynamic "
     # A 1 MiB stack, as Rust canisters have, instead of wasm-ld's 64 KiB. The
     # Candid decoder's nesting limit (128 levels) must trap before the stack
     # runs out. With --stack-first an overflow traps as "heap out of bounds"
@@ -164,6 +167,8 @@ WASM_LDFLAGS = (
     # statically — the IC invokes it at runtime).
     " -Wl,-u,canister_global_timer -Wl,--export=canister_global_timer "
 )
+# The default link flags that `cpp_link_flags_defaults` replaces
+WASM_LDFLAGS = " -Wl,--lto-O3 -Wl,--strip-debug "
 WASM_ARFLAGS = "qc"
 WASM_AR_EXT = ".a"
 

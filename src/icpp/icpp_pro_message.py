@@ -1,6 +1,5 @@
 """Fetches the message that icpp-pro prints at the end of a build"""
 
-import json
 import re
 from icpp import config_default
 from icpp.run_shell_cmd import run_shell_cmd
@@ -8,6 +7,27 @@ from icpp.run_shell_cmd import run_shell_cmd
 # Matches `message = "..."` in the Candid text returned by the messaging
 # canister, capturing the quoted string including its escape sequences.
 _MESSAGE_RE = re.compile(r'message\s*=\s*("(?:[^"\\]|\\.)*")')
+
+# One escape sequence in a Candid text literal: `\u{fe0f}` or `\n`, `\"`, ...
+_ESCAPE_RE = re.compile(r"\\(u\{[0-9a-fA-F]{1,6}\}|.)")
+_ESCAPES = {"n": "\n", "r": "\r", "t": "\t", "\\": "\\", '"': '"', "'": "'"}
+
+
+def _unescape(match: re.Match[str]) -> str:
+    escape = match.group(1)
+    if escape.startswith("u{"):
+        return chr(int(escape[2:-1], 16))
+    return _ESCAPES[escape]
+
+
+def candid_text(quoted: str) -> str:
+    """Returns the text of a quoted Candid text literal, e.g. `"a\\nb"`.
+
+    Candid writes a character it does not print as `\\u{X}`, e.g. `\\u{fe0f}`
+    after an emoji, which is not JSON. Raises on an escape it does not know,
+    or on a code point above U+10FFFF.
+    """
+    return _ESCAPE_RE.sub(_unescape, quoted[1:-1])
 
 
 def icpp_pro_message() -> str:
@@ -25,9 +45,7 @@ def icpp_pro_message() -> str:
         response_str = run_shell_cmd(cmd, capture_output=True)
         match = _MESSAGE_RE.search(response_str)
         if match is not None:
-            # Candid escapes strings the same way JSON does, so json.loads
-            # turns `"a\nb"` into the two-line string we want to print.
-            return str(json.loads(match.group(1)))
+            return candid_text(match.group(1))
     except:  # pylint: disable=bare-except
         pass
 

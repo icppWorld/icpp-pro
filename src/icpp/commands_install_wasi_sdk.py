@@ -30,11 +30,12 @@ if PLATFORM_SYSTEM == "darwin":
     SYSTEM_NAME = "macos"
 
 # arm64 ; x86_64
-MACHINE_NAME = "unknown"
-if PLATFORM_MACHINE in ["arm64", "aarch64"]:
-    MACHINE_NAME = "arm64"
-if PLATFORM_MACHINE in ["x86_64", "amd64"]:
-    MACHINE_NAME = "x86_64"
+MACHINE_NAME = {
+    "arm64": "arm64",
+    "aarch64": "arm64",
+    "x86_64": "x86_64",
+    "amd64": "x86_64",
+}.get(PLATFORM_MACHINE, "unknown")
 
 ########################################################
 

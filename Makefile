@@ -172,8 +172,13 @@ check-sibling-pins:
 # Backward-compatibility gate: a canister built & deployed with the released
 # icpp-pro must upgrade in place to a build from this dev tree, state intact.
 # canister_upgrade runs first: it needs no sibling repo and fails fast.
+# The runs go one at a time, also under make -j: each stops and cleans a
+# project-local network, and both canister_upgrade runs share one.
 .PHONY: upgrade-test
-upgrade-test: upgrade-test-canister-upgrade upgrade-test-canister-upgrade-from-rc2 upgrade-test-demos-files
+upgrade-test:
+	$(MAKE) upgrade-test-canister-upgrade
+	$(MAKE) upgrade-test-canister-upgrade-from-rc2
+	$(MAKE) upgrade-test-demos-files
 
 # The released wasm's canister_pre_upgrade runs on a real replica here - the
 # one path CI's dev->dev upgrade cannot cover. Needs a release >= 6.1.0.

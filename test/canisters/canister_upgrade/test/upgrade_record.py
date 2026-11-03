@@ -78,6 +78,12 @@ def write_file(network: str, path: str, mb: int) -> None:
     assert response == f"({mb * 1024 * 1024:_} : nat64)", response
 
 
+def truncate_file(network: str, path: str, size: int) -> None:
+    """Shrinks or grows a file to size bytes with truncate_file"""
+    response = call(network, "truncate_file", f'("{path}", {size} : nat64)')
+    assert response == f"({size:_} : nat64)", response
+
+
 def read_file(network: str, path: str) -> Dict[str, str]:
     """The fields of the read_file reply, e.g. {"bytes": "1048576", ...}"""
     text = call(network, "read_file", f'("{path}")').strip('()" \n,')

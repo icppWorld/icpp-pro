@@ -6,3 +6,4 @@
 // before an upgrade, read back after it
 void write_file() WASM_SYMBOL_EXPORTED("canister_update write_file");
 void read_file() WASM_SYMBOL_EXPORTED("canister_query read_file");
+void truncate_file() WASM_SYMBOL_EXPORTED("canister_update truncate_file");

@@ -9,11 +9,16 @@
 //   that asked for more than the file held walked over all of them, which on
 //   a large file exceeded the IC's limit on stable memory accessed per
 //   message.
+// - a file written by a canister built with icpp-pro <= 7.0.0rc2 (stable-fs
+//   0.5.1, 4 KiB "V1" chunks) and shrunk to a multiple of 4096 bytes keeps
+//   its data. stable-fs before 0.13.1 zeroed the last kept chunk
+//   (https://github.com/wasm-forge/stable-fs/issues/27).
 
 #include "test_files.h"
 
 #include <algorithm>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -81,4 +86,21 @@ void read_file() {
   ic_api.to_wire(CandidTypeText{"bytes: " + std::to_string(bytes) +
                                 "; ok: " + (ok ? "true" : "false") +
                                 "; instructions: " + std::to_string(used)});
+}
+
+// Shrinks or grows a file to size bytes, with ftruncate under the hood:
+// '("path", size)' -> '(size : nat64)'
+void truncate_file() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  std::string path;
+  uint64_t size{0};
+  CandidArgs args;
+  args.append(CandidTypeText{&path});
+  args.append(CandidTypeNat64{&size});
+  ic_api.from_wire(args);
+
+  std::error_code ec;
+  std::filesystem::resize_file(path, size, ec);
+  if (ec) IC_API::trap("truncate_file: failed to resize " + path);
+  ic_api.to_wire(CandidTypeNat64{std::filesystem::file_size(path)});
 }

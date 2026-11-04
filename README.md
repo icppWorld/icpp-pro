@@ -3,7 +3,9 @@
 
 # C++ Canister Development Kit
 
-icpp-pro is a cdk to develop C++ smart contracts for the  [Internet Computer](https://internetcomputer.org/):
+icpp-pro is a cdk to develop C++ smart contracts for the  [Internet Computer](https://internetcomputer.org/).
+
+Its Candid library is 100% compliant with the [Candid Interface Specification](https://github.com/dfinity/candid/blob/master/spec/Candid.md) (spec 0.1.8, dfinity/candid@572c80a): see [Candid compliance](https://icpp-pro.onicai.com/candid-compliance.html).
 
 # In the wild
 

@@ -180,6 +180,12 @@ fuzz:
 check-sibling-pins:
 	@python -m scripts.check_sibling_pins
 
+# icpp-candid's decoder reads the untrusted message only through its two
+# bounds-checked readers
+.PHONY: check-decoder-reads
+check-decoder-reads:
+	@python -m scripts.check_decoder_reads
+
 # Backward-compatibility gate: a canister built & deployed with the released
 # icpp-pro must upgrade in place to a build from this dev tree, state intact.
 # canister_upgrade runs first: it needs no sibling repo and fails fast.
@@ -268,7 +274,8 @@ siblings-verify-full: siblings-verify-api
 .PHONY: all-static
 all-static: \
 	cpp-format cpp-lint \
-	python-format python-lint python-type
+	python-format python-lint python-type \
+	check-decoder-reads
 	
 CPP_AND_H_FILES = $(shell ls \
 icpp-candid/src/icpp_candid/*/*.cpp icpp-candid/src/icpp_candid/*/*.h \

@@ -2,6 +2,8 @@
 
 #include "compliance_runner.h"
 
+void suite_icpp_encode(ComplianceRunner &r);
+void suite_motoko_encode(ComplianceRunner &r);
 void suite_motoko_idl_any_stable(ComplianceRunner &r);
 void suite_motoko_idl_any(ComplianceRunner &r);
 void suite_motoko_idl_bad(ComplianceRunner &r);
@@ -38,6 +40,7 @@ void suite_official_reference(ComplianceRunner &r);
 void suite_official_spacebomb(ComplianceRunner &r);
 void suite_official_subtypes(ComplianceRunner &r);
 void suite_rust_compatibility(ComplianceRunner &r);
+void suite_rust_encode(ComplianceRunner &r);
 void suite_rust_header_len(ComplianceRunner &r);
 void suite_rust_number(ComplianceRunner &r);
 void suite_rust_parse_value(ComplianceRunner &r);
@@ -52,6 +55,8 @@ void suite_rust_value(ComplianceRunner &r);
 
 const std::vector<ComplianceSuite> &compliance_suites() {
   static const std::vector<ComplianceSuite> suites{
+      {"icpp/encode.test.did", suite_icpp_encode},
+      {"motoko/encode.test.did", suite_motoko_encode},
       {"motoko/idl-any-stable.test.did", suite_motoko_idl_any_stable},
       {"motoko/idl-any.test.did", suite_motoko_idl_any},
       {"motoko/idl-bad.test.did", suite_motoko_idl_bad},
@@ -90,6 +95,7 @@ const std::vector<ComplianceSuite> &compliance_suites() {
       {"official/spacebomb.test.did", suite_official_spacebomb},
       {"official/subtypes.test.did", suite_official_subtypes},
       {"rust/compatibility.test.did", suite_rust_compatibility},
+      {"rust/encode.test.did", suite_rust_encode},
       {"rust/header_len.test.did", suite_rust_header_len},
       {"rust/number.test.did", suite_rust_number},
       {"rust/parse_value.test.did", suite_rust_parse_value},

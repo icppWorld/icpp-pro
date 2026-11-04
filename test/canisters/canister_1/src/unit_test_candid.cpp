@@ -210,6 +210,106 @@ __attribute__((noinline)) void test_subtype_assumptions() {
   check(!s.is_subtype(g, x2, g, y2), "then X2 </: Y2, with the same checker");
 }
 
+// CandidTypeOptOf: an opt of any type, also null; CandidTypeService
+__attribute__((noinline)) void test_opt_of_and_service() {
+  auto record_of = [](__uint128_t *a) {
+    CandidTypeRecord r;
+    r.append("a", CandidTypeNat{a});
+    return r;
+  };
+
+  { // didc encode -t '(opt record {a: nat})' '(null)'
+    std::string wire = "4449444c026e016c01617d010000";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    __uint128_t a{0};
+    bool has_value{true};
+    decode(wire, CandidTypeOptOf([&]() -> CandidType { return record_of(&a); },
+                                 &has_value));
+    check(!has_value, "opt of: null decodes");
+  }
+
+  { // didc encode -t '(opt record {a: nat})' '(opt record {a=5})'
+    std::string wire = "4449444c026e016c01617d01000105";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    __uint128_t a{0};
+    bool has_value{false};
+    decode(wire, CandidTypeOptOf([&]() -> CandidType { return record_of(&a); },
+                                 &has_value));
+    check(has_value && a == 5, "opt of: a value decodes");
+  }
+
+  { // A null opt record encodes with its content type, and decodes back
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    __uint128_t unused{0};
+    VecBytes B = CandidSerialize(CandidTypeOptOf(record_of(&unused))).get_B();
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    __uint128_t a{0};
+    bool has_value{true};
+    CandidArgs A;
+    A.append(CandidTypeOptOf([&]() -> CandidType { return record_of(&a); },
+                             &has_value));
+    CandidDeserialize(B.as_hex_string(), A);
+    check(!has_value, "opt of: a null opt record roundtrips");
+  }
+
+  { // An opt opt: didc encode -t '(opt opt nat)' '(opt null)'
+    std::string wire = "4449444c026e016e7d01000100";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::optional<__uint128_t> inner{42};
+    bool has_value{false};
+    decode(wire, CandidTypeOptOf(
+                     [&]() -> CandidType { return CandidTypeOptNat{&inner}; },
+                     &has_value));
+    check(has_value && !inner.has_value(), "opt of: opt opt nat");
+  }
+
+  auto greet = [] {
+    CandidTypeFunc f;
+    f.append_arg(CandidTypeText{});
+    f.append_ret(CandidTypeText{});
+    f.set_query();
+    return f;
+  };
+
+  { // didc encode -t '(service { greet : (text) -> (text) query })' '(service "aaaaa-aa")'
+    std::string wire = "4449444c026901056772656574016a01710171010101000100";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::string canister;
+    CandidTypeService s{&canister};
+    s.append_method("greet", greet());
+    decode(wire, s);
+    check(canister == "aaaaa-aa", "service decodes");
+  }
+
+  { // A service encodes, and decodes back
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    CandidTypeService out{CandidTypePrincipal{"w7x7r-cok77-xa"}};
+    out.append_method("greet", greet());
+    VecBytes B = CandidSerialize(out).get_B();
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::string canister;
+    CandidTypeService in{&canister};
+    in.append_method("greet", greet());
+    CandidArgs A;
+    A.append(in);
+    CandidDeserialize(B.as_hex_string(), A);
+    check(canister == "w7x7r-cok77-xa", "service roundtrips");
+  }
+
+  { // Record fields appended out of order are encoded sorted by id
+    // didc encode '(record {1 = 42 : int; 0 = true : bool})'
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    CandidTypeRecord r;
+    r.append(1, CandidTypeInt(42));
+    r.append(0, CandidTypeBool(true));
+    check(!CandidSerialize(r).assert_candid("4449444c016c02007e017c0100012a",
+                                            true),
+          "record fields are encoded sorted");
+  }
+
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+}
+
 // Decoding follows the spec's coercion rules, with CandidDecoder
 __attribute__((noinline)) void test_spec_coercions() {
   { // A func reference
@@ -1063,6 +1163,10 @@ int unit_test_candid() {
 
   { // The subtype check retracts the assumptions of a failed check
     test_subtype_assumptions();
+  }
+
+  { // An opt of any type, and a service
+    test_opt_of_and_service();
   }
 
   { // A type table index that needs 2 bytes

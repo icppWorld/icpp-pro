@@ -463,7 +463,7 @@ int main() {
                   "4449444c00017c00", silent_on_trap, my_principal);
 
   //----------------------------------------------------------------------------------
-  // Run all unit & compliance tests for candid
+  // Run all unit tests for candid
 
   // '()' -> '(0)'
   mockIC.run_test("test_candid", test_candid, "4449444c0000",

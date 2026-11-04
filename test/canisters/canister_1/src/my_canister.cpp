@@ -5,8 +5,6 @@
 #include <string>
 #include <variant>
 
-#include "compliance_test_construct.h"
-#include "compliance_test_prim.h"
 #include "ic_api.h"
 #include "unit_test_candid.h"
 #include "unit_test_getenv.h"
@@ -25,13 +23,11 @@ void test_vendors() {
 }
 
 //----------------------------------------------------------------------------------
-// Run all unit & compliance tests for candid
+// Run all unit tests for candid
 void test_candid() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int result = 0;
   result = std::max(result, unit_test_candid());
-  result = std::max(result, compliance_test_prim());
-  result = std::max(result, compliance_test_construct());
   ic_api.to_wire(CandidTypeInt{result});
 }
 

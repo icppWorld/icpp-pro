@@ -6,11 +6,16 @@ against icpp-candid's decoder and textual value parser, together with the
 Candid tests of the Rust and Motoko CDKs, ported to the same assert format.
 Every assert must pass.
 
+The `encode.test.did` files hold the encode vectors of those corpora: a value
+is encoded with the typed API (`CandidType*` and `CandidSerialize`), and must
+have exactly the reference encoding's types and decode to the same values.
+
 | Source            | Version                                                                                         |
 |-------------------|-------------------------------------------------------------------------------------------------|
 | `suite/official/` | dfinity/candid `test/` at `572c80a867b935c1de5c428366e6762aa1cc6c71` (2026-10-21)               |
 | Specification     | spec 0.1.8, `spec/Candid.md` at the same commit                                                 |
 | `suite/rust/`     | ported from dfinity/candid `rust/candid/tests`, `rust/candid_parser/tests`, same commit         |
+| `suite/icpp/`     | icpp-candid's own encode vectors, with didc 0.6.2 references                                    |
 | `suite/motoko/`   | ported from dfinity/motoko `test/run-deser`, `test/run-drun/idl-*.mo` at `01aee06` (2026-09-16) |
 
 | Suite file                               | Asserts  |
@@ -21,7 +26,9 @@ Every assert must pass.
 | official/reference.test.did              | 50       |
 | official/spacebomb.test.did              | 17       |
 | official/subtypes.test.did               | 58       |
+| icpp/encode.test.did                     | 14       |
 | rust/compatibility.test.did              | 28       |
+| rust/encode.test.did                     | 78       |
 | rust/header_len.test.did                 | 10       |
 | rust/number.test.did                     | 41       |
 | rust/parse_value.test.did                | 18       |
@@ -33,6 +40,7 @@ Every assert must pass.
 | rust/type_table_alloc.test.did           | 3        |
 | rust/types.test.did                      | 6        |
 | rust/value.test.did                      | 16       |
+| motoko/encode.test.did                   | 17       |
 | motoko/idl-any-stable.test.did           | 1        |
 | motoko/idl-any.test.did                  | 29       |
 | motoko/idl-bad.test.did                  | 1        |
@@ -63,9 +71,10 @@ Every assert must pass.
 | motoko/idl-vector.test.did               | 1        |
 | motoko/run-deser.test.did                | 10       |
 | **official total**                       | **472**  |
-| **rust total**                           | **430**  |
-| **motoko total**                         | **164**  |
-| **total**                                | **1066** |
+| **rust total**                           | **508**  |
+| **motoko total**                         | **181**  |
+| **icpp total**                           | **14**   |
+| **total**                                | **1175** |
 
 ## How it works
 

@@ -9,7 +9,14 @@ files: type definitions, and asserts of the forms
     assert <input> == <input> : (<types>) "...";   both decode, to equal values
     assert <input> != <input> : (<types>) "...";   both decode, to unequal values
 
-where an input is binary, `blob "DIDL..."`, or textual, `"(...)"`.
+where an input is binary, `blob "DIDL..."`, or textual, `"(...)"`. The
+ported Rust and Motoko corpora add one form of our own, for encoding:
+
+    assert "(<value>)" encode blob "DIDL..." : (<types>) "<description>";
+
+The value is encoded with icpp-candid's typed API (CandidType* classes and
+CandidSerialize), and the result must be valid Candid of the same types as the
+reference encoding, decoding to the same values.
 
 This script reads them, builds each assert's expected types as a Candid type
 graph (named types included, so recursion works), and writes one C++ file per
@@ -345,7 +352,7 @@ class Assert:
 
     line: int
     left: Tuple[str, bytes]
-    op: str  # ':' '!:' '==' '!='
+    op: str  # ':' '!:' '==' '!=' 'encode'
     right: Optional[Tuple[str, bytes]]
     types: List[Type]
     desc: str
@@ -376,7 +383,7 @@ def parse(src: str) -> TestFile:
             right = None
             op_tok = p.next()
             op = str(op_tok.value)
-            if op in ("==", "!="):
+            if op in ("==", "!=", "encode"):
                 right = p.input()
                 p.expect(":")
             elif op not in (":", "!:"):
@@ -482,12 +489,417 @@ def cpp_input(inp: Tuple[str, bytes]) -> str:
     )
 
 
+# --- Encoding with the typed API ---
+
+# A textual value: ("num", text) | ("text", bytes) | ("bool", bool) |
+# ("null",) | ("opt", V) | ("vec", [V]) | ("record", [(id, V)]) |
+# ("variant", id, name, V) | ("blob", bytes) | ("principal", str) |
+# ("func", str, bytes) | ("service", str)
+Value = Tuple[Any, ...]
+
+
+class NotExpressible(Exception):
+    """A type or value that the typed API cannot express"""
+
+
+def lex_value(src: str) -> List[Tuple[str, str]]:
+    """The tokens of a textual value: (kind, text), kind 'id', 'num', 'str'
+    or the punctuation itself"""
+    toks: List[Tuple[str, str]] = []
+    i, n = 0, len(src)
+    while i < n:
+        c = src[i]
+        if c.isspace():
+            i += 1
+        elif c == '"':
+            j = i + 1
+            while src[j] != '"':
+                j += 2 if src[j] == "\\" else 1
+            toks.append(("str", src[i + 1 : j]))
+            i = j + 1
+        elif c.isalpha() or c == "_":
+            j = i
+            while j < n and (src[j].isalnum() or src[j] == "_"):
+                j += 1
+            toks.append(("id", src[i:j]))
+            i = j
+        elif c.isdigit() or (c in "+-" and i + 1 < n and src[i + 1].isdigit()):
+            j = i + 1
+            while (
+                j < n
+                and (src[j].isalnum() or src[j] in "_.")
+                or (j < n and src[j] in "+-" and src[j - 1] in "eE")
+            ):
+                j += 1
+            toks.append(("num", src[i:j]))
+            i = j
+        elif c in "(){};,=.":
+            toks.append((c, c))
+            i += 1
+        else:
+            raise ParseError(f"unexpected character {c!r} in a value")
+    return toks
+
+
+class ValueParser:
+    """Recursive descent over a textual Candid value"""
+
+    def __init__(self, src: str):
+        self.toks = lex_value(src)
+        self.i = 0
+
+    def next(self) -> Tuple[str, str]:
+        """Consume a token"""
+        t = self.toks[self.i]
+        self.i += 1
+        return t
+
+    def at(self, kind: str, text: Optional[str] = None) -> bool:
+        """True if the next token is of this kind (and text)"""
+        if self.i >= len(self.toks):
+            return False
+        k, v = self.toks[self.i]
+        return k == kind and (text is None or v == text)
+
+    def expect(self, kind: str) -> str:
+        """Consume a token that must be of this kind"""
+        k, v = self.next()
+        if k != kind:
+            raise ParseError(f"expected {kind} in a value, got {v!r}")
+        return v
+
+    def args(self) -> List[Value]:
+        """( V, ... )"""
+        self.expect("(")
+        out: List[Value] = []
+        while not self.at(")"):
+            out.append(self.value())
+            if not self.at(","):
+                break
+            self.next()
+        self.expect(")")
+        if self.i != len(self.toks):
+            raise ParseError("trailing tokens after a value")
+        return out
+
+    def label(self) -> Tuple[int, str, bool]:
+        """A label followed by '=': (id, name, True), else (0, '', False)"""
+        if self.i + 1 >= len(self.toks) or self.toks[self.i + 1][0] != "=":
+            return 0, "", False
+        k, v = self.next()
+        self.next()
+        return label_id(k, v)
+
+    def value(self) -> Value:
+        """One value"""
+        k, v = self.next()
+        if k == "num":
+            return ("num", v)
+        if k == "str":
+            return ("text", unescape(v, 0))
+        if k != "id":
+            raise ParseError(f"unexpected {v!r} in a value")
+        if v in ("true", "false"):
+            return ("bool", v == "true")
+        if v == "null":
+            return ("null",)
+        if v == "opt":
+            return ("opt", self.value())
+        if v == "blob":
+            return ("blob", unescape(self.expect("str"), 0))
+        if v == "principal":
+            return ("principal", self.expect("str"))
+        if v == "service":
+            return ("service", self.expect("str"))
+        if v == "func":
+            canister = self.expect("str")
+            self.expect(".")
+            mk, mv = self.next()
+            return ("func", canister, unescape(mv, 0) if mk == "str" else mv.encode())
+        if v == "vec":
+            self.expect("{")
+            items: List[Value] = []
+            while not self.at("}"):
+                items.append(self.value())
+                if not self.at(";"):
+                    break
+                self.next()
+            self.expect("}")
+            return ("vec", items)
+        if v == "record":
+            self.expect("{")
+            fields: List[Tuple[int, Value]] = []
+            nxt = 0
+            while not self.at("}"):
+                fid, _, have = self.label()
+                if not have:
+                    fid = nxt
+                fields.append((fid, self.value()))
+                nxt = fid + 1
+                if not self.at(";"):
+                    break
+                self.next()
+            self.expect("}")
+            return ("record", fields)
+        if v == "variant":
+            self.expect("{")
+            fid, name, have = self.label()
+            if have:
+                val = self.value()
+            else:
+                fid, name, _ = label_id(*self.next())
+                val = ("null",)
+            if self.at(";"):
+                self.next()
+            self.expect("}")
+            return ("variant", fid, name, val)
+        raise ParseError(f"unexpected {v!r} in a value")
+
+
+def label_id(kind: str, text: str) -> Tuple[int, str, bool]:
+    """The id and name of a field label"""
+    if kind == "num":
+        return int(text.replace("_", ""), 0), "", True
+    name = unescape(text, 0).decode("utf-8") if kind == "str" else text
+    return idl_hash(name.encode("utf-8")), name, True
+
+
+# The typed API's class suffix and C++ value type of each primitive
+TYPED_PRIMS = {
+    -1: ("Null", ""),
+    -2: ("Bool", "bool"),
+    -3: ("Nat", "__uint128_t"),
+    -4: ("Int", "__int128_t"),
+    -5: ("Nat8", "uint8_t"),
+    -6: ("Nat16", "uint16_t"),
+    -7: ("Nat32", "uint32_t"),
+    -8: ("Nat64", "uint64_t"),
+    -9: ("Int8", "int8_t"),
+    -10: ("Int16", "int16_t"),
+    -11: ("Int32", "int32_t"),
+    -12: ("Int64", "int64_t"),
+    -13: ("Float32", "float"),
+    -14: ("Float64", "double"),
+    -15: ("Text", "std::string"),
+    -16: ("Reserved", ""),
+    -17: ("Empty", ""),
+    -24: ("Principal", "std::string"),
+}
+# The primitives that have Opt* and Vec* classes
+SCALARS = [-2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -24]
+
+
+def cpp_number(text: str, opcode: int) -> str:
+    """A C++ expression of a number of this primitive type"""
+    t = text.replace("_", "")
+    if opcode in (-13, -14):
+        f = t if any(c in t for c in ".eE") else t + ".0"
+        return f + ("f" if opcode == -13 else "")
+    v = int(t, 0)
+    if opcode in (-3, -4):
+        a = abs(v)
+        hi, lo = a >> 64, a & ((1 << 64) - 1)
+        u = f"__uint128_t({lo}ULL)"
+        if hi:
+            u = f"(__uint128_t({hi}ULL) << 64 | __uint128_t({lo}ULL))"
+        if opcode == -3:
+            if v < 0:
+                raise ParseError(f"a negative nat: {text}")
+            return u
+        return f"(-__int128_t({u}))" if v < 0 else f"__int128_t({u})"
+    ctype = TYPED_PRIMS[opcode][1]
+    return f"{ctype}({v}LL)" if v < 0 else f"{ctype}({v}ULL)"
+
+
+class TypedApi:
+    """The C++ that builds a value with the typed API"""
+
+    def __init__(self, defs: Dict[str, Type]):
+        self.defs = defs
+
+    def resolve(
+        self, ty: Type, seen: Tuple[str, ...] = ()
+    ) -> Tuple[Type, Tuple[str, ...]]:
+        """The constructor or primitive behind a named type. The names passed
+        through are added to seen; a name met twice is a recursive type"""
+        while ty[0] == "name":
+            name = str(ty[1])
+            if name in seen:
+                raise NotExpressible(f"the recursive type {name}")
+            seen = seen + (name,)
+            ty = self.defs[name]
+        return ty, seen
+
+    def scalar(self, ty: Type, seen: Tuple[str, ...]) -> Optional[int]:
+        """The opcode of a primitive with Opt* and Vec* classes, else None"""
+        t, _ = self.resolve(ty, seen)
+        return int(t[1]) if t[0] == "prim" and t[1] in SCALARS else None
+
+    def literal(self, opcode: int, v: Value) -> str:
+        """A C++ value of a scalar primitive"""
+        if opcode == -2:
+            return "true" if v[1] else "false"
+        if opcode == -15:
+            return cpp_str(v[1])
+        if opcode == -24:
+            return f'std::string("{v[1]}")'
+        return cpp_number(v[1], opcode)
+
+    def value(self, ty: Type, v: Value, seen: Tuple[str, ...] = ()) -> str:
+        """A CandidType expression holding the value v of type ty"""
+        t, seen = self.resolve(ty, seen)
+        kind = t[0]
+        if kind == "prim":
+            opcode = int(t[1])
+            cls = "CandidType" + TYPED_PRIMS[opcode][0]
+            if opcode == -17:
+                raise NotExpressible("a value of type empty")
+            if opcode in (-1, -16):
+                return f"{cls}()"
+            return f"{cls}({self.literal(opcode, v)})"
+        if kind == "opt":
+            return self.opt(t[1], v, seen)
+        if kind == "vec":
+            return self.vec(t[1], v, seen)
+        if kind == "record":
+            vals = dict(v[1])
+            body = "".join(
+                f"r.append({fid}u, {self.value(ft, vals[fid], seen)}); "
+                for fid, ft in sorted(t[1])
+            )
+            return f"[] {{ CandidTypeRecord r; {body}return r; }}()"
+        if kind == "variant":
+            _, fid, name, val = v
+            if not name:
+                raise NotExpressible("a variant value with a numeric label")
+            body = ""
+            for cid, ct in sorted(t[1]):
+                if cid == fid:
+                    body += f"v.append({cpp_str(name.encode())}, {self.value(ct, val, seen)}); "
+                else:
+                    body += f"v.append({cid}u, {self.type_only(ct, seen)}); "
+            return f"[] {{ CandidTypeVariant v({cpp_str(name.encode())}); {body}return v; }}()"
+        if kind == "func":
+            return self.func(
+                t, f'CandidTypePrincipal(std::string("{v[1]}")), {cpp_str(v[2])}', seen
+            )
+        if kind == "service":
+            return self.service(t, f'CandidTypePrincipal(std::string("{v[1]}"))', seen)
+        raise NotExpressible(f"a value of type {kind}")
+
+    def opt(self, inner: Type, v: Value, seen: Tuple[str, ...]) -> str:
+        """An opt value"""
+        it, iseen = self.resolve(inner, seen)
+        op = self.scalar(inner, seen)
+        if op is not None:
+            cls = "CandidTypeOpt" + TYPED_PRIMS[op][0]
+            ctype = TYPED_PRIMS[op][1]
+            if v[0] == "null":
+                return f"{cls}(std::optional<{ctype}>())"
+            return f"{cls}(std::optional<{ctype}>({self.literal(op, v[1])}))"
+        if it == ("prim", -1):
+            if v[0] != "null":
+                raise NotExpressible("opt null with a value")
+            return "CandidTypeOptNull()"
+        content = self.type_only(inner, seen)
+        if v[0] == "null":
+            return f"CandidTypeOptOf({content})"
+        # The classes for an opt record, variant and vec of a scalar
+        named = {"record": "Record", "variant": "Variant", "vec": "Vec"}.get(it[0])
+        if named is not None and (
+            it[0] != "vec" or self.scalar(it[1], iseen) is not None
+        ):
+            return f"CandidTypeOpt{named}({self.value(inner, v[1], seen)})"
+        return f"CandidTypeOptOf({content}, {self.value(inner, v[1], seen)})"
+
+    def vec(self, inner: Type, v: Value, seen: Tuple[str, ...]) -> str:
+        """A vec value"""
+        op = self.scalar(inner, seen)
+        if v[0] == "blob":
+            if op != -5:
+                raise ParseError("a blob value of a vec that is not vec nat8")
+            items = ", ".join(str(b) for b in v[1])
+            return f"CandidTypeVecNat8(std::vector<uint8_t>{{{items}}})"
+        if op is not None:
+            cls = "CandidTypeVec" + TYPED_PRIMS[op][0]
+            ctype = TYPED_PRIMS[op][1]
+            items = ", ".join(self.literal(op, e) for e in v[1])
+            return f"{cls}(std::vector<{ctype}>{{{items}}})"
+        items = ", ".join(self.value(inner, e, seen) for e in v[1])
+        return (
+            f"CandidTypeVecOf({self.type_only(inner, seen)}, "
+            f"std::vector<CandidType>{{{items}}})"
+        )
+
+    def func(self, t: Type, ctor_args: str, seen: Tuple[str, ...]) -> str:
+        """A func reference, or with ctor_args empty, only its type"""
+        body = "".join(f"f.append_arg({self.type_only(a, seen)}); " for a in t[1])
+        body += "".join(f"f.append_ret({self.type_only(r, seen)}); " for r in t[2])
+        setters = {
+            1: "f.set_query(); ",
+            2: "f.set_oneway(); ",
+            3: "f.set_composite_query(); ",
+        }
+        body += "".join(setters[m] for m in t[3])
+        return f"[] {{ CandidTypeFunc f{{{ctor_args}}}; {body}return f; }}()"
+
+    def service(self, t: Type, ctor_args: str, seen: Tuple[str, ...]) -> str:
+        """A service reference, or with ctor_args empty, only its type"""
+        body = ""
+        for name, mt in t[1]:
+            ft, fseen = self.resolve(mt, seen)
+            if ft[0] != "func":
+                raise ParseError("a service method whose type is not a func")
+            body += f"s.append_method({cpp_str(name)}, {self.func(ft, '', fseen)}); "
+        return f"[] {{ CandidTypeService s{{{ctor_args}}}; {body}return s; }}()"
+
+    def type_only(self, ty: Type, seen: Tuple[str, ...]) -> str:
+        """A CandidType expression of a type, for its type table entry only"""
+        t, seen = self.resolve(ty, seen)
+        kind = t[0]
+        if kind == "prim":
+            return f"CandidType{TYPED_PRIMS[int(t[1])][0]}()"
+        if kind == "opt":
+            op = self.scalar(t[1], seen)
+            if op is not None:
+                return f"CandidTypeOpt{TYPED_PRIMS[op][0]}()"
+            return f"CandidTypeOptOf({self.type_only(t[1], seen)})"
+        if kind == "vec":
+            op = self.scalar(t[1], seen)
+            if op is not None:
+                return f"CandidTypeVec{TYPED_PRIMS[op][0]}()"
+            return (
+                f"CandidTypeVecOf({self.type_only(t[1], seen)}, "
+                f"std::vector<CandidType>{{}})"
+            )
+        if kind in ("record", "variant"):
+            cls = "CandidTypeRecord" if kind == "record" else "CandidTypeVariant"
+            body = "".join(
+                f"x.append({fid}u, {self.type_only(ft, seen)}); "
+                for fid, ft in sorted(t[1])
+            )
+            return f"[] {{ {cls} x; {body}return x; }}()"
+        if kind == "func":
+            return self.func(t, "", seen)
+        if kind == "service":
+            return self.service(t, "", seen)
+        raise NotExpressible(f"the type {kind}")
+
+    def args(self, types: List[Type], text: bytes) -> List[str]:
+        """The CandidType expressions of the arguments of a textual value"""
+        vals = ValueParser(text.decode("utf-8")).args()
+        if len(vals) != len(types):
+            raise ParseError("the value and its types differ in length")
+        return [self.value(t, v) for t, v in zip(types, vals)]
+
+
 OPS = {":": "Op::Decodes", "!:": "Op::Fails", "==": "Op::Equal", "!=": "Op::NotEqual"}
 
 
 def generate(name: str, path: str, tf: TestFile) -> str:
     """The C++ file for one .test.did file"""
     base = Graph(tf.defs)
+    typed = TypedApi(tf.defs)
     fn = f"suite_{name}"
     lines = [
         f"// Generated by scripts/candid_compliance/generate.py from suite/{path}.",
@@ -507,12 +919,23 @@ def generate(name: str, path: str, tf: TestFile) -> str:
         lines.append("    CandidTypeGraph g = base;")
         for n in g.nodes[len(base.nodes) :]:
             lines.append(f"    g.add({n});")
-        right = cpp_input(a.right) if a.right else "ComplianceInput{}"
-        lines.append(
-            f"    r.check({a.line}, {cpp_str(a.desc.encode('utf-8'))}, g, "
-            f"{{{', '.join(str(x) for x in args)}}}, {OPS[a.op]},\n"
-            f"            {cpp_input(a.left)},\n            {right});"
-        )
+        desc = cpp_str(a.desc.encode("utf-8"))
+        arg_list = ", ".join(str(x) for x in args)
+        if a.op == "encode":
+            assert a.right is not None
+            body = "".join(f"A.append({e}); " for e in typed.args(a.types, a.left[1]))
+            lines.append(
+                f"    r.check_encode({a.line}, {desc}, g, {{{arg_list}}},\n"
+                f"            {cpp_input(a.left)},\n"
+                f"            [] {{ CandidArgs A; {body}return CandidSerialize(A).get_B(); }},\n"
+                f"            {cpp_input(a.right)});"
+            )
+        else:
+            right = cpp_input(a.right) if a.right else "ComplianceInput{}"
+            lines.append(
+                f"    r.check({a.line}, {desc}, g, {{{arg_list}}}, {OPS[a.op]},\n"
+                f"            {cpp_input(a.left)},\n            {right});"
+            )
         lines.append("  }")
     lines.append("}")
     return "\n".join(lines) + "\n"
@@ -533,7 +956,7 @@ def main() -> int:
         name = f"{prefix}_{name}" if prefix else name
         try:
             tf = parse(f.read_text(encoding="utf-8"))
-        except (ParseError, ValueError, IndexError) as e:
+        except (ParseError, NotExpressible, ValueError, IndexError) as e:
             print(f"ERROR in {f}: {e}")
             return 1
         path = f.relative_to(SUITE_PATH).as_posix()

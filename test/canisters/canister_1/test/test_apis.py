@@ -189,7 +189,7 @@ def test__test_vendors(network: str, principal: str) -> None:
 
 
 # ----------------------------------------------------------------------------------
-# Run all unit & compliance tests for candid
+# Run all unit tests for candid
 def test__test_candid(network: str, principal: str) -> None:
     response = call_canister_api(
         icp_yaml_path=ICP_YAML_PATH,

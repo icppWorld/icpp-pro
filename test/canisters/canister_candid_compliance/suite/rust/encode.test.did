@@ -1,0 +1,95 @@
+/*
+Encode vectors ported from dfinity/candid@572c80a rust/candid/tests/serde.rs,
+number.rs and rust/candid_parser/tests/value.rs: the value, encoded with the
+typed API, must have the reference's types and decode to the same values.
+
+Not ported: the types of these are recursive. A typed API value is a finite
+tree of CandidType objects, so its type cannot refer to itself. The decode
+suites cover recursive types.
+  serde.rs test_struct: (List) (record { head = 42; tail = opt record { head =...
+  serde.rs test_equivalent_types: (RootType) (record { typeas = vec {} })
+  serde.rs test_equivalent_types: (TypeB) (record { typea = null })
+  serde.rs test_mutual_recursion: (ListOpt) (null)
+*/
+
+type Unit = variant { Foo; Bar };
+type E = variant { Foo; Bar : record { bool; int }; Baz : record { a : int; b : nat } };
+
+assert "(true)" encode blob "DIDL\00\01\7e\01" : (bool) "serde.rs test_bool";
+assert "(false)" encode blob "DIDL\00\01\7e\00" : (bool) "serde.rs test_bool";
+assert "(42)" encode blob "DIDL\00\01\7c\2a" : (int) "serde.rs test_integer";
+assert "(42)" encode blob "DIDL\00\01\7d\2a" : (nat) "serde.rs test_integer";
+assert "(1234567890)" encode blob "DIDL\00\01\7c\d2\85\d8\cc\04" : (int) "serde.rs test_integer";
+assert "(1234567890)" encode blob "DIDL\00\01\7d\d2\85\d8\cc\04" : (nat) "serde.rs test_integer";
+assert "(5000000000)" encode blob "DIDL\00\01\7d\80\e4\97\d0\12" : (nat) "serde.rs test_integer";
+assert "(-1234567890)" encode blob "DIDL\00\01\7c\ae\fa\a7\b3\7b" : (int) "serde.rs test_integer";
+assert "(60000000000000000)" encode blob "DIDL\00\01\7c\80\80\98\f4\e9\b5\ca\ea\00" : (int) "serde.rs test_integer";
+assert "(60000000000000000)" encode blob "DIDL\00\01\7d\80\80\98\f4\e9\b5\ca\6a" : (nat) "serde.rs test_integer";
+assert "(-60000000000000000)" encode blob "DIDL\00\01\7c\80\80\e8\8b\96\ca\b5\95\7f" : (int) "serde.rs test_integer";
+assert "(42)" encode blob "DIDL\00\01\7b\2a" : (nat8) "serde.rs test_fixed_number";
+assert "(42)" encode blob "DIDL\00\01\7a\2a\00" : (nat16) "serde.rs test_fixed_number";
+assert "(42)" encode blob "DIDL\00\01\79\2a\00\00\00" : (nat32) "serde.rs test_fixed_number";
+assert "(42)" encode blob "DIDL\00\01\78\2a\00\00\00\00\00\00\00" : (nat64) "serde.rs test_fixed_number";
+assert "(42)" encode blob "DIDL\00\01\77\2a" : (int8) "serde.rs test_fixed_number";
+assert "(42)" encode blob "DIDL\00\01\76\2a\00" : (int16) "serde.rs test_fixed_number";
+assert "(42)" encode blob "DIDL\00\01\75\2a\00\00\00" : (int32) "serde.rs test_fixed_number";
+assert "(42)" encode blob "DIDL\00\01\74\2a\00\00\00\00\00\00\00" : (int64) "serde.rs test_fixed_number";
+assert "(-42)" encode blob "DIDL\00\01\74\d6\ff\ff\ff\ff\ff\ff\ff" : (int64) "serde.rs test_fixed_number";
+assert "(3.0)" encode blob "DIDL\00\01\73\00\00\40\40" : (float32) "serde.rs test_float";
+assert "(3.0)" encode blob "DIDL\00\01\72\00\00\00\00\00\00\08\40" : (float64) "serde.rs test_float";
+assert "(6.0)" encode blob "DIDL\00\01\72\00\00\00\00\00\00\18\40" : (float64) "serde.rs test_float";
+assert "(0.5)" encode blob "DIDL\00\01\72\00\00\00\00\00\00\e0\3f" : (float64) "serde.rs test_float";
+assert "(-0.5)" encode blob "DIDL\00\01\72\00\00\00\00\00\00\e0\bf" : (float64) "serde.rs test_float";
+assert "(\"Hi ☃\\n\")" encode blob "DIDL\00\01\71\07\48\69\20\e2\98\83\0a" : (text) "serde.rs test_text";
+assert "(null)" encode blob "DIDL\00\01\70" : (reserved) "serde.rs test_reserved";
+assert "(variant { Ok = 1 })" encode blob "DIDL\01\6b\02\bc\8a\01\7b\c5\fe\d2\01\6f\01\00\00\01" : (variant { Ok : nat8; Err : empty }) "serde.rs test_reserved";
+assert "(principal \"w7x7r-cok77-xa\")" encode blob "DIDL\00\01\68\01\03\ca\ff\ee" : (principal) "serde.rs test_reference";
+assert "(func \"w7x7r-cok77-xa\".\"method\")" encode blob "DIDL\01\6a\00\01\7d\00\01\00\01\01\03\ca\ff\ee\06\6d\65\74\68\6f\64" : (func () -> (nat)) "serde.rs test_reference";
+assert "(service \"w7x7r-cok77-xa\")" encode blob "DIDL\03\69\02\01\66\01\01\67\02\6a\00\01\7d\00\6a\00\00\01\01\01\00\01\03\ca\ff\ee" : (service { g : () -> () query; f : () -> (nat) }) "serde.rs test_reference";
+assert "(opt 42)" encode blob "DIDL\01\6e\7c\01\00\01\2a" : (opt int) "serde.rs test_option";
+assert "(opt opt 42)" encode blob "DIDL\02\6e\01\6e\7c\01\00\01\01\2a" : (opt opt int) "serde.rs test_option";
+assert "(null)" encode blob "DIDL\01\6e\75\01\00\00" : (opt int32) "serde.rs test_option";
+assert "(record { foo = 42; bar = true })" encode blob "DIDL\01\6c\02\d3\e3\aa\02\7e\86\8e\b7\02\7c\01\00\01\2a" : (record { foo : int; bar : bool }) "serde.rs test_struct";
+assert "(record { foo = 42; bar = true; baz = record { foo = 10; bar = false } })" encode blob "DIDL\02\6c\03\d3\e3\aa\02\7e\db\e3\aa\02\01\86\8e\b7\02\7c\6c\02\d3\e3\aa\02\7e\86\8e\b7\02\7c\01\00\01\00\0a\2a" : (record { foo : int; bar : bool; baz : record { foo : int; bar : bool } }) "serde.rs test_struct";
+assert "(record { true; 42 })" encode blob "DIDL\01\6c\02\00\7e\01\7c\01\00\01\2a" : (record { bool; int }) "serde.rs test_struct";
+assert "(variant { A = 42 })" encode blob "DIDL\01\6b\01\41\75\01\00\00\2a\00\00\00" : (variant { A : int32 }) "serde.rs test_newtype";
+assert "(blob \"\\01\\02\\03\")" encode blob "DIDL\01\6d\7b\01\00\03\01\02\03" : (blob) "serde.rs test_serde_bytes";
+assert "(record { b = blob \"\\01\\02\\03\"; c = blob \"\\01\\02\\03\" })" encode blob "DIDL\02\6c\02\62\01\63\01\6d\7b\01\00\03\01\02\03\03\01\02\03" : (record { b : blob; c : blob }) "serde.rs test_serde_bytes";
+assert "(record { \"return\" = vec { 1; 2; 3 } })" encode blob "DIDL\02\6c\01\b0\c9\b6\49\01\6d\7b\01\00\03\01\02\03" : (record { "return" : vec nat8 }) "serde.rs test_keyword_label";
+assert "(variant { \"return\" })" encode blob "DIDL\01\6b\01\b0\c9\b6\49\7f\01\00\00" : (variant { "return" }) "serde.rs test_keyword_label";
+assert "(vec { 0; 1; 2; 3 })" encode blob "DIDL\01\6d\7c\01\00\04\00\01\02\03" : (vec int) "serde.rs test_vector";
+assert "(vec { record { 42; \"text\" } })" encode blob "DIDL\02\6d\01\6c\02\00\7c\01\71\01\00\01\2a\04\74\65\78\74" : (vec record { int; text }) "serde.rs test_vector";
+assert "(vec { vec { vec { vec { null } } } })" encode blob "DIDL\04\6d\01\6d\02\6d\03\6d\7f\01\00\01\01\01\01" : (vec vec vec vec null) "serde.rs test_vector";
+assert "(vec { null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null })" encode blob "DIDL\01\6d\7f\01\00\e8\07" : (vec null) "serde.rs test_vector";
+assert "(vec { record { \"a\"; 1 } })" encode blob "DIDL\02\6d\01\6c\02\00\71\01\75\01\00\01\01\61\01\00\00\00" : (vec record { text; int32 }) "serde.rs test_collection";
+assert "(vec { record { 1; 101 }; record { 2; 102 }; record { 3; 103 } })" encode blob "DIDL\02\6d\01\6c\02\00\75\01\75\01\00\03\01\00\00\00\65\00\00\00\02\00\00\00\66\00\00\00\03\00\00\00\67\00\00\00" : (vec record { int32; int32 }) "serde.rs test_collection";
+assert "(vec { 1; 2; 3 })" encode blob "DIDL\01\6d\75\01\00\03\01\00\00\00\02\00\00\00\03\00\00\00" : (vec int32) "serde.rs test_collection";
+assert "(record { 42; \"💩\" })" encode blob "DIDL\01\6c\02\00\7c\01\71\01\00\2a\04\f0\9f\92\a9" : (record { int; text }) "serde.rs test_tuple";
+assert "(variant { Bar })" encode blob "DIDL\01\6b\02\b3\d3\c9\01\7f\e6\fd\d5\01\7f\01\00\00" : (Unit) "serde.rs test_variant";
+assert "(variant { Ok = \"good\" })" encode blob "DIDL\01\6b\02\bc\8a\01\71\c5\fe\d2\01\71\01\00\00\04\67\6f\6f\64" : (variant { Ok : text; Err : text }) "serde.rs test_variant";
+assert "(variant { Bar = record { true; 42 } })" encode blob "DIDL\03\6b\03\b3\d3\c9\01\01\bb\d3\c9\01\02\e6\fd\d5\01\7f\6c\02\00\7e\01\7c\6c\02\61\7c\62\7d\01\00\00\01\2a" : (E) "serde.rs test_variant";
+assert "(variant { A = record {} })" encode blob "DIDL\02\6b\03\41\01\42\01\43\7f\6c\00\01\00\00" : (variant { A : record {}; B : record {}; C }) "serde.rs test_variant";
+assert "(record { a = 42; b = 42 })" encode blob "DIDL\01\6c\02\61\77\62\7b\01\00\2a\2a" : (record { a : int8; b : nat8 }) "serde.rs test_field_rename";
+assert "(variant { b })" encode blob "DIDL\01\6b\02\61\7f\62\7f\01\00\01" : (variant { a; b }) "serde.rs test_field_rename";
+assert "(variant { \"1-2 + 3\" = 42 })" encode blob "DIDL\01\6b\02\b6\84\a7\02\7b\b4\93\ee\97\0d\77\01\00\01\2a" : (variant { "1-2 + 3" : int8; "a-b" : nat8 }) "serde.rs test_field_rename";
+assert "(record { \"1-2 + 3\" = 42; \"a-b\" = 42 })" encode blob "DIDL\01\6c\02\b6\84\a7\02\7b\b4\93\ee\97\0d\77\01\00\2a\2a" : (record { "1-2 + 3" : int8; "a-b" : nat8 }) "serde.rs test_field_rename";
+assert "(record { g1 = 42; g2 = true })" encode blob "DIDL\01\6c\02\ea\b3\01\7c\eb\b3\01\7e\01\00\2a\01" : (record { g1 : int; g2 : bool }) "serde.rs test_generics";
+assert "()" encode blob "DIDL\00\00" : () "serde.rs test_multiargs";
+assert "(42, opt 42, opt 1, opt 2)" encode blob "DIDL\01\6e\7c\04\7c\00\00\00\2a\01\2a\01\01\01\02" : (int, opt int, opt int, opt int) "serde.rs test_multiargs";
+assert "(vec { record { 42; \"text\" } }, record { 42; \"text\" })" encode blob "DIDL\02\6d\01\6c\02\00\7c\01\71\02\00\01\01\2a\04\74\65\78\74\2a\04\74\65\78\74" : (vec record { int; text }, record { int; text }) "serde.rs test_multiargs";
+assert "(0)" encode blob "DIDL\00\01\7c\00" : (int) "number.rs test_numbers";
+assert "(0)" encode blob "DIDL\00\01\7d\00" : (nat) "number.rs test_numbers";
+assert "(127)" encode blob "DIDL\00\01\7c\ff\00" : (int) "number.rs test_numbers";
+assert "(127)" encode blob "DIDL\00\01\7d\7f" : (nat) "number.rs test_numbers";
+assert "(-1)" encode blob "DIDL\00\01\7c\7f" : (int) "number.rs test_numbers";
+assert "(-123456)" encode blob "DIDL\00\01\7c\c0\bb\78" : (int) "number.rs test_numbers";
+assert "(624485)" encode blob "DIDL\00\01\7c\e5\8e\26" : (int) "number.rs test_numbers";
+assert "(624485)" encode blob "DIDL\00\01\7d\e5\8e\26" : (nat) "number.rs test_numbers";
+assert "(2000000)" encode blob "DIDL\00\01\7c\80\89\fa\00" : (int) "number.rs test_numbers";
+assert "(2000000)" encode blob "DIDL\00\01\7d\80\89\7a" : (nat) "number.rs test_numbers";
+assert "(24197857200151252728969465429440056815)" encode blob "DIDL\00\01\7c\ef\9b\af\85\89\cf\95\9a\92\de\b7\de\8a\92\9e\ab\b4\24" : (int) "number.rs test_numbers";
+assert "(24197857200151252728969465429440056815)" encode blob "DIDL\00\01\7d\ef\9b\af\85\89\cf\95\9a\92\de\b7\de\8a\92\9e\ab\b4\24" : (nat) "number.rs test_numbers";
+assert "(-24197857200151252728969465429440056815)" encode blob "DIDL\00\01\7c\91\e4\d0\fa\f6\b0\ea\e5\ed\a1\c8\a1\f5\ed\e1\d4\cb\5b" : (int) "number.rs test_numbers";
+assert "(blob \"\\01\\02\\03\\04\")" encode blob "DIDL\01\6d\7b\01\00\04\01\02\03\04" : (blob) "value.rs test_value";
+assert "(record { 0 = 42; 1 = \"💩\" })" encode blob "DIDL\01\6c\02\00\7c\01\71\01\00\2a\04\f0\9f\92\a9" : (record { 0 : int; 1 : text }) "value.rs test_value";
+assert "(record { 4895187 = true; 5097222 = 42 })" encode blob "DIDL\01\6c\02\d3\e3\aa\02\7e\86\8e\b7\02\7c\01\00\01\2a" : (record { 4895187 : bool; 5097222 : int }) "value.rs test_value";

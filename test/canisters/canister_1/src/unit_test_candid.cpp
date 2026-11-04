@@ -476,6 +476,37 @@ void sleb(std::vector<uint8_t> &b, int64_t v) {
 
 // The type graph's checks follow long chains of types, and a value marked
 // absent differs from one that is there
+// A copy of a null, reserved or empty points at its own value: a variant
+// built from temporaries, as IC_Management::canister_status does, decodes
+// after the temporaries are gone
+__attribute__((noinline)) void test_copies_of_null_reserved_empty() {
+  {
+    CandidTypeNull a;
+    CandidTypeNull b{a};
+    CandidTypeReserved c;
+    CandidTypeReserved d{c};
+    CandidTypeEmpty e;
+    CandidTypeEmpty f{e};
+    check(b.get_pv() != a.get_pv() && d.get_pv() != c.get_pv() &&
+              f.get_pv() != e.get_pv(),
+          "a copy of a null, reserved or empty points at its own value");
+  }
+  {
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::string wire =
+        CandidSerialize(CandidTypeVariant("stopped", CandidTypeNull{}))
+            .as_hex_string();
+    std::string label;
+    CandidTypeVariant v{&label};
+    v.append("running", CandidTypeNull{});
+    v.append("stopping", CandidTypeNull{});
+    v.append("stopped", CandidTypeNull{});
+    v.append("other", CandidTypeReserved{});
+    decode(wire, v);
+    check(label == "stopped", "a variant of temporary nulls");
+  }
+}
+
 __attribute__((noinline)) void test_type_graph_chains() {
   { // A chain of 10_000 records (as many as a type table may have),
     // record {0 : next}, the last record {}: the checks of the type table
@@ -1547,6 +1578,7 @@ int unit_test_candid() {
     test_zero_width_vec();
     test_zero_width_records();
     test_type_graph_chains();
+    test_copies_of_null_reserved_empty();
   }
 
   { // A type table index that needs 2 bytes

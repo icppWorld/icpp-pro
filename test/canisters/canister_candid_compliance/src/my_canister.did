@@ -1,0 +1,7 @@
+// The Candid specification's test suite, run by icpp-candid
+service : {
+    // The suite files, e.g. "official/prim.test.did"
+    "suites" : () -> (vec text) query;
+    // Runs the asserts of one suite file
+    "run_suite" : (text) -> (record { passed : nat64; total : nat64; failures : text }) query;
+};

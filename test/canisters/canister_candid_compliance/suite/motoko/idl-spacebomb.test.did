@@ -7,7 +7,7 @@ Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
 A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
 The 1_000_000_000-element blobs and the 2^20 one duplicate the official spacebomb.test.did.
 The 10_000_000 and 1_048_575 element blobs are ported (over the limit of 1_000_000 values
-that take no bytes). The 400_000 (\80\b5\18) and 401_408 (\80\bf\18) element blobs are not:
+that take no bytes). The 400_000 (\80\b5\18) and 401_280 (\80\bf\18) element blobs are not:
 Motoko rejects them through its own cost limit, but they are under ours, so they decode.
 */
 // didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none

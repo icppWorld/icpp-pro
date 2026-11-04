@@ -820,6 +820,10 @@ class TypedApi:
 
     def opt(self, inner: Type, v: Value, seen: Tuple[str, ...]) -> str:
         """An opt value"""
+        if v[0] not in ("opt", "null"):
+            # e.g. "(42)" at (opt int): valid Candid (t <: opt t), but the
+            # typed API encodes the value of the type, an opt or a null
+            raise NotExpressible("a value at an opt type that is not opt or null")
         it, iseen = self.resolve(inner, seen)
         op = self.scalar(inner, seen)
         if op is not None:

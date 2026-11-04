@@ -541,6 +541,25 @@ __attribute__((noinline)) void test_type_graph_chains() {
             err.find("Invalid UTF-8 in a method name") != std::string::npos,
         "text: func method name is UTF-8 checked");
   }
+  { // A decimal integer literal at a float type, as to_text writes 1.0;
+    // a hex one is not a float
+    CandidTypeGraph g;
+    int f64 = CandidTypeGraph::prim(CandidKind::Float64);
+    int f32 = CandidTypeGraph::prim(CandidKind::Float32);
+    std::vector<CandidValue> out;
+    std::string err;
+    check(CandidTextValue::parse("(1, -2_000)", g, {f64, f32}, out, err) &&
+              out[0].f64 == 1.0 && out[1].f64 == -2000.0 &&
+              !CandidTextValue::parse("(0x10)", g, {f64}, out, err),
+          "text: integer literals at float types");
+    CandidValue one;
+    one.kind = CandidKind::Float64;
+    one.f64 = 1.0;
+    check(CandidTextValue::parse(candid_values_to_text({one}), g, {f64}, out,
+                                 err) &&
+              out[0] == one,
+          "text: a whole float round-trips through to_text");
+  }
   { // An expected type with fields out of order is rejected, not decoded
     CandidTypeGraph g;
     int r = g.reserve();

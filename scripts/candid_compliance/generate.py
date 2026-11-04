@@ -954,15 +954,14 @@ def main() -> int:
         rel = f.parent.relative_to(SUITE_PATH)
         prefix = "_".join(rel.parts)
         name = f"{prefix}_{name}" if prefix else name
+        path = f.relative_to(SUITE_PATH).as_posix()
         try:
             tf = parse(f.read_text(encoding="utf-8"))
-        except (ParseError, NotExpressible, ValueError, IndexError) as e:
+            code = generate(name, path, tf)
+        except (ParseError, NotExpressible, ValueError, LookupError) as e:
             print(f"ERROR in {f}: {e}")
             return 1
-        path = f.relative_to(SUITE_PATH).as_posix()
-        (OUT_PATH / f"suite_{name}.cpp").write_text(
-            generate(name, path, tf), encoding="utf-8"
-        )
+        (OUT_PATH / f"suite_{name}.cpp").write_text(code, encoding="utf-8")
         print(f"{path}: {len(tf.asserts)} asserts")
         names.append((name, path))
         total += len(tf.asserts)

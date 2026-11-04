@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <new>
@@ -36,7 +37,7 @@ public:
 
   // Aborts when the peak since start() is over the limit for the size
   static void check(size_t size, const char *what) {
-    size_t used = s_peak - s_start;
+    size_t used = size_t(s_peak - s_start);
     if (used <= limit(size)) return;
     std::fprintf(stderr,
                  "==MemoryOracle== %s: %zu bytes held at the peak, for a "
@@ -46,17 +47,20 @@ public:
   }
 
 private:
-  static inline size_t s_live = 0;
-  static inline size_t s_peak = 0;
-  static inline size_t s_start = 0;
+  // Signed: memory allocated before the hooks were installed is freed with
+  // them installed, so the count can go below zero
+  static inline int64_t s_live = 0;
+  static inline int64_t s_peak = 0;
+  static inline int64_t s_start = 0;
 
   static void on_malloc(const volatile void *, size_t size) {
-    s_live += size;
+    s_live += int64_t(size);
     s_peak = std::max(s_peak, s_live);
   }
   static void on_free(const volatile void *p) {
     // The hook runs before the memory is freed, so its size is still known
-    s_live -= __sanitizer_get_allocated_size(const_cast<const void *>(p));
+    s_live -=
+        int64_t(__sanitizer_get_allocated_size(const_cast<const void *>(p)));
   }
 
   // Once: install the hooks, and check that they count what is allocated
@@ -65,7 +69,7 @@ private:
       __sanitizer_install_malloc_and_free_hooks(on_malloc, on_free);
       // ::operator new itself, which the compiler may not leave out, as it
       // may a new-expression whose memory is not used
-      size_t before = s_live;
+      int64_t before = s_live;
       void *volatile p = ::operator new(4096);
       bool counted = s_live - before == 4096;
       ::operator delete(p);

@@ -659,7 +659,7 @@ def test__truncated_message_traps(network: str, method: str, argument: str) -> N
         canister_output="raw",
         network=network,
     )
-    assert "Not enough bytes left" in response, response
+    assert "bytes left" in response or "Not enough bytes" in response, response
 
 
 def _sleb128_hex(n: int) -> str:
@@ -697,63 +697,63 @@ _SHARED_RECORDS = (
         (
             "roundtrip_vec_blob",
             "4449444c026d016d7b010001056162",
-            "Not enough bytes left",
+            "The vec length is larger than the bytes left",
         ),
         # shorter than the magic number
         ("roundtrip_blob", "444944", "does not start with DIDL"),
         # a vec whose content type is index 5, with 1 type table
-        ("roundtrip_blob", "4449444c016d0500", "is not in the type table section"),
+        ("roundtrip_blob", "4449444c016d0500", "Type index 5 out of range"),
         # an argument of type index 5, with no type tables
-        ("roundtrip_blob", "4449444c000105", "is not in the type table section"),
+        ("roundtrip_blob", "4449444c000105", "Type index 5 out of range"),
         # a type table entry that is a type index, not a type constructor
-        ("roundtrip_blob", "4449444c02016c0000", "must be a type constructor"),
+        ("roundtrip_blob", "4449444c02016c0000", "is not a type constructor"),
         # a type table entry that is a primitive (nat), not a type constructor
-        ("roundtrip_blob", "4449444c017d010000", "must be a type constructor"),
+        ("roundtrip_blob", "4449444c017d010000", "is not a type constructor"),
         # a content type index of 2^32, which would wrap around to 0 as an int
-        ("roundtrip_blob", "4449444c016d8080808010010000", "is out of range"),
+        ("roundtrip_blob", "4449444c016d8080808010010000", "Type index out of range"),
         # a record whose only field is of its own type, with no value bytes:
         # it would recurse at the same offset without end
         (
             "roundtrip_vec_of_shared",
             "4449444c016c0100000100",
-            "nested deeper than 128 levels",
+            "Expected record",
         ),
         # '(vec { record { record { ... } } })': a chain of 200 record types,
         # each with one field of the next, ending in 'record {}'
-        ("roundtrip_vec_of_items", _RECORD_CHAIN, "nested deeper than 128 levels"),
+        ("roundtrip_vec_of_items", _RECORD_CHAIN, "Values nest more than 128 deep"),
         # 2,000,000 elements of 'vec record {}', which take no bytes on the wire
         (
             "roundtrip_vec_of_items",
             "4449444c026d016c00010080897a",
-            "take no bytes on the wire",
+            "values that take no bytes",
         ),
         (
             "roundtrip_vec_record",
             "4449444c026d016c00010080897a",
-            "take no bytes on the wire",
+            "values that take no bytes",
         ),
-        ("roundtrip_vec_nat16", _SHARED_RECORDS, "take no bytes on the wire"),
+        ("roundtrip_vec_nat16", _SHARED_RECORDS, "values that take no bytes"),
         # '(vec { "a"; "b" })' where a vec nat16 is expected
         (
             "roundtrip_vec_nat16",
             "4449444c016d7101000201610162",
-            "Wrong opcode found on wire",
+            "Fixed-width types must match exactly",
         ),
         # '(record { names = vec { 1 : nat16 }; values = vec { "a" } })' where a
         # record { names : vec text; values : vec text } is expected
         (
             "roundtrip_record_vec_text",
             "4449444c036c02e287dcfd0401c89f92b409026d716d7a0100010161010100",
-            "Wrong type on wire",
+            "Expected text",
         ),
         # '(opt vec { record {} })' where an opt vec nat16 is expected. It used
         # to dereference a null pointer. The Candid spec decodes an opt whose
-        # content does not match as null; icpp-candid traps instead, until the
-        # opt coercion rules are done (roadmap 7.3, the compliance suite)
+        # content does not match as null: the method then traps on its own
+        # check of the value
         (
             "roundtrip_opt_vec_nat16",
             "4449444c036e016d026c0001000101",
-            "an opt vec record, where an opt vec",
+            "ASSERT ERROR - roundtrip_opt_vec_nat16",
         ),
     ],
 )
@@ -1139,14 +1139,14 @@ def test__roundtrip_opt_nat_nat_3(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_opt_nat_nat",
-        # canister_argument="(102 : nat)", # dfx complains
+        # '(102 : nat)': arguments are positional, so the nat is coerced to the
+        # opt nat, and the nat that follows is missing
         canister_argument="4449444c00017d66",
         canister_input="raw",
         canister_output="idl",
         network=network,
     )
-    expected_response = "(102 : nat)"
-    assert response == expected_response
+    assert "Argument 1 is missing" in response, response
 
 
 def test__roundtrip_opt_nat_no_value(network: str, principal: str) -> None:
@@ -1864,7 +1864,7 @@ def test__roundtrip_bool_true_w_opt_1(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c016e7f03007e00010101",
+        canister_argument="4449444c016e7f037e0000010101",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -1878,7 +1878,7 @@ def test__roundtrip_bool_true_w_opt_2(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c026e716e7b03007e01010765787472612031010165",
+        canister_argument="4449444c026e716e7b037e0001010107657874726120310165",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -1892,7 +1892,7 @@ def test__roundtrip_bool_true_w_opt_3(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c036e016c02b79cba84087ab89cba8408716e7b03007e02011000026632010165",
+        canister_argument="4449444c036e016c02b79cba84087ab89cba8408716e7b037e0002010110000266320165",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -1906,7 +1906,7 @@ def test__roundtrip_bool_true_w_opt_4(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c046e016b01bc8a017f6e036b01c5fed2017103007e020100010100054572726f72",
+        canister_argument="4449444c046e016b01bc8a017f6e036b01c5fed20171037e00020101000100054572726f72",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -1920,7 +1920,7 @@ def test__roundtrip_bool_true_w_opt_5(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c046e016b01c5fed201716e036b01bc8a017f03007e020100054572726f72010100",
+        canister_argument="4449444c046e016b01c5fed201716e036b01bc8a017f037e0002010100054572726f720100",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -1934,7 +1934,7 @@ def test__roundtrip_bool_true_w_opt_6(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c086e016c01b79cba8408716e036b01c5fed201716e056b01bc8a017f6e076c01b89cba8408710500027e0406010568656c6c6f0100054572726f720101000103627965",
+        canister_argument="4449444c086e016c01b79cba8408716e036b01c5fed201716e056b01bc8a017f6e076c01b89cba840871057e0002040601010568656c6c6f0100054572726f7201000103627965",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -1948,7 +1948,7 @@ def test__roundtrip_bool_true_w_opt_7(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c0c6e016c0100026e036b01b79cba8408716e056b01c5fed201716e076b01bc8a017f6e096c01000a6e0b6b01b89cba8408710500047e06080101000568656c6c6f0100054572726f7201010001010003627965",
+        canister_argument="4449444c0c6e016c0100026e036b01b79cba8408716e056b01c5fed201716e076b01bc8a017f6e096c01000a6e0b6b01b89cba840871057e00040608010101000568656c6c6f0100054572726f72010001010003627965",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -1962,7 +1962,7 @@ def test__roundtrip_bool_true_w_opt_8(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c066e016b01c5fed201026e036b01c5fed201716e056b01bc8a017f04007e040001000100054572726f7201010001000100054572726f72",
+        canister_argument="4449444c066e016b01c5fed201026e036b01c5fed201716e056b01bc8a017f047e0004000101000100054572726f72010001000100054572726f72",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -1976,7 +1976,7 @@ def test__roundtrip_bool_true_w_opt_9(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c086e016c0100026e036b01c5fed201046e056b01c5fed201716e076b01bc8a017f0500047e06000101000100054572726f720100054572726f720101000101000100054572726f72",
+        canister_argument="4449444c086e016c0100026e036b01c5fed201046e056b01c5fed201716e076b01bc8a017f057e00040600010101000100054572726f720100054572726f7201000101000100054572726f72",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -1990,7 +1990,7 @@ def test__roundtrip_bool_true_w_opt_10(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c026e016d7a03007e000103650066006700010103650066006700",
+        canister_argument="4449444c026e016d7a037e00000101036500660067000103650066006700",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -2004,7 +2004,7 @@ def test__roundtrip_bool_true_w_opt_11(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c036e016d026c02b79cba840871b89cba84087103007e0001030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f3204627965330101030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f320462796533",
+        canister_argument="4449444c036e016d026c02b79cba840871b89cba840871037e00000101030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f32046279653301030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f320462796533",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -2018,7 +2018,7 @@ def test__roundtrip_bool_true_w_opt_12(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_bool_true",
-        canister_argument="4449444c046e016d026c03b79cba840871b89cba840803b99cba8408716b01fc9cba84087c03007e0001030668656c6c6f31000104627965310668656c6c6f32000204627965320668656c6c6f32000204627965320101030668656c6c6f31000104627965310668656c6c6f32000204627965320668656c6c6f3200020462796532",
+        canister_argument="4449444c046e016d026c03b79cba840871b89cba840803b99cba8408716b01fc9cba84087c037e00000101030668656c6c6f31000104627965310668656c6c6f32000204627965320668656c6c6f320002046279653201030668656c6c6f31000104627965310668656c6c6f32000204627965320668656c6c6f3200020462796532",
         canister_input="raw",
         canister_output="raw",
         network=network,
@@ -2083,7 +2083,9 @@ def test__trap_wrong_number_of_args(network: str, principal: str) -> None:
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="trap_wrong_number_of_args",
-        canister_argument="4449444c00027e7e0101",
+        # '()', where '(bool)' is expected. Additional arguments, as in
+        # '(true, true)', are skipped, as the spec says
+        canister_argument="4449444c0000",
         canister_input="raw",
         canister_output="raw",
         network=network,

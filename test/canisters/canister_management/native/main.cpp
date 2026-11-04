@@ -415,7 +415,7 @@ int main() {
                        MockIC::MockResponse::reply(reply));
     CandidArgs in = child_in();
     mockIC.run_trap_test("canister_status wrong type", canister_status_full,
-                         hex(in), true, caller, "Wrong type on wire");
+                         hex(in), true, caller, "Expected nat");
     mockIC.clear_expected_calls();
   }
   {
@@ -644,7 +644,7 @@ int main() {
     in.append(CandidTypeOptNat64{std::optional<uint64_t>{}});
     mockIC.run_trap_test("info_child future change", info_child, hex(in), true,
                          caller,
-                         "does not match any of the expected Variant ids");
+                         "is not in the expected type");
     mockIC.clear_expected_calls();
   }
   // ---------------------------------------------------------------------

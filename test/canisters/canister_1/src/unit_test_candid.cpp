@@ -174,6 +174,68 @@ __attribute__((noinline)) void test_vec_variant() {
   CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
+// Decoding follows the spec's coercion rules, with CandidDecoder
+__attribute__((noinline)) void test_spec_coercions() {
+  { // A func reference
+    // didc encode -t '(func (text) -> (nat))' '(func "w7x7r-cok77-xa".foo)'
+    std::string wire = "4449444c016a0171017d000100010103caffee03666f6f";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::string canister, method;
+    CandidTypeFunc f{&canister, &method};
+    f.append_arg(CandidTypeText{});
+    f.append_ret(CandidTypeNat{});
+    decode(wire, f);
+    check(canister == "w7x7r-cok77-xa" && method == "foo", "func decodes");
+  }
+
+  { // nat <: int
+    // didc encode -t '(nat)' '(42)'
+    std::string wire = "4449444c00017d2a";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    __int128_t i{0};
+    decode(wire, CandidTypeInt{&i});
+    check(i == 42, "nat decodes at int");
+  }
+
+  { // t <: opt t
+    // didc encode -t '(nat)' '(42)'
+    std::string wire = "4449444c00017d2a";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::optional<__uint128_t> n;
+    decode(wire, CandidTypeOptNat{&n});
+    check(n.has_value() && *n == 42, "nat decodes at opt nat");
+  }
+
+  { // An opt whose value does not coerce is null
+    // didc encode -t '(opt text)' '(opt "x")'
+    std::string wire = "4449444c016e710100010178";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::optional<__uint128_t> n{7};
+    decode(wire, CandidTypeOptNat{&n});
+    check(!n.has_value(), "opt text decodes at opt nat as null");
+  }
+
+  { // A null opt record, and one with a value
+    // didc encode -t '(opt record {a : nat})' '(null)'
+    // didc encode -t '(opt record {a : nat})' '(opt record {a = 5})'
+    for (const auto &[wire, expected] :
+         std::vector<std::pair<std::string, bool>>{
+             {"4449444c026e016c01617d010000", false},
+             {"4449444c026e016c01617d01000105", true}}) {
+      CandidSerializeTypeTableRegistry::get_instance().clear();
+      __uint128_t a{0};
+      bool has_value{!expected};
+      CandidTypeRecord r;
+      r.append("a", CandidTypeNat{&a});
+      decode(wire, CandidTypeOptRecord{&r, &has_value});
+      check(has_value == expected && a == (expected ? 5 : 0),
+            "opt record decodes, null or not");
+    }
+  }
+
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+}
+
 // A record field added with append_optional may be absent on the wire: it is
 // then left as is, and *p_on_wire tells whether it was on the wire.
 __attribute__((noinline)) void test_append_optional() {
@@ -957,6 +1019,10 @@ int unit_test_candid() {
 
   { // A record field that may be absent on the wire
     test_append_optional();
+  }
+
+  { // Coercion, as the spec defines it
+    test_spec_coercions();
   }
 
   { // A type table index that needs 2 bytes

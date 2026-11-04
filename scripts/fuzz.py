@@ -112,8 +112,10 @@ def fuzz(target: str, extra: list[str]) -> int:
     cmd = [
         str(BUILD_PATH / target),
         f"-artifact_prefix={crashes}/{target}-",
-        "-rss_limit_mb=2048",
-        "-malloc_limit_mb=512",
+        # The memory one input may make the decoder hold is checked by
+        # test/fuzz/memory_oracle.h; these catch whatever it does not see
+        "-rss_limit_mb=512",
+        "-malloc_limit_mb=16",
         "-timeout=20",
         "-print_final_stats=1",
         *extra,
@@ -121,8 +123,11 @@ def fuzz(target: str, extra: list[str]) -> int:
         str(BUILD_PATH / "seeds" / target),
         str(FUZZ_PATH / "regressions"),
     ]
+    # A small quarantine, so that the process's memory follows what the
+    # decoder holds, under -rss_limit_mb
+    env = {**os.environ, "ASAN_OPTIONS": "quarantine_size_mb=16"}
     print(f"--- {' '.join(cmd)}", flush=True)
-    return subprocess.run(cmd, check=False).returncode
+    return subprocess.run(cmd, check=False, env=env).returncode
 
 
 def main() -> int:

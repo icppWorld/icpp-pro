@@ -2,7 +2,9 @@
 // bound to C++ variables, as a canister method reads its arguments.
 //
 // The first byte of the input picks the arguments, the rest is the message.
-// A trap is a rejected message and is caught (see fuzz_ic0.cpp).
+// A trap is a rejected message and is caught (see fuzz_ic0.cpp). The memory
+// the decoder holds is checked against the size of the message
+// (memory_oracle.h).
 //
 // Build and run with `make fuzz` from the root of icpp-pro.
 
@@ -14,6 +16,7 @@
 #include "vec_bytes.h"
 
 #include "ic0.h"
+#include "memory_oracle.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -115,12 +118,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
   CandidSerializeTypeTableRegistry::get_instance().clear();
   Vars v;
+  MemoryOracle::start();
   try {
     CandidArgs A = make_args(pick, v);
     CandidDeserialize(B, A);
   } catch (const FuzzTrap &) {
     // A rejected message
   }
+  MemoryOracle::check(size, "CandidDeserialize");
   CandidSerializeTypeTableRegistry::get_instance().clear();
   return 0;
 }

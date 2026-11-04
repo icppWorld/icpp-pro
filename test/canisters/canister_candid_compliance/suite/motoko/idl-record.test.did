@@ -1,0 +1,13 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-record.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+*/
+assert blob "DIDL\01\6c\02\00\71\01\7c\01\00\04\48\65\79\21\2a" == "(record { \"Hey!\"; 42 })" : (record { text; int }) "idl-record.mo pair";
+assert blob "DIDL\01\6c\02\b9\9a\de\cb\01\71\f1\fe\e1\8d\03\7c\01\00\04\48\65\79\21\2a" == "(record { content = \"Hey!\"; value = 42 })" : (record { content : text; value : int }) "idl-record.mo record";
+assert blob "DIDL\01\6c\03\b9\9a\de\cb\01\71\f1\fe\e1\8d\03\7c\88\be\8c\89\04\77\01\00\04\48\65\79\21\2a\19" == "(record { value = 42; byte = 25 })" : (record { value : int; byte : int8 }) "idl-record.mo record1: skips the redundant content field";
+assert blob "DIDL\01\6c\03\b9\9a\de\cb\01\71\f1\fe\e1\8d\03\7c\88\be\8c\89\04\77\02\00\77\04\48\65\79\21\2a\18\19" == "(record { content = \"Hey!\"; value = 42 }, 25)" : (record { content : text; value : int }, int8) "idl-record.mo record2: skips the redundant trailing byte field";
+assert blob "DIDL\01\6c\02\b9\9a\de\cb\01\71\f1\fe\e1\8d\03\7c\01\00\04\48\65\79\21\2a" !: (record { content : text; value : int; extra : nat }) "idl-record.mo record3: did not find field extra in record";

@@ -639,7 +639,8 @@ int main() {
                        "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("nat64 truncated (5 of 8 bytes)", roundtrip_nat64_101,
                        "4449444c000178650000000000", silent_on_trap,
-                       my_principal, "Not enough bytes for a fixed-width value");
+                       my_principal,
+                       "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("int8 truncated (0 of 1 bytes)", roundtrip_int8_101,
                        "4449444c000177", silent_on_trap, my_principal,
                        "Not enough bytes for a fixed-width value");
@@ -651,7 +652,8 @@ int main() {
                        "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("int64 truncated (7 of 8 bytes)", roundtrip_int64_101,
                        "4449444c00017465000000000000", silent_on_trap,
-                       my_principal, "Not enough bytes for a fixed-width value");
+                       my_principal,
+                       "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("float32 truncated (2 of 4 bytes)", roundtrip_float32,
                        "4449444c0001730000", silent_on_trap, my_principal,
                        "Not enough bytes for a fixed-width value");
@@ -672,7 +674,8 @@ int main() {
   // A vec blob whose blob declares 5 bytes and has 2
   mockIC.run_trap_test("vec blob: blob size larger than the bytes left",
                        roundtrip_vec_blob, "4449444c026d016d7b010001056162",
-                       silent_on_trap, my_principal, "The vec length is larger than the bytes left");
+                       silent_on_trap, my_principal,
+                       "The vec length is larger than the bytes left");
   // Shorter than the magic number
   mockIC.run_trap_test("3 bytes, shorter than DIDL", roundtrip_blob, "444944",
                        silent_on_trap, my_principal,
@@ -783,10 +786,10 @@ int main() {
                   "4449444c036d016c0162026d7b010001020102",
                   "4449444c026d7b6d00010101020102", silent_on_trap,
                   my_principal);
-  mockIC.run_trap_test("vec record with a vec vec nat8 field",
-                       native_vec_record_blob,
-                       "4449444c046d016c0162026d036d7b010001010101",
-                       silent_on_trap, my_principal, "Fixed-width types must match exactly");
+  mockIC.run_trap_test(
+      "vec record with a vec vec nat8 field", native_vec_record_blob,
+      "4449444c046d016c0162026d036d7b010001010101", silent_on_trap,
+      my_principal, "Fixed-width types must match exactly");
   // '("{\"project\": \"?\", \"C++\": 0}")' -> '("{\"C++\":20,\"project\":\"icpp\"}")'
   mockIC.run_test(
       "roundtrip_text_to_json_to_text", roundtrip_text_to_json_to_text,
@@ -1519,8 +1522,8 @@ int main() {
   // Arguments are positional: additional arguments come after the expected
   // ones. An additional argument before an expected one is not skipped.
   mockIC.run_trap_test("roundtrip_bool_true with an additional Opt before it",
-                       roundtrip_bool_true, "4449444c016e7f03007e00010101", silent_on_trap,
-                       my_principal, "Expected bool");
+                       roundtrip_bool_true, "4449444c016e7f03007e00010101",
+                       silent_on_trap, my_principal, "Expected bool");
 
   // '(true, opt (null: null), opt (null: null))' -> '(true)'
   mockIC.run_test("roundtrip_bool_true with additional Opt 1",

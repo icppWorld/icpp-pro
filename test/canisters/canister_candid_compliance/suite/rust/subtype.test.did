@@ -1,0 +1,25 @@
+/*
+Ported from dfinity/candid@572c80a rust/candid/tests/subtype_recursion_limit.rs, using the official idiom for t1 <: t2:
+(func () -> (t1)) decoded at (opt func () -> (t2)) is a reference iff t1 <: t2, else null.
+*/
+
+type L0 = L1;
+type L1 = L2;
+type L2 = nat;
+type V0 = record { V1 };
+type V1 = record { V2 };
+type V2 = record { V3 };
+type V3 = record { nat };
+type W0 = record { W1 };
+type W1 = record { W2 };
+type W2 = record { W3 };
+type W3 = record { opt L0 };
+
+// subtype_assumptions.rs is not ported here: X, X2, Y, Y2 have no finite value,
+// so a decoder replaces them with empty on the wire (as Rust's TypeEnv::replace_empty),
+// and empty <: anything. The decode idiom cannot test it; canister_1's
+// test_subtype_assumptions checks CandidSubtype directly, as the Rust tests do.
+
+// subtype_recursion_limit.rs overflow_while_tracing_an_alias_fails_the_check (one small instance, k = 3, far from any recursion limit)
+assert blob "DIDL\06\6a\00\01\01\00\6c\03\00\7d\01\02\02\7d\6c\01\00\03\6c\01\00\04\6c\01\00\05\6c\01\00\7d\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (record { L0; W0; text })) "subtype_recursion_limit.rs overflow_while_tracing_an_alias_fails_the_check: nat </: text in field 2 fails the check";
+assert blob "DIDL\06\6a\00\01\01\00\6c\03\00\7d\01\02\02\7d\6c\01\00\03\6c\01\00\04\6c\01\00\05\6c\01\00\7d\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (record { L0; W0; nat })) "subtype_recursion_limit.rs overflow_while_tracing_an_alias_fails_the_check: with field 2 nat it holds";

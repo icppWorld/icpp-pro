@@ -1,0 +1,35 @@
+/*
+Ported from dfinity/candid@572c80a rust/candid_parser/tests/value.rs.
+parse_check (untyped parse -> encode -> decode -> print -> parse) is ported as
+textual value == blob at the types the parser infers (numbers are int).
+*/
+
+type List = List1;
+type List1 = List2;
+type List2 = opt record { head : int16; tail : List1 };
+type byte = nat8;
+type enum = variant { a : nat; b : text; c };
+
+// value.rs test_parser
+assert "(true,42,+42,-42)" == blob "DIDL\00\04\7e\7c\7c\7c\01\2a\2a\56" : (bool, int, int, int) "value.rs test_parser: bool and signed numbers";
+assert "(\"test\", variant {5})" == blob "DIDL\01\6b\01\05\7f\02\71\00\04\74\65\73\74\00" : (text, variant { 5 }) "value.rs test_parser: numbered variant shorthand";
+assert "(opt null, record {}, vec{1;2;3})" == blob "DIDL\03\6e\7f\6c\00\6d\7c\03\00\01\02\01\03\01\02\03" : (opt null, record {}, vec int) "value.rs test_parser: opt null, empty record, vec";
+assert "(record {1=42;44=\"test\";2=false})" == blob "DIDL\01\6c\03\01\7c\02\7e\2c\71\01\00\2a\00\04\74\65\73\74" : (record { 1 : int; 44 : text; 2 : bool }) "value.rs test_parser: numbered record fields out of order";
+assert "(record {label=42; 43=record {test100=\"test\"; \"标签\"=\"hello\"}; long_label=opt null}, variant {C})" == blob "DIDL\04\6c\03\2b\01\b1\ff\f4\83\05\02\f4\9b\bc\fd\06\7c\6c\02\eb\f7\f5\80\07\71\df\9e\b0\ed\0b\71\6e\7f\6b\01\43\7f\02\00\03\05\68\65\6c\6c\6f\04\74\65\73\74\01\2a\00" : (record { label : int; 43 : record { test100 : text; "标签" : text }; long_label : opt null }, variant { C }) "value.rs test_parser: nested record with unicode label";
+assert "(record { record{ 42; opt 42 }; vec{4;5;6} })" == blob "DIDL\04\6c\02\00\01\01\03\6c\02\00\7c\01\02\6e\7c\6d\7c\01\00\2a\01\2a\03\04\05\06" : (record { record { int; opt int }; vec int }) "value.rs test_parser: tuple shorthand";
+assert "(variant { A=opt 42 }, variant {A=vec{1;2;3}})" == blob "DIDL\04\6b\01\41\01\6e\7c\6b\01\41\03\6d\7c\02\00\02\00\01\2a\00\03\01\02\03" : (variant { A : opt int }, variant { A : vec int }) "value.rs test_parser: variants with payload";
+assert "(variant { cons=record{ 42; variant { cons=record{43; variant { nil=record{} }} } } })" == blob "DIDL\06\6b\01\f1\f3\92\8e\04\01\6c\02\00\7c\01\02\6b\01\f1\f3\92\8e\04\03\6c\02\00\7c\01\04\6b\01\d1\a7\cf\02\05\6c\00\01\00\00\2a\00\2b\00" : (variant { cons : record { int; variant { cons : record { int; variant { nil : record {} } } } } }) "value.rs test_parser: nested variants";
+assert "(principal \"w7x7r-cok77-xa\")" == blob "DIDL\00\01\68\01\03\ca\ff\ee" : (principal) "value.rs test_parser: principal";
+
+// value.rs test_typed_parser
+assert "(42,42,42,42)" == blob "DIDL\00\04\7b\7c\7d\77\2a\2a\2a\2a" : (byte, int, nat, int8) "value.rs test_typed_parser: a number takes the type it is read at";
+assert "(opt record { head = 1000; tail = opt record {head = -2000; tail = null}}, variant {a = 42})" == blob "DIDL\04\6e\01\6c\02\a0\d2\ac\a8\04\76\90\ed\da\e7\04\02\6e\01\6b\03\61\7d\62\71\63\7f\02\00\03\01\e8\03\01\30\f8\00\00\2a" : (List, enum) "value.rs test_typed_parser: alias chain to a recursive opt record";
+assert blob "DIDL\04\6e\01\6c\02\a0\d2\ac\a8\04\76\90\ed\da\e7\04\02\6e\01\6b\03\61\7d\62\71\63\7f\02\00\03\01\e8\03\01\30\f8\00\00\2a" : () "value.rs test_typed_parser: decoding at no types ignores all arguments";
+
+// value.rs test_value (only the vectors not already in serde.test.did)
+assert blob "DIDL\01\6d\7b\01\00\04\01\02\03\04" == "(blob \"\\01\\02\\03\\04\")" : (blob) "value.rs test_value: decodes to (blob \"\\01\\02\\03\\04\")";
+assert blob "DIDL\01\6c\02\00\7c\01\71\01\00\2a\04\f0\9f\92\a9" == "(record { 0 = 42; 1 = \"💩\" })" : (record { 0 : int; 1 : text }) "value.rs test_value: decodes to (record { 0 = 42; 1 = \"💩\" })";
+assert blob "DIDL\01\6c\02\d3\e3\aa\02\7e\86\8e\b7\02\7c\01\00\01\2a" == "(record { 4895187 = true; 5097222 = 42 })" : (record { 4895187 : bool; 5097222 : int }) "value.rs test_value: decodes to (record { 4895187 = true; 5097222 = 42 })";
+
+// value.rs test_variant
+assert blob "DIDL\01\6b\01\b3\d3\c9\01\7f\01\00\00" == "(variant { 3303859 })" : (variant { 3303859 }) "value.rs test_variant: the decoded IDLValue variant { 3303859 } re-encodes with a one-field type and decodes";

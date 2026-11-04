@@ -1,0 +1,12 @@
+/*
+Ported from dfinity/candid@572c80a rust/candid/tests/skip_optional_queue.rs.
+*/
+
+// skip_optional_queue.rs trailing_optional_arguments_still_decode
+assert blob "DIDL\01\6e\79\03\79\00\00\07\00\00\00\01\08\00\00\00\01\09\00\00\00" == "(7)" : (nat32) "skip_optional_queue.rs trailing_optional_arguments_still_decode: trailing present opt arguments are skipped";
+
+// skip_optional_queue.rs mismatched_optional_restores_shared_queue
+assert blob "DIDL\01\6e\71\02\00\79\01\01\78\2a\00\00\00" == "(null, 42)" : (opt nat32, nat32) "skip_optional_queue.rs mismatched_optional_restores_shared_queue: opt text at opt nat32 is null, the next argument still decodes";
+
+// skip_optional_queue.rs skipping_many_present_optionals_is_not_quadratic (scaled down from 150_000 arguments to 20; the timing aspect is not ported)
+assert blob "DIDL\01\6e\7f\14\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\01\01\01\01\01\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00" == "(opt null)" : (opt null) "skip_optional_queue.rs skipping_many_present_optionals_is_not_quadratic: 20 x opt null args, 5 present; decode the first, skip the rest";

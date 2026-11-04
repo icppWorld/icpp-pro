@@ -1,0 +1,368 @@
+/*
+Ported from dfinity/candid@572c80a rust/candid_parser/tests/compatibility.rs.
+service_compatible(new, old) holds iff new <: old. Each case is a subtype assert
+with the official idiom: (func () -> (service new)) decoded at
+(opt func () -> (service old)) is a reference iff new <: old, else null.
+Type definitions of each side are renamed apart (Rn/Ro, Vn/Vo, ...).
+The error-message and report-format tests are not ported.
+*/
+
+type R1n = record { name : text; age : opt nat };
+type R1o = record { name : text };
+type R2n = record { id : nat; extra : opt text };
+type R2o = record { id : nat };
+type R3n = record { name : text };
+type R3o = record { name : text; age : nat };
+type V1n = variant { a; b; c };
+type V1o = variant { a; b };
+type R4n = record { name : text; age : nat };
+type R4o = record { name : text };
+type R5n = record { name : text };
+type R5o = record { name : text; age : nat };
+type V2n = variant { start; stop };
+type V2o = variant { start; stop; pause };
+type R6n = record { a : text; b : nat; c : bool };
+type R6o = record { a : nat; b : text; c : bool };
+type V3n = variant { a };
+type V3o = variant { a; b; c };
+type InnerN = record { x : text };
+type OuterN = record { inner : InnerN };
+type InnerO = record { x : nat };
+type OuterO = record { inner : InnerO };
+type Tn = record { a : text };
+type To = record { a : nat };
+type An = record { x : nat };
+type Bo = record { x : text };
+type A0 = record { A1; A1 };
+type A1 = record { A2; A2 };
+type A2 = record { A3; A3 };
+type A3 = record { A4; A4 };
+type A4 = record { A5; A5 };
+type A5 = record { A6; A6 };
+type A6 = record { A7; A7 };
+type A7 = record { A8; A8 };
+type A8 = record { A9; A9 };
+type A9 = record { A10; A10 };
+type A10 = record { A11; A11 };
+type A11 = record { A12; A12 };
+type A12 = record { A13; A13 };
+type A13 = record { A14; A14 };
+type A14 = record { A15; A15 };
+type A15 = record { A16; A16 };
+type A16 = record { A17; A17 };
+type A17 = record { A18; A18 };
+type A18 = record { A19; A19 };
+type A19 = record { A20; A20 };
+type A20 = record { A21; A21 };
+type A21 = record { A22; A22 };
+type A22 = record { A23; A23 };
+type A23 = record { A24; A24 };
+type A24 = record { A25; A25 };
+type A25 = record { A26; A26 };
+type A26 = record { A27; A27 };
+type A27 = record { A28; A28 };
+type A28 = record { A29; A29 };
+type A29 = record { A30; A30 };
+type A30 = record { A31; A31 };
+type A31 = record { A32; A32 };
+type A32 = record { A33; A33 };
+type A33 = record { A34; A34 };
+type A34 = record { A35; A35 };
+type A35 = record { A36; A36 };
+type A36 = record { A37; A37 };
+type A37 = record { A38; A38 };
+type A38 = record { A39; A39 };
+type A39 = record { A40; A40 };
+type A40 = record { A41; A41 };
+type A41 = record { A42; A42 };
+type A42 = record { A43; A43 };
+type A43 = record { A44; A44 };
+type A44 = record { A45; A45 };
+type A45 = record { A46; A46 };
+type A46 = record { A47; A47 };
+type A47 = record { A48; A48 };
+type A48 = record { A49; A49 };
+type A49 = record { A50; A50 };
+type A50 = record { A51; A51 };
+type A51 = record { A52; A52 };
+type A52 = record { A53; A53 };
+type A53 = record { A54; A54 };
+type A54 = record { A55; A55 };
+type A55 = record { A56; A56 };
+type A56 = record { A57; A57 };
+type A57 = record { A58; A58 };
+type A58 = record { A59; A59 };
+type A59 = record { A60; A60 };
+type A60 = record { A61; A61 };
+type A61 = record { A62; A62 };
+type A62 = record { A63; A63 };
+type A63 = record { A64; A64 };
+type A64 = nat;
+type B0 = record { B1; B1 };
+type B1 = record { B2; B2 };
+type B2 = record { B3; B3 };
+type B3 = record { B4; B4 };
+type B4 = record { B5; B5 };
+type B5 = record { B6; B6 };
+type B6 = record { B7; B7 };
+type B7 = record { B8; B8 };
+type B8 = record { B9; B9 };
+type B9 = record { B10; B10 };
+type B10 = record { B11; B11 };
+type B11 = record { B12; B12 };
+type B12 = record { B13; B13 };
+type B13 = record { B14; B14 };
+type B14 = record { B15; B15 };
+type B15 = record { B16; B16 };
+type B16 = record { B17; B17 };
+type B17 = record { B18; B18 };
+type B18 = record { B19; B19 };
+type B19 = record { B20; B20 };
+type B20 = record { B21; B21 };
+type B21 = record { B22; B22 };
+type B22 = record { B23; B23 };
+type B23 = record { B24; B24 };
+type B24 = record { B25; B25 };
+type B25 = record { B26; B26 };
+type B26 = record { B27; B27 };
+type B27 = record { B28; B28 };
+type B28 = record { B29; B29 };
+type B29 = record { B30; B30 };
+type B30 = record { B31; B31 };
+type B31 = record { B32; B32 };
+type B32 = record { B33; B33 };
+type B33 = record { B34; B34 };
+type B34 = record { B35; B35 };
+type B35 = record { B36; B36 };
+type B36 = record { B37; B37 };
+type B37 = record { B38; B38 };
+type B38 = record { B39; B39 };
+type B39 = record { B40; B40 };
+type B40 = record { B41; B41 };
+type B41 = record { B42; B42 };
+type B42 = record { B43; B43 };
+type B43 = record { B44; B44 };
+type B44 = record { B45; B45 };
+type B45 = record { B46; B46 };
+type B46 = record { B47; B47 };
+type B47 = record { B48; B48 };
+type B48 = record { B49; B49 };
+type B49 = record { B50; B50 };
+type B50 = record { B51; B51 };
+type B51 = record { B52; B52 };
+type B52 = record { B53; B53 };
+type B53 = record { B54; B54 };
+type B54 = record { B55; B55 };
+type B55 = record { B56; B56 };
+type B56 = record { B57; B57 };
+type B57 = record { B58; B58 };
+type B58 = record { B59; B59 };
+type B59 = record { B60; B60 };
+type B60 = record { B61; B61 };
+type B61 = record { B62; B62 };
+type B62 = record { B63; B63 };
+type B63 = record { B64; B64 };
+type B64 = text;
+type P0 = record { opt P1; opt P1; nat };
+type P1 = record { opt P2; opt P2; nat };
+type P2 = record { opt P3; opt P3; nat };
+type P3 = record { opt P4; opt P4; nat };
+type P4 = record { opt P5; opt P5; nat };
+type P5 = record { opt P6; opt P6; nat };
+type P6 = record { opt P7; opt P7; nat };
+type P7 = record { opt P8; opt P8; nat };
+type P8 = record { opt P9; opt P9; nat };
+type P9 = record { opt P10; opt P10; nat };
+type P10 = record { opt P11; opt P11; nat };
+type P11 = record { opt P12; opt P12; nat };
+type P12 = record { opt P13; opt P13; nat };
+type P13 = record { opt P14; opt P14; nat };
+type P14 = record { opt P15; opt P15; nat };
+type P15 = record { opt P16; opt P16; nat };
+type P16 = record { opt P17; opt P17; nat };
+type P17 = record { opt P18; opt P18; nat };
+type P18 = record { opt P19; opt P19; nat };
+type P19 = record { opt P20; opt P20; nat };
+type P20 = record { opt P21; opt P21; nat };
+type P21 = record { opt P22; opt P22; nat };
+type P22 = record { opt P23; opt P23; nat };
+type P23 = record { opt P24; opt P24; nat };
+type P24 = record { opt P25; opt P25; nat };
+type P25 = record { opt P26; opt P26; nat };
+type P26 = record { opt P27; opt P27; nat };
+type P27 = record { opt P28; opt P28; nat };
+type P28 = record { opt P29; opt P29; nat };
+type P29 = record { opt P30; opt P30; nat };
+type P30 = record { opt P31; opt P31; nat };
+type P31 = record { opt P32; opt P32; nat };
+type P32 = record { opt P33; opt P33; nat };
+type P33 = record { opt P34; opt P34; nat };
+type P34 = record { opt P35; opt P35; nat };
+type P35 = record { opt P36; opt P36; nat };
+type P36 = record { opt P37; opt P37; nat };
+type P37 = record { opt P38; opt P38; nat };
+type P38 = record { opt P39; opt P39; nat };
+type P39 = record { opt P40; opt P40; nat };
+type P40 = record { opt P41; opt P41; nat };
+type P41 = record { opt P42; opt P42; nat };
+type P42 = record { opt P43; opt P43; nat };
+type P43 = record { opt P44; opt P44; nat };
+type P44 = record { opt P45; opt P45; nat };
+type P45 = record { opt P46; opt P46; nat };
+type P46 = record { opt P47; opt P47; nat };
+type P47 = record { opt P48; opt P48; nat };
+type P48 = record { opt P49; opt P49; nat };
+type P49 = record { opt P50; opt P50; nat };
+type P50 = record { opt P51; opt P51; nat };
+type P51 = record { opt P52; opt P52; nat };
+type P52 = record { opt P53; opt P53; nat };
+type P53 = record { opt P54; opt P54; nat };
+type P54 = record { opt P55; opt P55; nat };
+type P55 = record { opt P56; opt P56; nat };
+type P56 = record { opt P57; opt P57; nat };
+type P57 = record { opt P58; opt P58; nat };
+type P58 = record { opt P59; opt P59; nat };
+type P59 = record { opt P60; opt P60; nat };
+type P60 = record { opt P61; opt P61; nat };
+type P61 = record { opt P62; opt P62; nat };
+type P62 = record { opt P63; opt P63; nat };
+type P63 = record { opt P64; opt P64; nat };
+type P64 = nat;
+type Q0 = record { opt Q1; opt Q1; text };
+type Q1 = record { opt Q2; opt Q2; text };
+type Q2 = record { opt Q3; opt Q3; text };
+type Q3 = record { opt Q4; opt Q4; text };
+type Q4 = record { opt Q5; opt Q5; text };
+type Q5 = record { opt Q6; opt Q6; text };
+type Q6 = record { opt Q7; opt Q7; text };
+type Q7 = record { opt Q8; opt Q8; text };
+type Q8 = record { opt Q9; opt Q9; text };
+type Q9 = record { opt Q10; opt Q10; text };
+type Q10 = record { opt Q11; opt Q11; text };
+type Q11 = record { opt Q12; opt Q12; text };
+type Q12 = record { opt Q13; opt Q13; text };
+type Q13 = record { opt Q14; opt Q14; text };
+type Q14 = record { opt Q15; opt Q15; text };
+type Q15 = record { opt Q16; opt Q16; text };
+type Q16 = record { opt Q17; opt Q17; text };
+type Q17 = record { opt Q18; opt Q18; text };
+type Q18 = record { opt Q19; opt Q19; text };
+type Q19 = record { opt Q20; opt Q20; text };
+type Q20 = record { opt Q21; opt Q21; text };
+type Q21 = record { opt Q22; opt Q22; text };
+type Q22 = record { opt Q23; opt Q23; text };
+type Q23 = record { opt Q24; opt Q24; text };
+type Q24 = record { opt Q25; opt Q25; text };
+type Q25 = record { opt Q26; opt Q26; text };
+type Q26 = record { opt Q27; opt Q27; text };
+type Q27 = record { opt Q28; opt Q28; text };
+type Q28 = record { opt Q29; opt Q29; text };
+type Q29 = record { opt Q30; opt Q30; text };
+type Q30 = record { opt Q31; opt Q31; text };
+type Q31 = record { opt Q32; opt Q32; text };
+type Q32 = record { opt Q33; opt Q33; text };
+type Q33 = record { opt Q34; opt Q34; text };
+type Q34 = record { opt Q35; opt Q35; text };
+type Q35 = record { opt Q36; opt Q36; text };
+type Q36 = record { opt Q37; opt Q37; text };
+type Q37 = record { opt Q38; opt Q38; text };
+type Q38 = record { opt Q39; opt Q39; text };
+type Q39 = record { opt Q40; opt Q40; text };
+type Q40 = record { opt Q41; opt Q41; text };
+type Q41 = record { opt Q42; opt Q42; text };
+type Q42 = record { opt Q43; opt Q43; text };
+type Q43 = record { opt Q44; opt Q44; text };
+type Q44 = record { opt Q45; opt Q45; text };
+type Q45 = record { opt Q46; opt Q46; text };
+type Q46 = record { opt Q47; opt Q47; text };
+type Q47 = record { opt Q48; opt Q48; text };
+type Q48 = record { opt Q49; opt Q49; text };
+type Q49 = record { opt Q50; opt Q50; text };
+type Q50 = record { opt Q51; opt Q51; text };
+type Q51 = record { opt Q52; opt Q52; text };
+type Q52 = record { opt Q53; opt Q53; text };
+type Q53 = record { opt Q54; opt Q54; text };
+type Q54 = record { opt Q55; opt Q55; text };
+type Q55 = record { opt Q56; opt Q56; text };
+type Q56 = record { opt Q57; opt Q57; text };
+type Q57 = record { opt Q58; opt Q58; text };
+type Q58 = record { opt Q59; opt Q59; text };
+type Q59 = record { opt Q60; opt Q60; text };
+type Q60 = record { opt Q61; opt Q61; text };
+type Q61 = record { opt Q62; opt Q62; text };
+type Q62 = record { opt Q63; opt Q63; text };
+type Q63 = record { opt Q64; opt Q64; text };
+type Q64 = text;
+
+// compatible_service_changes
+assert blob "DIDL\03\6a\00\01\01\00\69\01\05\67\72\65\65\74\02\6a\01\71\01\71\00\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { greet : (text) -> (text) })) "compatibility.rs compatible_service_changes: identical service";
+assert blob "DIDL\04\6a\00\01\01\00\69\02\05\67\72\65\65\74\02\05\68\65\6c\6c\6f\03\6a\01\71\01\71\00\6a\00\01\71\00\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { greet : (text) -> (text) })) "compatibility.rs compatible_service_changes: add new method";
+assert blob "DIDL\03\6a\00\01\01\00\69\01\03\70\61\79\02\6a\01\7c\00\00\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { pay : (nat) -> () })) "compatibility.rs compatible_service_changes: widen input nat -> int";
+assert blob "DIDL\03\6a\00\01\01\00\69\01\03\67\65\74\02\6a\00\01\7d\00\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { get : () -> (int) })) "compatibility.rs compatible_service_changes: narrow return int -> nat";
+
+// compatible_record_field_changes
+assert blob "DIDL\05\6a\00\01\01\00\69\01\01\66\02\6a\01\03\00\00\6c\02\bf\e9\a7\02\04\cb\e4\fd\c7\04\71\6e\7d\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { f : (R1o) -> () })) "compatibility.rs compatible_record_field_changes: add opt field to input record";
+assert blob "DIDL\05\6a\00\01\01\00\69\01\01\66\02\6a\00\01\03\00\6c\02\db\b7\01\7d\90\b5\8a\b9\07\04\6e\71\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { f : () -> (R2o) })) "compatibility.rs compatible_record_field_changes: add opt field to return record";
+assert blob "DIDL\04\6a\00\01\01\00\69\01\01\66\02\6a\00\01\03\00\6c\02\61\7d\62\7f\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { f : () -> (record { a : nat }) })) "compatibility.rs compatible_record_field_changes: add null field to return record";
+assert blob "DIDL\04\6a\00\01\01\00\69\01\01\66\02\6a\00\01\03\00\6c\02\61\7d\62\70\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { f : () -> (record { a : nat }) })) "compatibility.rs compatible_record_field_changes: add reserved field to return record";
+assert blob "DIDL\04\6a\00\01\01\00\69\01\01\66\02\6a\01\03\00\00\6c\01\cb\e4\fd\c7\04\71\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { f : (R3o) -> () })) "compatibility.rs compatible_record_field_changes: remove non-opt field from input record";
+
+// compatible_variant_and_vec_changes
+assert blob "DIDL\04\6a\00\01\01\00\69\01\01\66\02\6a\01\03\00\00\6b\03\61\7f\62\7f\63\7f\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { f : (V1o) -> () })) "compatibility.rs compatible_variant_and_vec_changes: add variant case to input";
+assert blob "DIDL\04\6a\00\01\01\00\69\01\01\66\02\6a\00\01\03\00\6d\7d\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { f : () -> (vec nat) })) "compatibility.rs compatible_variant_and_vec_changes: identical vec types";
+
+// incompatible_method_changes
+assert blob "DIDL\03\6a\00\01\01\00\69\01\05\67\72\65\65\74\02\6a\01\71\01\71\00\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { greet : (text) -> (text); hello : () -> (text) })) "compatibility.rs incompatible_method_changes: remove method";
+assert blob "DIDL\03\6a\00\01\01\00\69\01\03\67\65\74\02\6a\00\01\7d\00\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { get : () -> (nat) query })) "compatibility.rs incompatible_method_changes: change func mode query -> update";
+assert blob "DIDL\03\6a\00\01\01\00\69\01\03\67\65\74\02\6a\00\01\71\00\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { get : () -> (nat) })) "compatibility.rs incompatible_method_changes: change return type nat -> text";
+assert blob "DIDL\03\6a\00\01\01\00\69\01\03\73\65\74\02\6a\01\71\00\00\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { set : (nat) -> () })) "compatibility.rs incompatible_method_changes: change input type nat -> text";
+assert blob "DIDL\03\6a\00\01\01\00\69\01\03\67\65\74\02\6a\00\01\7c\00\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { get : () -> (nat) })) "compatibility.rs incompatible_method_changes: widen return nat -> int";
+
+// incompatible_record_and_variant_changes
+assert blob "DIDL\04\6a\00\01\01\00\69\01\01\66\02\6a\01\03\00\00\6c\02\bf\e9\a7\02\7d\cb\e4\fd\c7\04\71\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : (R4o) -> () })) "compatibility.rs incompatible_record_and_variant_changes: add required field to input record";
+assert blob "DIDL\04\6a\00\01\01\00\69\01\01\66\02\6a\00\01\03\00\6c\01\cb\e4\fd\c7\04\71\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : () -> (R5o) })) "compatibility.rs incompatible_record_and_variant_changes: remove required field from return record";
+assert blob "DIDL\04\6a\00\01\01\00\69\01\01\66\02\6a\01\03\00\00\6b\02\82\e0\ef\e2\04\7f\e2\e8\ad\a0\08\7f\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : (V2o) -> () })) "compatibility.rs incompatible_record_and_variant_changes: remove variant case from input";
+assert blob "DIDL\04\6a\00\01\01\00\69\01\01\66\02\6a\00\01\03\00\6d\71\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : () -> (vec nat) })) "compatibility.rs incompatible_record_and_variant_changes: change vec element type";
+// "change a field reached again after a failed opt probe" is not ported: its recursive
+// records have no finite value, so they decode as empty; see canister_1's test_subtype_assumptions
+
+// collects_all_incompatible_methods
+assert blob "DIDL\04\6a\00\01\01\00\69\02\08\6d\65\74\68\6f\64\5f\61\02\08\6d\65\74\68\6f\64\5f\63\03\6a\01\7d\01\7d\00\6a\00\01\71\00\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { method_a : (nat) -> (nat); method_b : (text) -> (text); method_c : () -> (nat); method_d : () -> () })) "compatibility.rs collects_all_incompatible_methods: two methods removed, one return changed";
+
+// collects_all_incompatible_record_fields
+assert blob "DIDL\04\6a\00\01\01\00\69\01\01\66\02\6a\00\01\03\00\6c\03\61\71\62\7d\63\7e\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : () -> (R6o) })) "compatibility.rs collects_all_incompatible_record_fields: fields a and b changed";
+
+// collects_both_input_and_return_errors
+assert blob "DIDL\03\6a\00\01\01\00\69\01\04\63\61\6c\6c\02\6a\01\71\01\7e\00\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { call : (nat) -> (nat) })) "compatibility.rs collects_both_input_and_return_errors: input and return changed";
+
+// collects_variant_field_errors
+assert blob "DIDL\04\6a\00\01\01\00\69\01\01\66\02\6a\01\03\00\00\6b\01\61\7f\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : (V3o) -> () })) "compatibility.rs collects_variant_field_errors: input variant cases b and c removed";
+
+// missing_method_error_is_clear
+assert blob "DIDL\03\6a\00\01\01\00\69\01\07\62\61\6c\61\6e\63\65\02\6a\00\01\7d\00\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { transfer : (nat) -> (); balance : () -> (nat) })) "compatibility.rs missing_method_error_is_clear: method transfer removed";
+
+// nested_path_shows_full_context
+assert blob "DIDL\05\6a\00\01\01\00\69\01\03\67\65\74\02\6a\00\01\03\00\6c\01\96\e3\f0\f0\0b\04\6c\01\78\71\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { get : () -> (OuterO) })) "compatibility.rs nested_path_shows_full_context: nested field x changed nat -> text";
+
+// multi_arg_function_incompatibilities
+assert blob "DIDL\03\6a\00\01\01\00\69\01\01\66\02\6a\02\7d\7e\02\7e\71\00\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : (nat, text) -> (bool, nat) })) "compatibility.rs multi_arg_function_incompatibilities: second input and second return changed";
+
+// report_and_simple_check_agree (the pairs not already above)
+assert blob "DIDL\03\6a\00\01\01\00\69\01\01\66\02\6a\01\7d\00\00\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : (int) -> () })) "compatibility.rs report_and_simple_check_agree: narrow input int -> nat";
+
+// input_arg_count_increase_message_has_correct_counts
+assert blob "DIDL\03\6a\00\01\01\00\69\01\01\66\02\6a\02\7d\71\00\00\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : (nat) -> () })) "compatibility.rs input_arg_count_increase_message_has_correct_counts: a required input argument added";
+
+// type_shared_by_two_methods_is_reported_under_both
+assert blob "DIDL\04\6a\00\01\01\00\69\02\01\66\02\01\67\02\6a\00\01\03\00\6c\01\61\71\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : () -> (To); g : () -> (To) })) "compatibility.rs type_shared_by_two_methods_is_reported_under_both: type shared by f and g changed";
+
+// pair_refuted_by_a_probe_is_still_reported
+assert blob "DIDL\06\6a\00\01\01\00\69\01\01\66\02\6a\00\01\03\00\6c\02\00\04\01\05\6e\05\6c\01\78\7d\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : () -> (record { 0 : opt Bo; 1 : Bo }) })) "compatibility.rs pair_refuted_by_a_probe_is_still_reported: A </: B under opt, then directly";
+
+// shared_recursive_types_are_checked_once: 2^64 paths to the leaf; a checker without memoization does not finish
+assert blob "DIDL\43\6a\00\01\01\00\69\01\02\67\6f\02\6a\00\01\03\00\6c\02\00\04\01\04\6c\02\00\05\01\05\6c\02\00\06\01\06\6c\02\00\07\01\07\6c\02\00\08\01\08\6c\02\00\09\01\09\6c\02\00\0a\01\0a\6c\02\00\0b\01\0b\6c\02\00\0c\01\0c\6c\02\00\0d\01\0d\6c\02\00\0e\01\0e\6c\02\00\0f\01\0f\6c\02\00\10\01\10\6c\02\00\11\01\11\6c\02\00\12\01\12\6c\02\00\13\01\13\6c\02\00\14\01\14\6c\02\00\15\01\15\6c\02\00\16\01\16\6c\02\00\17\01\17\6c\02\00\18\01\18\6c\02\00\19\01\19\6c\02\00\1a\01\1a\6c\02\00\1b\01\1b\6c\02\00\1c\01\1c\6c\02\00\1d\01\1d\6c\02\00\1e\01\1e\6c\02\00\1f\01\1f\6c\02\00\20\01\20\6c\02\00\21\01\21\6c\02\00\22\01\22\6c\02\00\23\01\23\6c\02\00\24\01\24\6c\02\00\25\01\25\6c\02\00\26\01\26\6c\02\00\27\01\27\6c\02\00\28\01\28\6c\02\00\29\01\29\6c\02\00\2a\01\2a\6c\02\00\2b\01\2b\6c\02\00\2c\01\2c\6c\02\00\2d\01\2d\6c\02\00\2e\01\2e\6c\02\00\2f\01\2f\6c\02\00\30\01\30\6c\02\00\31\01\31\6c\02\00\32\01\32\6c\02\00\33\01\33\6c\02\00\34\01\34\6c\02\00\35\01\35\6c\02\00\36\01\36\6c\02\00\37\01\37\6c\02\00\38\01\38\6c\02\00\39\01\39\6c\02\00\3a\01\3a\6c\02\00\3b\01\3b\6c\02\00\3c\01\3c\6c\02\00\3d\01\3d\6c\02\00\3e\01\3e\6c\02\00\3f\01\3f\6c\02\00\c0\00\01\c0\00\6c\02\00\c1\00\01\c1\00\6c\02\00\c2\00\01\c2\00\6c\02\00\7d\01\7d\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { go : () -> (B0) })) "compatibility.rs shared_recursive_types_are_checked_once: nat leaf </: text leaf, 64 levels of two fields";
+assert blob "DIDL\43\6a\00\01\01\00\69\01\02\67\6f\02\6a\00\01\03\00\6c\02\00\04\01\04\6c\02\00\05\01\05\6c\02\00\06\01\06\6c\02\00\07\01\07\6c\02\00\08\01\08\6c\02\00\09\01\09\6c\02\00\0a\01\0a\6c\02\00\0b\01\0b\6c\02\00\0c\01\0c\6c\02\00\0d\01\0d\6c\02\00\0e\01\0e\6c\02\00\0f\01\0f\6c\02\00\10\01\10\6c\02\00\11\01\11\6c\02\00\12\01\12\6c\02\00\13\01\13\6c\02\00\14\01\14\6c\02\00\15\01\15\6c\02\00\16\01\16\6c\02\00\17\01\17\6c\02\00\18\01\18\6c\02\00\19\01\19\6c\02\00\1a\01\1a\6c\02\00\1b\01\1b\6c\02\00\1c\01\1c\6c\02\00\1d\01\1d\6c\02\00\1e\01\1e\6c\02\00\1f\01\1f\6c\02\00\20\01\20\6c\02\00\21\01\21\6c\02\00\22\01\22\6c\02\00\23\01\23\6c\02\00\24\01\24\6c\02\00\25\01\25\6c\02\00\26\01\26\6c\02\00\27\01\27\6c\02\00\28\01\28\6c\02\00\29\01\29\6c\02\00\2a\01\2a\6c\02\00\2b\01\2b\6c\02\00\2c\01\2c\6c\02\00\2d\01\2d\6c\02\00\2e\01\2e\6c\02\00\2f\01\2f\6c\02\00\30\01\30\6c\02\00\31\01\31\6c\02\00\32\01\32\6c\02\00\33\01\33\6c\02\00\34\01\34\6c\02\00\35\01\35\6c\02\00\36\01\36\6c\02\00\37\01\37\6c\02\00\38\01\38\6c\02\00\39\01\39\6c\02\00\3a\01\3a\6c\02\00\3b\01\3b\6c\02\00\3c\01\3c\6c\02\00\3d\01\3d\6c\02\00\3e\01\3e\6c\02\00\3f\01\3f\6c\02\00\c0\00\01\c0\00\6c\02\00\c1\00\01\c1\00\6c\02\00\c2\00\01\c2\00\6c\02\00\7d\01\7d\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { go : () -> (A0) })) "compatibility.rs shared_recursive_types_are_checked_once: a 64-level shared recursive type against itself";
+
+// shared_recursive_types_under_opt_are_probed_once: each level probes opt P(i+1) <: opt Q(i+1) twice
+assert blob "DIDL\83\01\6a\00\01\01\00\69\01\02\67\6f\02\6a\00\01\03\00\6c\03\00\04\01\04\02\7d\6e\05\6c\03\00\06\01\06\02\7d\6e\07\6c\03\00\08\01\08\02\7d\6e\09\6c\03\00\0a\01\0a\02\7d\6e\0b\6c\03\00\0c\01\0c\02\7d\6e\0d\6c\03\00\0e\01\0e\02\7d\6e\0f\6c\03\00\10\01\10\02\7d\6e\11\6c\03\00\12\01\12\02\7d\6e\13\6c\03\00\14\01\14\02\7d\6e\15\6c\03\00\16\01\16\02\7d\6e\17\6c\03\00\18\01\18\02\7d\6e\19\6c\03\00\1a\01\1a\02\7d\6e\1b\6c\03\00\1c\01\1c\02\7d\6e\1d\6c\03\00\1e\01\1e\02\7d\6e\1f\6c\03\00\20\01\20\02\7d\6e\21\6c\03\00\22\01\22\02\7d\6e\23\6c\03\00\24\01\24\02\7d\6e\25\6c\03\00\26\01\26\02\7d\6e\27\6c\03\00\28\01\28\02\7d\6e\29\6c\03\00\2a\01\2a\02\7d\6e\2b\6c\03\00\2c\01\2c\02\7d\6e\2d\6c\03\00\2e\01\2e\02\7d\6e\2f\6c\03\00\30\01\30\02\7d\6e\31\6c\03\00\32\01\32\02\7d\6e\33\6c\03\00\34\01\34\02\7d\6e\35\6c\03\00\36\01\36\02\7d\6e\37\6c\03\00\38\01\38\02\7d\6e\39\6c\03\00\3a\01\3a\02\7d\6e\3b\6c\03\00\3c\01\3c\02\7d\6e\3d\6c\03\00\3e\01\3e\02\7d\6e\3f\6c\03\00\c0\00\01\c0\00\02\7d\6e\c1\00\6c\03\00\c2\00\01\c2\00\02\7d\6e\c3\00\6c\03\00\c4\00\01\c4\00\02\7d\6e\c5\00\6c\03\00\c6\00\01\c6\00\02\7d\6e\c7\00\6c\03\00\c8\00\01\c8\00\02\7d\6e\c9\00\6c\03\00\ca\00\01\ca\00\02\7d\6e\cb\00\6c\03\00\cc\00\01\cc\00\02\7d\6e\cd\00\6c\03\00\ce\00\01\ce\00\02\7d\6e\cf\00\6c\03\00\d0\00\01\d0\00\02\7d\6e\d1\00\6c\03\00\d2\00\01\d2\00\02\7d\6e\d3\00\6c\03\00\d4\00\01\d4\00\02\7d\6e\d5\00\6c\03\00\d6\00\01\d6\00\02\7d\6e\d7\00\6c\03\00\d8\00\01\d8\00\02\7d\6e\d9\00\6c\03\00\da\00\01\da\00\02\7d\6e\db\00\6c\03\00\dc\00\01\dc\00\02\7d\6e\dd\00\6c\03\00\de\00\01\de\00\02\7d\6e\df\00\6c\03\00\e0\00\01\e0\00\02\7d\6e\e1\00\6c\03\00\e2\00\01\e2\00\02\7d\6e\e3\00\6c\03\00\e4\00\01\e4\00\02\7d\6e\e5\00\6c\03\00\e6\00\01\e6\00\02\7d\6e\e7\00\6c\03\00\e8\00\01\e8\00\02\7d\6e\e9\00\6c\03\00\ea\00\01\ea\00\02\7d\6e\eb\00\6c\03\00\ec\00\01\ec\00\02\7d\6e\ed\00\6c\03\00\ee\00\01\ee\00\02\7d\6e\ef\00\6c\03\00\f0\00\01\f0\00\02\7d\6e\f1\00\6c\03\00\f2\00\01\f2\00\02\7d\6e\f3\00\6c\03\00\f4\00\01\f4\00\02\7d\6e\f5\00\6c\03\00\f6\00\01\f6\00\02\7d\6e\f7\00\6c\03\00\f8\00\01\f8\00\02\7d\6e\f9\00\6c\03\00\fa\00\01\fa\00\02\7d\6e\fb\00\6c\03\00\fc\00\01\fc\00\02\7d\6e\fd\00\6c\03\00\fe\00\01\fe\00\02\7d\6e\ff\00\6c\03\00\80\01\01\80\01\02\7d\6e\81\01\6c\03\00\82\01\01\82\01\02\7d\6e\7d\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { go : () -> (Q0) })) "compatibility.rs shared_recursive_types_under_opt_are_probed_once: nat field </: text field, 64 levels under opt";
+assert blob "DIDL\83\01\6a\00\01\01\00\69\01\02\67\6f\02\6a\00\01\03\00\6c\03\00\04\01\04\02\7d\6e\05\6c\03\00\06\01\06\02\7d\6e\07\6c\03\00\08\01\08\02\7d\6e\09\6c\03\00\0a\01\0a\02\7d\6e\0b\6c\03\00\0c\01\0c\02\7d\6e\0d\6c\03\00\0e\01\0e\02\7d\6e\0f\6c\03\00\10\01\10\02\7d\6e\11\6c\03\00\12\01\12\02\7d\6e\13\6c\03\00\14\01\14\02\7d\6e\15\6c\03\00\16\01\16\02\7d\6e\17\6c\03\00\18\01\18\02\7d\6e\19\6c\03\00\1a\01\1a\02\7d\6e\1b\6c\03\00\1c\01\1c\02\7d\6e\1d\6c\03\00\1e\01\1e\02\7d\6e\1f\6c\03\00\20\01\20\02\7d\6e\21\6c\03\00\22\01\22\02\7d\6e\23\6c\03\00\24\01\24\02\7d\6e\25\6c\03\00\26\01\26\02\7d\6e\27\6c\03\00\28\01\28\02\7d\6e\29\6c\03\00\2a\01\2a\02\7d\6e\2b\6c\03\00\2c\01\2c\02\7d\6e\2d\6c\03\00\2e\01\2e\02\7d\6e\2f\6c\03\00\30\01\30\02\7d\6e\31\6c\03\00\32\01\32\02\7d\6e\33\6c\03\00\34\01\34\02\7d\6e\35\6c\03\00\36\01\36\02\7d\6e\37\6c\03\00\38\01\38\02\7d\6e\39\6c\03\00\3a\01\3a\02\7d\6e\3b\6c\03\00\3c\01\3c\02\7d\6e\3d\6c\03\00\3e\01\3e\02\7d\6e\3f\6c\03\00\c0\00\01\c0\00\02\7d\6e\c1\00\6c\03\00\c2\00\01\c2\00\02\7d\6e\c3\00\6c\03\00\c4\00\01\c4\00\02\7d\6e\c5\00\6c\03\00\c6\00\01\c6\00\02\7d\6e\c7\00\6c\03\00\c8\00\01\c8\00\02\7d\6e\c9\00\6c\03\00\ca\00\01\ca\00\02\7d\6e\cb\00\6c\03\00\cc\00\01\cc\00\02\7d\6e\cd\00\6c\03\00\ce\00\01\ce\00\02\7d\6e\cf\00\6c\03\00\d0\00\01\d0\00\02\7d\6e\d1\00\6c\03\00\d2\00\01\d2\00\02\7d\6e\d3\00\6c\03\00\d4\00\01\d4\00\02\7d\6e\d5\00\6c\03\00\d6\00\01\d6\00\02\7d\6e\d7\00\6c\03\00\d8\00\01\d8\00\02\7d\6e\d9\00\6c\03\00\da\00\01\da\00\02\7d\6e\db\00\6c\03\00\dc\00\01\dc\00\02\7d\6e\dd\00\6c\03\00\de\00\01\de\00\02\7d\6e\df\00\6c\03\00\e0\00\01\e0\00\02\7d\6e\e1\00\6c\03\00\e2\00\01\e2\00\02\7d\6e\e3\00\6c\03\00\e4\00\01\e4\00\02\7d\6e\e5\00\6c\03\00\e6\00\01\e6\00\02\7d\6e\e7\00\6c\03\00\e8\00\01\e8\00\02\7d\6e\e9\00\6c\03\00\ea\00\01\ea\00\02\7d\6e\eb\00\6c\03\00\ec\00\01\ec\00\02\7d\6e\ed\00\6c\03\00\ee\00\01\ee\00\02\7d\6e\ef\00\6c\03\00\f0\00\01\f0\00\02\7d\6e\f1\00\6c\03\00\f2\00\01\f2\00\02\7d\6e\f3\00\6c\03\00\f4\00\01\f4\00\02\7d\6e\f5\00\6c\03\00\f6\00\01\f6\00\02\7d\6e\f7\00\6c\03\00\f8\00\01\f8\00\02\7d\6e\f9\00\6c\03\00\fa\00\01\fa\00\02\7d\6e\fb\00\6c\03\00\fc\00\01\fc\00\02\7d\6e\fd\00\6c\03\00\fe\00\01\fe\00\02\7d\6e\ff\00\6c\03\00\80\01\01\80\01\02\7d\6e\81\01\6c\03\00\82\01\01\82\01\02\7d\6e\7d\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { go : () -> (P0) })) "compatibility.rs shared_recursive_types_under_opt_are_probed_once: a 64-level shared recursive type under opt against itself";

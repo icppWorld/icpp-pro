@@ -1,0 +1,13 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-composite.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+from_candid of an actor reference: subtype asserts with the official idiom.
+*/
+assert blob "DIDL\03\6a\00\01\01\00\69\01\01\66\02\6a\00\00\01\03\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (service { f : () -> () composite_query })) "idl-composite.mo: composite query actor at the same type";
+assert blob "DIDL\03\6a\00\01\01\00\69\01\01\66\02\6a\00\00\01\03\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : () -> () query })) "idl-composite.mo: composite query is not a query";
+assert blob "DIDL\03\6a\00\01\01\00\69\01\01\66\02\6a\00\00\01\03\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : () -> () })) "idl-composite.mo: composite query is not an update";
+assert blob "DIDL\03\6a\00\01\01\00\69\01\01\66\02\6a\00\00\01\03\01\00\01\01\00\01\6d" == "(null)" : (opt func () -> (service { f : () -> () oneway })) "idl-composite.mo: composite query is not a oneway";

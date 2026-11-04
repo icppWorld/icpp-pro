@@ -15,6 +15,7 @@
 #include "candid_deserialize.h"
 #include "candid_serialize.h"
 #include "candid_serialize_type_table_registry.h"
+#include "candid_subtype.h"
 #include "ic_api.h"
 #include "test_vec_of.h"
 
@@ -172,6 +173,41 @@ __attribute__((noinline)) void test_vec_variant() {
   }
 
   CandidSerializeTypeTableRegistry::get_instance().clear();
+}
+
+// The subtype check retracts what it assumed for a check that failed, as
+// dfinity/candid's subtype_assumptions.rs. These types have no finite value, so
+// a decoder replaces them with empty, and only a direct check can test this.
+//   type X = record { 0 : X2; 1 : nat };  type X2 = record { 0 : X };
+//   type Y = record { 0 : Y2; 1 : text }; type Y2 = record { 0 : Y };
+__attribute__((noinline)) void test_subtype_assumptions() {
+  CandidTypeGraph g;
+  int x = g.reserve(), x2 = g.reserve(), y = g.reserve(), y2 = g.reserve();
+  int nat = CandidTypeGraph::prim(CandidKind::Nat);
+  int text = CandidTypeGraph::prim(CandidKind::Text);
+  CandidGraphNode r{CandidKind::Record};
+  r.fields = {{0, x2}, {1, nat}};
+  g.define(x, r);
+  r.fields = {{0, x}};
+  g.define(x2, r);
+  r.fields = {{0, y2}, {1, text}};
+  g.define(y, r);
+  r.fields = {{0, y}};
+  g.define(y2, r);
+
+  check(!CandidSubtype().is_subtype(g, x2, g, y2), "X2 </: Y2");
+
+  // failed_opt_probe_leaves_no_derived_assumption
+  int opt_y = g.opt(y);
+  int lhs = g.record({{0, x}, {1, x2}});
+  int rhs = g.record({{0, opt_y}, {1, y2}});
+  check(!CandidSubtype().is_subtype(g, lhs, g, rhs),
+        "a failed opt probe X <: Y leaves no X2 <: Y2 behind");
+
+  // failed_check_leaves_no_derived_assumption
+  CandidSubtype s;
+  check(!s.is_subtype(g, x, g, y), "X </: Y");
+  check(!s.is_subtype(g, x2, g, y2), "then X2 </: Y2, with the same checker");
 }
 
 // Decoding follows the spec's coercion rules, with CandidDecoder
@@ -1023,6 +1059,10 @@ int unit_test_candid() {
 
   { // Coercion, as the spec defines it
     test_spec_coercions();
+  }
+
+  { // The subtype check retracts the assumptions of a failed check
+    test_subtype_assumptions();
   }
 
   { // A type table index that needs 2 bytes

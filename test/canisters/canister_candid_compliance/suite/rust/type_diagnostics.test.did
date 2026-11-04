@@ -1,0 +1,20 @@
+/*
+Ported from dfinity/candid@572c80a rust/candid/tests/type_diagnostics.rs.
+Only the decode outcome is ported (the tests are about bounded error messages).
+The 250_000-field wire records are cut down to 5 fields.
+*/
+
+// type_diagnostics.rs an_outsized_wire_type_against_int
+assert blob "DIDL\02\6c\02\da\b4\e1\02\7b\d8\a3\8c\a8\0d\01\6c\05\00\77\01\77\02\77\03\77\04\77\01\00\01\00\00\00\00\00" !: (record { amount : int; tag : nat8 }) "type_diagnostics.rs an_outsized_wire_type_against_int: a record is not an int";
+
+// type_diagnostics.rs an_outsized_wire_type_against_nat16
+assert blob "DIDL\03\6c\02\a2\f5\ed\88\04\01\9a\a1\b2\f9\0c\02\6d\7b\6c\05\00\77\01\77\02\77\03\77\04\77\01\00\00\00\00\00\00\00" !: (record { status_code : nat16; body : vec nat8 }) "type_diagnostics.rs an_outsized_wire_type_against_nat16: a record is not a nat16";
+
+// type_diagnostics.rs an_outsized_wire_type_against_a_func
+assert blob "DIDL\03\6c\02\98\d6\ca\a2\01\01\ef\ab\de\cb\01\02\6c\05\00\77\01\77\02\77\03\77\04\77\6d\7b\01\00\00\00\00\00\00\00" !: (record { function : func (vec nat8) -> (vec nat8) query; context : vec nat8 }) "type_diagnostics.rs an_outsized_wire_type_against_a_func: a record is not a func";
+
+// type_diagnostics.rs ordinary_mismatches_still_name_their_types
+assert blob "DIDL\00\01\71\01\78" !: (nat32) "type_diagnostics.rs ordinary_mismatches_still_name_their_types: text is not a nat32";
+
+// type_diagnostics.rs an_ordinary_record_is_not_elided
+assert blob "DIDL\00\01\71\01\78" !: (record { from_subaccount : opt vec nat8; spender_subaccount : opt vec nat8; to : record { owner : principal }; amount : nat; fee : opt nat; memo : opt vec nat8; created_at_time : opt nat64; expected_allowance : opt nat; expires_at : opt nat64; comment : opt text; tag : text }) "type_diagnostics.rs an_ordinary_record_is_not_elided: text is not a record";

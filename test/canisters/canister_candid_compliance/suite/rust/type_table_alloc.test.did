@@ -1,0 +1,8 @@
+/*
+Ported from dfinity/candid@572c80a rust/candid/tests/type_table_alloc.rs.
+*/
+
+// type_table_alloc.rs
+assert blob "DIDL\01\67\80\80\80\80\80\80\80\80\40" !: () "type_table_alloc.rs future_blob_out_of_range_length_is_rejected: future type blob of 2^62 bytes";
+assert blob "DIDL\01\67\80\08" !: () "type_table_alloc.rs future_blob_short_input_is_rejected: future type blob of 1024 bytes, truncated";
+assert blob "DIDL\01\69\01\80\80\80\80\80\80\80\80\40" !: () "type_table_alloc.rs service_method_name_out_of_range_length_is_rejected: method name of 2^62 bytes";

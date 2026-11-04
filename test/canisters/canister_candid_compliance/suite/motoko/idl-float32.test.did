@@ -1,0 +1,9 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-float32.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+*/
+assert blob "DIDL\00\01\73\00\00\c0\3f" == "(1.5)" : (float32) "idl-float32.mo echo / to_f64";

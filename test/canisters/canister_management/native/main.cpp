@@ -643,8 +643,7 @@ int main() {
     in.append(CandidTypePrincipal{child});
     in.append(CandidTypeOptNat64{std::optional<uint64_t>{}});
     mockIC.run_trap_test("info_child future change", info_child, hex(in), true,
-                         caller,
-                         "is not in the expected type");
+                         caller, "is not in the expected type");
     mockIC.clear_expected_calls();
   }
   // ---------------------------------------------------------------------

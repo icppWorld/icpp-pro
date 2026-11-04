@@ -689,6 +689,29 @@ TYPED_PRIMS = {
 SCALARS = [-2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -24]
 
 
+# The bits of each integer primitive, and whether it is signed
+INT_BITS = {
+    -3: (128, False),
+    -4: (128, True),
+    -5: (8, False),
+    -6: (16, False),
+    -7: (32, False),
+    -8: (64, False),
+    -9: (8, True),
+    -10: (16, True),
+    -11: (32, True),
+    -12: (64, True),
+}
+
+
+def cpp_u128(a: int) -> str:
+    """A C++ __uint128_t of a value in [0, 2^128)"""
+    hi, lo = a >> 64, a & ((1 << 64) - 1)
+    if hi:
+        return f"(__uint128_t({hi}ULL) << 64 | __uint128_t({lo}ULL))"
+    return f"__uint128_t({lo}ULL)"
+
+
 def cpp_number(text: str, opcode: int) -> str:
     """A C++ expression of a number of this primitive type"""
     t = text.replace("_", "")
@@ -696,18 +719,26 @@ def cpp_number(text: str, opcode: int) -> str:
         f = t if any(c in t for c in ".eE") else t + ".0"
         return f + ("f" if opcode == -13 else "")
     v = int(t, 0)
+    bits, signed = INT_BITS[opcode]
+    low, high = (
+        (-(1 << (bits - 1)), (1 << (bits - 1)) - 1) if signed else (0, (1 << bits) - 1)
+    )
+    if not low <= v <= high:
+        # The typed API holds nat and int in 128 bits; the other values are
+        # not of their type
+        raise NotExpressible(f"{text} as {TYPED_PRIMS[opcode][0]}")
+    # The minimum of a signed type is written -(|v| - 1) - 1: |v| itself does
+    # not fit the type
     if opcode in (-3, -4):
-        a = abs(v)
-        hi, lo = a >> 64, a & ((1 << 64) - 1)
-        u = f"__uint128_t({lo}ULL)"
-        if hi:
-            u = f"(__uint128_t({hi}ULL) << 64 | __uint128_t({lo}ULL))"
-        if opcode == -3:
-            if v < 0:
-                raise ParseError(f"a negative nat: {text}")
-            return u
-        return f"(-__int128_t({u}))" if v < 0 else f"__int128_t({u})"
+        if v >= 0:
+            u = cpp_u128(v)
+            return u if opcode == -3 else f"__int128_t({u})"
+        if v == low:
+            return f"(-__int128_t({cpp_u128(-v - 1)}) - 1)"
+        return f"(-__int128_t({cpp_u128(-v)}))"
     ctype = TYPED_PRIMS[opcode][1]
+    if v == low and signed:
+        return f"{ctype}(-{-v - 1}LL - 1)"
     return f"{ctype}({v}LL)" if v < 0 else f"{ctype}({v}ULL)"
 
 

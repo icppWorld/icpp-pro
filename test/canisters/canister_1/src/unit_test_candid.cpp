@@ -12,6 +12,7 @@
 #include <optional>
 #include <string>
 
+#include "candid_decoder.h"
 #include "candid_deserialize.h"
 #include "candid_serialize.h"
 #include "candid_serialize_type_table_registry.h"
@@ -208,6 +209,70 @@ __attribute__((noinline)) void test_subtype_assumptions() {
   CandidSubtype s;
   check(!s.is_subtype(g, x, g, y), "X </: Y");
   check(!s.is_subtype(g, x2, g, y2), "then X2 </: Y2, with the same checker");
+}
+
+// A vec whose elements take no bytes on the wire is stored as one element
+// and a count: a message of a few bytes cannot make the decoder store a
+// million values. As dfinity/candid's decoder, where such values are free.
+__attribute__((noinline)) void test_zero_width_vec() {
+  // vec null of 1_000_000 elements: 4449444c 01 6d7f 01 00 c0843d
+  const std::vector<uint8_t> m{'D',  'I', 'D', 'L',  1,    0x6d,
+                               0x7f, 1,   0,   0xc0, 0x84, 0x3d};
+  auto decode_at = [&](CandidTypeGraph &g, int e,
+                       std::vector<CandidValue> &out) {
+    std::string err;
+    return CandidDecoder::decode(m.data(), m.size(), g, {e}, out, err);
+  };
+
+  {
+    CandidTypeGraph g;
+    std::vector<CandidValue> out;
+    check(decode_at(g, g.vec(CandidTypeGraph::prim(CandidKind::Null)), out),
+          "zero width: vec null of 1e6 decodes");
+    check(out[0].vec_size() == 1000000 && out[0].items.size() == 1,
+          "zero width: vec null of 1e6 is stored once");
+  }
+  {
+    // reserved counts each null once, as null does
+    CandidTypeGraph g;
+    std::vector<CandidValue> out;
+    check(decode_at(g, g.vec(CandidTypeGraph::prim(CandidKind::Reserved)), out),
+          "zero width: vec null of 1e6 decodes at vec reserved");
+  }
+  {
+    // ... and one more element is over the budget
+    std::vector<uint8_t> m2 = m;
+    m2.back() = 0x3d;
+    m2[m2.size() - 3] = 0xc1; // 1_000_001
+    CandidTypeGraph g;
+    std::vector<CandidValue> out;
+    std::string err;
+    check(!CandidDecoder::decode(
+              m2.data(), m2.size(), g,
+              {g.vec(CandidTypeGraph::prim(CandidKind::Reserved))}, out, err),
+          "zero width: vec null of 1e6 + 1 is over the budget");
+  }
+  { // The typed API sees every element:
+    // didc encode -t '(vec null)' '(vec {null; null; null})'
+    std::string wire = "4449444c016d7f010003";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    size_t count{0};
+    decode(wire,
+           CandidTypeVecOf([&]() -> CandidType { return CandidTypeNull{}; },
+                           [&]() { ++count; }));
+    check(count == 3, "zero width: vec null binds 3 elements");
+
+    // ... also at vec opt nat, where each null is an opt nat null
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::optional<__uint128_t> o{1};
+    std::vector<std::optional<__uint128_t>> os;
+    decode(wire,
+           CandidTypeVecOf([&]() -> CandidType { return CandidTypeOptNat{&o}; },
+                           [&]() { os.push_back(o); }));
+    check(os.size() == 3 && !os[0] && !os[1] && !os[2],
+          "zero width: vec null binds at vec opt nat");
+  }
+  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // CandidTypeOptOf: an opt of any type, also null; CandidTypeService
@@ -1167,6 +1232,10 @@ int unit_test_candid() {
 
   { // An opt of any type, and a service
     test_opt_of_and_service();
+  }
+
+  { // A vec of values that take no bytes is stored once
+    test_zero_width_vec();
   }
 
   { // A type table index that needs 2 bytes

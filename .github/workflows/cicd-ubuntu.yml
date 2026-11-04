@@ -165,6 +165,25 @@ jobs:
         run: |
           make all-tests JOBS=3
 
+      # Fuzzes icpp-candid's decoder under ASan & UBSan (scripts/fuzz.py): first
+      # every seed (the compliance suite's blobs) and every input that once
+      # crashed (test/fuzz/regressions), then FUZZ_SECONDS of new inputs per
+      # target. libFuzzer comes with the clang runtime package.
+      - name: fuzz
+        if: matrix.python-version == env.ALL_TESTS_PYTHON
+        shell: bash -l {0}
+        run: |
+          sudo apt-get install -y libclang-rt-$(cat version_clang.txt)-dev
+          make fuzz FUZZ_SECONDS=60
+
+      - name: fuzz-crashes
+        if: failure() && matrix.python-version == env.ALL_TESTS_PYTHON
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: fuzz-crashes
+          path: build-fuzz/crashes/
+          if-no-files-found: ignore
+
       - name: smoke-tests
         if: matrix.python-version != env.ALL_TESTS_PYTHON
         shell: bash -l {0}

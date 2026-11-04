@@ -187,3 +187,4 @@ test/canisters/canister_upgrade/upgrade_record.txt
 # Our own skills stay tracked.
 .claude/skills/*
 !.claude/skills/icpp-pro-*/
+build-fuzz/

@@ -165,6 +165,17 @@ SIBLING_ICPP_DOCS ?= ../icpp-docs
 SIBLING_LLAMA_CPP_CANISTER ?= ../llama_cpp_canister
 
 # Verifies version & linter pins are in sync across all the repos.
+# Fuzzes icpp-candid's decoder with libFuzzer, under ASan & UBSan (scripts/fuzz.py).
+# fuzz-replay runs every seed & regression once (CI); fuzz runs each target for
+# FUZZ_SECONDS. On a Mac, libFuzzer needs `brew install llvm`.
+FUZZ_SECONDS ?= 60
+.PHONY: fuzz-replay fuzz
+fuzz-replay:
+	@python -m scripts.fuzz replay
+
+fuzz:
+	@python -m scripts.fuzz run --seconds $(FUZZ_SECONDS)
+
 .PHONY: check-sibling-pins
 check-sibling-pins:
 	@python -m scripts.check_sibling_pins
@@ -265,7 +276,8 @@ src/icpp/ic/*/*.cpp src/icpp/ic/*/*.h \
 src/icpp/canisters/*/src/*.cpp src/icpp/canisters/*/src/*.h \
 src/icpp/canisters/*/native/*.cpp src/icpp/canisters/*/native/*.h \
 test/canisters/*/src/*.cpp test/canisters/*/src/*.h \
-test/canisters/*/native/*.cpp test/canisters/*/native/*.h)
+test/canisters/*/native/*.cpp test/canisters/*/native/*.h \
+test/fuzz/*.cpp test/fuzz/*.h)
 
 .PHONY: cpp-format
 cpp-format:

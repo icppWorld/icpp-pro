@@ -17,6 +17,7 @@
 #include "candid_serialize.h"
 #include "candid_serialize_type_table_registry.h"
 #include "candid_subtype.h"
+#include "candid_text_value.h"
 #include "ic_api.h"
 #include "test_vec_of.h"
 
@@ -526,6 +527,36 @@ __attribute__((noinline)) void test_type_graph_chains() {
               g.is_infinite_opt(into) && !g.is_infinite_opt(finite) &&
               !g.is_infinite_opt(CandidTypeGraph::prim(CandidKind::Nat)),
           "chain: infinite options");
+  }
+  { // A method name in a textual func value must be valid UTF-8, as on the
+    // wire
+    CandidTypeGraph g;
+    int f = g.func({}, {}, {});
+    std::vector<CandidValue> out;
+    std::string err;
+    check(
+        CandidTextValue::parse("(func \"aaaaa-aa\".\"m\")", g, {f}, out, err) &&
+            !CandidTextValue::parse("(func \"aaaaa-aa\".\"\\ff\")", g, {f}, out,
+                                    err) &&
+            err.find("Invalid UTF-8 in a method name") != std::string::npos,
+        "text: func method name is UTF-8 checked");
+  }
+  { // An expected type with fields out of order is rejected, not decoded
+    CandidTypeGraph g;
+    int r = g.reserve();
+    CandidGraphNode n{CandidKind::Record};
+    n.fields = {{2, CandidTypeGraph::prim(CandidKind::Nat)},
+                {1, CandidTypeGraph::prim(CandidKind::Nat)}};
+    g.define(r, n);
+    std::string err;
+    check(!g.validate(err) && err == "Field ids are not sorted at 1",
+          "graph: unsorted record fields");
+    int f = g.func({}, {}, {});
+    int s = g.reserve();
+    CandidGraphNode sn{CandidKind::Service};
+    sn.methods = {{"b", f}, {"a", f}};
+    g.define(s, sn);
+    check(!g.validate(err), "graph: unsorted service methods");
   }
   { // absent
     CandidValue a, b;

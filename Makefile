@@ -165,7 +165,7 @@ SIBLING_ICPP_DOCS ?= ../icpp-docs
 SIBLING_LLAMA_CPP_CANISTER ?= ../llama_cpp_canister
 
 # Verifies version & linter pins are in sync across all the repos.
-# Fuzzes icpp-candid's decoder with libFuzzer, under ASan & UBSan (scripts/fuzz.py).
+# Fuzzes icpp-candid's decoder & encoder with libFuzzer, under ASan & UBSan (scripts/fuzz.py).
 # fuzz-replay runs every seed & regression once (CI); fuzz runs each target for
 # FUZZ_SECONDS. On a Mac, libFuzzer needs `brew install llvm`.
 FUZZ_SECONDS ?= 60

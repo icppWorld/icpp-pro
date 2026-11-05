@@ -241,6 +241,25 @@ __attribute__((noinline)) void test_recursive() {
     check(hex(out) == m.substr(0, 2 * out.size()),
           "a wire List header re-encodes as it was: " + hex(out));
   }
+  {
+    // func () -> (R), R = record { 0 : R }: a record that can only contain
+    // itself is read as empty, and written as empty, with no entry of its own
+    // (test/fuzz/regressions/decoder-func-returns-empty-record)
+    std::vector<uint8_t> bytes =
+        unhex("4449444c026a000101006c0100010100010100016d");
+    CandidTypeGraph w;
+    std::vector<int> args;
+    std::vector<CandidValue> vs;
+    std::string err;
+    check(
+        CandidDecoder::read_types(bytes.data(), bytes.size(), w, args, err) &&
+            CandidDecoder::decode(bytes.data(), bytes.size(), w, args, vs, err),
+        "decode a func that returns an empty record: " + err);
+    std::vector<uint8_t> out;
+    check(CandidEncoder::encode(w, args, vs, out, err) &&
+              hex(out) == "4449444c016a00016f000100010100016d",
+          "and encode it, with empty for the record: " + hex(out) + " " + err);
+  }
 }
 
 __attribute__((noinline)) void test_tables() {
@@ -352,8 +371,9 @@ __attribute__((noinline)) void test_value_checks() {
 
   v = value(CandidKind::Vec);
   v.repeat = 3;
-  v.items = {value(CandidKind::Nat)};
-  check_refused("a repeat at vec nat", g, g.vec(prim(CandidKind::Nat)), v);
+  v.items = {};
+  check_refused("a repeat without its element", g, g.vec(prim(CandidKind::Nat)),
+                v);
 
   int rec = g.record({{1, prim(CandidKind::Nat)}, {2, prim(CandidKind::Nat)}});
   v = value(CandidKind::Record);
@@ -395,6 +415,51 @@ __attribute__((noinline)) void test_value_checks() {
         "vec null of 1e6, repeated: " + err);
   v.repeat = 1000001;
   check_refused("vec null of 1e6 + 1, over the decoder's budget", g, vec_null,
+                v);
+
+  // A repeat of an element that takes bytes: the decoder makes one for
+  // `vec null` read at `vec opt nat`. Each element is written; each counts
+  // against the budget, as the decoder counts it
+  int vec_opt_nat = g.vec(opt_nat);
+  v.repeat = 3;
+  v.items = {value(CandidKind::Opt)};
+  out.clear();
+  check(CandidEncoder::encode_value(g, vec_opt_nat, v, out, err) &&
+            hex(out) == "03000000",
+        "vec opt nat of 3 nulls, repeated: " + err);
+  {
+    const std::string wire =
+        "4449444c016d7f010003"; // (vec { null; null; null })
+    std::vector<uint8_t> msg;
+    for (size_t k = 0; k < wire.size(); k += 2)
+      msg.push_back(uint8_t(std::stoul(wire.substr(k, 2), nullptr, 16)));
+    std::vector<CandidValue> vs;
+    check(CandidDecoder::decode(msg.data(), msg.size(), g, {vec_opt_nat}, vs,
+                                err) &&
+              vs[0].repeat == 3,
+          "vec null read at vec opt nat is a repeat: " + err);
+    out.clear();
+    check(CandidEncoder::encode(g, {vec_opt_nat}, vs, out, err) &&
+              hex(out) == "4449444c026d016e7d010003000000",
+          "and encodes again: " + err);
+  }
+  v.repeat = 1000001;
+  check_refused("vec opt nat of 1e6 + 1 repeated, over the budget", g,
+                vec_opt_nat, v);
+
+  // Nested repeats count their product, as the decoder does
+  int vec_vec_null = g.vec(vec_null);
+  CandidValue inner = value(CandidKind::Vec);
+  inner.repeat = 1000;
+  inner.items = {value(CandidKind::Null)};
+  v = value(CandidKind::Vec);
+  v.repeat = 1000;
+  v.items = {inner};
+  out.clear();
+  check(CandidEncoder::encode_value(g, vec_vec_null, v, out, err),
+        "1000 x 1000 nulls, repeated: " + err);
+  v.repeat = 1001;
+  check_refused("1001 x 1000 nulls, repeated, over the budget", g, vec_vec_null,
                 v);
 
   // The argument count must match the values

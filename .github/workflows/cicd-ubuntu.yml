@@ -165,7 +165,7 @@ jobs:
         run: |
           make all-tests JOBS=3
 
-      # Fuzzes icpp-candid's decoder under ASan & UBSan (scripts/fuzz.py): first
+      # Fuzzes icpp-candid's decoder & encoder under ASan & UBSan (scripts/fuzz.py): first
       # every seed (the compliance suite's blobs) and every input that once
       # crashed (test/fuzz/regressions), then FUZZ_SECONDS of new inputs per
       # target. libFuzzer comes with the clang runtime package.

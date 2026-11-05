@@ -5,7 +5,9 @@
 
 void suite_motoko_idl_variant(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_variant({{5095893u, 0}, {1202718727u, -7}, {3915647964u, -7}}));
+  base.reserve();
+  base.define(
+      0, cn_variant({{5095893u, 0}, {1202718727u, -7}, {3915647964u, -7}}));
   {
     CandidTypeGraph g = base;
     r.check(

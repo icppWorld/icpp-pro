@@ -135,7 +135,7 @@ def top_level_index(text: str, open_paren: int, pos: int, python: bool) -> int:
     return index if depth >= 1 else -1
 
 
-def enclosing_open(text: str, pos: int, python: bool) -> int:
+def enclosing_open(text: str, pos: int) -> int:
     """The index of the bracket that encloses pos, or -1"""
     depth = 0
     i = pos - 1
@@ -151,25 +151,35 @@ def enclosing_open(text: str, pos: int, python: bool) -> int:
     return -1
 
 
+def is_expected_python(text: str, start: int) -> bool:
+    """Is the literal at start of a Python file an expected output?"""
+    before = text[max(0, start - 200) : start].rstrip()
+    if re.search(r"(response\s*==|expected\w*\s*=\s*\(?)$", before):
+        return True
+    # The expected column of a parametrize table
+    p = text.rfind("@pytest.mark.parametrize(", 0, start)
+    if p < 0:
+        return False
+    m = re.match(r"""@pytest.mark.parametrize\(\s*["']([^"']*)["']""", text[p:])
+    if not m:
+        return False
+    names = [n.strip() for n in m.group(1).split(",")]
+    row = enclosing_open(text, start)
+    if "expected" not in names or row < 0 or text[row] != "(":
+        return False
+    idx = top_level_index(text, row, start, True)
+    table = enclosing_open(text, row)
+    in_table = (
+        table >= 0 and text[table] == "[" and text.rfind("@pytest", 0, table) == p
+    )
+    return in_table and idx == names.index("expected")
+
+
 def is_expected(text: str, start: int, python: bool) -> bool:
     """Is the literal at start an expected output?"""
-    before = text[max(0, start - 200) : start].rstrip()
     if python:
-        if re.search(r"(response\s*==|expected\w*\s*=\s*\(?)$", before):
-            return True
-        # The expected column of a parametrize table
-        p = text.rfind("@pytest.mark.parametrize(", 0, start)
-        if p >= 0:
-            m = re.match(r"""@pytest.mark.parametrize\(\s*["']([^"']*)["']""", text[p:])
-            if m:
-                names = [n.strip() for n in m.group(1).split(",")]
-                row = enclosing_open(text, start, python)
-                if "expected" in names and row >= 0 and text[row] == "(":
-                    idx = top_level_index(text, row, start, python)
-                    table = enclosing_open(text, row, python)
-                    if table >= 0 and text[table] == "[" and text.rfind("@pytest", 0, table) == p:
-                        return idx == names.index("expected")
-        return False
+        return is_expected_python(text, start)
+    before = text[max(0, start - 200) : start].rstrip()
     if re.search(r"(==|!=)$", before):
         return True
     # check_eq(actual, expected, what): a literal is never the actual
@@ -177,7 +187,7 @@ def is_expected(text: str, start: int, python: bool) -> bool:
     if call >= 0 and top_level_index(text, call + len("check_eq"), start, python) >= 1:
         return True
     # An array of expected arguments: check_eq(...last_call_arg_hex(...), args[i]
-    brace = enclosing_open(text, start, python)
+    brace = enclosing_open(text, start)
     if brace >= 0 and text[brace] == "{":
         m = re.search(r"(\w+)\[\]\s*=\s*$", text[:brace])
         if m and re.search(
@@ -192,10 +202,12 @@ def is_expected(text: str, start: int, python: bool) -> bool:
 
 
 def literal_hex(m: re.Match[str]) -> str:
+    """The hex digits of a matched literal"""
     return m.group("first") + "".join(re.findall(r"[0-9a-fA-F]+", m.group("rest")))
 
 
 def files(paths: list[Path]) -> list[Path]:
+    """The .cpp and .py files of the paths, outside build folders"""
     out: list[Path] = []
     for p in paths:
         if p.is_file():
@@ -212,7 +224,8 @@ def files(paths: list[Path]) -> list[Path]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    """Re-pin the expected messages of the files"""
+    parser = argparse.ArgumentParser(description=__doc__.split("\n", maxsplit=1)[0])
     parser.add_argument("--write", action="store_true", help="rewrite the files")
     parser.add_argument("paths", nargs="*", type=Path)
     args = parser.parse_args()
@@ -238,7 +251,8 @@ def main() -> int:
                 continue
             new = new[3:]
             line = text.count("\n", 0, m.start()) + 1
-            where = f"{f.relative_to(ROOT_PATH) if f.is_relative_to(ROOT_PATH) else f}:{line}"
+            rel = f.relative_to(ROOT_PATH) if f.is_relative_to(ROOT_PATH) else f
+            where = f"{rel}:{line}"
             if not is_expected(text, m.start(), python):
                 review.append(f"{where}: input or unknown, left as is: {old}")
                 continue
@@ -255,7 +269,9 @@ def main() -> int:
             f.write_text(text)
         rewritten += len(edits)
 
-    print(f"\n{rewritten} expected messages {'rewritten' if args.write else 'to rewrite'}")
+    print(
+        f"\n{rewritten} expected messages {'rewritten' if args.write else 'to rewrite'}"
+    )
     if review:
         print(f"\n{len(review)} other messages would change; look at them by hand:")
         print("\n".join(review))

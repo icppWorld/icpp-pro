@@ -5,10 +5,13 @@
 
 void suite_motoko_idl_func(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_func({-4}, {0}, {}));
-  base.add(cn_func({}, {3}, {1}));
-  base.add(cn_func({}, {}, {2}));
+  base.reserve();
+  base.reserve();
+  base.reserve();
   base.add(cn_opt(0));
+  base.define(0, cn_func({-4}, {0}, {}));
+  base.define(1, cn_func({}, {3}, {1}));
+  base.define(2, cn_func({}, {}, {2}));
   {
     CandidTypeGraph g = base;
     g.add(cn_opt(0));

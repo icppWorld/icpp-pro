@@ -5,15 +5,23 @@
 
 void suite_rust_subtype(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_record({{0u, 1}}));
-  base.add(cn_record({{0u, 2}}));
-  base.add(cn_record({{0u, 3}}));
-  base.add(cn_record({{0u, -3}}));
-  base.add(cn_record({{0u, 5}}));
-  base.add(cn_record({{0u, 6}}));
-  base.add(cn_record({{0u, 7}}));
-  base.add(cn_record({{0u, 8}}));
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
   base.add(cn_opt(-3));
+  base.define(0, cn_record({{0u, 1}}));
+  base.define(1, cn_record({{0u, 2}}));
+  base.define(2, cn_record({{0u, 3}}));
+  base.define(3, cn_record({{0u, -3}}));
+  base.define(4, cn_record({{0u, 5}}));
+  base.define(5, cn_record({{0u, 6}}));
+  base.define(6, cn_record({{0u, 7}}));
+  base.define(7, cn_record({{0u, 8}}));
   {
     CandidTypeGraph g = base;
     g.add(cn_opt(10));

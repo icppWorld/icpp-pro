@@ -5,29 +5,42 @@
 
 void suite_official_construct(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_opt(0));
-  base.add(cn_opt(2));
-  base.add(cn_opt(1));
-  base.add(cn_vec(3));
-  base.add(cn_record({{0u, 4}}));
-  base.add(cn_opt(13));
-  base.add(cn_opt(14));
-  base.add(cn_opt(8));
-  base.add(cn_record({{1158359328u, -4}, {1291237008u, 7}}));
-  base.add(cn_variant({{0u, 9}}));
-  base.add(cn_variant({{5493713u, -1}, {1103411697u, 15}}));
-  base.add(cn_record({{4895187u, -2}, {5097222u, -11}}));
-  base.add(cn_record({{4895171u, 11},
-                      {4895187u, -2},
-                      {4895189u, 10},
-                      {4895195u, 11},
-                      {4895394u, 6},
-                      {4896955u, 16},
-                      {5097222u, -11}}));
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
   base.add(cn_record({{0u, 5}}));
   base.add(cn_record({{1158359328u, -4}, {1291237008u, 6}}));
   base.add(cn_record({{1158359328u, -4}, {1291237008u, 10}}));
   base.add(cn_variant({{4895187u, -1}, {5097222u, -1}}));
+  base.define(0, cn_opt(0));
+  base.define(1, cn_opt(2));
+  base.define(2, cn_opt(1));
+  base.define(3, cn_vec(3));
+  base.define(4, cn_record({{0u, 4}}));
+  base.define(5, cn_opt(13));
+  base.define(6, cn_opt(14));
+  base.define(7, cn_opt(8));
+  base.define(8, cn_record({{1158359328u, -4}, {1291237008u, 7}}));
+  base.define(9, cn_variant({{0u, 9}}));
+  base.define(10, cn_variant({{5493713u, -1}, {1103411697u, 15}}));
+  base.define(11, cn_record({{4895187u, -2}, {5097222u, -11}}));
+  base.define(12, cn_record({{4895171u, 11},
+                             {4895187u, -2},
+                             {4895189u, 10},
+                             {4895195u, 11},
+                             {4895394u, 6},
+                             {4896955u, 16},
+                             {5097222u, -11}}));
   {
     CandidTypeGraph g = base;
     r.check(25, std::string("empty table", 11), g, {}, Op::Decodes,

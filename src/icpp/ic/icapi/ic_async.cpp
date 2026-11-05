@@ -490,9 +490,7 @@ void IC_CallReply::decode(CandidType arg) {
   decode(args);
 }
 
-void IC_CallReply::decode(CandidArgs args) {
-  CandidDeserialize(bytes, args);
-}
+void IC_CallReply::decode(CandidArgs args) { CandidDeserialize(bytes, args); }
 
 bool IC_CallError::is_clean_reject() const {
   return kind == Kind::CallRejected &&

@@ -87,7 +87,6 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
   // the new code, with the heap of this version gone.
   if (m_canister_entry.is_entry_G()) icpp_check_no_calls_in_flight();
 
-
   // Read only what the replica provides in this entry point - calling a
   // size/copy pair in a refused context traps on the IC:
   // - msg_arg_data: only init/post_upgrade (I), update (U), query (Q),
@@ -465,8 +464,7 @@ __uint128_t IC_API::cost_http_request_v2(const HttpOutcallCostParams &params) {
       counts.append("total_requests", CandidTypeNat32{});
       counts.append("min_responses", CandidTypeNat32{});
       counts.append("max_responses", CandidTypeNat32{});
-      outcall_type =
-          CandidTypeVariant{"flexible", CandidTypeOptOf{counts}};
+      outcall_type = CandidTypeVariant{"flexible", CandidTypeOptOf{counts}};
     }
     break;
   }
@@ -572,7 +570,6 @@ void IC_API::from_wire(CandidArgs A) {
   m_called_from_wire = true;
 
   CandidDeserialize(m_B_in, A);
-
 }
 // DeSerialize the byte stream received over the wire
 void IC_API::from_wire(CandidType c) {
@@ -790,7 +787,6 @@ void IC_API::to_wire(const CandidArgs &args_out) {
     // Send it out over the wire
     msg_reply();
   }
-
 }
 
 // Serialize to byte stream & send out over the wire, when a HttpResponse is sent

@@ -5,12 +5,13 @@
 
 void suite_motoko_idl_sub(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_service({{std::string("f", 1), 1},
-                       {std::string("p", 1), 2},
-                       {std::string("q", 1), 3}}));
+  base.reserve();
   base.add(cn_func({}, {}, {}));
   base.add(cn_func({}, {}, {2}));
   base.add(cn_func({}, {}, {1}));
+  base.define(0, cn_service({{std::string("f", 1), 1},
+                             {std::string("p", 1), 2},
+                             {std::string("q", 1), 3}}));
   {
     CandidTypeGraph g = base;
     g.add(cn_opt(5));

@@ -168,7 +168,6 @@ __attribute__((noinline)) void test_vec_variant() {
     decode(wire, r);
     check(y == 7, "skipped vec variant with payloads");
   }
-
 }
 
 // The subtype check retracts what it assumed for a check that failed, as
@@ -692,7 +691,6 @@ __attribute__((noinline)) void test_opt_of_and_service() {
                                             true),
           "record fields are encoded sorted");
   }
-
 }
 
 // Decoding follows the spec's coercion rules, with CandidDecoder
@@ -748,7 +746,6 @@ __attribute__((noinline)) void test_spec_coercions() {
             "opt record decodes, null or not");
     }
   }
-
 }
 
 // A record field added with append_optional may be absent on the wire: it is
@@ -819,7 +816,6 @@ __attribute__((noinline)) void test_append_optional() {
     check(hex1 == "4449444c016c02617d62710100010178" && hex2 == hex1,
           "append_optional encodes like append");
   }
-
 }
 
 // A type table index is a sleb128 (Candid: T(<datatype>) = sleb128(i)). An
@@ -1190,7 +1186,6 @@ __attribute__((noinline)) void test_vec_of_decode() {
               std::to_string(instructions_100) + " for 100, " +
               std::to_string(instructions_1000) + " for 1,000");
   }
-
 }
 
 // An additional field of a vec of records with opt & variant fields, or of a

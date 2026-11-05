@@ -5,16 +5,34 @@
 
 void suite_rust_encode(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_variant({{3303859u, -1}, {3505894u, -1}}));
-  base.add(cn_variant({{3303859u, 2}, {3303867u, 3}, {3505894u, -1}}));
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
   base.add(cn_record({{0u, -2}, {1u, -4}}));
   base.add(cn_record({{97u, -4}, {98u, -3}}));
+  base.add(cn_opt(2));
+  base.add(cn_vec(6));
+  base.add(cn_opt(7));
+  base.add(cn_opt(6));
+  base.define(0, cn_variant({{3303859u, -1}, {3505894u, -1}}));
+  base.define(1, cn_variant({{3303859u, 8}, {3303867u, 9}, {3505894u, -1}}));
+  base.define(2, cn_record({{1158359328u, -4}, {1291237008u, 10}}));
+  base.define(3, cn_opt(4));
+  base.define(4, cn_record({{1158359328u, -4}, {1291237008u, 3}}));
+  base.define(5, cn_record({{1463216684u, 11}}));
+  base.define(6, cn_record({{449540200u, 12}}));
+  base.define(7, cn_record({{449540199u, 13}}));
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        18, std::string("serde.rs test_bool", 18), g, {-2},
+        20, std::string("serde.rs test_bool", 18), g, {-2},
         ComplianceInput{false, std::string("(true)", 6)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeBool(true));
           return CandidSerialize(A).get_B();
@@ -24,9 +42,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        19, std::string("serde.rs test_bool", 18), g, {-2},
+        21, std::string("serde.rs test_bool", 18), g, {-2},
         ComplianceInput{false, std::string("(false)", 7)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeBool(false));
           return CandidSerialize(A).get_B();
@@ -36,9 +54,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        20, std::string("serde.rs test_integer", 21), g, {-4},
+        22, std::string("serde.rs test_integer", 21), g, {-4},
         ComplianceInput{false, std::string("(42)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt(__int128_t(__uint128_t(42ULL))));
           return CandidSerialize(A).get_B();
@@ -48,9 +66,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        21, std::string("serde.rs test_integer", 21), g, {-3},
+        23, std::string("serde.rs test_integer", 21), g, {-3},
         ComplianceInput{false, std::string("(42)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(42ULL)));
           return CandidSerialize(A).get_B();
@@ -60,9 +78,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        22, std::string("serde.rs test_integer", 21), g, {-4},
+        24, std::string("serde.rs test_integer", 21), g, {-4},
         ComplianceInput{false, std::string("(1234567890)", 12)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt(__int128_t(__uint128_t(1234567890ULL))));
           return CandidSerialize(A).get_B();
@@ -73,9 +91,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        23, std::string("serde.rs test_integer", 21), g, {-3},
+        25, std::string("serde.rs test_integer", 21), g, {-3},
         ComplianceInput{false, std::string("(1234567890)", 12)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(1234567890ULL)));
           return CandidSerialize(A).get_B();
@@ -86,9 +104,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        24, std::string("serde.rs test_integer", 21), g, {-3},
+        26, std::string("serde.rs test_integer", 21), g, {-3},
         ComplianceInput{false, std::string("(5000000000)", 12)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(5000000000ULL)));
           return CandidSerialize(A).get_B();
@@ -99,9 +117,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        25, std::string("serde.rs test_integer", 21), g, {-4},
+        27, std::string("serde.rs test_integer", 21), g, {-4},
         ComplianceInput{false, std::string("(-1234567890)", 13)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt((-__int128_t(__uint128_t(1234567890ULL)))));
           return CandidSerialize(A).get_B();
@@ -112,9 +130,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        26, std::string("serde.rs test_integer", 21), g, {-4},
+        28, std::string("serde.rs test_integer", 21), g, {-4},
         ComplianceInput{false, std::string("(60000000000000000)", 19)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(
               CandidTypeInt(__int128_t(__uint128_t(60000000000000000ULL))));
@@ -128,9 +146,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        27, std::string("serde.rs test_integer", 21), g, {-3},
+        29, std::string("serde.rs test_integer", 21), g, {-3},
         ComplianceInput{false, std::string("(60000000000000000)", 19)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(60000000000000000ULL)));
           return CandidSerialize(A).get_B();
@@ -142,9 +160,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        28, std::string("serde.rs test_integer", 21), g, {-4},
+        30, std::string("serde.rs test_integer", 21), g, {-4},
         ComplianceInput{false, std::string("(-60000000000000000)", 20)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(
               CandidTypeInt((-__int128_t(__uint128_t(60000000000000000ULL)))));
@@ -158,9 +176,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        29, std::string("serde.rs test_fixed_number", 26), g, {-5},
+        31, std::string("serde.rs test_fixed_number", 26), g, {-5},
         ComplianceInput{false, std::string("(42)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat8(uint8_t(42ULL)));
           return CandidSerialize(A).get_B();
@@ -170,9 +188,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        30, std::string("serde.rs test_fixed_number", 26), g, {-6},
+        32, std::string("serde.rs test_fixed_number", 26), g, {-6},
         ComplianceInput{false, std::string("(42)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat16(uint16_t(42ULL)));
           return CandidSerialize(A).get_B();
@@ -182,9 +200,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        31, std::string("serde.rs test_fixed_number", 26), g, {-7},
+        33, std::string("serde.rs test_fixed_number", 26), g, {-7},
         ComplianceInput{false, std::string("(42)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat32(uint32_t(42ULL)));
           return CandidSerialize(A).get_B();
@@ -194,9 +212,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        32, std::string("serde.rs test_fixed_number", 26), g, {-8},
+        34, std::string("serde.rs test_fixed_number", 26), g, {-8},
         ComplianceInput{false, std::string("(42)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat64(uint64_t(42ULL)));
           return CandidSerialize(A).get_B();
@@ -208,9 +226,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        33, std::string("serde.rs test_fixed_number", 26), g, {-9},
+        35, std::string("serde.rs test_fixed_number", 26), g, {-9},
         ComplianceInput{false, std::string("(42)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt8(int8_t(42ULL)));
           return CandidSerialize(A).get_B();
@@ -220,9 +238,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        34, std::string("serde.rs test_fixed_number", 26), g, {-10},
+        36, std::string("serde.rs test_fixed_number", 26), g, {-10},
         ComplianceInput{false, std::string("(42)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt16(int16_t(42ULL)));
           return CandidSerialize(A).get_B();
@@ -232,9 +250,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        35, std::string("serde.rs test_fixed_number", 26), g, {-11},
+        37, std::string("serde.rs test_fixed_number", 26), g, {-11},
         ComplianceInput{false, std::string("(42)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt32(int32_t(42ULL)));
           return CandidSerialize(A).get_B();
@@ -244,9 +262,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        36, std::string("serde.rs test_fixed_number", 26), g, {-12},
+        38, std::string("serde.rs test_fixed_number", 26), g, {-12},
         ComplianceInput{false, std::string("(42)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt64(int64_t(42ULL)));
           return CandidSerialize(A).get_B();
@@ -258,9 +276,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        37, std::string("serde.rs test_fixed_number", 26), g, {-12},
+        39, std::string("serde.rs test_fixed_number", 26), g, {-12},
         ComplianceInput{false, std::string("(-42)", 5)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt64(int64_t(-42LL)));
           return CandidSerialize(A).get_B();
@@ -272,9 +290,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        38, std::string("serde.rs test_float", 19), g, {-13},
+        40, std::string("serde.rs test_float", 19), g, {-13},
         ComplianceInput{false, std::string("(3.0)", 5)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeFloat32(3.0f));
           return CandidSerialize(A).get_B();
@@ -284,9 +302,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        39, std::string("serde.rs test_float", 19), g, {-14},
+        41, std::string("serde.rs test_float", 19), g, {-14},
         ComplianceInput{false, std::string("(3.0)", 5)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeFloat64(3.0));
           return CandidSerialize(A).get_B();
@@ -298,9 +316,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        40, std::string("serde.rs test_float", 19), g, {-14},
+        42, std::string("serde.rs test_float", 19), g, {-14},
         ComplianceInput{false, std::string("(6.0)", 5)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeFloat64(6.0));
           return CandidSerialize(A).get_B();
@@ -312,9 +330,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        41, std::string("serde.rs test_float", 19), g, {-14},
+        43, std::string("serde.rs test_float", 19), g, {-14},
         ComplianceInput{false, std::string("(0.5)", 5)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeFloat64(0.5));
           return CandidSerialize(A).get_B();
@@ -326,9 +344,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        42, std::string("serde.rs test_float", 19), g, {-14},
+        44, std::string("serde.rs test_float", 19), g, {-14},
         ComplianceInput{false, std::string("(-0.5)", 6)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeFloat64(-0.5));
           return CandidSerialize(A).get_B();
@@ -340,10 +358,10 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        43, std::string("serde.rs test_text", 18), g, {-15},
+        45, std::string("serde.rs test_text", 18), g, {-15},
         ComplianceInput{false,
                         std::string("(\042Hi \342\230\203\134n\042)", 12)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeText(std::string("Hi \342\230\203\012", 7)));
           return CandidSerialize(A).get_B();
@@ -354,9 +372,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        44, std::string("serde.rs test_reserved", 22), g, {-16},
+        46, std::string("serde.rs test_reserved", 22), g, {-16},
         ComplianceInput{false, std::string("(null)", 6)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeReserved());
           return CandidSerialize(A).get_B();
@@ -367,11 +385,11 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_variant({{17724u, -5}, {3456837u, -17}}));
     r.check_encode(
-        45, std::string("serde.rs test_reserved", 22), g, {4},
+        47, std::string("serde.rs test_reserved", 22), g, {14},
         ComplianceInput{false, std::string("(variant { Ok = 1 })", 20)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeVariant v(std::string("Ok", 2));
             v.append(std::string("Ok", 2), CandidTypeNat8(uint8_t(1ULL)));
             v.append(3456837u, CandidTypeEmpty());
@@ -388,10 +406,10 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        46, std::string("serde.rs test_reference", 23), g, {-24},
+        48, std::string("serde.rs test_reference", 23), g, {-24},
         ComplianceInput{false,
                         std::string("(principal \042w7x7r-cok77-xa\042)", 28)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypePrincipal(std::string("w7x7r-cok77-xa")));
           return CandidSerialize(A).get_B();
@@ -403,13 +421,13 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_func({}, {-3}, {}));
     r.check_encode(
-        47, std::string("serde.rs test_reference", 23), g, {4},
+        49, std::string("serde.rs test_reference", 23), g, {14},
         ComplianceInput{
             false,
             std::string("(func \042w7x7r-cok77-xa\042.\042method\042)", 32)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeFunc f{CandidTypePrincipal(std::string("w7x7r-cok77-xa")),
                              std::string("method", 6)};
             f.append_ret(CandidTypeNat());
@@ -425,24 +443,24 @@ void suite_rust_encode(ComplianceRunner &r) {
   }
   {
     CandidTypeGraph g = base;
-    g.add(cn_service({{std::string("f", 1), 6}, {std::string("g", 1), 5}}));
+    g.add(cn_service({{std::string("f", 1), 16}, {std::string("g", 1), 15}}));
     g.add(cn_func({}, {}, {1}));
     g.add(cn_func({}, {-3}, {}));
     r.check_encode(
-        48, std::string("serde.rs test_reference", 23), g, {4},
+        50, std::string("serde.rs test_reference", 23), g, {14},
         ComplianceInput{false,
                         std::string("(service \042w7x7r-cok77-xa\042)", 26)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeService s{
                 CandidTypePrincipal(std::string("w7x7r-cok77-xa"))};
-            s.append_method(std::string("g", 1), [] {
+            s.append_method(std::string("g", 1), [&] {
               CandidTypeFunc f{};
               f.set_query();
               return f;
             }());
-            s.append_method(std::string("f", 1), [] {
+            s.append_method(std::string("f", 1), [&] {
               CandidTypeFunc f{};
               f.append_ret(CandidTypeNat());
               return f;
@@ -461,9 +479,9 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_opt(-4));
     r.check_encode(
-        49, std::string("serde.rs test_option", 20), g, {4},
+        51, std::string("serde.rs test_option", 20), g, {14},
         ComplianceInput{false, std::string("(opt 42)", 8)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeOptInt(
               std::optional<__int128_t>(__int128_t(__uint128_t(42ULL)))));
@@ -473,12 +491,12 @@ void suite_rust_encode(ComplianceRunner &r) {
   }
   {
     CandidTypeGraph g = base;
-    g.add(cn_opt(5));
+    g.add(cn_opt(15));
     g.add(cn_opt(-4));
     r.check_encode(
-        50, std::string("serde.rs test_option", 20), g, {4},
+        52, std::string("serde.rs test_option", 20), g, {14},
         ComplianceInput{false, std::string("(opt opt 42)", 12)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeOptOf(CandidTypeOptInt(),
                                    CandidTypeOptInt(std::optional<__int128_t>(
@@ -492,9 +510,9 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_opt(-11));
     r.check_encode(
-        51, std::string("serde.rs test_option", 20), g, {4},
+        53, std::string("serde.rs test_option", 20), g, {14},
         ComplianceInput{false, std::string("(null)", 6)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeOptInt32(std::optional<int32_t>()));
           return CandidSerialize(A).get_B();
@@ -505,12 +523,12 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{4895187u, -2}, {5097222u, -4}}));
     r.check_encode(
-        52, std::string("serde.rs test_struct", 20), g, {4},
+        54, std::string("serde.rs test_struct", 20), g, {14},
         ComplianceInput{false,
                         std::string("(record { foo = 42; bar = true })", 33)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(4895187u, CandidTypeBool(true));
             r.append(5097222u, CandidTypeInt(__int128_t(__uint128_t(42ULL))));
@@ -526,21 +544,21 @@ void suite_rust_encode(ComplianceRunner &r) {
   }
   {
     CandidTypeGraph g = base;
-    g.add(cn_record({{4895187u, -2}, {4895195u, 5}, {5097222u, -4}}));
+    g.add(cn_record({{4895187u, -2}, {4895195u, 15}, {5097222u, -4}}));
     g.add(cn_record({{4895187u, -2}, {5097222u, -4}}));
     r.check_encode(
-        53, std::string("serde.rs test_struct", 20), g, {4},
+        55, std::string("serde.rs test_struct", 20), g, {14},
         ComplianceInput{
             false,
             std::string(
                 "(record { foo = 42; bar = true; baz = record { foo = 10; bar = false } })",
                 73)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(4895187u, CandidTypeBool(true));
-            r.append(4895195u, [] {
+            r.append(4895195u, [&] {
               CandidTypeRecord r;
               r.append(4895187u, CandidTypeBool(false));
               r.append(5097222u, CandidTypeInt(__int128_t(__uint128_t(10ULL))));
@@ -561,11 +579,11 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{0u, -2}, {1u, -4}}));
     r.check_encode(
-        54, std::string("serde.rs test_struct", 20), g, {4},
+        56, std::string("serde.rs test_struct", 20), g, {14},
         ComplianceInput{false, std::string("(record { true; 42 })", 21)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(0u, CandidTypeBool(true));
             r.append(1u, CandidTypeInt(__int128_t(__uint128_t(42ULL))));
@@ -580,11 +598,11 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_variant({{65u, -11}}));
     r.check_encode(
-        55, std::string("serde.rs test_newtype", 21), g, {4},
+        57, std::string("serde.rs test_newtype", 21), g, {14},
         ComplianceInput{false, std::string("(variant { A = 42 })", 20)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeVariant v(std::string("A", 1));
             v.append(std::string("A", 1), CandidTypeInt32(int32_t(42ULL)));
             return v;
@@ -598,10 +616,10 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_vec(-5));
     r.check_encode(
-        56, std::string("serde.rs test_serde_bytes", 25), g, {4},
+        58, std::string("serde.rs test_serde_bytes", 25), g, {14},
         ComplianceInput{false,
                         std::string("(blob \042\13401\13402\13403\042)", 18)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeVecNat8(std::vector<uint8_t>{1, 2, 3}));
           return CandidSerialize(A).get_B();
@@ -611,19 +629,19 @@ void suite_rust_encode(ComplianceRunner &r) {
   }
   {
     CandidTypeGraph g = base;
-    g.add(cn_record({{98u, 5}, {99u, 6}}));
+    g.add(cn_record({{98u, 15}, {99u, 16}}));
     g.add(cn_vec(-5));
     g.add(cn_vec(-5));
     r.check_encode(
-        57, std::string("serde.rs test_serde_bytes", 25), g, {4},
+        59, std::string("serde.rs test_serde_bytes", 25), g, {14},
         ComplianceInput{
             false,
             std::string(
                 "(record { b = blob \042\13401\13402\13403\042; c = blob \042\13401\13402\13403\042 })",
                 55)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(98u, CandidTypeVecNat8(std::vector<uint8_t>{1, 2, 3}));
             r.append(99u, CandidTypeVecNat8(std::vector<uint8_t>{1, 2, 3}));
@@ -639,16 +657,16 @@ void suite_rust_encode(ComplianceRunner &r) {
   }
   {
     CandidTypeGraph g = base;
-    g.add(cn_record({{153986224u, 5}}));
+    g.add(cn_record({{153986224u, 15}}));
     g.add(cn_vec(-5));
     r.check_encode(
-        58, std::string("serde.rs test_keyword_label", 27), g, {4},
+        60, std::string("serde.rs test_keyword_label", 27), g, {14},
         ComplianceInput{
             false,
             std::string("(record { \042return\042 = vec { 1; 2; 3 } })", 39)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(153986224u,
                      CandidTypeVecNat8(std::vector<uint8_t>{
@@ -667,11 +685,11 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_variant({{153986224u, -1}}));
     r.check_encode(
-        59, std::string("serde.rs test_keyword_label", 27), g, {4},
+        61, std::string("serde.rs test_keyword_label", 27), g, {14},
         ComplianceInput{false, std::string("(variant { \042return\042 })", 22)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeVariant v(std::string("return", 6));
             v.append(std::string("return", 6), CandidTypeNull());
             return v;
@@ -686,9 +704,9 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_vec(-4));
     r.check_encode(
-        60, std::string("serde.rs test_vector", 20), g, {4},
+        62, std::string("serde.rs test_vector", 20), g, {14},
         ComplianceInput{false, std::string("(vec { 0; 1; 2; 3 })", 20)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeVecInt(std::vector<__int128_t>{
               __int128_t(__uint128_t(0ULL)), __int128_t(__uint128_t(1ULL)),
@@ -700,22 +718,22 @@ void suite_rust_encode(ComplianceRunner &r) {
   }
   {
     CandidTypeGraph g = base;
-    g.add(cn_vec(5));
+    g.add(cn_vec(15));
     g.add(cn_record({{0u, -4}, {1u, -15}}));
     r.check_encode(
-        61, std::string("serde.rs test_vector", 20), g, {4},
+        63, std::string("serde.rs test_vector", 20), g, {14},
         ComplianceInput{
             false, std::string("(vec { record { 42; \042text\042 } })", 31)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeVecOf(
-              [] {
+              [&] {
                 CandidTypeRecord x;
                 x.append(0u, CandidTypeInt());
                 x.append(1u, CandidTypeText());
                 return x;
               }(),
-              std::vector<CandidType>{[] {
+              std::vector<CandidType>{[&] {
                 CandidTypeRecord r;
                 r.append(0u, CandidTypeInt(__int128_t(__uint128_t(42ULL))));
                 r.append(1u, CandidTypeText(std::string("text", 4)));
@@ -730,15 +748,15 @@ void suite_rust_encode(ComplianceRunner &r) {
   }
   {
     CandidTypeGraph g = base;
-    g.add(cn_vec(5));
-    g.add(cn_vec(6));
-    g.add(cn_vec(7));
+    g.add(cn_vec(15));
+    g.add(cn_vec(16));
+    g.add(cn_vec(17));
     g.add(cn_vec(-1));
     r.check_encode(
-        62, std::string("serde.rs test_vector", 20), g, {4},
+        64, std::string("serde.rs test_vector", 20), g, {14},
         ComplianceInput{
             false, std::string("(vec { vec { vec { vec { null } } } })", 38)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeVecOf(
               CandidTypeVecOf(
@@ -767,13 +785,13 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_vec(-1));
     r.check_encode(
-        63, std::string("serde.rs test_vector", 20), g, {4},
+        65, std::string("serde.rs test_vector", 20), g, {14},
         ComplianceInput{
             false,
             std::string(
                 "(vec { null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null })",
                 6008)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeVecOf(
               CandidTypeNull(),
@@ -1119,22 +1137,22 @@ void suite_rust_encode(ComplianceRunner &r) {
   }
   {
     CandidTypeGraph g = base;
-    g.add(cn_vec(5));
+    g.add(cn_vec(15));
     g.add(cn_record({{0u, -15}, {1u, -11}}));
     r.check_encode(
-        64, std::string("serde.rs test_collection", 24), g, {4},
+        66, std::string("serde.rs test_collection", 24), g, {14},
         ComplianceInput{false,
                         std::string("(vec { record { \042a\042; 1 } })", 27)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeVecOf(
-              [] {
+              [&] {
                 CandidTypeRecord x;
                 x.append(0u, CandidTypeText());
                 x.append(1u, CandidTypeInt32());
                 return x;
               }(),
-              std::vector<CandidType>{[] {
+              std::vector<CandidType>{[&] {
                 CandidTypeRecord r;
                 r.append(0u, CandidTypeText(std::string("a", 1)));
                 r.append(1u, CandidTypeInt32(int32_t(1ULL)));
@@ -1150,38 +1168,38 @@ void suite_rust_encode(ComplianceRunner &r) {
   }
   {
     CandidTypeGraph g = base;
-    g.add(cn_vec(5));
+    g.add(cn_vec(15));
     g.add(cn_record({{0u, -11}, {1u, -11}}));
     r.check_encode(
-        65, std::string("serde.rs test_collection", 24), g, {4},
+        67, std::string("serde.rs test_collection", 24), g, {14},
         ComplianceInput{
             false,
             std::string(
                 "(vec { record { 1; 101 }; record { 2; 102 }; record { 3; 103 } })",
                 65)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeVecOf(
-              [] {
+              [&] {
                 CandidTypeRecord x;
                 x.append(0u, CandidTypeInt32());
                 x.append(1u, CandidTypeInt32());
                 return x;
               }(),
               std::vector<CandidType>{
-                  [] {
+                  [&] {
                     CandidTypeRecord r;
                     r.append(0u, CandidTypeInt32(int32_t(1ULL)));
                     r.append(1u, CandidTypeInt32(int32_t(101ULL)));
                     return r;
                   }(),
-                  [] {
+                  [&] {
                     CandidTypeRecord r;
                     r.append(0u, CandidTypeInt32(int32_t(2ULL)));
                     r.append(1u, CandidTypeInt32(int32_t(102ULL)));
                     return r;
                   }(),
-                  [] {
+                  [&] {
                     CandidTypeRecord r;
                     r.append(0u, CandidTypeInt32(int32_t(3ULL)));
                     r.append(1u, CandidTypeInt32(int32_t(103ULL)));
@@ -1199,9 +1217,9 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_vec(-11));
     r.check_encode(
-        66, std::string("serde.rs test_collection", 24), g, {4},
+        68, std::string("serde.rs test_collection", 24), g, {14},
         ComplianceInput{false, std::string("(vec { 1; 2; 3 })", 17)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeVecInt32(std::vector<int32_t>{
               int32_t(1ULL), int32_t(2ULL), int32_t(3ULL)}));
@@ -1217,13 +1235,13 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{0u, -4}, {1u, -15}}));
     r.check_encode(
-        67, std::string("serde.rs test_tuple", 19), g, {4},
+        69, std::string("serde.rs test_tuple", 19), g, {14},
         ComplianceInput{
             false,
             std::string("(record { 42; \042\360\237\222\251\042 })", 23)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(0u, CandidTypeInt(__int128_t(__uint128_t(42ULL))));
             r.append(1u, CandidTypeText(std::string("\360\237\222\251", 4)));
@@ -1239,11 +1257,11 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        68, std::string("serde.rs test_variant", 21), g, {0},
+        70, std::string("serde.rs test_variant", 21), g, {0},
         ComplianceInput{false, std::string("(variant { Bar })", 17)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeVariant v(std::string("Bar", 3));
             v.append(std::string("Bar", 3), CandidTypeNull());
             v.append(3505894u, CandidTypeNull());
@@ -1261,12 +1279,12 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_variant({{17724u, -15}, {3456837u, -15}}));
     r.check_encode(
-        69, std::string("serde.rs test_variant", 21), g, {4},
+        71, std::string("serde.rs test_variant", 21), g, {14},
         ComplianceInput{false,
                         std::string("(variant { Ok = \042good\042 })", 25)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeVariant v(std::string("Ok", 2));
             v.append(std::string("Ok", 2),
                      CandidTypeText(std::string("good", 4)));
@@ -1284,20 +1302,20 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        70, std::string("serde.rs test_variant", 21), g, {1},
+        72, std::string("serde.rs test_variant", 21), g, {1},
         ComplianceInput{
             false, std::string("(variant { Bar = record { true; 42 } })", 39)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeVariant v(std::string("Bar", 3));
-            v.append(std::string("Bar", 3), [] {
+            v.append(std::string("Bar", 3), [&] {
               CandidTypeRecord r;
               r.append(0u, CandidTypeBool(true));
               r.append(1u, CandidTypeInt(__int128_t(__uint128_t(42ULL))));
               return r;
             }());
-            v.append(3303867u, [] {
+            v.append(3303867u, [&] {
               CandidTypeRecord x;
               x.append(97u, CandidTypeInt());
               x.append(98u, CandidTypeNat());
@@ -1316,21 +1334,21 @@ void suite_rust_encode(ComplianceRunner &r) {
   }
   {
     CandidTypeGraph g = base;
-    g.add(cn_variant({{65u, 5}, {66u, 6}, {67u, -1}}));
+    g.add(cn_variant({{65u, 15}, {66u, 16}, {67u, -1}}));
     g.add(cn_record({}));
     g.add(cn_record({}));
     r.check_encode(
-        71, std::string("serde.rs test_variant", 21), g, {4},
+        73, std::string("serde.rs test_variant", 21), g, {14},
         ComplianceInput{false, std::string("(variant { A = record {} })", 27)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeVariant v(std::string("A", 1));
-            v.append(std::string("A", 1), [] {
+            v.append(std::string("A", 1), [&] {
               CandidTypeRecord r;
               return r;
             }());
-            v.append(66u, [] {
+            v.append(66u, [&] {
               CandidTypeRecord x;
               return x;
             }());
@@ -1347,11 +1365,11 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{97u, -9}, {98u, -5}}));
     r.check_encode(
-        72, std::string("serde.rs test_field_rename", 26), g, {4},
+        74, std::string("serde.rs test_field_rename", 26), g, {14},
         ComplianceInput{false, std::string("(record { a = 42; b = 42 })", 27)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(97u, CandidTypeInt8(int8_t(42ULL)));
             r.append(98u, CandidTypeNat8(uint8_t(42ULL)));
@@ -1365,11 +1383,11 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_variant({{97u, -1}, {98u, -1}}));
     r.check_encode(
-        73, std::string("serde.rs test_field_rename", 26), g, {4},
+        75, std::string("serde.rs test_field_rename", 26), g, {14},
         ComplianceInput{false, std::string("(variant { b })", 15)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeVariant v(std::string("b", 1));
             v.append(97u, CandidTypeNull());
             v.append(std::string("b", 1), CandidTypeNull());
@@ -1384,12 +1402,12 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_variant({{4833846u, -5}, {3539700148u, -9}}));
     r.check_encode(
-        74, std::string("serde.rs test_field_rename", 26), g, {4},
+        76, std::string("serde.rs test_field_rename", 26), g, {14},
         ComplianceInput{false,
                         std::string("(variant { \0421-2 + 3\042 = 42 })", 28)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeVariant v(std::string("1-2 + 3", 7));
             v.append(4833846u, CandidTypeNat8());
             v.append(std::string("1-2 + 3", 7), CandidTypeInt8(int8_t(42ULL)));
@@ -1407,14 +1425,14 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{4833846u, -5}, {3539700148u, -9}}));
     r.check_encode(
-        75, std::string("serde.rs test_field_rename", 26), g, {4},
+        77, std::string("serde.rs test_field_rename", 26), g, {14},
         ComplianceInput{
             false,
             std::string("(record { \0421-2 + 3\042 = 42; \042a-b\042 = 42 })",
                         39)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(4833846u, CandidTypeNat8(uint8_t(42ULL)));
             r.append(3539700148u, CandidTypeInt8(int8_t(42ULL)));
@@ -1432,12 +1450,12 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{23018u, -4}, {23019u, -2}}));
     r.check_encode(
-        76, std::string("serde.rs test_generics", 22), g, {4},
+        78, std::string("serde.rs test_generics", 22), g, {14},
         ComplianceInput{false,
                         std::string("(record { g1 = 42; g2 = true })", 31)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(23018u, CandidTypeInt(__int128_t(__uint128_t(42ULL))));
             r.append(23019u, CandidTypeBool(true));
@@ -1453,9 +1471,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        77, std::string("serde.rs test_multiargs", 23), g, {},
+        79, std::string("serde.rs test_multiargs", 23), g, {},
         ComplianceInput{false, std::string("()", 2)},
-        [] {
+        [&] {
           CandidArgs A;
           return CandidSerialize(A).get_B();
         },
@@ -1467,9 +1485,9 @@ void suite_rust_encode(ComplianceRunner &r) {
     g.add(cn_opt(-4));
     g.add(cn_opt(-4));
     r.check_encode(
-        78, std::string("serde.rs test_multiargs", 23), g, {-4, 4, 5, 6},
+        80, std::string("serde.rs test_multiargs", 23), g, {-4, 14, 15, 16},
         ComplianceInput{false, std::string("(42, opt 42, opt 1, opt 2)", 26)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt(__int128_t(__uint128_t(42ULL))));
           A.append(CandidTypeOptInt(
@@ -1487,32 +1505,32 @@ void suite_rust_encode(ComplianceRunner &r) {
   }
   {
     CandidTypeGraph g = base;
-    g.add(cn_vec(5));
+    g.add(cn_vec(15));
     g.add(cn_record({{0u, -4}, {1u, -15}}));
     g.add(cn_record({{0u, -4}, {1u, -15}}));
     r.check_encode(
-        79, std::string("serde.rs test_multiargs", 23), g, {4, 6},
+        81, std::string("serde.rs test_multiargs", 23), g, {14, 16},
         ComplianceInput{
             false,
             std::string(
                 "(vec { record { 42; \042text\042 } }, record { 42; \042text\042 })",
                 54)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeVecOf(
-              [] {
+              [&] {
                 CandidTypeRecord x;
                 x.append(0u, CandidTypeInt());
                 x.append(1u, CandidTypeText());
                 return x;
               }(),
-              std::vector<CandidType>{[] {
+              std::vector<CandidType>{[&] {
                 CandidTypeRecord r;
                 r.append(0u, CandidTypeInt(__int128_t(__uint128_t(42ULL))));
                 r.append(1u, CandidTypeText(std::string("text", 4)));
                 return r;
               }()}));
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(0u, CandidTypeInt(__int128_t(__uint128_t(42ULL))));
             r.append(1u, CandidTypeText(std::string("text", 4)));
@@ -1529,9 +1547,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        80, std::string("number.rs test_numbers", 22), g, {-4},
+        82, std::string("number.rs test_numbers", 22), g, {-4},
         ComplianceInput{false, std::string("(0)", 3)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt(__int128_t(__uint128_t(0ULL))));
           return CandidSerialize(A).get_B();
@@ -1541,9 +1559,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        81, std::string("number.rs test_numbers", 22), g, {-3},
+        83, std::string("number.rs test_numbers", 22), g, {-3},
         ComplianceInput{false, std::string("(0)", 3)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(0ULL)));
           return CandidSerialize(A).get_B();
@@ -1553,9 +1571,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        82, std::string("number.rs test_numbers", 22), g, {-4},
+        84, std::string("number.rs test_numbers", 22), g, {-4},
         ComplianceInput{false, std::string("(127)", 5)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt(__int128_t(__uint128_t(127ULL))));
           return CandidSerialize(A).get_B();
@@ -1565,9 +1583,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        83, std::string("number.rs test_numbers", 22), g, {-3},
+        85, std::string("number.rs test_numbers", 22), g, {-3},
         ComplianceInput{false, std::string("(127)", 5)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(127ULL)));
           return CandidSerialize(A).get_B();
@@ -1577,9 +1595,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        84, std::string("number.rs test_numbers", 22), g, {-4},
+        86, std::string("number.rs test_numbers", 22), g, {-4},
         ComplianceInput{false, std::string("(-1)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt((-__int128_t(__uint128_t(1ULL)))));
           return CandidSerialize(A).get_B();
@@ -1589,9 +1607,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        85, std::string("number.rs test_numbers", 22), g, {-4},
+        87, std::string("number.rs test_numbers", 22), g, {-4},
         ComplianceInput{false, std::string("(-123456)", 9)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt((-__int128_t(__uint128_t(123456ULL)))));
           return CandidSerialize(A).get_B();
@@ -1601,9 +1619,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        86, std::string("number.rs test_numbers", 22), g, {-4},
+        88, std::string("number.rs test_numbers", 22), g, {-4},
         ComplianceInput{false, std::string("(624485)", 8)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt(__int128_t(__uint128_t(624485ULL))));
           return CandidSerialize(A).get_B();
@@ -1613,9 +1631,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        87, std::string("number.rs test_numbers", 22), g, {-3},
+        89, std::string("number.rs test_numbers", 22), g, {-3},
         ComplianceInput{false, std::string("(624485)", 8)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(624485ULL)));
           return CandidSerialize(A).get_B();
@@ -1625,9 +1643,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        88, std::string("number.rs test_numbers", 22), g, {-4},
+        90, std::string("number.rs test_numbers", 22), g, {-4},
         ComplianceInput{false, std::string("(2000000)", 9)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt(__int128_t(__uint128_t(2000000ULL))));
           return CandidSerialize(A).get_B();
@@ -1638,9 +1656,9 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        89, std::string("number.rs test_numbers", 22), g, {-3},
+        91, std::string("number.rs test_numbers", 22), g, {-3},
         ComplianceInput{false, std::string("(2000000)", 9)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(2000000ULL)));
           return CandidSerialize(A).get_B();
@@ -1650,10 +1668,10 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        90, std::string("number.rs test_numbers", 22), g, {-4},
+        92, std::string("number.rs test_numbers", 22), g, {-4},
         ComplianceInput{
             false, std::string("(24197857200151252728969465429440056815)", 40)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt(
               __int128_t((__uint128_t(1311768467294899695ULL) << 64 |
@@ -1669,10 +1687,10 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        91, std::string("number.rs test_numbers", 22), g, {-3},
+        93, std::string("number.rs test_numbers", 22), g, {-3},
         ComplianceInput{
             false, std::string("(24197857200151252728969465429440056815)", 40)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat((__uint128_t(1311768467294899695ULL) << 64 |
                                   __uint128_t(1311768467294899695ULL))));
@@ -1687,11 +1705,11 @@ void suite_rust_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        92, std::string("number.rs test_numbers", 22), g, {-4},
+        94, std::string("number.rs test_numbers", 22), g, {-4},
         ComplianceInput{
             false,
             std::string("(-24197857200151252728969465429440056815)", 41)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt(
               (-__int128_t((__uint128_t(1311768467294899695ULL) << 64 |
@@ -1708,10 +1726,10 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_vec(-5));
     r.check_encode(
-        93, std::string("value.rs test_value", 19), g, {4},
+        95, std::string("value.rs test_value", 19), g, {14},
         ComplianceInput{
             false, std::string("(blob \042\13401\13402\13403\13404\042)", 21)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeVecNat8(std::vector<uint8_t>{1, 2, 3, 4}));
           return CandidSerialize(A).get_B();
@@ -1723,14 +1741,14 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{0u, -4}, {1u, -15}}));
     r.check_encode(
-        94, std::string("value.rs test_value", 19), g, {4},
+        96, std::string("value.rs test_value", 19), g, {14},
         ComplianceInput{
             false,
             std::string("(record { 0 = 42; 1 = \042\360\237\222\251\042 })",
                         31)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(0u, CandidTypeInt(__int128_t(__uint128_t(42ULL))));
             r.append(1u, CandidTypeText(std::string("\360\237\222\251", 4)));
@@ -1747,13 +1765,13 @@ void suite_rust_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{4895187u, -2}, {5097222u, -4}}));
     r.check_encode(
-        95, std::string("value.rs test_value", 19), g, {4},
+        97, std::string("value.rs test_value", 19), g, {14},
         ComplianceInput{
             false,
             std::string("(record { 4895187 = true; 5097222 = 42 })", 41)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(4895187u, CandidTypeBool(true));
             r.append(5097222u, CandidTypeInt(__int128_t(__uint128_t(42ULL))));
@@ -1766,5 +1784,84 @@ void suite_rust_encode(ComplianceRunner &r) {
             std::string(
                 "DIDL\001l\002\323\343\252\002~\206\216\267\002|\001\000\001*",
                 21)});
+  }
+  {
+    CandidTypeGraph g = base;
+    r.check_encode(
+        99, std::string("serde.rs test_struct", 20), g, {2},
+        ComplianceInput{
+            false,
+            std::string(
+                "(record { head = 42; tail = opt record { head = 43; tail = null } })",
+                68)},
+        [&] {
+          CandidArgs A;
+          A.append(CandidTypeValue(
+              g, 2,
+              cv(g, 2,
+                 std::string(
+                     "record { 1158359328 = 42; 1291237008 = opt record { 1158359328 = 43; 1291237008 = null; }; }",
+                     92))));
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\002l\002\240\322\254\250\004|\220\355\332\347\004\001n\000\001\000*\001+\000",
+                27)});
+  }
+  {
+    CandidTypeGraph g = base;
+    r.check_encode(
+        100, std::string("serde.rs test_equivalent_types", 30), g, {5},
+        ComplianceInput{false, std::string("(record { typeas = vec {} })", 28)},
+        [&] {
+          CandidArgs A;
+          A.append([&] {
+            CandidTypeRecord r;
+            r.append(1463216684u, CandidTypeVecOf(CandidTypeValue(g, 6),
+                                                  std::vector<CandidType>{}));
+            return r;
+          }());
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\006l\001\254\324\333\271\005\001m\002l\001\350\340\255\326\001\003n\004l\001\347\340\255\326\001\005n\002\001\000\000",
+                38)});
+  }
+  {
+    CandidTypeGraph g = base;
+    r.check_encode(
+        101, std::string("serde.rs test_equivalent_types", 30), g, {7},
+        ComplianceInput{false, std::string("(record { typea = null })", 25)},
+        [&] {
+          CandidArgs A;
+          A.append(CandidTypeValue(
+              g, 7, cv(g, 7, std::string("record { 449540199 = null; }", 28))));
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\004l\001\347\340\255\326\001\001n\002l\001\350\340\255\326\001\003n\000\001\000\000",
+                28)});
+  }
+  {
+    CandidTypeGraph g = base;
+    r.check_encode(
+        102, std::string("serde.rs test_mutual_recursion", 30), g, {3},
+        ComplianceInput{false, std::string("(null)", 6)},
+        [&] {
+          CandidArgs A;
+          A.append(CandidTypeValue(g, 3, cv(g, 3, std::string("null", 4))));
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\002n\001l\002\240\322\254\250\004|\220\355\332\347\004\000\001\000\000",
+                24)});
   }
 }

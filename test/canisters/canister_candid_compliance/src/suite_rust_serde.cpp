@@ -5,28 +5,23 @@
 
 void suite_rust_serde(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_record({{1158359328u, -4}, {1291237008u, 17}}));
-  base.add(cn_opt(2));
-  base.add(cn_record({{1158359328u, -4}, {1291237008u, 1}}));
-  base.add(cn_record({{449540200u, 18}}));
-  base.add(cn_record({{449540199u, 19}}));
-  base.add(cn_record({{1463216684u, 20}}));
-  base.add(cn_service({{std::string("next", 4), 21}}));
-  base.add(cn_variant({{3303859u, -2}, {3505894u, -1}}));
-  base.add(cn_variant({{3303859u, -2}, {3303867u, -2}, {3505894u, -1}}));
-  base.add(cn_record({{4895187u, -2}, {4895195u, 22}}));
-  base.add(cn_record({{4895187u, -2}, {4895195u, 24}, {5097222u, 23}}));
-  base.add(cn_variant({{3303859u, -1}, {3505894u, -1}}));
-  base.add(cn_variant({{3303859u, -1}, {3303867u, -1}, {3505894u, -1}}));
-  base.add(cn_record({{4895187u, -2}, {5097222u, -11}}));
-  base.add(cn_record({{4895171u, 13},
-                      {4895187u, -2},
-                      {4895195u, -7},
-                      {4895394u, -7},
-                      {4896955u, 11},
-                      {5097222u, -11}}));
-  base.add(cn_variant({{3303859u, -1}, {3505894u, -1}}));
-  base.add(cn_variant({{3303859u, 25}, {3303867u, 26}, {3505894u, -1}}));
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
   base.add(cn_opt(0));
   base.add(cn_opt(4));
   base.add(cn_opt(3));
@@ -37,6 +32,28 @@ void suite_rust_serde(ComplianceRunner &r) {
   base.add(cn_opt(8));
   base.add(cn_record({{0u, -2}, {1u, -4}}));
   base.add(cn_record({{97u, -4}, {98u, -3}}));
+  base.define(0, cn_record({{1158359328u, -4}, {1291237008u, 17}}));
+  base.define(1, cn_opt(2));
+  base.define(2, cn_record({{1158359328u, -4}, {1291237008u, 1}}));
+  base.define(3, cn_record({{449540200u, 18}}));
+  base.define(4, cn_record({{449540199u, 19}}));
+  base.define(5, cn_record({{1463216684u, 20}}));
+  base.define(6, cn_service({{std::string("next", 4), 21}}));
+  base.define(7, cn_variant({{3303859u, -2}, {3505894u, -1}}));
+  base.define(8, cn_variant({{3303859u, -2}, {3303867u, -2}, {3505894u, -1}}));
+  base.define(9, cn_record({{4895187u, -2}, {4895195u, 22}}));
+  base.define(10, cn_record({{4895187u, -2}, {4895195u, 24}, {5097222u, 23}}));
+  base.define(11, cn_variant({{3303859u, -1}, {3505894u, -1}}));
+  base.define(12, cn_variant({{3303859u, -1}, {3303867u, -1}, {3505894u, -1}}));
+  base.define(13, cn_record({{4895187u, -2}, {5097222u, -11}}));
+  base.define(14, cn_record({{4895171u, 13},
+                             {4895187u, -2},
+                             {4895195u, -7},
+                             {4895394u, -7},
+                             {4896955u, 11},
+                             {5097222u, -11}}));
+  base.define(15, cn_variant({{3303859u, -1}, {3505894u, -1}}));
+  base.define(16, cn_variant({{3303859u, 25}, {3303867u, 26}, {3505894u, -1}}));
   {
     CandidTypeGraph g = base;
     r.check(29,

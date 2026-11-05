@@ -4,6 +4,8 @@
 
 #include <utility>
 
+#include "icpp_hooks.h"
+
 static bool parse_input(const ComplianceInput &in, const CandidTypeGraph &g,
                         const std::vector<int> &args,
                         std::vector<CandidValue> &out, std::string &err) {
@@ -173,4 +175,13 @@ CandidGraphNode cn_service(std::vector<CandidGraphMethod> methods) {
   n.kind = CandidKind::Service;
   n.methods = std::move(methods);
   return n;
+}
+
+CandidValue cv(const CandidTypeGraph &g, int t, const std::string &text) {
+  std::vector<CandidValue> v;
+  std::string err;
+  if (!CandidTextValue::parse("(" + text + ")", g, {t}, v, err))
+    ICPP_HOOKS::trap("ERROR: cv - the value " + text +
+                     " does not parse: " + err);
+  return v[0];
 }

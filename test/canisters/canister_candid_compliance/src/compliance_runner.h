@@ -83,3 +83,6 @@ CandidGraphNode cn_variant(std::vector<CandidGraphField> fields);
 CandidGraphNode cn_func(std::vector<int> args, std::vector<int> rets,
                         std::vector<uint8_t> modes);
 CandidGraphNode cn_service(std::vector<CandidGraphMethod> methods);
+// The value of type t of g that the text holds, for a CandidTypeValue; traps
+// if it does not parse
+CandidValue cv(const CandidTypeGraph &g, int t, const std::string &text);

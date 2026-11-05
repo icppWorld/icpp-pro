@@ -5,9 +5,11 @@
 
 void suite_motoko_idl_vector(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_vec(0));
-  base.add(cn_opt(2));
+  base.reserve();
+  base.reserve();
   base.add(cn_vec(1));
+  base.define(0, cn_vec(0));
+  base.define(1, cn_opt(2));
   {
     CandidTypeGraph g = base;
     r.check(

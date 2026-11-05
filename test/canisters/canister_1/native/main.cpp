@@ -887,8 +887,8 @@ int main() {
   mockIC.run_test(
       "roundtrip_vec_variant 2", roundtrip_vec_variant,
       "4449444c046b0299d8ddf2087fd8a7f6ae0b7f6b006b0299d8ddf2087fd8a7f6ae0b7f6d02010303000100",
-      "4449444c026d016b0299d8ddf2087fd8a7f6ae0b7f010003000100",
-      silent_on_trap, my_principal);
+      "4449444c026d016b0299d8ddf2087fd8a7f6ae0b7f010003000100", silent_on_trap,
+      my_principal);
 
   // vec record { "principal": text; role: variant { AdminQuery; AdminUpdate }; assignedBy: text; assignedAt: nat64; note: text }
   // Tests the complex type pattern used in llama_cpp_canister's getAdminRoles

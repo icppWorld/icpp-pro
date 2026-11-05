@@ -11,7 +11,11 @@
 #include "candid_bigint.h"
 #include "candid_decoder.h"
 #include "candid_encoder.h"
+#include "candid_deserialize.h"
+#include "candid_serialize.h"
 #include "candid_text_value.h"
+#include "candid_type.h"
+#include "candid_type_all_includes.h"
 #include "ic_api.h"
 
 namespace {
@@ -251,8 +255,8 @@ __attribute__((noinline)) void test_tables() {
   {
     CandidTypeGraph g;
     int inner = g.record({{h("a"), prim(CandidKind::Int)}});
-    int rec = g.record(
-        {{h("a"), prim(CandidKind::Int)}, {h("b"), g.vec(inner)}});
+    int rec =
+        g.record({{h("a"), prim(CandidKind::Int)}, {h("b"), g.vec(inner)}});
     check_encode("an entry is numbered before its children", g, {g.vec(rec)},
                  "(vec {record{a=1; b=vec{record{a=2}}}})",
                  "4449444c046d016c02617c62026d036c01617c010001010102");
@@ -271,13 +275,14 @@ __attribute__((noinline)) void test_tables() {
     int s = g.service({{"b", fb}, {"a", fa}});
     int v = g.variant(
         {{h("x"), prim(CandidKind::Null)}, {h("y"), prim(CandidKind::Text)}});
-    check_encode("service, vec int8, variant, int, nat", g,
-                 {s, g.vec(prim(CandidKind::Int8)), v, prim(CandidKind::Int),
-                  prim(CandidKind::Nat)},
-                 "(service \"aaaaa-aa\", vec {1;-2}, variant {y=\"h\xc3\xa9\"}, "
-                 "-123456, 624485)",
-                 "4449444c0569020161010162026a0171017d01016a017d00006d776b0278"
-                 "7f7971050003047c7d01000201fe010368c3a9c0bb78e58e26");
+    check_encode(
+        "service, vec int8, variant, int, nat", g,
+        {s, g.vec(prim(CandidKind::Int8)), v, prim(CandidKind::Int),
+         prim(CandidKind::Nat)},
+        "(service \"aaaaa-aa\", vec {1;-2}, variant {y=\"h\xc3\xa9\"}, "
+        "-123456, 624485)",
+        "4449444c0569020161010162026a0171017d01016a017d00006d776b0278"
+        "7f7971050003047c7d01000201fe010368c3a9c0bb78e58e26");
   }
   {
     CandidTypeGraph g;
@@ -399,6 +404,108 @@ __attribute__((noinline)) void test_value_checks() {
         "one type and no values is refused");
 }
 
+// type List = opt record { head : int; tail : List }
+int make_opt_list(CandidTypeGraph &g) {
+  int list = g.reserve();
+  int rec = g.record({{h("head"), prim(CandidKind::Int)}, {h("tail"), list}});
+  CandidGraphNode n;
+  n.kind = CandidKind::Opt;
+  n.inner = rec;
+  g.define(list, n);
+  return list;
+}
+
+CandidValue value_of(const CandidTypeGraph &g, int t, const std::string &text) {
+  std::vector<CandidValue> v;
+  std::string err;
+  check(CandidTextValue::parse("(" + text + ")", g, {t}, v, err),
+        "parse " + text + ": " + err);
+  return v[0];
+}
+
+// The typed API with a recursive type: CandidTypeValue. Bytes of didc 0.6.2,
+// `didc encode -d list.did`, with list.did the type List above
+__attribute__((noinline)) void test_candid_type_value() {
+  CandidTypeGraph g;
+  int list = make_opt_list(g);
+  const std::string one = "opt record {head = 1; tail = null}";
+  auto hex_of = [](const CandidArgs &A) {
+    return CandidSerialize(A).as_hex_string();
+  };
+  {
+    CandidArgs A;
+    A.append(CandidTypeValue{g, list,
+                             value_of(g, list,
+                                      "opt record {head = 1; tail = opt record "
+                                      "{head = 2; tail = null}}")});
+    check(hex_of(A) ==
+              "4449444c026e016c02a0d2aca8047c90eddae7040001000101010200",
+          "CandidTypeValue: an argument");
+  }
+  {
+    // Two values of one type: one type table entry
+    CandidArgs A;
+    A.append(CandidTypeValue{g, list, value_of(g, list, "null")});
+    A.append(CandidTypeValue{g, list,
+                             value_of(g, list,
+                                      "opt record {head = 2; tail = "
+                                      "null}")});
+    check(hex_of(A) ==
+              "4449444c026e016c02a0d2aca8047c90eddae7040002000000010200",
+          "CandidTypeValue: two arguments of one type");
+  }
+  {
+    CandidTypeRecord r;
+    r.append("l", CandidTypeValue{g, list, value_of(g, list, one)});
+    r.append("n", CandidTypeNat{__uint128_t(7)});
+    CandidArgs A;
+    A.append(r);
+    check(hex_of(A) ==
+              "4449444c036c026c016e7d6e026c02a0d2aca8047c90eddae7040101000101"
+              "0007",
+          "CandidTypeValue: a record field");
+  }
+  {
+    CandidArgs A;
+    A.append(
+        CandidTypeVecOf{CandidTypeValue{g, list},
+                        {CandidTypeValue{g, list, value_of(g, list, one)},
+                         CandidTypeValue{g, list, value_of(g, list, "null")}}});
+    check(hex_of(A) ==
+              "4449444c036d016e026c02a0d2aca8047c90eddae7040101000201010000",
+          "CandidTypeValue: the elements of a vec");
+  }
+  {
+    CandidArgs A;
+    A.append(CandidTypeOptOf{CandidTypeValue{g, list},
+                             CandidTypeValue{g, list, value_of(g, list, one)}});
+    check(hex_of(A) ==
+              "4449444c036e016e026c02a0d2aca8047c90eddae70401010001010100",
+          "CandidTypeValue: in an opt");
+  }
+  {
+    // Decoding: the value goes where the pointer points
+    CandidValue v;
+    CandidArgs A;
+    A.append(CandidTypeValue{g, list, &v});
+    CandidDeserialize(
+        std::string("4449444c026e016c02a0d2aca8047c90eddae7040001000101010200"),
+        A);
+    check(v == value_of(g, list,
+                        "opt record {head = 1; tail = opt record {head = 2; "
+                        "tail = null}}"),
+          "CandidTypeValue: decoded");
+  }
+  {
+    // Only a type: no value to send
+    CandidTypeValue t{g, list};
+    check(!t.has_M(), "CandidTypeValue: a type only has no value");
+    CandidTypeRecord r;
+    r.append("l", t);
+    check(!r.has_M(), "CandidTypeValue: nor has a record that holds it");
+  }
+}
+
 } // namespace
 
 int unit_test_candid_encoder() {
@@ -406,5 +513,6 @@ int unit_test_candid_encoder() {
   test_recursive();
   test_tables();
   test_value_checks();
+  test_candid_type_value();
   return 0;
 }

@@ -5,20 +5,32 @@
 
 void suite_motoko_encode(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_func({}, {}, {2}));
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.add(cn_opt(1));
+  base.add(cn_vec(4));
+  base.define(0, cn_func({}, {}, {2}));
+  base.define(1, cn_func({-4}, {1}, {}));
+  base.define(2, cn_func({}, {5}, {1}));
+  base.define(
+      3, cn_variant({{5095893u, 3}, {1202718727u, -7}, {3915647964u, -7}}));
+  base.define(4, cn_opt(6));
   {
     CandidTypeGraph g = base;
     g.add(cn_record({{0u, -4}, {1u, -3}, {641597244u, -15}}));
     r.check_encode(
-        17, std::string("idl-field-escape.mo out reply", 29), g, {1},
+        17, std::string("idl-field-escape.mo out reply", 29), g, {7},
         ComplianceInput{
             false,
             std::string(
                 "(record { 0 = 65535; 1 = 4096; \042async\042 = \042XXX\042 })",
                 49)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(0u, CandidTypeInt(__int128_t(__uint128_t(65535ULL))));
             r.append(1u, CandidTypeNat(__uint128_t(4096ULL)));
@@ -37,11 +49,11 @@ void suite_motoko_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{5097222u, -1}}));
     r.check_encode(
-        18, std::string("idl-field-escape.mo foo1/foo2 reply", 35), g, {1},
+        18, std::string("idl-field-escape.mo foo1/foo2 reply", 35), g, {7},
         ComplianceInput{false, std::string("(record { foo = null })", 23)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(5097222u, CandidTypeNull());
             return r;
@@ -57,7 +69,7 @@ void suite_motoko_encode(ComplianceRunner &r) {
     r.check_encode(
         19, std::string("idl-float32.mo echo reply", 25), g, {-13},
         ComplianceInput{false, std::string("(1.5)", 5)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeFloat32(1.5f));
           return CandidSerialize(A).get_B();
@@ -70,7 +82,7 @@ void suite_motoko_encode(ComplianceRunner &r) {
     r.check_encode(
         20, std::string("idl-float32.mo lit reply", 24), g, {-13},
         ComplianceInput{false, std::string("(3.14)", 6)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeFloat32(3.14f));
           return CandidSerialize(A).get_B();
@@ -82,7 +94,7 @@ void suite_motoko_encode(ComplianceRunner &r) {
     r.check_encode(
         21, std::string("idl-float32.mo to_f64 reply", 27), g, {-14},
         ComplianceInput{false, std::string("(1.5)", 5)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeFloat64(1.5));
           return CandidSerialize(A).get_B();
@@ -100,9 +112,9 @@ void suite_motoko_encode(ComplianceRunner &r) {
             std::string(
                 "(func \042rwlgt-iiaaa-aaaaa-aaaaa-cai\042.\042oneway\042)",
                 45)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeFunc f{
                 CandidTypePrincipal(std::string("rwlgt-iiaaa-aaaaa-aaaaa-cai")),
                 std::string("oneway", 6)};
@@ -122,7 +134,7 @@ void suite_motoko_encode(ComplianceRunner &r) {
     r.check_encode(
         23, std::string("idl-nary.mo two reply", 21), g, {-15, -15},
         ComplianceInput{false, std::string("(\042One\042, \042Two\042)", 14)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeText(std::string("One", 3)));
           A.append(CandidTypeText(std::string("Two", 3)));
@@ -137,7 +149,7 @@ void suite_motoko_encode(ComplianceRunner &r) {
         ComplianceInput{
             false,
             std::string("(\042One\042, \042Two\042, \042Three\042)", 23)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeText(std::string("One", 3)));
           A.append(CandidTypeText(std::string("Two", 3)));
@@ -155,7 +167,7 @@ void suite_motoko_encode(ComplianceRunner &r) {
             false,
             std::string(
                 "(\042One\042, \042Two\042, \042Three\042, \042Four\042)", 31)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeText(std::string("One", 3)));
           A.append(CandidTypeText(std::string("Two", 3)));
@@ -171,15 +183,15 @@ void suite_motoko_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{0u, -15}, {1u, -15}, {2u, -15}, {3u, -15}}));
     r.check_encode(
-        26, std::string("idl-nary.mo mkRecord / unary reply", 34), g, {1},
+        26, std::string("idl-nary.mo mkRecord / unary reply", 34), g, {7},
         ComplianceInput{
             false,
             std::string(
                 "(record { \042One\042; \042Two\042; \042Three\042; \042Four\042 })",
                 42)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(0u, CandidTypeText(std::string("One", 3)));
             r.append(1u, CandidTypeText(std::string("Two", 3)));
@@ -199,9 +211,9 @@ void suite_motoko_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_vec(-3));
     r.check_encode(
-        27, std::string("idl-nat-int.mo absolutes reply", 30), g, {1},
+        27, std::string("idl-nat-int.mo absolutes reply", 30), g, {7},
         ComplianceInput{false, std::string("(vec { 42; 25 })", 16)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeVecNat(std::vector<__uint128_t>{
               __uint128_t(42ULL), __uint128_t(25ULL)}));
@@ -213,11 +225,11 @@ void suite_motoko_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{0u, -4}, {1u, -4}}));
     r.check_encode(
-        28, std::string("idl-pair.mo len2 reply", 22), g, {1},
+        28, std::string("idl-pair.mo len2 reply", 22), g, {7},
         ComplianceInput{false, std::string("(record { 2; 5 })", 17)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(0u, CandidTypeInt(__int128_t(__uint128_t(2ULL))));
             r.append(1u, CandidTypeInt(__int128_t(__uint128_t(5ULL))));
@@ -232,10 +244,10 @@ void suite_motoko_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_opt(-24));
     r.check_encode(
-        29, std::string("idl-principal.mo fun2 reply", 27), g, {1},
+        29, std::string("idl-principal.mo fun2 reply", 27), g, {7},
         ComplianceInput{
             false, std::string("(opt principal \042w7x7r-cok77-xa\042)", 32)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeOptPrincipal(
               std::optional<std::string>(std::string("w7x7r-cok77-xa"))));
@@ -250,7 +262,7 @@ void suite_motoko_encode(ComplianceRunner &r) {
     r.check_encode(
         30, std::string("idl-record.mo record2 reply", 27), g, {-9},
         ComplianceInput{false, std::string("(25)", 4)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt8(int8_t(25ULL)));
           return CandidSerialize(A).get_B();
@@ -261,11 +273,11 @@ void suite_motoko_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_variant({{5493713u, -1}}));
     r.check_encode(
-        31, std::string("idl-shorthand.mo foo reply", 26), g, {1},
+        31, std::string("idl-shorthand.mo foo reply", 26), g, {7},
         ComplianceInput{false, std::string("(variant { nil })", 17)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeVariant v(std::string("nil", 3));
             v.append(std::string("nil", 3), CandidTypeNull());
             return v;
@@ -281,7 +293,7 @@ void suite_motoko_encode(ComplianceRunner &r) {
     r.check_encode(
         32, std::string("idl-tuple.mo len2 reply", 23), g, {-4, -4},
         ComplianceInput{false, std::string("(2, 5)", 6)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt(__int128_t(__uint128_t(2ULL))));
           A.append(CandidTypeInt(__int128_t(__uint128_t(5ULL))));
@@ -294,7 +306,7 @@ void suite_motoko_encode(ComplianceRunner &r) {
     r.check_encode(
         33, std::string("idl-tuple.mo len3 reply", 23), g, {-4, -4, -4},
         ComplianceInput{false, std::string("(5, 5, 67305985)", 16)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeInt(__int128_t(__uint128_t(5ULL))));
           A.append(CandidTypeInt(__int128_t(__uint128_t(5ULL))));
@@ -303,5 +315,94 @@ void suite_motoko_encode(ComplianceRunner &r) {
         },
         ComplianceInput{
             true, std::string("DIDL\000\003|||\005\005\201\204\214 ", 15)});
+  }
+  {
+    CandidTypeGraph g = base;
+    g.add(cn_opt(1));
+    r.check_encode(
+        35, std::string("idl-func.mo fun reply", 21), g, {7},
+        ComplianceInput{false, std::string("(null)", 6)},
+        [&] {
+          CandidArgs A;
+          A.append(CandidTypeOptOf(CandidTypeValue(g, 1)));
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string("DIDL\002n\001j\001|\001\001\000\001\000\000", 16)});
+  }
+  {
+    CandidTypeGraph g = base;
+    r.check_encode(
+        36, std::string("idl-func.mo fun3 reply", 22), g, {2},
+        ComplianceInput{
+            false,
+            std::string(
+                "(func \042rwlgt-iiaaa-aaaaa-aaaaa-cai\042.\042fun\042)", 42)},
+        [&] {
+          CandidArgs A;
+          A.append([&] {
+            CandidTypeFunc f{
+                CandidTypePrincipal(std::string("rwlgt-iiaaa-aaaaa-aaaaa-cai")),
+                std::string("fun", 3)};
+            f.append_ret(CandidTypeOptOf(CandidTypeValue(g, 1)));
+            f.set_query();
+            return f;
+          }());
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\003j\000\001\001\001\001n\002j\001|\001\002\000\001\000\001\001\012\000\000\000\000\000\000\000\000\001\001\003fun",
+                38)});
+  }
+  {
+    CandidTypeGraph g = base;
+    r.check_encode(
+        37, std::string("idl-variant.mo numify reply", 27), g, {3},
+        ComplianceInput{
+            false,
+            std::string("(variant { fix = variant { left = 32 } })", 41)},
+        [&] {
+          CandidArgs A;
+          A.append(CandidTypeValue(
+              g, 3,
+              cv(g, 3,
+                 std::string(
+                     "variant { 5095893 = variant { 1202718727 = 32 } }",
+                     49))));
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\001k\003\325\203\267\002\000\207\220\300\275\004y\334\227\220\313\016y\001\000\000\001 \000\000\000",
+                32)});
+  }
+  {
+    CandidTypeGraph g = base;
+    r.check_encode(
+        38, std::string("idl-vector.mo rose reply", 24), g, {4},
+        ComplianceInput{
+            false,
+            std::string(
+                "(opt vec { opt vec {}; opt vec { opt vec {}; opt vec { opt vec {}; opt vec {} }; opt vec {}; opt vec {} }; opt vec {} })",
+                120)},
+        [&] {
+          CandidArgs A;
+          A.append(CandidTypeValue(
+              g, 4,
+              cv(g, 4,
+                 std::string(
+                     "opt vec { opt vec { }; opt vec { opt vec { }; opt vec { opt vec { }; opt vec { }; }; opt vec { }; opt vec { }; }; opt vec { }; }",
+                     128))));
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\002n\001m\000\001\000\001\003\001\000\001\004\001\000\001\002\001\000\001\000\001\000\001\000\001\000",
+                31)});
   }
 }

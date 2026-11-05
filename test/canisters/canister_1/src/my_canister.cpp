@@ -7,6 +7,7 @@
 
 #include "ic_api.h"
 #include "unit_test_candid.h"
+#include "unit_test_candid_encoder.h"
 #include "unit_test_getenv.h"
 #include "unit_test_ic_api.h"
 #include "unit_test_vendors.h"
@@ -28,6 +29,7 @@ void test_candid() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   int result = 0;
   result = std::max(result, unit_test_candid());
+  result = std::max(result, unit_test_candid_encoder());
   ic_api.to_wire(CandidTypeInt{result});
 }
 

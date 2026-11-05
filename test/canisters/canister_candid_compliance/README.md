@@ -8,7 +8,7 @@ Every assert must pass.
 
 The `encode.test.did` files hold the encode vectors of those corpora: a value
 is encoded with the typed API (`CandidType*` and `CandidSerialize`), and must
-have exactly the reference encoding's types and decode to the same values.
+be the reference encoding, byte for byte.
 
 | Source            | Version                                                                                         |
 |-------------------|-------------------------------------------------------------------------------------------------|

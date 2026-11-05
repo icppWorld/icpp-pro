@@ -15,8 +15,9 @@ ported Rust and Motoko corpora add one form of our own, for encoding:
     assert "(<value>)" encode blob "DIDL..." : (<types>) "<description>";
 
 The value is encoded with icpp-candid's typed API (CandidType* classes and
-CandidSerialize), and the result must be valid Candid of the same types as the
-reference encoding, decoding to the same values.
+CandidSerialize), and the result must be the reference encoding, byte for
+byte: the same types and values, and the type table in the order Rust's
+encoder and didc write it.
 
 This script reads them, builds each assert's expected types as a Candid type
 graph (named types included, so recursion works), and writes one C++ file per

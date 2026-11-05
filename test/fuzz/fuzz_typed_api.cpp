@@ -10,7 +10,6 @@
 
 #include "candid_args.h"
 #include "candid_deserialize.h"
-#include "candid_serialize_type_table_registry.h"
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
 #include "vec_bytes.h"
@@ -116,7 +115,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   VecBytes B;
   B.append_bytes(data + 1, uint32_t(size - 1));
 
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   Vars v;
   MemoryOracle::start();
   try {
@@ -126,6 +124,5 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     // A rejected message
   }
   MemoryOracle::check(size, "CandidDeserialize");
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   return 0;
 }

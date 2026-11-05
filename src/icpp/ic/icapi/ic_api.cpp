@@ -459,14 +459,14 @@ __uint128_t IC_API::cost_http_request_v2(const HttpOutcallCostParams &params) {
                     CandidTypeNat32{params.flexible_counts->max_responses});
       outcall_type = CandidTypeVariant{"flexible", CandidTypeOptRecord{counts}};
     } else {
-      // opt record { ... } without a value: the IC's default counts
+      // opt record { ... } without a value (null): the IC's default counts.
+      // CandidTypeOptRecord always encodes a value, so CandidTypeOptOf.
       CandidTypeRecord counts;
       counts.append("total_requests", CandidTypeNat32{});
       counts.append("min_responses", CandidTypeNat32{});
       counts.append("max_responses", CandidTypeNat32{});
-      bool has_counts{false};
-      outcall_type = CandidTypeVariant{
-          "flexible", CandidTypeOptRecord{&counts, &has_counts}};
+      outcall_type =
+          CandidTypeVariant{"flexible", CandidTypeOptOf{counts}};
     }
     break;
   }

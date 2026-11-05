@@ -1088,6 +1088,14 @@ int main() {
     check(mockIC.last_call_cycles("aaaaa-aa", "flexible_http_request") ==
               budget(IC_API::HttpOutcallType::Flexible, std::nullopt),
           "flexible_http_request: the cycles, no replication");
+    // Without counts, the cost call sends the flexible type's opt record as
+    // null, and the Mock IC prices it on the whole subnet, as a fully
+    // replicated outcall (before 7.1.0rc2 it sent counts of 0: a cost of 0)
+    check(budget(IC_API::HttpOutcallType::Flexible, std::nullopt) ==
+                  budget(IC_API::HttpOutcallType::FullyReplicated,
+                         std::nullopt) &&
+              budget(IC_API::HttpOutcallType::Flexible, std::nullopt) > 0,
+          "cost_http_request_v2: flexible without counts, the default");
   }
   {
     // flexible_http_request: err, with every kind of global error and of

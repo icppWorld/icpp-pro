@@ -1,0 +1,52 @@
+/*
+Ported from dfinity/candid@572c80a rust/candid/tests/compatibility_numbers.rs,
+compatibility_records.rs and compatibility_vectors.rs. Roundtrips: bytes from didc.
+*/
+
+// compatibility_numbers.rs number_fast_paths_preserve_small_and_large_values
+assert blob "DIDL\01\6d\7d\01\00\04\00\2a\ff\ff\ff\ff\ff\ff\ff\ff\ff\01\ef\9b\af\85\89\cf\95\9a\92\80\b7\de\8a\92\9e\ab\b4\24" == "(vec { 0; 42; 18446744073709551615; 24197857200151251861972493965091130863 })" : (vec nat) "compatibility_numbers.rs number_fast_paths_preserve_small_and_large_values: (vec { 0; 42; 18446744073709551615; 24197857200151251861972493965091130863 }) round-trips";
+assert blob "DIDL\01\6d\7c\01\00\07\00\7f\2a\80\80\80\80\80\80\80\80\80\7f\ff\ff\ff\ff\ff\ff\ff\ff\ff\00\ef\9b\af\85\89\cf\95\9a\92\80\b7\de\8a\92\9e\ab\b4\24\80\80\80\80\80\92\a8\e9\fa\e5\bb\a1\f5\e9\ed\b8\8c\7f" == "(vec { 0; -1; 42; -9223372036854775808; 9223372036854775807; 24197857200151251861972493965091130863; -600000000000000000000000000000000000 })" : (vec int) "compatibility_numbers.rs number_fast_paths_preserve_small_and_large_values: (vec { 0; -1; 42; -9223372036854775808; 9223372036854775807; 24197857200151251861972493965091130863; -600000000000000000000000000000000000 }) round-trips";
+
+// compatibility_numbers.rs nat_decode_fast_path_boundaries
+assert blob "DIDL\00\01\7d\80\80\80\80\80\80\80\80\80\02" == "(18446744073709551616)" : (nat) "compatibility_numbers.rs nat_decode_fast_path_boundaries: (18446744073709551616) round-trips";
+assert blob "DIDL\00\01\7d\ff\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(18446744073709551615)" : (nat) "compatibility_numbers.rs nat_decode_fast_path_boundaries: (18446744073709551615) round-trips";
+assert blob "DIDL\00\01\7d\fe\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(18446744073709551614)" : (nat) "compatibility_numbers.rs nat_decode_fast_path_boundaries: (18446744073709551614) round-trips";
+assert blob "DIDL\00\01\7d\fd\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(18446744073709551613)" : (nat) "compatibility_numbers.rs nat_decode_fast_path_boundaries: (18446744073709551613) round-trips";
+assert blob "DIDL\00\01\7d\fc\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(18446744073709551612)" : (nat) "compatibility_numbers.rs nat_decode_fast_path_boundaries: (18446744073709551612) round-trips";
+assert blob "DIDL\00\01\7d\fb\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(18446744073709551611)" : (nat) "compatibility_numbers.rs nat_decode_fast_path_boundaries: (18446744073709551611) round-trips";
+assert blob "DIDL\00\01\7d\fa\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(18446744073709551610)" : (nat) "compatibility_numbers.rs nat_decode_fast_path_boundaries: (18446744073709551610) round-trips";
+assert blob "DIDL\00\01\7d\f9\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(18446744073709551609)" : (nat) "compatibility_numbers.rs nat_decode_fast_path_boundaries: (18446744073709551609) round-trips";
+assert blob "DIDL\00\01\7d\f8\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(18446744073709551608)" : (nat) "compatibility_numbers.rs nat_decode_fast_path_boundaries: (18446744073709551608) round-trips";
+assert blob "DIDL\00\01\7d\f7\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(18446744073709551607)" : (nat) "compatibility_numbers.rs nat_decode_fast_path_boundaries: (18446744073709551607) round-trips";
+
+// compatibility_numbers.rs int_decode_fast_path_boundaries
+assert blob "DIDL\00\01\7c\80\80\80\80\80\80\80\80\80\01" == "(9223372036854775808)" : (int) "compatibility_numbers.rs int_decode_fast_path_boundaries: (9223372036854775808) round-trips";
+assert blob "DIDL\00\01\7c\ff\ff\ff\ff\ff\ff\ff\ff\ff\7e" == "(-9223372036854775809)" : (int) "compatibility_numbers.rs int_decode_fast_path_boundaries: (-9223372036854775809) round-trips";
+
+// compatibility_records.rs record_vectors_remain_backward_and_forward_compatible
+assert blob "DIDL\02\6d\01\6c\02\db\b7\01\79\ac\97\f8\9d\04\7e\01\00\02\01\00\00\00\01\02\00\00\00\00" == "(vec { record { extra = null; id = 1; flag = true }; record { extra = null; id = 2; flag = false } })" : (vec record { extra : opt nat8; id : nat32; flag : bool }) "compatibility_records.rs record_vectors_remain_backward_and_forward_compatible: (vec { record { id = 1; flag = true }; record { id = 2; flag = false } }) : (vec record { id : nat32; flag : bool }) decodes at (vec record { extra : opt nat8; id : nat32; flag : bool }) to (vec { record { extra = null; id = 1; flag = true }; record { extra = null; id = 2; flag = false } })";
+assert blob "DIDL\03\6d\01\6c\03\db\b7\01\79\ac\97\f8\9d\04\7e\90\b5\8a\b9\07\02\6e\7b\01\00\02\01\00\00\00\01\01\0a\02\00\00\00\00\00" == "(vec { record { id = 1; flag = true }; record { id = 2; flag = false } })" : (vec record { id : nat32; flag : bool }) "compatibility_records.rs record_vectors_remain_backward_and_forward_compatible: (vec { record { extra = opt 10; id = 1; flag = true }; record { extra = null; id = 2; flag = false } }) : (vec record { extra : opt nat8; id : nat32; flag : bool }) decodes at (vec record { id : nat32; flag : bool }) to (vec { record { id = 1; flag = true }; record { id = 2; flag = false } })";
+
+// compatibility_vectors.rs primitive_vector_decode_stays_compatible_with_extra_args
+assert blob "DIDL\01\6d\76\02\00\7b\06\ff\ff\00\00\01\00\2a\00\00\80\ff\7f\7b" == "(vec { -1; 0; 1; 42; -32768; 32767 })" : (vec int16) "compatibility_vectors.rs primitive_vector_decode_stays_compatible_with_extra_args: decode only the first argument";
+assert blob "DIDL\01\6d\76\02\00\7b\06\ff\ff\00\00\01\00\2a\00\00\80\ff\7f\7b" == "(vec { -1; 0; 1; 42; -32768; 32767 }, 123)" : (vec int16, nat8) "compatibility_vectors.rs primitive_vector_decode_stays_compatible_with_extra_args: decode both arguments";
+
+// compatibility_vectors.rs nested_primitive_vector_decode
+assert blob "DIDL\02\6d\01\6d\76\01\00\03\02\01\00\02\00\00\03\03\00\00\80\ff\7f" == "(vec { vec { 1; 2 }; vec {}; vec { 3; -32768; 32767 } })" : (vec vec int16) "compatibility_vectors.rs nested_primitive_vector_decode: (vec { vec { 1; 2 }; vec {}; vec { 3; -32768; 32767 } }) round-trips";
+
+// compatibility_vectors.rs struct_with_primitive_vector_field
+assert blob "DIDL\02\6c\02\79\7b\fb\d1\01\01\6d\75\01\00\2a\03\01\00\00\00\ff\ff\ff\ff\ff\ff\ff\7f" == "(record { xs = vec { 1; -1; 2147483647 }; y = 42 })" : (record { xs : vec int32; y : nat8 }) "compatibility_vectors.rs struct_with_primitive_vector_field: (record { xs = vec { 1; -1; 2147483647 }; y = 42 }) round-trips";
+
+// compatibility_vectors.rs mismatched_rust_type_does_not_use_fast_path
+assert blob "DIDL\01\6d\7a\01\00\03\01\00\02\00\03\00" !: (vec nat32) "compatibility_vectors.rs mismatched_rust_type_does_not_use_fast_path: vec nat16 does not decode at vec nat32";
+
+// compatibility_vectors.rs bulk_encode_primitive_vectors_round_trip
+assert blob "DIDL\01\6d\7b\01\00\04\00\01\7f\ff" == "(vec { 0; 1; 127; 255 })" : (vec nat8) "compatibility_vectors.rs bulk_encode_primitive_vectors_round_trip: (vec { 0; 1; 127; 255 }) round-trips";
+assert blob "DIDL\01\6d\76\01\00\05\00\80\ff\ff\00\00\01\00\ff\7f" == "(vec { -32768; -1; 0; 1; 32767 })" : (vec int16) "compatibility_vectors.rs bulk_encode_primitive_vectors_round_trip: (vec { -32768; -1; 0; 1; 32767 }) round-trips";
+assert blob "DIDL\01\6d\79\01\00\03\00\00\00\00\01\00\00\00\ff\ff\ff\ff" == "(vec { 0; 1; 4294967295 })" : (vec nat32) "compatibility_vectors.rs bulk_encode_primitive_vectors_round_trip: (vec { 0; 1; 4294967295 }) round-trips";
+assert blob "DIDL\01\6d\72\01\00\04\00\00\00\00\00\00\00\00\00\00\00\00\00\00\f0\bf\00\00\00\00\00\00\f0\7f\00\00\00\00\00\00\f8\7f" : (vec float64) "compatibility_vectors.rs bulk_encode_primitive_vectors_round_trip: vec float64 { 0.0; -1.0; inf; nan } decodes";
+assert blob "DIDL\01\6d\7e\01\00\03\01\00\01" == "(vec { true; false; true })" : (vec bool) "compatibility_vectors.rs bulk_encode_primitive_vectors_round_trip: (vec { true; false; true }) round-trips";
+assert blob "DIDL\01\6d\75\01\00\00" == "(vec {})" : (vec int32) "compatibility_vectors.rs bulk_encode_primitive_vectors_round_trip: (vec {}) round-trips";
+
+// compatibility_vectors.rs primitive_vector_is_extra_args
+assert blob "DIDL\01\6d\76\02\7b\00\7b\03\01\00\02\00\03\00" == "(123)" : (nat8) "compatibility_vectors.rs primitive_vector_is_extra_args: trailing vec int16 argument is skipped";

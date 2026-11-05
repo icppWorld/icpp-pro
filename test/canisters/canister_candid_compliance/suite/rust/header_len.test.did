@@ -1,0 +1,24 @@
+/*
+Ported from dfinity/candid@572c80a rust/candid/tests/header_len.rs.
+Rust bounds the type-table header to 64 KiB by default; icpp-candid has no such bound,
+so only the tests whose outcome does not depend on it are ported, with the 100_000 byte
+padding of the originals cut down (the outcome does not depend on it).
+*/
+
+// header_len.rs malformed_headers_are_not_reported_as_oversized
+assert blob "DIDX\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00" !: () "header_len.rs malformed_headers_are_not_reported_as_oversized: bad magic DIDX";
+assert blob "DIDL\a0\9c\01\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00" !: () "header_len.rs malformed_headers_are_not_reported_as_oversized: type table of 20_000 entries (over the type table limit)";
+assert blob "DIDL\00\32" !: () "header_len.rs malformed_headers_are_not_reported_as_oversized: 50 arguments declared, none present";
+
+// header_len.rs a_huge_declared_count_allocates_nothing
+assert blob "DIDL\00\80\80\80\80\10\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00" !: () "header_len.rs a_huge_declared_count_allocates_nothing: 2^32 arguments declared";
+assert blob "DIDL\00\80\80\80\80\80\20\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00" !: () "header_len.rs a_huge_declared_count_allocates_nothing: 2^40 arguments declared";
+assert blob "DIDL\00\ff\ff\ff\ff\ff\ff\ff\ff\ff\01\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00" !: () "header_len.rs a_huge_declared_count_allocates_nothing: u64::MAX arguments declared";
+
+// header_len.rs a_header_truncated_mid_field_still_reports_the_bound (scaled down from 100_000 bytes to 10)
+assert blob "DIDL\01\69\01\0a\61\61\61\61\61\61\61\61\61\61\7f\01\00" !: () "header_len.rs a_header_truncated_mid_field_still_reports_the_bound: service method of type null";
+assert blob "DIDL\01\69\01\64\61\61\61\61\61\61\61\61\61\61" !: () "header_len.rs a_header_truncated_mid_field_still_reports_the_bound: method name declared 100 bytes, 10 present";
+assert blob "DIDL\01\50\64\00\00\00\00\00\00\00\00\00\00" !: () "header_len.rs a_header_truncated_mid_field_still_reports_the_bound: future type blob declared 100 bytes, 10 present";
+
+// header_len.rs realistic_headers_are_unaffected
+assert blob "DIDL\05\6c\07\c0\cf\f2\71\01\d7\e0\9b\90\02\02\80\ad\98\8a\04\01\ed\d9\c8\c9\07\04\f8\e2\87\cc\0c\01\de\eb\b5\a9\0e\01\a8\82\ac\c6\0f\01\6e\78\6e\03\6d\68\6e\7b\01\00\01\03\00\00\00\00\00\00\00\01\01\01\01\04\01\04\00\00\00\00\00\00\00\01\00\01\05\00\00\00\00\00\00\00\01\02\00\00\00\00\00\00\00\01\01\00\00\00\00\00\00\00" == "(record { controllers = opt vec { principal \"2vxsx-fae\" }; compute_allocation = opt 1; memory_allocation = opt 2; freezing_threshold = opt 3; reserved_cycles_limit = opt 4; wasm_memory_limit = opt 5; log_visibility = opt 0 })" : (record { controllers : opt vec principal; compute_allocation : opt nat64; memory_allocation : opt nat64; freezing_threshold : opt nat64; reserved_cycles_limit : opt nat64; wasm_memory_limit : opt nat64; log_visibility : opt nat8 }) "header_len.rs realistic_headers_are_unaffected: (record { controllers = opt vec { principal \"2vxsx-fae\" }; compute_allocation = opt 1; memory_allocation = opt 2; freezing_threshold = opt 3; reserved_cycles_limit = opt 4; wasm_memory_limit = opt 5; log_visibility = opt 0 }) round-trips";

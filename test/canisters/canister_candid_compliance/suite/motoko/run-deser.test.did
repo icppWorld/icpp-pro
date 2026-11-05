@@ -1,0 +1,14 @@
+/*
+Ported from dfinity/motoko test/run-deser/*.bin with their ok/*.ok output.
+`deser` decodes without expected types; here the wire types are the expected types.
+*/
+assert blob "DIDL\00\10\7b\7b\77\77\7a\7a\76\76\79\79\75\75\78\78\74\74\00\ff\80\7f\00\00\ff\ff\00\80\ff\7f\00\00\00\00\ff\ff\ff\ff\00\00\00\80\ff\ff\ff\7f\00\00\00\00\00\00\00\00\ff\ff\ff\ff\ff\ff\ff\ff\00\00\00\00\00\00\00\80\ff\ff\ff\ff\ff\ff\ff\7f" == "(0, 255, -128, 127, 0, 65535, -32768, 32767, 0, 4294967295, -2147483648, 2147483647, 0, 18446744073709551615, -9223372036854775808, 9223372036854775807)" : (nat8, nat8, int8, int8, nat16, nat16, int16, int16, nat32, nat32, int32, int32, nat64, nat64, int64, int64) "run-deser annot-lit.bin: fixed-width bounds";
+assert blob "DIDL\00\06\7d\7d\7d\7c\7c\7c\00\2a\ff\ff\ff\ff\ff\ff\ff\ff\ff\7f\00\2a\80\80\80\80\80\80\80\80\80\40" == "(0, 42, 1180591620717411303423, 0, 42, -590295810358705651712)" : (nat, nat, nat, int, int, int) "run-deser bignum.bin";
+assert blob "DIDL\00\05\71\71\71\71\71\03\4f\6e\65\03\54\77\6f\05\54\68\72\65\65\04\46\6f\75\72\04\46\69\76\65" == "(\"One\", \"Two\", \"Three\", \"Four\", \"Five\")" : (text, text, text, text, text) "run-deser five.bin";
+assert blob "DIDL\00\03\73\72\72\c3\f5\48\40\69\57\14\8b\0a\bf\05\40\00\00\00\00\00\00\f8\7f" : (float32, float64, float64) "run-deser float.bin: decodes (the third value is nan)";
+assert blob "DIDL\00\03\73\72\72\c3\f5\48\40\69\57\14\8b\0a\bf\05\40\00\00\00\00\00\00\f8\7f" == "(3.14, 2.718281828459045)" : (float32, float64) "run-deser float.bin: first two values";
+assert blob "DIDL\01\6a\00\00\00\01\00\01\01\0a\00\00\00\00\00\00\00\00\01\01\05\67\72\65\65\74" == "(func \"rwlgt-iiaaa-aaaaa-aaaaa-cai\".greet)" : (func () -> ()) "run-deser func.bin";
+assert blob "DIDL\01\66\02\ab\cd\02\00\71\04\00\de\ad\be\ef\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "run-deser future.bin: a future type value is skipped at reserved";
+assert blob "DIDL\01\66\02\ab\cd\02\00\71\04\00\de\ad\be\ef\03\46\6f\6f" == "(null, \"Foo\")" : (opt nat, text) "run-deser future.bin: a future type value decodes at opt as null";
+assert blob "DIDL\01\6d\68\01\00\03\01\00\01\01\04\01\0a\00\00\00\00\00\00\00\00\01\01" == "(vec { principal \"aaaaa-aa\"; principal \"2vxsx-fae\"; principal \"rwlgt-iiaaa-aaaaa-aaaaa-cai\" })" : (vec principal) "run-deser principal.bin";
+assert blob "DIDL\03\69\00\6a\00\00\00\69\01\04\70\69\6e\67\01\02\00\02\01\00\01\01\04" == "(service \"aaaaa-aa\", service \"2vxsx-fae\")" : (service {}, service { ping : () -> () }) "run-deser service.bin";

@@ -1,0 +1,347 @@
+/*
+Ported from dfinity/candid@572c80a rust/candid/tests/serde.rs.
+Rust types map to Candid types as the derive does: i32 -> int32, u64 -> nat64,
+Int -> int, Nat -> nat, () -> null, Reserved -> reserved, Option<T> -> opt T,
+Vec<T> -> vec T, tuples/tuple structs -> record { T; .. }, structs -> records,
+enums -> variants, maps -> vec record { K; V }.
+Encoding expectations from all_check are in encode.json; here they are decode asserts.
+*/
+
+type List = record { head : int; tail : opt List };
+type ListOpt = opt ListA;
+type ListA = record { head : int; tail : ListOpt };
+type TypeA = record { typeb : opt TypeB };
+type TypeB = record { typea : opt TypeA };
+type RootType = record { typeas : vec TypeA };
+type S = service { next : () -> (S) };
+type Old = variant { Foo; Bar : bool };
+type New = variant { Foo; Bar : bool; Baz : bool };
+type OldStruct = record { bar : bool; baz : opt Old };
+type NewStruct = record { foo : opt nat8; bar : bool; baz : opt New };
+type E1 = variant { Foo; Bar };
+type E2 = variant { Foo; Bar; Baz };
+type A1 = record { foo : int32; bar : bool };
+type A2 = record { foo : int32; bar : bool; baz : nat32; bbb : nat32; bib : E1; bab : A1 };
+type Unit = variant { Foo; Bar };
+type E = variant { Foo; Bar : record { bool; int }; Baz : record { a : int; b : nat } };
+
+// test_error
+assert blob "DID" !: (int32) "serde.rs test_error: io error (truncated magic)";
+assert blob "DIDL" !: (int32) "serde.rs test_error: no type table length";
+assert blob "DIDL\00\00" !: (int32) "serde.rs test_error: No more values on the wire";
+assert blob "DIDL\01\7c" !: (int32) "serde.rs test_error: primitive opcode in the type table is not a valid future type";
+assert blob "DIDL\02\6e\01\00" !: (int32) "serde.rs test_error: opcode 0 in the type table is not a valid future type (no infinite loop)";
+assert blob "DIDL\00\01\7e\01\01" !: (bool) "serde.rs test_error: Trailing value after finishing deserialization";
+assert blob "DIDL\00\01\00\01" !: (int32) "serde.rs test_error: type index 0 out of range";
+assert blob "DIDL\02\6c\01\0a\01\6d\00\01\01\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20\20" !: (reserved) "serde.rs test_error: vec record { vec .. } nested 452 bytes deep: recursion limit or skipping cost";
+
+// test_bool
+
+// test_integer
+assert blob "DIDL\00\01\7c\2a" == "(42)" : (int) "serde.rs test_integer: decodes to (42)";
+assert blob "DIDL\00\01\7d\2a" == "(42)" : (nat) "serde.rs test_integer: decodes to (42)";
+assert blob "DIDL\00\01\7c\d2\85\d8\cc\04" == "(1234567890)" : (int) "serde.rs test_integer: decodes to (1234567890)";
+assert blob "DIDL\00\01\7d\d2\85\d8\cc\04" == "(1234567890)" : (nat) "serde.rs test_integer: decodes to (1234567890)";
+assert blob "DIDL\00\01\7d\80\e4\97\d0\12" == "(5000000000)" : (nat) "serde.rs test_integer: decodes to (5000000000)";
+assert blob "DIDL\00\01\7c\ae\fa\a7\b3\7b" == "(-1234567890)" : (int) "serde.rs test_integer: decodes to (-1234567890)";
+assert blob "DIDL\00\01\7d\80\80\98\f4\e9\b5\ca\6a" == "(60000000000000000)" : (int) "serde.rs test_integer: nat 60000000000000000 decodes at int";
+assert blob "DIDL\00\01\7c\2a" !: (int64) "serde.rs test_integer: int does not decode at int64";
+
+// test_bignum_roundtrip_across_fast_path_boundary (roundtrips; bytes from didc)
+assert blob "DIDL\02\6c\01\d8\a3\8c\a8\0d\01\6e\7d\01\00\01\80\80\80\80\80\80\80\80\80\02" == "(record { amount = opt 18446744073709551616 })" : (record { amount : opt nat }) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (record { amount = opt 18446744073709551616 }) round-trips";
+assert blob "DIDL\00\01\7d\ff\ff\ff\ff\ff\ff\ff\ff\0f" == "(1152921504606846975)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (1152921504606846975) round-trips";
+assert blob "DIDL\00\01\7d\80\80\80\80\80\80\80\80\10" == "(1152921504606846976)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (1152921504606846976) round-trips";
+assert blob "DIDL\00\01\7d\81\80\80\80\80\80\80\80\10" == "(1152921504606846977)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (1152921504606846977) round-trips";
+assert blob "DIDL\00\01\7d\ff\ff\ff\ff\ff\ff\ff\ff\1f" == "(2305843009213693951)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (2305843009213693951) round-trips";
+assert blob "DIDL\00\01\7d\80\80\80\80\80\80\80\80\20" == "(2305843009213693952)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (2305843009213693952) round-trips";
+assert blob "DIDL\00\01\7d\81\80\80\80\80\80\80\80\20" == "(2305843009213693953)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (2305843009213693953) round-trips";
+assert blob "DIDL\00\01\7d\ff\ff\ff\ff\ff\ff\ff\ff\3f" == "(4611686018427387903)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (4611686018427387903) round-trips";
+assert blob "DIDL\00\01\7d\80\80\80\80\80\80\80\80\40" == "(4611686018427387904)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (4611686018427387904) round-trips";
+assert blob "DIDL\00\01\7d\81\80\80\80\80\80\80\80\40" == "(4611686018427387905)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (4611686018427387905) round-trips";
+assert blob "DIDL\00\01\7d\ff\ff\ff\ff\ff\ff\ff\ff\7f" == "(9223372036854775807)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (9223372036854775807) round-trips";
+assert blob "DIDL\00\01\7d\80\80\80\80\80\80\80\80\80\01" == "(9223372036854775808)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (9223372036854775808) round-trips";
+assert blob "DIDL\00\01\7d\81\80\80\80\80\80\80\80\80\01" == "(9223372036854775809)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (9223372036854775809) round-trips";
+assert blob "DIDL\00\01\7d\ff\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(18446744073709551615)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (18446744073709551615) round-trips";
+assert blob "DIDL\00\01\7d\80\80\80\80\80\80\80\80\80\02" == "(18446744073709551616)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (18446744073709551616) round-trips";
+assert blob "DIDL\00\01\7d\81\80\80\80\80\80\80\80\80\02" == "(18446744073709551617)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (18446744073709551617) round-trips";
+assert blob "DIDL\00\01\7d\ff\ff\ff\ff\ff\ff\ff\ff\ff\03" == "(36893488147419103231)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (36893488147419103231) round-trips";
+assert blob "DIDL\00\01\7d\80\80\80\80\80\80\80\80\80\04" == "(36893488147419103232)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (36893488147419103232) round-trips";
+assert blob "DIDL\00\01\7d\81\80\80\80\80\80\80\80\80\04" == "(36893488147419103233)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (36893488147419103233) round-trips";
+assert blob "DIDL\00\01\7d\ff\ff\ff\ff\ff\ff\ff\ff\ff\07" == "(73786976294838206463)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (73786976294838206463) round-trips";
+assert blob "DIDL\00\01\7d\80\80\80\80\80\80\80\80\80\08" == "(73786976294838206464)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (73786976294838206464) round-trips";
+assert blob "DIDL\00\01\7d\81\80\80\80\80\80\80\80\80\08" == "(73786976294838206465)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (73786976294838206465) round-trips";
+assert blob "DIDL\00\01\7d\ff\ff\ff\ff\ff\ff\ff\ff\ff\0f" == "(147573952589676412927)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (147573952589676412927) round-trips";
+assert blob "DIDL\00\01\7d\80\80\80\80\80\80\80\80\80\10" == "(147573952589676412928)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (147573952589676412928) round-trips";
+assert blob "DIDL\00\01\7d\81\80\80\80\80\80\80\80\80\10" == "(147573952589676412929)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (147573952589676412929) round-trips";
+assert blob "DIDL\00\01\7d\ff\ff\ff\ff\ff\ff\ff\ff\ff\1f" == "(295147905179352825855)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (295147905179352825855) round-trips";
+assert blob "DIDL\00\01\7d\80\80\80\80\80\80\80\80\80\20" == "(295147905179352825856)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (295147905179352825856) round-trips";
+assert blob "DIDL\00\01\7d\81\80\80\80\80\80\80\80\80\20" == "(295147905179352825857)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (295147905179352825857) round-trips";
+assert blob "DIDL\00\01\7d\f9\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\1b" == "(2381976568446569244243622252022377480185)" : (nat) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (2381976568446569244243622252022377480185) round-trips";
+assert blob "DIDL\00\01\7c\fe\ff\ff\ff\ff\ff\ff\ff\ff\00" == "(9223372036854775806)" : (int) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (9223372036854775806) round-trips";
+assert blob "DIDL\00\01\7c\ff\ff\ff\ff\ff\ff\ff\ff\ff\00" == "(9223372036854775807)" : (int) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (9223372036854775807) round-trips";
+assert blob "DIDL\00\01\7c\80\80\80\80\80\80\80\80\80\01" == "(9223372036854775808)" : (int) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (9223372036854775808) round-trips";
+assert blob "DIDL\00\01\7c\ff\ff\ff\ff\ff\ff\ff\ff\ff\7e" == "(-9223372036854775809)" : (int) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (-9223372036854775809) round-trips";
+assert blob "DIDL\00\01\7c\80\80\80\80\80\80\80\80\80\7f" == "(-9223372036854775808)" : (int) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (-9223372036854775808) round-trips";
+assert blob "DIDL\00\01\7c\81\80\80\80\80\80\80\80\80\7f" == "(-9223372036854775807)" : (int) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (-9223372036854775807) round-trips";
+assert blob "DIDL\00\01\7c\80\80\80\80\80\80\80\80\80\04" == "(36893488147419103232)" : (int) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (36893488147419103232) round-trips";
+assert blob "DIDL\00\01\7c\80\80\80\80\80\80\80\80\80\7c" == "(-36893488147419103232)" : (int) "serde.rs test_bignum_roundtrip_across_fast_path_boundary: (-36893488147419103232) round-trips";
+
+// test_int_decode_large_magnitude_roundtrip (roundtrips; bytes from didc)
+assert blob "DIDL\00\01\7c\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(170141183460469231731687303715884105727)" : (int) "serde.rs test_int_decode_large_magnitude_roundtrip: (170141183460469231731687303715884105727) round-trips";
+assert blob "DIDL\00\01\7c\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\7e" == "(-170141183460469231731687303715884105728)" : (int) "serde.rs test_int_decode_large_magnitude_roundtrip: (-170141183460469231731687303715884105728) round-trips";
+assert blob "DIDL\00\01\7c\fe\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\01" == "(170141183460469231731687303715884105726)" : (int) "serde.rs test_int_decode_large_magnitude_roundtrip: (170141183460469231731687303715884105726) round-trips";
+assert blob "DIDL\00\01\7c\81\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\7e" == "(-170141183460469231731687303715884105727)" : (int) "serde.rs test_int_decode_large_magnitude_roundtrip: (-170141183460469231731687303715884105727) round-trips";
+assert blob "DIDL\00\01\7c\80\80\80\80\80\80\80\80\80\80\80\80\80\80\04" == "(1267650600228229401496703205376)" : (int) "serde.rs test_int_decode_large_magnitude_roundtrip: (1267650600228229401496703205376) round-trips";
+assert blob "DIDL\00\01\7c\80\80\80\80\80\80\80\80\80\80\80\80\80\80\7c" == "(-1267650600228229401496703205376)" : (int) "serde.rs test_int_decode_large_magnitude_roundtrip: (-1267650600228229401496703205376) round-trips";
+assert blob "DIDL\00\01\7c\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\00" == "(85070591730234615865843651857942052863)" : (int) "serde.rs test_int_decode_large_magnitude_roundtrip: (85070591730234615865843651857942052863) round-trips";
+assert blob "DIDL\00\01\7c\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\7f" == "(-85070591730234615865843651857942052864)" : (int) "serde.rs test_int_decode_large_magnitude_roundtrip: (-85070591730234615865843651857942052864) round-trips";
+assert blob "DIDL\00\01\7c\fd\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\ff\05" == "(510423550381407695195061911147652317181)" : (int) "serde.rs test_int_decode_large_magnitude_roundtrip: (510423550381407695195061911147652317181) round-trips";
+assert blob "DIDL\00\01\7c\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\80\7a" == "(-510423550381407695195061911147652317184)" : (int) "serde.rs test_int_decode_large_magnitude_roundtrip: (-510423550381407695195061911147652317184) round-trips";
+
+// test_fixed_number
+assert blob "DIDL\00\01\7b\2a" == "(42)" : (nat8) "serde.rs test_fixed_number: decodes to (42)";
+assert blob "DIDL\00\01\7a\2a\00" == "(42)" : (nat16) "serde.rs test_fixed_number: decodes to (42)";
+assert blob "DIDL\00\01\79\2a\00\00\00" == "(42)" : (nat32) "serde.rs test_fixed_number: decodes to (42)";
+assert blob "DIDL\00\01\78\2a\00\00\00\00\00\00\00" == "(42)" : (nat64) "serde.rs test_fixed_number: decodes to (42)";
+assert blob "DIDL\00\01\77\2a" == "(42)" : (int8) "serde.rs test_fixed_number: decodes to (42)";
+assert blob "DIDL\00\01\76\2a\00" == "(42)" : (int16) "serde.rs test_fixed_number: decodes to (42)";
+assert blob "DIDL\00\01\75\2a\00\00\00" == "(42)" : (int32) "serde.rs test_fixed_number: decodes to (42)";
+assert blob "DIDL\00\01\74\2a\00\00\00\00\00\00\00" == "(42)" : (int64) "serde.rs test_fixed_number: decodes to (42)";
+assert blob "DIDL\00\01\74\d6\ff\ff\ff\ff\ff\ff\ff" == "(-42)" : (int64) "serde.rs test_fixed_number: decodes to (-42)";
+assert blob "DIDL\00\01\7d\2a" == "(42)" : (int) "serde.rs test_fixed_number: nat 42 decodes at int (i128)";
+
+// test_float
+assert blob "DIDL\00\01\72\00\00\00\00\00\00\18\40" == "(6.0)" : (float64) "serde.rs test_float: decodes to (6.0)";
+
+// test_text
+assert blob "DIDL\00\01\71\07\48\69\20\e2\98\83\0a" == "(\"Hi ☃\\n\")" : (text) "serde.rs test_text: decodes to (\"Hi ☃\\n\")";
+
+// test_reserved
+assert blob "DIDL\00\01\7c\2a" : (reserved) "serde.rs test_reserved: int 42 decodes at reserved";
+assert blob "DIDL\01\6c\02\d3\e3\aa\02\7e\86\8e\b7\02\7c\01\00\01\2a" : (reserved) "serde.rs test_reserved: a record decodes at reserved";
+assert blob "DIDL\01\6b\02\bc\8a\01\7b\c5\fe\d2\01\6f\01\00\00\01" == "(variant { Ok = 1 })" : (variant { Ok : nat8; Err : empty }) "serde.rs test_reserved: decodes to (variant { Ok = 1 })";
+assert blob "DIDL\01\6b\02\bc\8a\01\7b\c5\fe\d2\01\6f\01\00\01" !: (variant { Ok : nat8; Err : empty }) "serde.rs test_reserved: Cannot decode empty type (Err tag)";
+
+// test_reference
+assert blob "DIDL\01\6a\00\01\7d\00\01\00\01\01\03\ca\ff\ee\06\6d\65\74\68\6f\64" == "(func \"w7x7r-cok77-xa\".\"method\")" : (func () -> (nat)) "serde.rs test_reference: decodes to (func \"w7x7r-cok77-xa\".\"method\")";
+assert blob "DIDL\03\69\02\01\66\01\01\67\02\6a\00\01\7d\00\6a\00\00\01\01\01\00\01\03\ca\ff\ee" == "(service \"w7x7r-cok77-xa\")" : (service { g : () -> () query; f : () -> (nat) }) "serde.rs test_reference: decodes to (service \"w7x7r-cok77-xa\")";
+assert blob "DIDL\02\69\01\04\6e\65\78\74\01\6a\00\01\00\00\01\00\01\03\ca\ff\ee" == "(service \"w7x7r-cok77-xa\")" : (S) "serde.rs test_reference: (service \"w7x7r-cok77-xa\") round-trips";
+
+// test_option
+assert blob "DIDL\01\6e\75\01\00\00" == "(null)" : (opt text) "serde.rs test_option: null : opt int32 decodes at opt text";
+assert blob "DIDL\01\6e\75\01\00\00" == "(null)" : (opt int32) "serde.rs test_option: decodes to (null)";
+assert blob "DIDL\01\6e\00\01\00\01\01\00" == "(opt opt null)" : (opt opt opt int32) "serde.rs test_option: mu T. opt T decodes at a non-recursive opt opt opt int32";
+assert blob "DIDL\02\6c\01\b3\c4\b1\f2\04\01\6e\75\01\00\01\2a\00\00\00" == "(record { canister_id = null })" : (record { canister_id : opt principal }) "serde.rs test_option: special opt rule: opt int32 field decodes at opt principal as null";
+assert blob "DIDL\00\01\7f" == "(null)" : (opt null) "serde.rs test_option coerce_to_nested_option_null_success<null, null>: null : null decodes at opt null as null";
+assert blob "DIDL\00\01\7f" == "(null)" : (opt opt null) "serde.rs test_option coerce_to_nested_option_null_success<null, null>: null : null decodes at opt opt null as null";
+assert blob "DIDL\00\01\7f" == "(null)" : (opt opt opt null) "serde.rs test_option coerce_to_nested_option_null_success<null, null>: null : null decodes at opt opt opt null as null";
+assert blob "DIDL\01\6e\7f\01\00\00" == "(null)" : (opt null) "serde.rs test_option coerce_to_nested_option_null_success<null, null>: null : opt null decodes at opt null as null";
+assert blob "DIDL\01\6e\7f\01\00\00" == "(null)" : (opt opt opt null) "serde.rs test_option coerce_to_nested_option_null_success<null, null>: null : opt null decodes at opt opt opt null as null";
+assert blob "DIDL\01\6e\7f\01\00\01" == "(opt null)" : (opt null) "serde.rs test_option coerce_to_nested_option_null_success<null, null>: opt null : opt null decodes at opt null as opt null";
+assert blob "DIDL\01\6e\7f\01\00\01" == "(opt null)" : (opt opt null) "serde.rs test_option coerce_to_nested_option_null_success<null, null>: opt null : opt null decodes at opt opt null as opt null";
+assert blob "DIDL\01\6e\7f\01\00\01" == "(opt null)" : (opt opt opt null) "serde.rs test_option coerce_to_nested_option_null_success<null, null>: opt null : opt null decodes at opt opt opt null as opt null";
+assert blob "DIDL\00\01\7f" == "(null)" : (opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<null, reserved>: null : null decodes at opt reserved as null";
+assert blob "DIDL\00\01\7f" == "(null)" : (opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<null, reserved>: null : null decodes at opt opt reserved as null";
+assert blob "DIDL\00\01\7f" == "(null)" : (opt opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<null, reserved>: null : null decodes at opt opt opt reserved as null";
+assert blob "DIDL\01\6e\7f\01\00\00" == "(null)" : (opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<null, reserved>: null : opt null decodes at opt reserved as null";
+assert blob "DIDL\01\6e\7f\01\00\00" == "(null)" : (opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<null, reserved>: null : opt null decodes at opt opt reserved as null";
+assert blob "DIDL\01\6e\7f\01\00\00" == "(null)" : (opt opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<null, reserved>: null : opt null decodes at opt opt opt reserved as null";
+assert blob "DIDL\01\6e\7f\01\00\01" == "(opt null)" : (opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<null, reserved>: opt null : opt null decodes at opt reserved as opt null";
+assert blob "DIDL\01\6e\7f\01\00\01" == "(opt null)" : (opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<null, reserved>: opt null : opt null decodes at opt opt reserved as opt null";
+assert blob "DIDL\01\6e\7f\01\00\01" == "(opt null)" : (opt opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<null, reserved>: opt null : opt null decodes at opt opt opt reserved as opt null";
+assert blob "DIDL\00\01\70" == "(null)" : (opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<reserved, reserved>: null : reserved decodes at opt reserved as null";
+assert blob "DIDL\00\01\70" == "(null)" : (opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<reserved, reserved>: null : reserved decodes at opt opt reserved as null";
+assert blob "DIDL\00\01\70" == "(null)" : (opt opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<reserved, reserved>: null : reserved decodes at opt opt opt reserved as null";
+assert blob "DIDL\01\6e\70\01\00\00" == "(null)" : (opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<reserved, reserved>: null : opt reserved decodes at opt reserved as null";
+assert blob "DIDL\01\6e\70\01\00\00" == "(null)" : (opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<reserved, reserved>: null : opt reserved decodes at opt opt reserved as null";
+assert blob "DIDL\01\6e\70\01\00\00" == "(null)" : (opt opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<reserved, reserved>: null : opt reserved decodes at opt opt opt reserved as null";
+assert blob "DIDL\01\6e\70\01\00\01" == "(opt null)" : (opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<reserved, reserved>: opt null : opt reserved decodes at opt opt reserved as opt null";
+assert blob "DIDL\01\6e\70\01\00\01" == "(opt null)" : (opt opt opt reserved) "serde.rs test_option coerce_to_nested_option_null_success<reserved, reserved>: opt null : opt reserved decodes at opt opt opt reserved as opt null";
+assert blob "DIDL\00\01\70" == "(null)" : (opt null) "serde.rs test_option coerce_to_nested_option_null_failure<reserved, null>: null : reserved decodes at opt null as null";
+assert blob "DIDL\00\01\70" == "(null)" : (opt opt null) "serde.rs test_option coerce_to_nested_option_null_failure<reserved, null>: null : reserved decodes at opt opt null as null";
+assert blob "DIDL\00\01\70" == "(null)" : (opt opt opt null) "serde.rs test_option coerce_to_nested_option_null_failure<reserved, null>: null : reserved decodes at opt opt opt null as null";
+assert blob "DIDL\01\6e\70\01\00\00" == "(null)" : (opt null) "serde.rs test_option coerce_to_nested_option_null_failure<reserved, null>: null : opt reserved decodes at opt null as null";
+assert blob "DIDL\01\6e\70\01\00\00" == "(null)" : (opt opt null) "serde.rs test_option coerce_to_nested_option_null_failure<reserved, null>: null : opt reserved decodes at opt opt null as null";
+assert blob "DIDL\01\6e\70\01\00\00" == "(null)" : (opt opt opt null) "serde.rs test_option coerce_to_nested_option_null_failure<reserved, null>: null : opt reserved decodes at opt opt opt null as null";
+assert blob "DIDL\01\6e\70\01\00\01" == "(opt null)" : (opt opt null) "serde.rs test_option coerce_to_nested_option_null_failure<reserved, null>: opt null : opt reserved decodes at opt opt null as opt null";
+assert blob "DIDL\01\6e\70\01\00\01" == "(opt null)" : (opt opt opt null) "serde.rs test_option coerce_to_nested_option_null_failure<reserved, null>: opt null : opt reserved decodes at opt opt opt null as opt null";
+assert blob "DIDL\00\01\78\05\00\00\00\00\00\00\00" == "(opt null)" : (opt reserved) "serde.rs test_option coerce_to_nested_option_success<nat64, reserved>: 5 : nat64 decodes at opt reserved as opt null";
+assert blob "DIDL\00\01\78\05\00\00\00\00\00\00\00" == "(opt opt null)" : (opt opt reserved) "serde.rs test_option coerce_to_nested_option_success<nat64, reserved>: 5 : nat64 decodes at opt opt reserved as opt opt null";
+assert blob "DIDL\00\01\78\05\00\00\00\00\00\00\00" == "(opt opt opt null)" : (opt opt opt reserved) "serde.rs test_option coerce_to_nested_option_success<nat64, reserved>: 5 : nat64 decodes at opt opt opt reserved as opt opt opt null";
+assert blob "DIDL\01\6e\78\01\00\00" == "(null)" : (opt reserved) "serde.rs test_option coerce_to_nested_option_success<nat64, reserved>: null : opt nat64 decodes at opt reserved as null";
+assert blob "DIDL\01\6e\78\01\00\00" == "(null)" : (opt opt reserved) "serde.rs test_option coerce_to_nested_option_success<nat64, reserved>: null : opt nat64 decodes at opt opt reserved as null";
+assert blob "DIDL\01\6e\78\01\00\00" == "(null)" : (opt opt opt reserved) "serde.rs test_option coerce_to_nested_option_success<nat64, reserved>: null : opt nat64 decodes at opt opt opt reserved as null";
+assert blob "DIDL\01\6e\78\01\00\01\05\00\00\00\00\00\00\00" == "(opt null)" : (opt reserved) "serde.rs test_option coerce_to_nested_option_success<nat64, reserved>: opt 5 : opt nat64 decodes at opt reserved as opt null";
+assert blob "DIDL\01\6e\78\01\00\01\05\00\00\00\00\00\00\00" == "(opt opt null)" : (opt opt reserved) "serde.rs test_option coerce_to_nested_option_success<nat64, reserved>: opt 5 : opt nat64 decodes at opt opt reserved as opt opt null";
+assert blob "DIDL\01\6e\78\01\00\01\05\00\00\00\00\00\00\00" == "(opt opt opt null)" : (opt opt opt reserved) "serde.rs test_option coerce_to_nested_option_success<nat64, reserved>: opt 5 : opt nat64 decodes at opt opt opt reserved as opt opt opt null";
+assert blob "DIDL\00\01\78\05\00\00\00\00\00\00\00" == "(opt 5)" : (opt nat64) "serde.rs test_option coerce_to_nested_option_success<nat64, nat64>: 5 : nat64 decodes at opt nat64 as opt 5";
+assert blob "DIDL\00\01\78\05\00\00\00\00\00\00\00" == "(opt opt 5)" : (opt opt nat64) "serde.rs test_option coerce_to_nested_option_success<nat64, nat64>: 5 : nat64 decodes at opt opt nat64 as opt opt 5";
+assert blob "DIDL\00\01\78\05\00\00\00\00\00\00\00" == "(opt opt opt 5)" : (opt opt opt nat64) "serde.rs test_option coerce_to_nested_option_success<nat64, nat64>: 5 : nat64 decodes at opt opt opt nat64 as opt opt opt 5";
+assert blob "DIDL\01\6e\78\01\00\00" == "(null)" : (opt nat64) "serde.rs test_option coerce_to_nested_option_success<nat64, nat64>: null : opt nat64 decodes at opt nat64 as null";
+assert blob "DIDL\01\6e\78\01\00\00" == "(null)" : (opt opt nat64) "serde.rs test_option coerce_to_nested_option_success<nat64, nat64>: null : opt nat64 decodes at opt opt nat64 as null";
+assert blob "DIDL\01\6e\78\01\00\00" == "(null)" : (opt opt opt nat64) "serde.rs test_option coerce_to_nested_option_success<nat64, nat64>: null : opt nat64 decodes at opt opt opt nat64 as null";
+assert blob "DIDL\01\6e\78\01\00\01\05\00\00\00\00\00\00\00" == "(opt 5)" : (opt nat64) "serde.rs test_option coerce_to_nested_option_success<nat64, nat64>: opt 5 : opt nat64 decodes at opt nat64 as opt 5";
+assert blob "DIDL\01\6e\78\01\00\01\05\00\00\00\00\00\00\00" == "(opt opt 5)" : (opt opt nat64) "serde.rs test_option coerce_to_nested_option_success<nat64, nat64>: opt 5 : opt nat64 decodes at opt opt nat64 as opt opt 5";
+assert blob "DIDL\01\6e\78\01\00\01\05\00\00\00\00\00\00\00" == "(opt opt opt 5)" : (opt opt opt nat64) "serde.rs test_option coerce_to_nested_option_success<nat64, nat64>: opt 5 : opt nat64 decodes at opt opt opt nat64 as opt opt opt 5";
+assert blob "DIDL\00\01\78\05\00\00\00\00\00\00\00" == "(null)" : (opt null) "serde.rs test_option coerce_to_nested_option_failure<nat64, null>: 5 : nat64 decodes at opt null as null";
+assert blob "DIDL\00\01\78\05\00\00\00\00\00\00\00" == "(opt null)" : (opt opt null) "serde.rs test_option coerce_to_nested_option_failure<nat64, null>: 5 : nat64 decodes at opt opt null as opt null";
+assert blob "DIDL\00\01\78\05\00\00\00\00\00\00\00" == "(opt opt null)" : (opt opt opt null) "serde.rs test_option coerce_to_nested_option_failure<nat64, null>: 5 : nat64 decodes at opt opt opt null as opt opt null";
+assert blob "DIDL\01\6e\78\01\00\00" == "(null)" : (opt null) "serde.rs test_option coerce_to_nested_option_failure<nat64, null>: null : opt nat64 decodes at opt null as null";
+assert blob "DIDL\01\6e\78\01\00\00" == "(null)" : (opt opt null) "serde.rs test_option coerce_to_nested_option_failure<nat64, null>: null : opt nat64 decodes at opt opt null as null";
+assert blob "DIDL\01\6e\78\01\00\00" == "(null)" : (opt opt opt null) "serde.rs test_option coerce_to_nested_option_failure<nat64, null>: null : opt nat64 decodes at opt opt opt null as null";
+assert blob "DIDL\01\6e\78\01\00\01\05\00\00\00\00\00\00\00" == "(null)" : (opt null) "serde.rs test_option coerce_to_nested_option_failure<nat64, null>: opt 5 : opt nat64 decodes at opt null as null";
+assert blob "DIDL\01\6e\78\01\00\01\05\00\00\00\00\00\00\00" == "(opt null)" : (opt opt null) "serde.rs test_option coerce_to_nested_option_failure<nat64, null>: opt 5 : opt nat64 decodes at opt opt null as opt null";
+assert blob "DIDL\01\6e\78\01\00\01\05\00\00\00\00\00\00\00" == "(opt opt null)" : (opt opt opt null) "serde.rs test_option coerce_to_nested_option_failure<nat64, null>: opt 5 : opt nat64 decodes at opt opt opt null as opt opt null";
+assert blob "DIDL\00\01\7d\05" == "(opt 5)" : (opt int) "serde.rs test_option coerce_to_nested_option_success<nat, int>: 5 : nat decodes at opt int as opt 5";
+assert blob "DIDL\00\01\7d\05" == "(opt opt 5)" : (opt opt int) "serde.rs test_option coerce_to_nested_option_success<nat, int>: 5 : nat decodes at opt opt int as opt opt 5";
+assert blob "DIDL\00\01\7d\05" == "(opt opt opt 5)" : (opt opt opt int) "serde.rs test_option coerce_to_nested_option_success<nat, int>: 5 : nat decodes at opt opt opt int as opt opt opt 5";
+assert blob "DIDL\01\6e\7d\01\00\00" == "(null)" : (opt int) "serde.rs test_option coerce_to_nested_option_success<nat, int>: null : opt nat decodes at opt int as null";
+assert blob "DIDL\01\6e\7d\01\00\00" == "(null)" : (opt opt int) "serde.rs test_option coerce_to_nested_option_success<nat, int>: null : opt nat decodes at opt opt int as null";
+assert blob "DIDL\01\6e\7d\01\00\00" == "(null)" : (opt opt opt int) "serde.rs test_option coerce_to_nested_option_success<nat, int>: null : opt nat decodes at opt opt opt int as null";
+assert blob "DIDL\01\6e\7d\01\00\01\05" == "(opt 5)" : (opt int) "serde.rs test_option coerce_to_nested_option_success<nat, int>: opt 5 : opt nat decodes at opt int as opt 5";
+assert blob "DIDL\01\6e\7d\01\00\01\05" == "(opt opt 5)" : (opt opt int) "serde.rs test_option coerce_to_nested_option_success<nat, int>: opt 5 : opt nat decodes at opt opt int as opt opt 5";
+assert blob "DIDL\01\6e\7d\01\00\01\05" == "(opt opt opt 5)" : (opt opt opt int) "serde.rs test_option coerce_to_nested_option_success<nat, int>: opt 5 : opt nat decodes at opt opt opt int as opt opt opt 5";
+assert blob "DIDL\00\01\7c\05" == "(null)" : (opt nat) "serde.rs test_option coerce_to_nested_option_failure<int, nat>: 5 : int decodes at opt nat as null";
+assert blob "DIDL\00\01\7c\05" == "(opt null)" : (opt opt nat) "serde.rs test_option coerce_to_nested_option_failure<int, nat>: 5 : int decodes at opt opt nat as opt null";
+assert blob "DIDL\00\01\7c\05" == "(opt opt null)" : (opt opt opt nat) "serde.rs test_option coerce_to_nested_option_failure<int, nat>: 5 : int decodes at opt opt opt nat as opt opt null";
+assert blob "DIDL\01\6e\7c\01\00\00" == "(null)" : (opt nat) "serde.rs test_option coerce_to_nested_option_failure<int, nat>: null : opt int decodes at opt nat as null";
+assert blob "DIDL\01\6e\7c\01\00\00" == "(null)" : (opt opt nat) "serde.rs test_option coerce_to_nested_option_failure<int, nat>: null : opt int decodes at opt opt nat as null";
+assert blob "DIDL\01\6e\7c\01\00\00" == "(null)" : (opt opt opt nat) "serde.rs test_option coerce_to_nested_option_failure<int, nat>: null : opt int decodes at opt opt opt nat as null";
+assert blob "DIDL\01\6e\7c\01\00\01\05" == "(null)" : (opt nat) "serde.rs test_option coerce_to_nested_option_failure<int, nat>: opt 5 : opt int decodes at opt nat as null";
+assert blob "DIDL\01\6e\7c\01\00\01\05" == "(opt null)" : (opt opt nat) "serde.rs test_option coerce_to_nested_option_failure<int, nat>: opt 5 : opt int decodes at opt opt nat as opt null";
+assert blob "DIDL\01\6e\7c\01\00\01\05" == "(opt opt null)" : (opt opt opt nat) "serde.rs test_option coerce_to_nested_option_failure<int, nat>: opt 5 : opt int decodes at opt opt opt nat as opt opt null";
+
+// test_struct
+assert blob "DIDL\01\6c\02\a3\e0\d4\b9\bf\86\02\7e\86\8e\b7\02\7c\01\00\01\2a" !: (record { foo : int; bar : bool }) "serde.rs test_struct: field id out of 32-bit range";
+assert blob "DIDL\02\6c\03\d3\e3\aa\02\7e\db\e3\aa\02\01\86\8e\b7\02\7c\6c\02\d3\e3\aa\02\7e\86\8e\b7\02\7c\01\00\01\00\0a\2a" == "(record { foo = 42; bar = true; baz = record { foo = 10; bar = false } })" : (record { foo : int; bar : bool; baz : record { foo : int; bar : bool } }) "serde.rs test_struct: decodes to (record { foo = 42; bar = true; baz = record { foo = 10; bar = false } })";
+assert blob "DIDL\01\6c\02\00\7e\01\7c\01\00\01\2a" == "(record { true; 42 })" : (record { bool; int }) "serde.rs test_struct: decodes to (record { true; 42 })";
+assert blob "DIDL\02\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\01\6e\00\01\00\2a\01\2b\00" == "(record { head = 42; tail = opt record { head = 43; tail = null } })" : (List) "serde.rs test_struct: decodes to (record { head = 42; tail = opt record { head = 43; tail = null } })";
+assert blob "DIDL\03\6e\01\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\02\6e\01\01\00\00" == "(null)" : (opt List) "serde.rs test_struct: decodes to (null)";
+
+// optional_fields
+assert blob "DIDL\03\6c\02\d3\e3\aa\02\7e\db\e3\aa\02\01\6e\02\6b\02\b3\d3\c9\01\7e\e6\fd\d5\01\7f\01\00\01\01\01" == "(record { foo = null; bar = true; baz = opt variant { Foo } })" : (NewStruct) "serde.rs optional_fields: (record { bar = true; baz = opt variant { Foo } }) : (OldStruct) decodes at (NewStruct) to (record { foo = null; bar = true; baz = opt variant { Foo } })";
+assert blob "DIDL\04\6c\03\d3\e3\aa\02\7e\db\e3\aa\02\01\86\8e\b7\02\03\6e\02\6b\03\b3\d3\c9\01\7e\bb\d3\c9\01\7e\e6\fd\d5\01\7f\6e\7b\01\00\00\01\01\01\01\2a" == "(record { bar = false; baz = null })" : (OldStruct) "serde.rs optional_fields: (record { foo = opt 42; bar = false; baz = opt variant { Baz = true } }) : (NewStruct) decodes at (OldStruct) to (record { bar = false; baz = null })";
+assert blob "DIDL\01\6b\03\b3\d3\c9\01\7e\bb\d3\c9\01\7e\e6\fd\d5\01\7f\01\00\01\00" !: (Old) "serde.rs optional_fields: Unknown variant field (Baz)";
+
+// test_equivalent_types
+assert blob "DIDL\06\6c\01\ac\d4\db\b9\05\01\6d\02\6c\01\e8\e0\ad\d6\01\03\6e\04\6c\01\e7\e0\ad\d6\01\05\6e\02\01\00\00" == "(record { typeas = vec {} })" : (RootType) "serde.rs test_equivalent_types: decodes to (record { typeas = vec {} })";
+assert blob "DIDL\04\6c\01\e7\e0\ad\d6\01\01\6e\02\6c\01\e8\e0\ad\d6\01\03\6e\00\01\00\00" == "(record { typea = null })" : (TypeB) "serde.rs test_equivalent_types: decodes to (record { typea = null })";
+
+// test_extra_fields
+assert blob "DIDL\03\6c\06\c3\e3\aa\02\01\d3\e3\aa\02\7e\db\e3\aa\02\79\a2\e5\aa\02\79\bb\f1\aa\02\02\86\8e\b7\02\75\6c\02\d3\e3\aa\02\7e\86\8e\b7\02\75\6b\02\b3\d3\c9\01\7f\e6\fd\d5\01\7f\01\00\00\0a\00\00\00\01\01\00\00\00\01\00\00\00\01\2a\00\00\00" == "(record { foo = 42; bar = true })" : (A1) "serde.rs test_extra_fields: (record { foo = 42; bar = true; baz = 1; bbb = 1; bib = variant { Foo }; bab = record { foo = 10; bar = false } }) : (A2) decodes at (A1) to (record { foo = 42; bar = true })";
+assert blob "DIDL\01\6c\02\d3\e3\aa\02\7e\86\8e\b7\02\75\01\00\01\2a\00\00\00" !: (A2) "serde.rs test_extra_fields: record A1 does not decode at A2 (field bab missing)";
+assert blob "DIDL\01\6b\02\b3\d3\c9\01\7f\e6\fd\d5\01\7f\01\00\01" == "(variant { Foo })" : (E2) "serde.rs test_extra_fields: (variant { Foo }) : (E1) decodes at (E2) to (variant { Foo })";
+assert blob "DIDL\01\6b\03\b3\d3\c9\01\7f\bb\d3\c9\01\7f\e6\fd\d5\01\7f\01\00\02" == "(opt variant { Foo })" : (opt E2) "serde.rs test_extra_fields: (variant { Foo }) : (E2) decodes at (opt E2) to (opt variant { Foo })";
+assert blob "DIDL\01\6b\03\b3\d3\c9\01\7f\bb\d3\c9\01\7f\e6\fd\d5\01\7f\01\00\02" == "(variant { Foo })" : (E1) "serde.rs test_extra_fields: variant { Foo } : E2 decodes at the narrower E1 (the tag is known)";
+
+// test_newtype
+assert blob "DIDL\01\6b\01\41\75\01\00\00\2a\00\00\00" == "(variant { A = 42 })" : (variant { A : int32 }) "serde.rs test_newtype: decodes to (variant { A = 42 })";
+assert blob "DIDL\01\6d\75\01\00\02\01\00\00\00\02\00\00\00" == "(vec { 1; 2 })" : (vec int32) "serde.rs test_newtype: (vec { 1; 2 }) round-trips";
+assert blob "DIDL\01\6d\7e\01\00\02\01\00" == "(vec { true; false })" : (vec bool) "serde.rs test_newtype: (vec { true; false }) round-trips";
+assert blob "DIDL\01\6d\7b\01\00\02\00\ff" == "(vec { 0; 255 })" : (vec nat8) "serde.rs test_newtype: (vec { 0; 255 }) round-trips";
+assert blob "DIDL\01\6d\77\01\00\02\80\7f" == "(vec { -128; 127 })" : (vec int8) "serde.rs test_newtype: (vec { -128; 127 }) round-trips";
+
+// test_serde_bytes (feature serde_bytes)
+assert blob "DIDL\01\6d\7b\01\00\03\01\02\03" == "(blob \"\\01\\02\\03\")" : (blob) "serde.rs test_serde_bytes: decodes to (blob \"\\01\\02\\03\")";
+assert blob "DIDL\02\6c\02\62\01\63\01\6d\7b\01\00\03\01\02\03\03\01\02\03" == "(record { b = blob \"\\01\\02\\03\"; c = blob \"\\01\\02\\03\" })" : (record { b : blob; c : blob }) "serde.rs test_serde_bytes: decodes to (record { b = blob \"\\01\\02\\03\"; c = blob \"\\01\\02\\03\" })";
+
+// test_keyword_label
+assert blob "DIDL\02\6c\01\b0\c9\b6\49\01\6d\7b\01\00\03\01\02\03" == "(record { \"return\" = vec { 1; 2; 3 } })" : (record { "return" : vec nat8 }) "serde.rs test_keyword_label: decodes to (record { \"return\" = vec { 1; 2; 3 } })";
+assert blob "DIDL\01\6b\01\b0\c9\b6\49\7f\01\00\00" == "(variant { \"return\" })" : (variant { "return" }) "serde.rs test_keyword_label: decodes to (variant { \"return\" })";
+
+// test_mutual_recursion
+assert blob "DIDL\02\6e\01\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\00\01\00\00" == "(null)" : (ListOpt) "serde.rs test_mutual_recursion: decodes to (null)";
+
+// test_vector
+assert blob "DIDL\01\6d\7c\01\00\04\00\01\02\03" == "(vec { 0; 1; 2; 3 })" : (vec int) "serde.rs test_vector: decodes to (vec { 0; 1; 2; 3 })";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\71\01\00\01\2a\04\74\65\78\74" == "(vec { record { 42; \"text\" } })" : (vec record { int; text }) "serde.rs test_vector: decodes to (vec { record { 42; \"text\" } })";
+assert blob "DIDL\04\6d\01\6d\02\6d\03\6d\7f\01\00\01\01\01\01" == "(vec { vec { vec { vec { null } } } })" : (vec vec vec vec null) "serde.rs test_vector: decodes to (vec { vec { vec { vec { null } } } })";
+assert blob "DIDL\01\6d\7f\01\00\e8\07" == "(vec { null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null })" : (vec null) "serde.rs test_vector: decodes to (vec { null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null; null })";
+// didc 0.6.2 disagrees with this assert: needs a skipping limit; didc decodes it
+assert blob "DIDL\03\6c\01\d6\fc\a7\02\01\6d\02\6c\00\01\00\80\ad\e2\04" !: (reserved) "serde.rs test_vector: record { vec record {} } with 10_000_000 elements: Skipping cost exceeds the limit (Rust: skipping quota 10_000; here: > 1_000_000 values that take no bytes)";
+// didc 0.6.2 disagrees with this assert: needs a skipping limit; didc decodes it
+assert blob "DIDL\17\6c\02\01\7f\02\7f\6c\02\01\00\02\00\6c\02\00\01\01\01\6c\02\00\02\01\02\6c\02\00\03\01\03\6c\02\00\04\01\04\6c\02\00\05\01\05\6c\02\00\06\01\06\6c\02\00\07\01\07\6c\02\00\08\01\08\6c\02\00\09\01\09\6c\02\00\0a\01\0a\6c\02\00\0b\01\0b\6c\02\00\0c\01\0c\6c\02\00\0d\02\0d\6c\02\00\0e\01\0e\6c\02\00\0f\01\0f\6c\02\00\10\01\10\6c\02\00\11\01\11\6c\02\00\12\01\12\6c\02\00\13\01\13\6e\14\6d\15\01\16\05\01\01\01\01\01" !: (reserved) "serde.rs test_vector: vec opt record with 2^20 null at reserved: Skipping cost exceeds the limit";
+
+// test_nested_map_non_text_key
+assert blob "DIDL\06\6d\01\6c\02\00\71\01\02\6b\02\9f\88\d6\01\03\b7\8e\e8\01\71\6d\04\6c\02\00\05\01\79\6b\02\41\7f\42\7f\01\00\02\03\66\75\6e\00\02\00\01\00\00\00\01\02\00\00\00\03\6c\69\74\01\05\68\65\6c\6c\6f" == "(vec { record { \"fun\"; variant { Fun = vec { record { variant { A }; 1 }; record { variant { B }; 2 } } } }; record { \"lit\"; variant { Lit = \"hello\" } } })" : (vec record { text; variant { Fun : vec record { variant { A; B }; nat32 }; Lit : text } }) "serde.rs test_nested_map_non_text_key: (vec { record { \"fun\"; variant { Fun = vec { record { variant { A }; 1 }; record { variant { B }; 2 } } } }; record { \"lit\"; variant { Lit = \"hello\" } } }) round-trips";
+
+// test_map_key_and_value_decode_under_own_type (maps are vec record { K; V })
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7d\01\00\01\7f\2a" == "(vec { record { -1; 42 } })" : (vec record { int; nat }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -1; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\7f\79" == "(vec { record { -1; -7 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -1; -7 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\79\01\00\01\7f\2a\00\00\00" == "(vec { record { -1; 42 } })" : (vec record { int; nat32 }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -1; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7d\01\00\01\7e\2a" == "(vec { record { -2; 42 } })" : (vec record { int; nat }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -2; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\7e\79" == "(vec { record { -2; -7 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -2; -7 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\79\01\00\01\7e\2a\00\00\00" == "(vec { record { -2; 42 } })" : (vec record { int; nat32 }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -2; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7d\01\00\01\9c\7f\2a" == "(vec { record { -100; 42 } })" : (vec record { int; nat }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -100; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\9c\7f\79" == "(vec { record { -100; -7 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -100; -7 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\79\01\00\01\9c\7f\2a\00\00\00" == "(vec { record { -100; 42 } })" : (vec record { int; nat32 }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -100; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7d\01\00\01\80\7f\2a" == "(vec { record { -128; 42 } })" : (vec record { int; nat }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -128; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\80\7f\79" == "(vec { record { -128; -7 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -128; -7 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\79\01\00\01\80\7f\2a\00\00\00" == "(vec { record { -128; 42 } })" : (vec record { int; nat32 }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -128; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7d\01\00\01\98\78\2a" == "(vec { record { -1000; 42 } })" : (vec record { int; nat }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -1000; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\98\78\79" == "(vec { record { -1000; -7 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -1000; -7 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\79\01\00\01\98\78\2a\00\00\00" == "(vec { record { -1000; 42 } })" : (vec record { int; nat32 }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -1000; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7d\01\00\01\80\80\80\80\78\2a" == "(vec { record { -2147483648; 42 } })" : (vec record { int; nat }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -2147483648; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\80\80\80\80\78\79" == "(vec { record { -2147483648; -7 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -2147483648; -7 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\79\01\00\01\80\80\80\80\78\2a\00\00\00" == "(vec { record { -2147483648; 42 } })" : (vec record { int; nat32 }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -2147483648; 42 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7d\01\7c\01\00\01\05\7f" == "(vec { record { 5; -1 } })" : (vec record { nat; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { 5; -1 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\09\7f" == "(vec { record { 9; -1 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { 9; -1 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\71\01\7c\01\00\01\01\6b\7f" == "(vec { record { \"k\"; -1 } })" : (vec record { text; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { \"k\"; -1 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7d\01\7c\01\00\01\05\7e" == "(vec { record { 5; -2 } })" : (vec record { nat; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { 5; -2 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\09\7e" == "(vec { record { 9; -2 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { 9; -2 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\71\01\7c\01\00\01\01\6b\7e" == "(vec { record { \"k\"; -2 } })" : (vec record { text; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { \"k\"; -2 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7d\01\7c\01\00\01\05\80\7f" == "(vec { record { 5; -128 } })" : (vec record { nat; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { 5; -128 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\09\80\7f" == "(vec { record { 9; -128 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { 9; -128 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\71\01\7c\01\00\01\01\6b\80\7f" == "(vec { record { \"k\"; -128 } })" : (vec record { text; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { \"k\"; -128 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7d\01\7c\01\00\01\05\80\80\80\80\78" == "(vec { record { 5; -2147483648 } })" : (vec record { nat; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { 5; -2147483648 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\09\80\80\80\80\78" == "(vec { record { 9; -2147483648 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { 9; -2147483648 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\71\01\7c\01\00\01\01\6b\80\80\80\80\78" == "(vec { record { \"k\"; -2147483648 } })" : (vec record { text; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { \"k\"; -2147483648 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7d\01\00\01\81\80\80\e0\d1\e5\fc\9b\a3\da\a0\ea\7a\ff\ff\ff\9f\ae\9a\83\e4\dc\a5\df\95\05" == "(vec { record { -99999999999999999999999999; 99999999999999999999999999 } })" : (vec record { int; nat }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -99999999999999999999999999; 99999999999999999999999999 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\81\80\80\e0\d1\e5\fc\9b\a3\da\a0\ea\7a\81\80\80\e0\d1\e5\fc\9b\a3\da\a0\ea\7a" == "(vec { record { -99999999999999999999999999; -99999999999999999999999999 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -99999999999999999999999999; -99999999999999999999999999 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7d\01\7c\01\00\01\ff\ff\ff\9f\ae\9a\83\e4\dc\a5\df\95\05\81\80\80\e0\d1\e5\fc\9b\a3\da\a0\ea\7a" == "(vec { record { 99999999999999999999999999; -99999999999999999999999999 } })" : (vec record { nat; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { 99999999999999999999999999; -99999999999999999999999999 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7d\01\00\02\7f\01\ff\00\e8\07" == "(vec { record { -1; 1 }; record { 127; 1000 } })" : (vec record { int; nat }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { -1; 1 }; record { 127; 1000 } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7d\01\00\01\05\07" !: (vec record { nat; nat }) "serde.rs test_map_key_and_value_decode_under_own_type: int key does not decode at nat";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\7c\01\00\01\05\07" !: (vec record { nat; int }) "serde.rs test_map_key_and_value_decode_under_own_type: int key does not decode at nat";
+assert blob "DIDL\02\6d\01\6c\02\00\7d\01\7d\01\00\01\05\07" == "(vec { record { 5; 7 } })" : (vec record { int; int }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { 5; 7 } }) : (vec record { nat; nat }) decodes at (vec record { int; int }) to (vec { record { 5; 7 } })";
+assert blob "DIDL\03\6d\01\6c\02\00\71\01\02\6d\7b\01\00\01\01\6b\05\68\65\6c\6c\6f" !: (vec record { text; text }) "serde.rs test_map_key_and_value_decode_under_own_type: blob value does not decode at text";
+assert blob "DIDL\03\6d\01\6c\02\00\79\01\02\6d\7b\01\00\01\01\00\00\00\05\68\65\6c\6c\6f" !: (vec record { nat32; text }) "serde.rs test_map_key_and_value_decode_under_own_type: blob value does not decode at text";
+assert blob "DIDL\02\6d\01\6c\02\00\71\01\71\01\00\01\01\6b\01\76" == "(vec { record { \"k\"; \"v\" } })" : (vec record { text; text }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { \"k\"; \"v\" } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\7d\01\71\01\00\01\01\01\76" == "(vec { record { 1; \"v\" } })" : (vec record { nat; text }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { 1; \"v\" } }) round-trips";
+assert blob "DIDL\02\6d\01\6c\02\00\71\01\7d\01\00\01\01\6b\01" == "(vec { record { \"k\"; 1 } })" : (vec record { text; nat }) "serde.rs test_map_key_and_value_decode_under_own_type: (vec { record { \"k\"; 1 } }) round-trips";
+
+// test_collection
+assert blob "DIDL\02\6d\01\6c\02\00\71\01\75\01\00\01\01\61\01\00\00\00" == "(vec { record { \"a\"; 1 } })" : (vec record { text; int32 }) "serde.rs test_collection: decodes to (vec { record { \"a\"; 1 } })";
+assert blob "DIDL\02\6d\01\6c\02\00\75\01\75\01\00\03\01\00\00\00\65\00\00\00\02\00\00\00\66\00\00\00\03\00\00\00\67\00\00\00" == "(vec { record { 1; 101 }; record { 2; 102 }; record { 3; 103 } })" : (vec record { int32; int32 }) "serde.rs test_collection: decodes to (vec { record { 1; 101 }; record { 2; 102 }; record { 3; 103 } })";
+assert blob "DIDL\01\6d\75\01\00\03\01\00\00\00\02\00\00\00\03\00\00\00" == "(vec { 1; 2; 3 })" : (vec int32) "serde.rs test_collection: decodes to (vec { 1; 2; 3 })";
+
+// test_tuple
+assert blob "DIDL\01\6c\02\00\7c\01\71\01\00\2a\04\f0\9f\92\a9" == "(record { 42; \"💩\" })" : (record { int; text }) "serde.rs test_tuple: decodes to (record { 42; \"💩\" })";
+assert blob "DIDL\04\6c\04\00\7c\01\7e\02\01\03\02\6d\7c\6e\03\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\02\01\00\2b\01\03\02\03\04\00" == "(record { 43; true; vec { 2; 3; 4 }; null })" : (record { int; bool; vec int; opt text }) "serde.rs test_tuple: opt List field decodes at opt text as null";
+assert blob "DIDL\01\6c\02\00\7c\02\71\01\00\2a\04\f0\9f\92\a9" !: (record { int; text }) "serde.rs test_tuple: record { 0 : int; 2 : text } is not a tuple of 2";
+
+// test_variant
+assert blob "DIDL\01\6b\02\b3\d3\c9\01\7f\e6\fd\d5\01\7f\01\00\00" == "(variant { Bar })" : (Unit) "serde.rs test_variant: decodes to (variant { Bar })";
+assert blob "DIDL\01\6b\02\b3\d3\c9\01\7f\e6\fd\d5\01\7f\01\00\03" !: (Unit) "serde.rs test_variant: Variant index 3 larger than length 2";
+assert blob "DIDL\01\6b\02\b4\d3\c9\01\7f\e6\fd\d5\01\7f\01\00\00" !: (Unit) "serde.rs test_variant: Unknown variant field 3_303_860";
+assert blob "DIDL\03\6b\03\b3\d3\c9\01\01\bb\d3\c9\01\02\e6\fd\d5\01\7f\6c\02\00\7e\01\7c\6c\02\61\7c\62\7d\01\00\00\01\2a" == "(variant { Bar = record { true; 42 } })" : (E) "serde.rs test_variant: decodes to (variant { Bar = record { true; 42 } })";
+assert blob "DIDL\04\6e\01\6b\03\b3\d3\c9\01\02\bb\d3\c9\01\03\e6\fd\d5\01\7f\6c\02\00\7e\01\7c\6c\02\61\7c\62\7d\01\00\01\02" == "(opt variant { Foo })" : (opt Unit) "serde.rs test_variant: (opt variant { Foo }) : (opt E) decodes at (opt Unit) to (opt variant { Foo })";
+assert blob "DIDL\03\6b\03\b3\d3\c9\01\01\bb\d3\c9\01\02\e6\fd\d5\01\7f\6c\02\00\7e\01\7c\6c\02\61\7c\62\7d\01\00\01\2a\2a" == "(null)" : (opt Unit) "serde.rs test_variant: (variant { Baz = record { a = 42; b = 42 } }) : (E) decodes at (opt Unit) to (null)";
+assert blob "DIDL\03\6b\03\b3\d3\c9\01\01\bb\d3\c9\01\02\e6\fd\d5\01\7f\6c\02\00\7e\01\7c\6c\02\61\7c\62\7d\01\00\00\01\2a" == "(null)" : (opt Unit) "serde.rs test_variant: (variant { Bar = record { true; 42 } }) : (E) decodes at (opt Unit) to (null)";
+assert blob "DIDL\03\6b\03\b3\d3\c9\01\01\bb\d3\c9\01\02\e6\fd\d5\01\7f\6c\02\00\7e\01\7c\6c\02\61\7c\62\7d\01\00\00\01\2a" !: (Unit) "serde.rs test_variant: variant { Bar = record {..} } : E does not decode at Unit (Subtyping error)";
+assert blob "DIDL\02\6b\03\41\01\42\01\43\7f\6c\00\01\00\00" == "(variant { A = record {} })" : (variant { A : record {}; B : record {}; C }) "serde.rs test_variant: decodes to (variant { A = record {} })";
+
+// test_field_rename
+assert blob "DIDL\01\6c\02\61\77\62\7b\01\00\2a\2a" == "(record { a = 42; b = 42 })" : (record { a : int8; b : nat8 }) "serde.rs test_field_rename: decodes to (record { a = 42; b = 42 })";
+assert blob "DIDL\01\6b\02\61\7f\62\7f\01\00\01" == "(variant { b })" : (variant { a; b }) "serde.rs test_field_rename: decodes to (variant { b })";
+assert blob "DIDL\01\6b\02\b6\84\a7\02\7b\b4\93\ee\97\0d\77\01\00\01\2a" == "(variant { \"1-2 + 3\" = 42 })" : (variant { "1-2 + 3" : int8; "a-b" : nat8 }) "serde.rs test_field_rename: decodes to (variant { \"1-2 + 3\" = 42 })";
+assert blob "DIDL\01\6c\02\b6\84\a7\02\7b\b4\93\ee\97\0d\77\01\00\2a\2a" == "(record { \"1-2 + 3\" = 42; \"a-b\" = 42 })" : (record { "1-2 + 3" : int8; "a-b" : nat8 }) "serde.rs test_field_rename: decodes to (record { \"1-2 + 3\" = 42; \"a-b\" = 42 })";
+
+// test_generics
+assert blob "DIDL\01\6c\02\ea\b3\01\7c\eb\b3\01\7e\01\00\2a\01" == "(record { g1 = 42; g2 = true })" : (record { g1 : int; g2 : bool }) "serde.rs test_generics: decodes to (record { g1 = 42; g2 = true })";
+
+// test_multiargs
+assert blob "DIDL\00\00" == "()" : () "serde.rs test_multiargs: decodes to ()";
+assert blob "DIDL\01\6e\7c\04\7c\00\00\00\2a\01\2a\01\01\01\02" == "(42, opt 42, opt 1, opt 2)" : (int, opt int, opt int, opt int) "serde.rs test_multiargs: decodes to (42, opt 42, opt 1, opt 2)";
+assert blob "DIDL\01\6e\7c\04\7c\00\00\00\2a\01\2a\01\01\01\02" == "(42)" : (int) "serde.rs test_multiargs: okay to decode fewer values from the message";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\71\02\00\01\01\2a\04\74\65\78\74\2a\04\74\65\78\74" == "(vec { record { 42; \"text\" } }, record { 42; \"text\" })" : (vec record { int; text }, record { int; text }) "serde.rs test_multiargs: decodes to (vec { record { 42; \"text\" } }, record { 42; \"text\" })";
+assert blob "DIDL\02\6d\01\6c\02\00\7c\01\71\02\00\01\01\2a\04\74\65\78\74\2a\04\74\65\78\74" == "(vec { record { 42; \"text\" } }, record { 42; \"text\"; null }, null, null, null)" : (vec record { int; text }, record { int; text; null }, opt int32, null, reserved) "serde.rs test_multiargs: extra null field and missing opt/null/reserved arguments default";

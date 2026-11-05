@@ -1,0 +1,26 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-sub.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+send_fN receives fN at its own type: reflexive subtype asserts with the official idiom.
+*/
+
+type Actor = service { f : () -> (); p : () -> () oneway; q : () -> () query };
+assert blob "DIDL\02\6a\00\01\01\00\6a\01\7d\00\00\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (nat) -> ())) "idl-sub.mo send_f1: func (nat) -> () <: itself";
+assert blob "DIDL\02\6a\00\01\01\00\6a\01\7d\01\7d\00\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (nat) -> (nat))) "idl-sub.mo send_f2: func (nat) -> (nat) <: itself";
+assert blob "DIDL\03\6a\00\01\01\00\6a\01\02\01\02\00\6b\01\66\7d\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (variant { f : nat }) -> (variant { f : nat }))) "idl-sub.mo send_f3: func (variant { f : nat }) -> (variant { f : nat }) <: itself";
+assert blob "DIDL\03\6a\00\01\01\00\6a\01\02\01\02\00\6c\01\66\7d\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (record { f : nat }) -> (record { f : nat }))) "idl-sub.mo send_f4: func (record { f : nat }) -> (record { f : nat }) <: itself";
+assert blob "DIDL\03\6a\00\01\01\00\6a\01\02\01\02\00\6e\7d\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (opt nat) -> (opt nat))) "idl-sub.mo send_f5: func (opt nat) -> (opt nat) <: itself";
+assert blob "DIDL\03\6a\00\01\01\00\6a\01\02\01\02\00\69\00\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (service {}) -> (service {}))) "idl-sub.mo send_f6: func (service {}) -> (service {}) <: itself";
+assert blob "DIDL\02\6a\00\01\01\00\6a\02\7d\7e\02\7d\7e\00\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (nat, bool) -> (nat, bool))) "idl-sub.mo send_f7: func (nat, bool) -> (nat, bool) <: itself";
+assert blob "DIDL\03\6a\00\01\01\00\6a\01\02\01\02\00\6c\02\62\7e\6e\7d\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (record { n : nat; b : bool }) -> (record { n : nat; b : bool }))) "idl-sub.mo send_f8: func (record { n : nat; b : bool }) -> (record { n : nat; b : bool }) <: itself";
+assert blob "DIDL\03\6a\00\01\01\00\6a\01\02\01\02\00\6d\7d\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (vec nat) -> (vec nat))) "idl-sub.mo send_f9: func (vec nat) -> (vec nat) <: itself";
+assert blob "DIDL\03\6a\00\01\01\00\6a\01\02\01\02\00\6d\7b\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (blob) -> (blob))) "idl-sub.mo send_f10: func (blob) -> (blob) <: itself";
+assert blob "DIDL\04\6a\00\01\01\00\6a\01\02\01\02\00\6c\02\6e\7d\6f\03\6e\7e\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (record { n : nat; o : opt bool }) -> (record { n : nat; o : opt bool }))) "idl-sub.mo send_f11: func (record { n : nat; o : opt bool }) -> (record { n : nat; o : opt bool }) <: itself";
+assert blob "DIDL\05\6a\00\01\01\00\6a\01\02\01\02\00\6c\02\6e\7d\6f\03\6e\04\6c\01\62\7e\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (record { n : nat; o : opt record { b : bool } }) -> (record { n : nat; o : opt record { b : bool } }))) "idl-sub.mo send_f12: func (record { n : nat; o : opt record { b : bool } }) -> (record { n : nat; o : opt record { b : bool } }) <: itself";
+assert blob "DIDL\02\6a\00\01\01\00\6a\01\68\01\68\00\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (principal) -> (principal))) "idl-sub.mo send_f13: func (principal) -> (principal) <: itself";
+assert blob "DIDL\06\6a\00\01\01\00\6a\01\02\01\02\00\69\03\01\66\03\01\70\04\01\71\05\6a\00\00\00\6a\00\00\01\02\6a\00\00\01\01\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func (Actor) -> (Actor))) "idl-sub.mo send_f14: func (Actor) -> (Actor) <: itself";
+assert blob "DIDL\02\6a\00\01\01\00\6a\00\00\01\01\01\00\01\01\00\01\6d" == "(opt func \"aaaaa-aa\".m)" : (opt func () -> (func () -> () query)) "idl-sub.mo send_f15: func () -> () query <: itself";

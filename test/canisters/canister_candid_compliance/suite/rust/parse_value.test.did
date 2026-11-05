@@ -1,0 +1,43 @@
+/*
+Ported from dfinity/candid@572c80a rust/candid_parser/tests/parse_value.rs.
+Textual values are given the types the Rust test annotates them with (numbers
+without annotation are int, as in the Rust parser). Value type annotations
+(`(1 : nat)`) and parenthesised values (`((1))`) are outside this grammar and
+are not ported. Pretty-printing checks are not ported.
+*/
+
+// parse_bool_lit
+assert "(true)" == blob "DIDL\00\01\7e\01" : (bool) "parse_value.rs parse_bool_lit: true";
+
+// parse_literals
+assert " (true, null, 42, 42., +42.42, -42e5, 42.42e-5)" == blob "DIDL\00\07\7e\7f\7c\72\72\72\72\01\2a\00\00\00\00\00\00\45\40\f6\28\5c\8f\c2\35\45\40\00\00\00\00\90\05\50\c1\08\a9\80\20\e5\cc\3b\3f" : (bool, null, int, float64, float64, float64, float64) "parse_value.rs parse_literals: literals with leading space";
+assert "(42., +42.42, -42e5, 42.42e-5)" == "(42.0, 42.42, -4200000.0, 0.0004242)" : (float64, float64, float64, float64) "parse_value.rs parse_literals: float spellings";
+
+// parse_string_literals
+assert "(\"\", \"\\u{10ffff}\\n\", \"\\0a\\0dd\")" == blob "DIDL\00\03\71\71\71\00\05\f4\8f\bf\bf\0a\03\0a\0d\64" : (text, text, text) "parse_value.rs parse_string_literals: empty, \\u{10ffff}, hex escapes";
+assert "(\"\", \"\\u{10ffff}\\n\", \"\\0a\\0dd\")" == "(\"\", \"\\u{10ffff}\\n\", \"\\n\\rd\")" : (text, text, text) "parse_value.rs parse_string_literals: \\0a\\0dd is newline, carriage return, d";
+assert "(blob \"DIDL\\00\\01\\7d\\80\\00\")" == blob "DIDL\01\6d\7b\01\00\09\44\49\44\4c\00\01\7d\80\00" : (blob) "parse_value.rs parse_string_literals: blob with non-UTF-8 bytes";
+assert "(\"DIDL\\00\\01\\7d\\80\\00\")" !: (text) "parse_value.rs parse_string_literals: Not valid unicode text";
+assert "(\"\\u{d800}\")" !: (text) "parse_value.rs parse_string_literals: Unicode escape out of range d800";
+assert "(\"\\q\")" !: (text) "parse_value.rs parse_string_literals: Unknown escape character q";
+
+// parse_more_literals
+assert "(true, null, 4_2, \"哈哈\", \"string with whitespace\", 0x2a, -42, false)" == blob "DIDL\00\08\7e\7f\7d\71\71\7c\7c\7e\01\2a\06\e5\93\88\e5\93\88\16\73\74\72\69\6e\67\20\77\69\74\68\20\77\68\69\74\65\73\70\61\63\65\2a\56\00" : (bool, null, nat, text, text, int, int, bool) "parse_value.rs parse_more_literals: underscore, unicode, hex number";
+assert "(4_2, 0x2a, -42)" == "(42, 42, -42)" : (nat, int, int) "parse_value.rs parse_more_literals: 4_2 and 0x2a are 42";
+
+// parse_vec
+assert "(vec{1;2;3;4})" == blob "DIDL\01\6d\7d\01\00\04\01\02\03\04" : (vec nat) "parse_value.rs parse_vec: vec nat";
+
+// parse_optional_record
+assert "(opt record {}, record { 1=42;44=\"test\"; 2=false }, variant { 5=null })" == blob "DIDL\04\6e\01\6c\00\6c\03\01\7d\02\7e\2c\71\6b\01\05\7f\03\00\02\03\01\2a\00\04\74\65\73\74\00" : (opt record {}, record { 1 : nat; 44 : text; 2 : bool }, variant { 5 : null }) "parse_value.rs parse_optional_record: opt record, numbered fields, variant { 5 = null }";
+assert "(variant { 5=null })" == "(variant { 5 })" : (variant { 5 : null }) "parse_value.rs parse_optional_record: variant { 5 = null } is variant { 5 }";
+
+// parse_nested_record (the hex label 0x2b written as 43: hex labels are outside this grammar)
+assert "(record {label=42; 43=record {test=\"test\"; \"opt\"=\"hello\"}; long_label=opt null})" == blob "DIDL\03\6c\03\2b\01\b1\ff\f4\83\05\02\f4\9b\bc\fd\06\7d\6c\02\b3\b8\d2\02\71\d2\90\e7\e7\04\71\6e\7f\01\00\05\68\65\6c\6c\6f\04\74\65\73\74\01\2a" : (record { label : nat; 43 : record { test : text; "opt" : text }; long_label : opt null }) "parse_value.rs parse_nested_record: numbered field label, quoted keyword label";
+assert "(record {label=42; 43=record {test=\"test\"; \"opt\"=\"hello\"}; long_label=opt null})" == "(record { label = 42 })" : (record { label : nat }) "parse_value.rs parse_nested_record: annotating at a record with fewer fields drops the rest";
+
+// parse_shorthand (the hex label 0x2a written as 42: hex labels are outside this grammar)
+assert "(record { 42; record {}; true; record { 42; 42=42; 42; 42 }; opt 42 })" == "(record { 0 = 42; 1 = record {}; 2 = true; 3 = record { 0 = 42; 42 = 42; 43 = 42; 44 = 42 }; 4 = opt 42 })" : (record { int; record {}; bool; record { 0 : int; 42 : int; 43 : int; 44 : int }; opt int }) "parse_value.rs parse_shorthand: positional fields after 42=.. continue at 43";
+
+// parse_annval (only the error case, without the annotation)
+assert "(vec {1;2;3;-4;5;6;7})" !: (vec nat) "parse_value.rs parse_annval: -4 is not a nat";

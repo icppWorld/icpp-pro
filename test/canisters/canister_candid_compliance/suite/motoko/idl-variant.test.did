@@ -1,0 +1,11 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-variant.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+*/
+
+type Either = variant { left : nat32; right : nat32; fix : Either };
+assert blob "DIDL\01\6b\03\d5\83\b7\02\00\87\90\c0\bd\04\79\dc\97\90\cb\0e\79\01\00\00\02\20\00\00\00" == "(variant { fix = variant { right = 32 } })" : (Either) "idl-variant.mo numify";

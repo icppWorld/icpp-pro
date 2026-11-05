@@ -1,0 +1,10 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-field-escape.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+Motoko field names _0_, _1_, async_ are the Candid labels 0, 1, async.
+*/
+assert blob "DIDL\01\6c\03\00\7c\01\7d\bc\fe\f7\b1\02\71\01\00\ff\ff\03\80\20\03\58\58\58" == "(record { 0 = 65535; 1 = 4096; \"async\" = \"XXX\" })" : (record { 0 : int; 1 : nat; "async" : text }) "idl-field-escape.mo input";

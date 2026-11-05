@@ -1,0 +1,15 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-unexpected-variant.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+list_proposals replies with an Action case the caller's Action_ lacks; under opt it is null.
+*/
+
+type Action = variant { RegisterKnownNeuron : nat; ManageNeuron; CreateServiceNervousSystem : record { somefield : nat }; ExecuteNnsFunction; RewardNodeProvider; OpenSnsTokenSwap; SetSnsTokenSwapOpenTimeWindow; SetDefaultFollowees; RewardNodeProviders; ManageNetworkEconomics; ApproveGenesisKyc; AddOrRemoveNodeProvider; Motion };
+type Action_ = variant { RegisterKnownNeuron : nat; ManageNeuron; ExecuteNnsFunction; RewardNodeProvider; OpenSnsTokenSwap; SetSnsTokenSwapOpenTimeWindow; SetDefaultFollowees; RewardNodeProviders; ManageNetworkEconomics; ApproveGenesisKyc; AddOrRemoveNodeProvider; Motion };
+type Resp = record { proposal_info : vec record { proposal : opt record { url : text; title : opt text; action : opt Action; summary : text } } };
+type Resp_ = record { proposal_info : vec record { proposal : opt record { url : text; title : opt text; action : opt Action_; summary : text } } };
+assert blob "DIDL\09\6c\01\db\85\a7\ee\0d\01\6d\02\6c\01\b2\b8\d4\96\0b\03\6e\04\6c\04\ef\d6\e4\02\71\98\ab\ec\81\01\05\b6\f7\98\b2\01\06\a6\96\a4\87\08\71\6e\71\6e\07\6b\0d\93\a7\e0\9d\02\7d\d8\81\c9\c4\03\7f\88\f0\cc\b4\08\08\d6\9c\e7\9d\0a\7f\82\ff\cf\aa\0c\7f\9e\95\98\a0\0d\7f\9d\fa\94\a4\0d\7f\e3\c3\c5\99\0e\7f\b1\a5\ae\a1\0e\7f\f5\d9\d7\a5\0e\7f\fa\d5\dd\f4\0e\7f\db\9c\eb\f7\0e\7f\d6\f4\c7\ff\0f\7f\6c\01\c6\fa\d0\b4\0a\7d\01\00\02\01\03\61\62\63\01\03\61\62\63\01\02\00\03\61\62\63\01\03\61\62\63\01\03\61\62\63\01\00\01\03\61\62\63" == "(record { proposal_info = vec { record { proposal = opt record { url = \"abc\"; title = opt \"abc\"; action = null; summary = \"abc\" } }; record { proposal = opt record { url = \"abc\"; title = opt \"abc\"; action = opt variant { RegisterKnownNeuron = 1 }; summary = \"abc\" } } } })" : (Resp_) "idl-unexpected-variant.mo go: an unknown variant case under opt decodes as null";

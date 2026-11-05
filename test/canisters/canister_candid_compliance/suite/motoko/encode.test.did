@@ -1,0 +1,33 @@
+/*
+Encode vectors ported from dfinity/motoko test/run-drun/idl-*.mo, from the
+replies those tests check: the value, encoded with the typed API, must have
+the reference's types and decode to the same values.
+
+Not ported: the types of these are recursive. A typed API value is a finite
+tree of CandidType objects, so its type cannot refer to itself. The decode
+suites cover recursive types.
+  idl-func.mo fun reply: (opt Func) (null)
+  idl-func.mo fun3 reply: (Query) (func "rwlgt-iiaaa-aaaaa-aaaaa-cai".fun)
+  idl-variant.mo numify reply: (Either) (variant { fix = variant { left = 32 } })
+  idl-vector.mo rose reply: (MayRose) (opt vec { opt vec {}; opt vec { opt vec {}; op...
+*/
+
+type Oneway = func () -> () oneway;
+
+assert "(record { 0 = 65535; 1 = 4096; \"async\" = \"XXX\" })" encode blob "DIDL\01\6c\03\00\7c\01\7d\bc\fe\f7\b1\02\71\01\00\ff\ff\03\80\20\03\58\58\58" : (record { 0 : int; 1 : nat; "async" : text }) "idl-field-escape.mo out reply";
+assert "(record { foo = null })" encode blob "DIDL\01\6c\01\86\8e\b7\02\7f\01\00" : (record { foo : null }) "idl-field-escape.mo foo1/foo2 reply";
+assert "(1.5)" encode blob "DIDL\00\01\73\00\00\c0\3f" : (float32) "idl-float32.mo echo reply";
+assert "(3.14)" encode blob "DIDL\00\01\73\c3\f5\48\40" : (float32) "idl-float32.mo lit reply";
+assert "(1.5)" encode blob "DIDL\00\01\72\00\00\00\00\00\00\f8\3f" : (float64) "idl-float32.mo to_f64 reply";
+assert "(func \"rwlgt-iiaaa-aaaaa-aaaaa-cai\".\"oneway\")" encode blob "DIDL\01\6a\00\00\01\02\01\00\01\01\0a\00\00\00\00\00\00\00\00\01\01\06\6f\6e\65\77\61\79" : (Oneway) "idl-func.mo fun4 reply";
+assert "(\"One\", \"Two\")" encode blob "DIDL\00\02\71\71\03\4f\6e\65\03\54\77\6f" : (text, text) "idl-nary.mo two reply";
+assert "(\"One\", \"Two\", \"Three\")" encode blob "DIDL\00\03\71\71\71\03\4f\6e\65\03\54\77\6f\05\54\68\72\65\65" : (text, text, text) "idl-nary.mo three reply";
+assert "(\"One\", \"Two\", \"Three\", \"Four\")" encode blob "DIDL\00\04\71\71\71\71\03\4f\6e\65\03\54\77\6f\05\54\68\72\65\65\04\46\6f\75\72" : (text, text, text, text) "idl-nary.mo four reply";
+assert "(record { \"One\"; \"Two\"; \"Three\"; \"Four\" })" encode blob "DIDL\01\6c\04\00\71\01\71\02\71\03\71\01\00\03\4f\6e\65\03\54\77\6f\05\54\68\72\65\65\04\46\6f\75\72" : (record { text; text; text; text }) "idl-nary.mo mkRecord / unary reply";
+assert "(vec { 42; 25 })" encode blob "DIDL\01\6d\7d\01\00\02\2a\19" : (vec nat) "idl-nat-int.mo absolutes reply";
+assert "(record { 2; 5 })" encode blob "DIDL\01\6c\02\00\7c\01\7c\01\00\02\05" : (record { int; int }) "idl-pair.mo len2 reply";
+assert "(opt principal \"w7x7r-cok77-xa\")" encode blob "DIDL\01\6e\68\01\00\01\01\03\ca\ff\ee" : (opt principal) "idl-principal.mo fun2 reply";
+assert "(25)" encode blob "DIDL\00\01\77\19" : (int8) "idl-record.mo record2 reply";
+assert "(variant { nil })" encode blob "DIDL\01\6b\01\d1\a7\cf\02\7f\01\00\00" : (variant { nil }) "idl-shorthand.mo foo reply";
+assert "(2, 5)" encode blob "DIDL\00\02\7c\7c\02\05" : (int, int) "idl-tuple.mo len2 reply";
+assert "(5, 5, 67305985)" encode blob "DIDL\00\03\7c\7c\7c\05\05\81\84\8c\20" : (int, int, int) "idl-tuple.mo len3 reply";

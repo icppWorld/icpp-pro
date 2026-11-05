@@ -25,6 +25,10 @@ of truth. The gates and follow-ups to not skip:
    build can only install the previous icpp-pro from PyPI.
 5. The release guide's own testing matrix (python 3.11-3.14, wheel installs,
    demo scripts with the grep-based log verification, the definitive pytest).
+6. `make fuzz FUZZ_SECONDS=3600` — an hour per target of the Candid decoder
+   fuzzers (CI runs only a minute). A crash blocks the release: fix it in
+   icpp-candid and keep the input in `test/fuzz/regressions/`. Put the run
+   length and the result in the release notes.
 
 ## Publish (tag-triggered, CI-only)
 

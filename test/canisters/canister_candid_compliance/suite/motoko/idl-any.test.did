@@ -1,0 +1,37 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-any.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+*/
+assert blob "DIDL\00\02\7f\71\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7f71 skipped";
+assert blob "DIDL\00\02\7e\71\01\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7e71 skipped";
+assert blob "DIDL\00\02\7d\71\80\80\80\08\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7d71 skipped";
+assert blob "DIDL\00\02\7c\71\80\80\80\08\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7c71 skipped";
+assert blob "DIDL\00\02\7b\71\ab\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7b71 skipped";
+assert blob "DIDL\00\02\7a\71\ab\cd\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7a71 skipped";
+assert blob "DIDL\00\02\79\71\de\ad\be\ef\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7971 skipped";
+assert blob "DIDL\00\02\78\71\de\ad\be\ef\ca\ff\ee\66\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7871 skipped";
+assert blob "DIDL\00\02\77\71\ab\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7771 skipped";
+assert blob "DIDL\00\02\76\71\ab\cd\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7671 skipped";
+assert blob "DIDL\00\02\75\71\de\ad\be\ef\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7571 skipped";
+assert blob "DIDL\00\02\74\71\de\ad\be\ef\ca\ff\ee\66\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7471 skipped";
+assert blob "DIDL\00\02\73\71\de\ad\be\ef\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7371 skipped";
+assert blob "DIDL\00\02\72\71\de\ad\be\ef\ca\ff\ee\66\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7271 skipped";
+assert blob "DIDL\00\02\71\71\03\46\6f\6f\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7171 skipped";
+assert blob "DIDL\00\02\70\71\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7071 skipped";
+assert blob "DIDL\00\02\68\71\01\04\de\ad\be\ef\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 6871 skipped";
+assert blob "DIDL\01\6e\71\02\00\71\00\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7102 skipped";
+assert blob "DIDL\01\6e\71\02\00\71\01\03\46\6f\6f\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7102 skipped";
+assert blob "DIDL\01\6d\71\02\00\71\00\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7102 skipped";
+assert blob "DIDL\01\6d\71\02\00\71\01\03\46\6f\6f\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7102 skipped";
+assert blob "DIDL\01\6d\71\02\00\71\02\00\03\46\6f\6f\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 7102 skipped";
+assert blob "DIDL\01\6c\00\02\00\71\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 0002 skipped";
+assert blob "DIDL\01\6c\01\80\01\75\02\00\71\de\ad\be\ef\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 0180 skipped";
+assert blob "DIDL\01\6c\02\00\71\80\01\75\02\00\71\03\e2\98\83\de\ad\be\ef\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 0200 skipped";
+assert blob "DIDL\01\6b\01\80\01\75\02\00\71\00\de\ad\be\ef\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 0180 skipped";
+assert blob "DIDL\01\6b\02\00\71\80\01\75\02\00\71\00\03\e2\98\83\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 0200 skipped";
+assert blob "DIDL\01\6b\02\00\71\80\01\75\02\00\71\01\de\ad\be\ef\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 0200 skipped";
+assert blob "DIDL\01\66\02\ab\cd\02\00\71\04\00\de\ad\be\ef\03\46\6f\6f" == "(null, \"Foo\")" : (reserved, text) "idl-any.mo any(_ : Any, x : Text): first argument 02ab skipped";

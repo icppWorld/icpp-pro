@@ -1,0 +1,9 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-any-stable.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+*/
+assert blob "DIDL\01\01\71\02\00\71\00\00\00\00\00\00\03\42\41\44" !: (reserved, text) "idl-any-stable.mo any: opcode 0x01 in the type table is illegal";

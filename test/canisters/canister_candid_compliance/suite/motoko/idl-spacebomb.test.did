@@ -1,0 +1,36 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-spacebomb.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+The 1_000_000_000-element blobs and the 2^20 one duplicate the official spacebomb.test.did.
+The 10_000_000 and 1_048_575 element blobs are ported (over the limit of 1_000_000 values
+that take no bytes). The 400_000 (\80\b5\18) and 401_280 (\80\bf\18) element blobs are not:
+Motoko rejects them through its own cost limit, but they are under ours, so they decode.
+*/
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\01\6d\7f\01\00\80\ad\e2\04" !: (vec opt nat) "idl-spacebomb.mo vec null (not ignored), 10_000_000 elements";
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\01\6d\7f\01\00\80\ad\e2\04" !: (opt nat) "idl-spacebomb.mo vec null (subtyping), 10_000_000 elements";
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\01\6d\7f\01\00\ff\ff\3f" !: (vec opt nat) "idl-spacebomb.mo vec null (not ignored), 1_048_575 elements";
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\01\6d\7f\01\00\ff\ff\3f" !: (opt nat) "idl-spacebomb.mo vec null (subtyping), 1_048_575 elements";
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\01\6d\70\01\00\80\ad\e2\04" !: (vec reserved) "idl-spacebomb.mo vec reserved (not ignored), 10_000_000 elements";
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\01\6d\70\01\00\80\ad\e2\04" !: (opt nat) "idl-spacebomb.mo vec reserved (subtyping), 10_000_000 elements";
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\01\6d\70\01\00\ff\ff\3f" !: (vec reserved) "idl-spacebomb.mo vec reserved (not ignored), 1_048_575 elements";
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\01\6d\70\01\00\ff\ff\3f" !: (opt nat) "idl-spacebomb.mo vec reserved (subtyping), 1_048_575 elements";
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\ad\e2\04" !: (vec record { null; record { reserved }; record {} }) "idl-spacebomb.mo zero-sized record (not ignored), 10_000_000 elements";
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\ad\e2\04" !: (opt nat) "idl-spacebomb.mo zero-sized record (subtyping), 10_000_000 elements";
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\ff\ff\3f" !: (vec record { null; record { reserved }; record {} }) "idl-spacebomb.mo zero-sized record (not ignored), 1_048_575 elements";
+// didc 0.6.2 disagrees with this assert: needs the limit on values that take no bytes; didc has none
+assert blob "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\ff\ff\3f" !: (opt nat) "idl-spacebomb.mo zero-sized record (subtyping), 1_048_575 elements";

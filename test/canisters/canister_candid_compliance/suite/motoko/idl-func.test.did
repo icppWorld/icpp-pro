@@ -1,0 +1,13 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-func.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+*/
+
+type Func = func (int) -> (Func);
+type Query = func () -> (opt Func) query;
+type Oneway = func () -> () oneway;
+assert blob "DIDL\02\6e\01\6a\01\7c\00\00\01\00\00" == "(null)" : (opt Func) "idl-func.mo fun2: null : opt func (int) -> ()";

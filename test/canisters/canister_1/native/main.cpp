@@ -463,7 +463,7 @@ int main() {
                   "4449444c00017c00", silent_on_trap, my_principal);
 
   //----------------------------------------------------------------------------------
-  // Run all unit & compliance tests for candid
+  // Run all unit tests for candid
 
   // '()' -> '(0)'
   mockIC.run_test("test_candid", test_candid, "4449444c0000",
@@ -630,39 +630,41 @@ int main() {
   // the type's width.
   mockIC.run_trap_test("nat8 truncated (0 of 1 bytes)", roundtrip_nat8_101,
                        "4449444c00017b", silent_on_trap, my_principal,
-                       "Not enough bytes left");
+                       "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("nat16 truncated (1 of 2 bytes)", roundtrip_nat16_101,
                        "4449444c00017a65", silent_on_trap, my_principal,
-                       "Not enough bytes left");
+                       "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("nat32 truncated (2 of 4 bytes)", roundtrip_nat32_101,
                        "4449444c0001796500", silent_on_trap, my_principal,
-                       "Not enough bytes left");
+                       "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("nat64 truncated (5 of 8 bytes)", roundtrip_nat64_101,
                        "4449444c000178650000000000", silent_on_trap,
-                       my_principal, "Not enough bytes left");
+                       my_principal,
+                       "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("int8 truncated (0 of 1 bytes)", roundtrip_int8_101,
                        "4449444c000177", silent_on_trap, my_principal,
-                       "Not enough bytes left");
+                       "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("int16 truncated (1 of 2 bytes)", roundtrip_int16_101,
                        "4449444c00017665", silent_on_trap, my_principal,
-                       "Not enough bytes left");
+                       "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("int32 truncated (3 of 4 bytes)", roundtrip_int32_101,
                        "4449444c000175650000", silent_on_trap, my_principal,
-                       "Not enough bytes left");
+                       "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("int64 truncated (7 of 8 bytes)", roundtrip_int64_101,
                        "4449444c00017465000000000000", silent_on_trap,
-                       my_principal, "Not enough bytes left");
+                       my_principal,
+                       "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("float32 truncated (2 of 4 bytes)", roundtrip_float32,
                        "4449444c0001730000", silent_on_trap, my_principal,
-                       "Not enough bytes left");
+                       "Not enough bytes for a fixed-width value");
   mockIC.run_trap_test("float64 truncated (4 of 8 bytes)", roundtrip_float64,
                        "4449444c0001720000000000", silent_on_trap, my_principal,
-                       "Not enough bytes left");
+                       "Not enough bytes for a fixed-width value");
   // A blob whose size is larger than the bytes left: '(blob "ab")' with the
   // size 2 changed to 5
   mockIC.run_trap_test("blob size larger than the bytes left", roundtrip_blob,
                        "4449444c016d7b0100056162", silent_on_trap, my_principal,
-                       "Not enough bytes left");
+                       "The vec length is larger than the bytes left");
   // '(vec { blob "ab" })'
   mockIC.run_test("roundtrip_vec_blob", roundtrip_vec_blob,
                   "4449444c026d016d7b010001026162",
@@ -672,7 +674,8 @@ int main() {
   // A vec blob whose blob declares 5 bytes and has 2
   mockIC.run_trap_test("vec blob: blob size larger than the bytes left",
                        roundtrip_vec_blob, "4449444c026d016d7b010001056162",
-                       silent_on_trap, my_principal, "Not enough bytes left");
+                       silent_on_trap, my_principal,
+                       "The vec length is larger than the bytes left");
   // Shorter than the magic number
   mockIC.run_trap_test("3 bytes, shorter than DIDL", roundtrip_blob, "444944",
                        silent_on_trap, my_principal,
@@ -680,47 +683,47 @@ int main() {
   // A vec whose content type is index 5, with 1 type table
   mockIC.run_trap_test("content type index not in the type tables",
                        roundtrip_blob, "4449444c016d0500", silent_on_trap,
-                       my_principal, "is not in the type table section");
+                       my_principal, "Type index 5 out of range");
   // An argument of type index 5, with no type tables
   mockIC.run_trap_test("argument type index not in the type tables",
                        roundtrip_blob, "4449444c000105", silent_on_trap,
-                       my_principal, "is not in the type table section");
+                       my_principal, "Type index 5 out of range");
   // A type table entry that is a type index, not a type constructor
   mockIC.run_trap_test("type table entry that is a type index", roundtrip_blob,
                        "4449444c02016c0000", silent_on_trap, my_principal,
-                       "must be a type constructor");
+                       "Type table entry 1 is not a type constructor");
   // A type table entry that is a primitive (nat), not a type constructor
   mockIC.run_trap_test("type table entry that is a primitive", roundtrip_blob,
                        "4449444c017d010000", silent_on_trap, my_principal,
-                       "must be a type constructor");
+                       "Type table entry -3 is not a type constructor");
   // A content type index of 2^32, which would wrap around to 0 as an int
   mockIC.run_trap_test("type index too large for an int", roundtrip_blob,
                        "4449444c016d8080808010010000", silent_on_trap,
-                       my_principal, "is out of range");
+                       my_principal, "Type index out of range");
   // '(opt vec { record {} })' to a method that expects an opt vec nat16. It
   // used to dereference a null pointer. The Candid spec decodes an opt whose
-  // content does not match as null; icpp-candid traps instead, until the opt
-  // coercion rules are done (roadmap 7.3, the compliance suite)
+  // content does not match as null: the method then traps on its own check
+  // of the value
   mockIC.run_trap_test("opt vec record where opt vec nat16 is expected",
                        roundtrip_opt_vec_nat16,
                        "4449444c036e016d026c0001000101", silent_on_trap,
-                       my_principal, "an opt vec record, where an opt vec");
+                       my_principal, "ASSERT ERROR - roundtrip_opt_vec_nat16");
   // Limits, so a message cannot make the decoder recurse or loop without end.
   // A record whose only field is of its own type: 'record { 0 : t0 }' for t0,
   // with no value bytes, recursing at the same offset
   mockIC.run_trap_test("record nested in itself", roundtrip_vec_of_shared,
                        "4449444c016c0100000100", silent_on_trap, my_principal,
-                       "nested deeper than 128 levels");
+                       "Expected record");
   // 2,000,000 elements of 'vec record {}', which take no bytes on the wire,
   // to a vec_of and to a vec record decoder
   mockIC.run_trap_test("2,000,000 zero width elements (vec_of)",
                        roundtrip_vec_of_items, "4449444c026d016c00010080897a",
                        silent_on_trap, my_principal,
-                       "take no bytes on the wire");
+                       "A vec of more than 1000000 values that take no bytes");
   mockIC.run_trap_test("2,000,000 zero width elements (vec record)",
                        roundtrip_vec_record, "4449444c026d016c00010080897a",
                        silent_on_trap, my_principal,
-                       "take no bytes on the wire");
+                       "A vec of more than 1000000 values that take no bytes");
   // '(vec { record { record { ... } } })': a chain of 200 record types, each
   // with one field of the next, ending in 'record {}'. Checking if the vec's
   // elements take no bytes recurses down the chain.
@@ -738,7 +741,7 @@ int main() {
     append(chain, {0x6c, 0x00, 0x01, 0x00, 0x01});
     mockIC.run_trap_test("chain of 200 record types", roundtrip_vec_of_items,
                          chain.as_hex_string(), silent_on_trap, my_principal,
-                         "nested deeper than 128 levels");
+                         "Values nest more than 128 deep");
   }
   // A chain of 60 record types, each with two fields of the next, ending in
   // 'record {}': 2^60 records to decode from no value bytes. Sent as an
@@ -756,7 +759,7 @@ int main() {
     append(shared, {0x02, 62, 61, 0x01, 0x65, 0x00, 0x01});
     mockIC.run_trap_test("2^60 shared zero width records", roundtrip_vec_nat16,
                          shared.as_hex_string(), silent_on_trap, my_principal,
-                         "take no bytes on the wire");
+                         "More than 1000000 values that take no bytes");
   }
   // An additional '(opt vec record { 0 : nat8 })' argument, decoded and
   // discarded, leaves no type behind in the reply:
@@ -772,21 +775,21 @@ int main() {
   // 'record { names : vec text; values : vec text }'
   mockIC.run_trap_test("vec text to vec nat16", roundtrip_vec_nat16,
                        "4449444c016d7101000201610162", silent_on_trap,
-                       my_principal, "Wrong opcode found on wire");
+                       my_principal, "Fixed-width types must match exactly");
   mockIC.run_trap_test(
       "record vec nat16 to record vec text", roundtrip_record_vec_text,
       "4449444c036c02e287dcfd0401c89f92b409026d716d7a0100010161010100",
-      silent_on_trap, my_principal, "Wrong type on wire");
+      silent_on_trap, my_principal, "Expected text");
   // A vec record with a blob field: '(vec { record { b = blob "\01\02" } })'
   // -> '(vec { blob "\01\02" })'; a 'vec vec nat8' field instead traps
   mockIC.run_test("vec record with a blob field", native_vec_record_blob,
                   "4449444c036d016c0162026d7b010001020102",
                   "4449444c026d7b6d00010101020102", silent_on_trap,
                   my_principal);
-  mockIC.run_trap_test("vec record with a vec vec nat8 field",
-                       native_vec_record_blob,
-                       "4449444c046d016c0162026d036d7b010001010101",
-                       silent_on_trap, my_principal, "Wrong type on wire");
+  mockIC.run_trap_test(
+      "vec record with a vec vec nat8 field", native_vec_record_blob,
+      "4449444c046d016c0162026d036d7b010001010101", silent_on_trap,
+      my_principal, "Fixed-width types must match exactly");
   // '("{\"project\": \"?\", \"C++\": 0}")' -> '("{\"C++\":20,\"project\":\"icpp\"}")'
   mockIC.run_test(
       "roundtrip_text_to_json_to_text", roundtrip_text_to_json_to_text,
@@ -948,21 +951,21 @@ int main() {
   mockIC.run_trap_test(
       "vec_of unknown case", roundtrip_vec_of_variants,
       "4449444c026d016b067471757f777ba4aab60272c8b2bf0275818f92f1047d010002010201",
-      silent_on_trap, "", "does not match any of the expected Variant ids");
+      silent_on_trap, "", "Variant case 119 is not in the expected type");
   // The wrong payload type: '(vec { variant { t = 5 } })' with t: nat
   mockIC.run_trap_test("vec_of wrong payload type", roundtrip_vec_of_variants,
                        "4449444c026d016b01747d0100010005", silent_on_trap, "",
-                       "Wrong type on wire");
+                       "Expected text");
   // An element without the non-opt field id
   mockIC.run_trap_test(
       "vec_of missing field", roundtrip_vec_of_items,
       "4449444c066d016c04d4c2a7b80402f2afa8c80403d9e9dae7040496e3f0f00b056b02617f627d6e716d716c01717101000100000000",
-      silent_on_trap, "", "Wrong id (hash) of a non-opt record field");
+      silent_on_trap, "", "Record field 23515 is missing");
   // Truncated bytes
   mockIC.run_trap_test(
       "vec_of truncated", roundtrip_vec_of_items,
       "4449444c066d016c05dbb70178d4c2a7b80402f2afa8c80403d9e9dae7040496e3f0f00b056b02617f627d6e716d716c01717101000201000000000000000001026e310201780179027131020000000000000001ac0200",
-      silent_on_trap, "", "extends past end");
+      silent_on_trap, "", "Cannot read the vec length");
   // A size larger than the bytes left
   mockIC.run_trap_test(
       "vec_of size too large", roundtrip_vec_of_variants,
@@ -972,12 +975,12 @@ int main() {
   // '(vec { variant { AdminQuery } })' with the index 0 changed to 7
   mockIC.run_trap_test("vec_variant index out of range", roundtrip_vec_variant,
                        "4449444c026d016b0299d8ddf2087fd8a7f6ae0b7f01000107",
-                       silent_on_trap, "", "is outside the 2 cases");
+                       silent_on_trap, "", "Variant index out of range");
   // The same in a CandidTypeVecOf of variants, with the index 9 of 5 cases
   mockIC.run_trap_test(
       "vec_of variant index out of range", roundtrip_vec_of_variants,
       "4449444c026d016b057471757fa4aab60272c8b2bf0275818f92f1047d01000109",
-      silent_on_trap, "", "is outside the 5 cases");
+      silent_on_trap, "", "Variant index out of range");
   // A vec of records that are not zero width, with a size larger than the
   // bytes left
   mockIC.run_trap_test(
@@ -1018,10 +1021,11 @@ int main() {
                   "4449444c016e7f02007d0166", "4449444c00017d66",
                   silent_on_trap, my_principal);
 
-  // '(102 : nat)' -> '(102 : nat)'
-  mockIC.run_test("roundtrip_opt_nat_nat 3", roundtrip_opt_nat_nat,
-                  "4449444c00017d66", "4449444c00017d66", silent_on_trap,
-                  my_principal);
+  // '(102 : nat)': arguments are positional, so the nat is coerced to the
+  // opt nat, and the nat that follows is missing
+  mockIC.run_trap_test("roundtrip_opt_nat_nat 3", roundtrip_opt_nat_nat,
+                       "4449444c00017d66", silent_on_trap, my_principal,
+                       "Argument 1 is missing");
 
   // '(null)' -> The raw bytes returned represent an opt : nat without a value.
   //             There is no IDL representation for this.
@@ -1515,83 +1519,88 @@ int main() {
   //
   //  -> These additional Opts are read & discarded during Candid deserialization
   //
+  // Arguments are positional: additional arguments come after the expected
+  // ones. An additional argument before an expected one is not skipped.
+  mockIC.run_trap_test("roundtrip_bool_true with an additional Opt before it",
+                       roundtrip_bool_true, "4449444c016e7f03007e00010101",
+                       silent_on_trap, my_principal, "Expected bool");
 
-  // '(opt (null: null), true, opt (null: null))' -> '(true)'
+  // '(true, opt (null: null), opt (null: null))' -> '(true)'
   mockIC.run_test("roundtrip_bool_true with additional Opt 1",
-                  roundtrip_bool_true, "4449444c016e7f03007e00010101",
+                  roundtrip_bool_true, "4449444c016e7f037e0000010101",
                   "4449444c00017e01", silent_on_trap, my_principal);
 
-  // '(opt ("extra 1": text), true, opt (101: nat8))' -> '(true)'
+  // '(true, opt ("extra 1": text), opt (101: nat8))' -> '(true)'
   mockIC.run_test("roundtrip_bool_true with additional Opt 2",
                   roundtrip_bool_true,
-                  "4449444c026e716e7b03007e01010765787472612031010165",
+                  "4449444c026e716e7b037e0001010107657874726120310165",
                   "4449444c00017e01", silent_on_trap, my_principal);
 
-  // '(opt ( record {field2 = "f2" : text; field1 = 16 : nat16} ), true, opt (101: nat8))' -> '(true)'
+  // '(true, opt ( record {field2 = "f2" : text; field1 = 16 : nat16} ), opt (101: nat8))' -> '(true)'
   mockIC.run_test(
       "roundtrip_bool_true with additional Opt 3", roundtrip_bool_true,
-      "4449444c036e016c02b79cba84087ab89cba8408716e7b03007e02011000026632010165",
+      "4449444c036e016c02b79cba84087ab89cba8408716e7b037e0002010110000266320165",
       "4449444c00017e01", silent_on_trap, my_principal);
 
-  // '(opt ( variant { Ok } ), true, opt (variant { Err = "Error" : text}))' -> '(true)'
+  // '(true, opt ( variant { Ok } ), opt (variant { Err = "Error" : text}))' -> '(true)'
   mockIC.run_test(
       "roundtrip_bool_true with additional Opt 4", roundtrip_bool_true,
-      "4449444c046e016b01bc8a017f6e036b01c5fed2017103007e020100010100054572726f72",
+      "4449444c046e016b01bc8a017f6e036b01c5fed20171037e00020101000100054572726f72",
       "4449444c00017e01", silent_on_trap, my_principal);
 
-  // '(opt (variant { Err = "Error" : text}), true, opt ( variant { Ok } ))' -> '(true)'
+  // '(true, opt (variant { Err = "Error" : text}), opt ( variant { Ok } ))' -> '(true)'
   mockIC.run_test(
       "roundtrip_bool_true with additional Opt 5", roundtrip_bool_true,
-      "4449444c046e016b01c5fed201716e036b01bc8a017f03007e020100054572726f72010100",
+      "4449444c046e016b01c5fed201716e036b01bc8a017f037e0002010100054572726f720100",
       "4449444c00017e01", silent_on_trap, my_principal);
 
-  // '(opt ( record {field1 = "hello" : text} ), opt (variant { Err = "Error" : text}), true, opt ( variant { Ok } ), opt ( record {field2 = "bye" : text} ))'
+  // '(true, opt ( record {field1 = "hello" : text} ), opt (variant { Err = "Error" : text}), opt ( variant { Ok } ), opt ( record {field2 = "bye" : text} ))'
   // -> '(true)'
   mockIC.run_test(
       "roundtrip_bool_true with additional Opt 6", roundtrip_bool_true,
-      "4449444c086e016c01b79cba8408716e036b01c5fed201716e056b01bc8a017f6e076c01b89cba8408710500027e0406010568656c6c6f0100054572726f720101000103627965",
+      "4449444c086e016c01b79cba8408716e036b01c5fed201716e056b01bc8a017f6e076c01b89cba840871057e0002040601010568656c6c6f0100054572726f7201000103627965",
       "4449444c00017e01", silent_on_trap, my_principal);
 
-  // '(opt (record {opt (variant {field1 = "hello" : text})}), opt (variant { Err = "Error" : text}), true, opt ( variant { Ok } ), opt (record {opt (variant {field2 = "bye" : text})}))'
+  // '(true, opt (record {opt (variant {field1 = "hello" : text})}), opt (variant { Err = "Error" : text}), opt ( variant { Ok } ), opt (record {opt (variant {field2 = "bye" : text})}))'
   // -> '(true)'
   mockIC.run_test(
       "roundtrip_bool_true with additional Opt 7", roundtrip_bool_true,
-      "4449444c0c6e016c0100026e036b01b79cba8408716e056b01c5fed201716e076b01bc8a017f6e096c01000a6e0b6b01b89cba8408710500047e06080101000568656c6c6f0100054572726f7201010001010003627965",
+      "4449444c0c6e016c0100026e036b01b79cba8408716e056b01c5fed201716e076b01bc8a017f6e096c01000a6e0b6b01b89cba840871057e00040608010101000568656c6c6f0100054572726f72010001010003627965",
       "4449444c00017e01", silent_on_trap, my_principal);
 
   // Test complex but valid opt variant with opt variant field
-  // '(opt (variant { Err = opt (variant { Err = "Error" : text}) }), true, opt ( variant { Ok } ), opt (variant { Err = opt (variant { Err = "Error" : text}) }))'
+  // '(true, opt (variant { Err = opt (variant { Err = "Error" : text}) }), opt ( variant { Ok } ), opt (variant { Err = opt (variant { Err = "Error" : text}) }))'
   // -> '(true)'
   mockIC.run_test(
       "roundtrip_bool_true with additional Opt 8", roundtrip_bool_true,
-      "4449444c066e016b01c5fed201026e036b01c5fed201716e056b01bc8a017f04007e040001000100054572726f7201010001000100054572726f72",
+      "4449444c066e016b01c5fed201026e036b01c5fed201716e056b01bc8a017f047e0004000101000100054572726f72010001000100054572726f72",
       "4449444c00017e01", silent_on_trap, my_principal);
 
-  // '(opt (record {opt (variant { Err = opt (variant { Err = "Error" : text}) })}), opt (variant { Err = "Error" : text}), true, opt ( variant { Ok } ), opt (record {opt (variant { Err = opt (variant { Err = "Error" : text}) })}))'
+  // '(true, opt (record {opt (variant { Err = opt (variant { Err = "Error" : text}) })}), opt (variant { Err = "Error" : text}), opt ( variant { Ok } ), opt (record {opt (variant { Err = opt (variant { Err = "Error" : text}) })}))'
   // -> '(true)'
   mockIC.run_test(
       "roundtrip_bool_true with additional Opt 9", roundtrip_bool_true,
-      "4449444c086e016c0100026e036b01c5fed201046e056b01c5fed201716e076b01bc8a017f0500047e06000101000100054572726f720100054572726f720101000101000100054572726f72",
+      "4449444c086e016c0100026e036b01c5fed201046e056b01c5fed201716e076b01bc8a017f057e00040600010101000100054572726f720100054572726f7201000101000100054572726f72",
       "4449444c00017e01", silent_on_trap, my_principal);
 
-  // '(opt (vec { 101 : nat16; 102 : nat16; 103 : nat16 }), true, opt (vec { 101 : nat16; 102 : nat16; 103 : nat16 }))' -> '(true)'
+  // '(true, opt (vec { 101 : nat16; 102 : nat16; 103 : nat16 }), opt (vec { 101 : nat16; 102 : nat16; 103 : nat16 }))' -> '(true)'
   mockIC.run_test(
       "roundtrip_bool_true with additional Opt 10", roundtrip_bool_true,
-      "4449444c026e016d7a03007e000103650066006700010103650066006700",
+      "4449444c026e016d7a037e00000101036500660067000103650066006700",
       "4449444c00017e01", silent_on_trap, my_principal);
 
-  // '(opt (vec { record {field1 = "hello1" : text; field2 = "bye1" : text}; record {field1 = "hello2" : text; field2 = "bye2" : text}; record {field1 = "hello2" : text; field3 = "bye3" : text} }), true, opt (vec { record {field1 = "hello1" : text; field2 = "bye1" : text}; record {field1 = "hello2" : text; field2 = "bye2" : text}; record {field1 = "hello2" : text; field3 = "bye3" : text} }))'
+  // '(true, opt (vec { record {field1 = "hello1" : text; field2 = "bye1" : text}; record {field1 = "hello2" : text; field2 = "bye2" : text}; record {field1 = "hello2" : text; field3 = "bye3" : text} }), opt (vec { record {field1 = "hello1" : text; field2 = "bye1" : text}; record {field1 = "hello2" : text; field2 = "bye2" : text}; record {field1 = "hello2" : text; field3 = "bye3" : text} }))'
   // -> '(true)'
   mockIC.run_test(
       "roundtrip_bool_true with additional Opt 11", roundtrip_bool_true,
-      "4449444c036e016d026c02b79cba840871b89cba84087103007e0001030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f3204627965330101030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f320462796533",
+      "4449444c036e016d026c02b79cba840871b89cba840871037e00000101030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f32046279653301030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f320462796533",
       "4449444c00017e01", silent_on_trap, my_principal);
 
-  // '(opt (vec { record {field1 = "hello1" : text; field2 = variant {fieldv = 1 : int}; field3 = "bye1" : text}; record {field1 = "hello2" : text; field2 = variant {fieldv = 2 : int}; field3 = "bye2" : text}; record {field1 = "hello2" : text; field2 = variant {fieldv = 2 : int}; field3 = "bye2" : text} }), true, opt (vec { record {field1 = "hello1" : text; field2 = variant {fieldv = 1 : int}; field3 = "bye1" : text}; record {field1 = "hello2" : text; field2 = variant {fieldv = 2 : int}; field3 = "bye2" : text}; record {field1 = "hello2" : text; field2 = variant {fieldv = 2 : int}; field3 = "bye2" : text} }))'
+  // '(true, opt (vec { record {field1 = "hello1" : text; field2 = variant {fieldv = 1 : int}; field3 = "bye1" : text}; record {field1 = "hello2" : text; field2 = variant {fieldv = 2 : int}; field3 = "bye2" : text}; record {field1 = "hello2" : text; field2 = variant {fieldv = 2 : int}; field3 = "bye2" : text} }), opt (vec { record {field1 = "hello1" : text; field2 = variant {fieldv = 1 : int}; field3 = "bye1" : text}; record {field1 = "hello2" : text; field2 = variant {fieldv = 2 : int}; field3 = "bye2" : text}; record {field1 = "hello2" : text; field2 = variant {fieldv = 2 : int}; field3 = "bye2" : text} }))'
   // -> '(true)'
   mockIC.run_test(
       "roundtrip_bool_true with additional Opt 12", roundtrip_bool_true,
-      "4449444c046e016d026c03b79cba840871b89cba840803b99cba8408716b01fc9cba84087c03007e0001030668656c6c6f31000104627965310668656c6c6f32000204627965320668656c6c6f32000204627965320101030668656c6c6f31000104627965310668656c6c6f32000204627965320668656c6c6f3200020462796532",
+      "4449444c046e016d026c03b79cba840871b89cba840803b99cba8408716b01fc9cba84087c037e00000101030668656c6c6f31000104627965310668656c6c6f32000204627965320668656c6c6f320002046279653201030668656c6c6f31000104627965310668656c6c6f32000204627965320668656c6c6f3200020462796532",
       "4449444c00017e01", silent_on_trap, my_principal);
 
   // Test 1: Both fields are provided with actual values
@@ -1690,10 +1699,11 @@ int main() {
   // Trap testing
   //
 
-  // Verify that a Deserialization traps if the number of arguments is wrong
-  // '(true, true)' goes in, but it only expects one '(true)'
+  // Verify that a Deserialization traps if an argument is missing
+  // '()' goes in, but it expects '(bool)'. (Additional arguments, such as
+  // '(true, true)', are skipped, as the spec says.)
   mockIC.run_trap_test("trap_wrong_number_of_args", trap_wrong_number_of_args,
-                       "4449444c00027e7e0101", silent_on_trap);
+                       "4449444c0000", silent_on_trap);
 
   // Verify that a canister traps if from_wire is called more than once
   // '(true)' -> '(true)'  (But it never returns, it traps)

@@ -12,9 +12,12 @@
 #include <optional>
 #include <string>
 
+#include "candid_decoder.h"
 #include "candid_deserialize.h"
 #include "candid_serialize.h"
 #include "candid_serialize_type_table_registry.h"
+#include "candid_subtype.h"
+#include "candid_text_value.h"
 #include "ic_api.h"
 #include "test_vec_of.h"
 
@@ -169,6 +172,606 @@ __attribute__((noinline)) void test_vec_variant() {
     r.append("y", CandidTypeNat(&y));
     decode(wire, r);
     check(y == 7, "skipped vec variant with payloads");
+  }
+
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+}
+
+// The subtype check retracts what it assumed for a check that failed, as
+// dfinity/candid's subtype_assumptions.rs. These types have no finite value, so
+// a decoder replaces them with empty, and only a direct check can test this.
+//   type X = record { 0 : X2; 1 : nat };  type X2 = record { 0 : X };
+//   type Y = record { 0 : Y2; 1 : text }; type Y2 = record { 0 : Y };
+__attribute__((noinline)) void test_subtype_assumptions() {
+  CandidTypeGraph g;
+  int x = g.reserve(), x2 = g.reserve(), y = g.reserve(), y2 = g.reserve();
+  int nat = CandidTypeGraph::prim(CandidKind::Nat);
+  int text = CandidTypeGraph::prim(CandidKind::Text);
+  CandidGraphNode r{CandidKind::Record};
+  r.fields = {{0, x2}, {1, nat}};
+  g.define(x, r);
+  r.fields = {{0, x}};
+  g.define(x2, r);
+  r.fields = {{0, y2}, {1, text}};
+  g.define(y, r);
+  r.fields = {{0, y}};
+  g.define(y2, r);
+
+  check(!CandidSubtype().is_subtype(g, x2, g, y2), "X2 </: Y2");
+
+  // failed_opt_probe_leaves_no_derived_assumption
+  int opt_y = g.opt(y);
+  int lhs = g.record({{0, x}, {1, x2}});
+  int rhs = g.record({{0, opt_y}, {1, y2}});
+  check(!CandidSubtype().is_subtype(g, lhs, g, rhs),
+        "a failed opt probe X <: Y leaves no X2 <: Y2 behind");
+
+  // failed_check_leaves_no_derived_assumption
+  CandidSubtype s;
+  check(!s.is_subtype(g, x, g, y), "X </: Y");
+  check(!s.is_subtype(g, x2, g, y2), "then X2 </: Y2, with the same checker");
+}
+
+// A vec whose elements take no bytes on the wire is stored as one element
+// and a count: a message of a few bytes cannot make the decoder store a
+// million values. As dfinity/candid's decoder, where such values are free.
+__attribute__((noinline)) void test_zero_width_vec() {
+  // vec null of 1_000_000 elements: 4449444c 01 6d7f 01 00 c0843d
+  const std::vector<uint8_t> m{'D',  'I', 'D', 'L',  1,    0x6d,
+                               0x7f, 1,   0,   0xc0, 0x84, 0x3d};
+  auto decode_at = [&](CandidTypeGraph &g, int e,
+                       std::vector<CandidValue> &out) {
+    std::string err;
+    return CandidDecoder::decode(m.data(), m.size(), g, {e}, out, err);
+  };
+
+  {
+    CandidTypeGraph g;
+    std::vector<CandidValue> out;
+    check(decode_at(g, g.vec(CandidTypeGraph::prim(CandidKind::Null)), out),
+          "zero width: vec null of 1e6 decodes");
+    check(out[0].vec_size() == 1000000 && out[0].items.size() == 1,
+          "zero width: vec null of 1e6 is stored once");
+  }
+  {
+    // reserved counts each null once, as null does
+    CandidTypeGraph g;
+    std::vector<CandidValue> out;
+    check(decode_at(g, g.vec(CandidTypeGraph::prim(CandidKind::Reserved)), out),
+          "zero width: vec null of 1e6 decodes at vec reserved");
+  }
+  {
+    // ... and one more element is over the budget
+    std::vector<uint8_t> m2 = m;
+    m2.back() = 0x3d;
+    m2[m2.size() - 3] = 0xc1; // 1_000_001
+    CandidTypeGraph g;
+    std::vector<CandidValue> out;
+    std::string err;
+    check(!CandidDecoder::decode(
+              m2.data(), m2.size(), g,
+              {g.vec(CandidTypeGraph::prim(CandidKind::Reserved))}, out, err),
+          "zero width: vec null of 1e6 + 1 is over the budget");
+  }
+  { // The typed API sees every element:
+    // didc encode -t '(vec null)' '(vec {null; null; null})'
+    std::string wire = "4449444c016d7f010003";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    size_t count{0};
+    decode(wire,
+           CandidTypeVecOf([&]() -> CandidType { return CandidTypeNull{}; },
+                           [&]() { ++count; }));
+    check(count == 3, "zero width: vec null binds 3 elements");
+
+    // ... also at vec opt nat, where each null is an opt nat null
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::optional<__uint128_t> o{1};
+    std::vector<std::optional<__uint128_t>> os;
+    decode(wire,
+           CandidTypeVecOf([&]() -> CandidType { return CandidTypeOptNat{&o}; },
+                           [&]() { os.push_back(o); }));
+    check(os.size() == 3 && !os[0] && !os[1] && !os[2],
+          "zero width: vec null binds at vec opt nat");
+  }
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+}
+
+// Messages for the tests of values that take no bytes
+void leb(std::vector<uint8_t> &b, uint64_t v) {
+  do {
+    uint8_t c = v & 0x7f;
+    v >>= 7;
+    b.push_back(v ? c | 0x80 : c);
+  } while (v);
+}
+
+// The type table entries of a record tree of `levels` levels, the first at
+// index `first`: entry i is record {0 : i+1; 1 : i+1}, and the last is
+// record {0 : null; 1 : null}. The first is a tree of 2^(levels+1) - 1
+// values, all of which take no bytes.
+std::vector<std::vector<uint8_t>> tree_types(int levels, int first = 0) {
+  std::vector<std::vector<uint8_t>> types;
+  for (int i = 0; i < levels; ++i) {
+    uint8_t ref = i + 1 < levels ? uint8_t(first + i + 1) : 0x7f;
+    types.push_back({0x6c, 2, 0, ref, 1, ref});
+  }
+  return types;
+}
+
+// DIDL, the type table, the argument types (indexes < 64), the values
+std::vector<uint8_t> message(const std::vector<std::vector<uint8_t>> &types,
+                             const std::vector<uint8_t> &args,
+                             const std::vector<uint8_t> &values) {
+  std::vector<uint8_t> m{'D', 'I', 'D', 'L'};
+  leb(m, types.size());
+  for (const auto &t : types)
+    m.insert(m.end(), t.begin(), t.end());
+  leb(m, args.size());
+  m.insert(m.end(), args.begin(), args.end());
+  m.insert(m.end(), values.begin(), values.end());
+  return m;
+}
+
+// The expected type of a record tree of `levels` levels
+int tree_type(CandidTypeGraph &g, int levels) {
+  int t = CandidTypeGraph::prim(CandidKind::Null);
+  for (int i = 0; i < levels; ++i)
+    t = g.record({{0, t}, {1, t}});
+  return t;
+}
+
+const std::string over_budget = "More than 1000000 values that take no bytes";
+
+// What a message decodes to, or its error, at the expected argument types
+struct Decoded {
+  bool ok;
+  std::string err;
+  std::vector<CandidValue> out;
+};
+Decoded decode_message(const std::vector<uint8_t> &m, const CandidTypeGraph &g,
+                       const std::vector<int> &args) {
+  Decoded d;
+  d.ok = CandidDecoder::decode(m.data(), m.size(), g, args, d.out, d.err);
+  return d;
+}
+
+// Values that take no bytes, in records: what is accepted, what is over the
+// budget, and the exact errors
+__attribute__((noinline)) void test_zero_width_records() {
+  for (int levels : {18, 19}) {
+    std::vector<uint8_t> m = message(tree_types(levels), {0}, {});
+    bool fits = levels == 18; // 2^19 - 1 values, or 2^20 - 1
+
+    { // at its own type
+      CandidTypeGraph g;
+      Decoded d = decode_message(m, g, {tree_type(g, levels)});
+      check(d.ok == fits && (fits || d.err == "Argument 0: " + over_budget),
+            "zero width: record tree of " + std::to_string(levels) + " levels");
+      if (fits) {
+        // Walk down the left side: every level is a record of two, shared,
+        // so the tree holds one value per level
+        const CandidValue *v = &d.out[0];
+        for (int i = 0; i < levels; ++i) {
+          check(v->kind == CandidKind::Record && v->field_count() == 2 &&
+                    v->items.empty() && v->rest &&
+                    v->field(0)->rest == v->field(1)->rest &&
+                    *v->field(0) == *v->field(1),
+                "zero width: record tree level " + std::to_string(i));
+          v = v->field(0);
+        }
+        check(v->kind == CandidKind::Null, "zero width: record tree leaf");
+      }
+    }
+    { // at reserved
+      CandidTypeGraph g;
+      Decoded d =
+          decode_message(m, g, {CandidTypeGraph::prim(CandidKind::Reserved)});
+      check(d.ok == fits && (fits || d.err == "Argument 0: " + over_budget),
+            "zero width: record tree at reserved");
+    }
+    { // as an extra argument
+      CandidTypeGraph g;
+      Decoded d = decode_message(m, g, {});
+      check(d.ok == fits &&
+                (fits || d.err == "Extra argument 0: " + over_budget),
+            "zero width: record tree as an extra argument");
+    }
+  }
+
+  { // A small tree is the same as the tree written out in full
+    CandidTypeGraph g;
+    Decoded d =
+        decode_message(message(tree_types(3), {0}, {}), g, {tree_type(g, 3)});
+    CandidValue full;
+    full.kind = CandidKind::Null;
+    for (int i = 0; i < 3; ++i) {
+      CandidValue r;
+      r.kind = CandidKind::Record;
+      r.ids = {0, 1};
+      r.items = {full, full};
+      full = std::move(r);
+    }
+    std::string leaf = "record { 0 = null; 1 = null; }";
+    std::string mid = "record { 0 = " + leaf + "; 1 = " + leaf + "; }";
+    std::string top = "record { 0 = " + mid + "; 1 = " + mid + "; }";
+    check(d.ok && d.out[0] == full && full == d.out[0] &&
+              d.out[0].to_text() == top && full.to_text() == top,
+          "zero width: record tree equals the tree in full");
+    full.ids[1] = 2;
+    check(d.out[0] != full, "zero width: record tree differs in a field");
+  }
+
+  // vec record {null; null}: each element is 3 values
+  for (uint64_t len : {333333u, 333334u}) {
+    std::vector<uint8_t> values;
+    leb(values, len);
+    std::vector<uint8_t> m =
+        message({{0x6d, 1}, {0x6c, 2, 0, 0x7f, 1, 0x7f}}, {0}, values);
+    CandidTypeGraph g;
+    int null = CandidTypeGraph::prim(CandidKind::Null);
+    Decoded d = decode_message(m, g, {g.vec(g.record({{0, null}, {1, null}}))});
+    bool fits = len == 333333;
+    check(d.ok == fits && (fits || d.err == "Argument 0: " + over_budget),
+          "zero width: vec record {null; null} of " + std::to_string(len));
+    if (fits) check(d.out[0].vec_size() == len, "zero width: vec size");
+  }
+
+  // M x N: vec record {nat8; tree}, of M elements that each take one byte and
+  // hold a tree of 2^(levels+1) - 1 values: 1000 trees of 511, or of 1023
+  for (int levels : {8, 9}) {
+    auto types = tree_types(levels, 2);
+    types.insert(types.begin(),
+                 {0x6c, 2, 0, 0x7b, 1, 2}); // record {nat8; tree}
+    types.insert(types.begin(), {0x6d, 1}); // vec of it
+    std::vector<uint8_t> values;
+    leb(values, 1000);
+    for (int k = 0; k < 1000; ++k)
+      values.push_back(uint8_t(k));
+    std::vector<uint8_t> m = message(types, {0}, values);
+
+    CandidTypeGraph g;
+    int tree = tree_type(g, levels);
+    int nat8 = CandidTypeGraph::prim(CandidKind::Nat8);
+    Decoded d = decode_message(m, g, {g.vec(g.record({{0, nat8}, {1, tree}}))});
+    bool fits = levels == 8;
+    check(d.ok == fits && (fits || d.err == "Argument 0: " + over_budget),
+          "zero width: 1000 x a tree of " + std::to_string(levels) + " levels");
+    if (fits) {
+      check(d.out[0].vec_size() == 1000 &&
+                d.out[0].at(999).field(0)->u == uint8_t(999) &&
+                d.out[0].at(0).rest == d.out[0].at(999).rest &&
+                d.out[0].at(0).field(1)->rest ==
+                    d.out[0].at(999).field(1)->rest,
+            "zero width: 1000 x a tree, values");
+    }
+  }
+
+  { // A zero-width record at an opt record: a value when it coerces, null
+    // when it does not
+    std::vector<uint8_t> m = message(tree_types(2), {0}, {});
+    CandidTypeGraph g;
+    int nat = CandidTypeGraph::prim(CandidKind::Nat);
+    Decoded d = decode_message(
+        m, g, {g.opt(g.record({})), g.opt(g.record({{0, nat}}))});
+    // Only one argument is on the wire; the second is missing, so null
+    check(d.ok && d.out[0].items.size() == 1 && d.out[1].items.empty(),
+          "zero width: record tree at opt record {}");
+    Decoded d2 = decode_message(m, g, {g.opt(g.record({{0, nat}}))});
+    check(d2.ok && d2.out[0].kind == CandidKind::Opt && d2.out[0].items.empty(),
+          "zero width: record tree at opt record {0 : nat} is null");
+  }
+}
+
+void sleb(std::vector<uint8_t> &b, int64_t v) {
+  while (true) {
+    uint8_t c = v & 0x7f;
+    v >>= 7;
+    if ((v == 0 && !(c & 0x40)) || (v == -1 && (c & 0x40))) {
+      b.push_back(c);
+      return;
+    }
+    b.push_back(c | 0x80);
+  }
+}
+
+// The type graph's checks follow long chains of types, and a value marked
+// absent differs from one that is there
+// A copy of a null, reserved or empty points at its own value: a variant
+// built from temporaries, as IC_Management::canister_status does, decodes
+// after the temporaries are gone
+__attribute__((noinline)) void test_copies_of_null_reserved_empty() {
+  {
+    CandidTypeNull a;
+    CandidTypeNull b{a};
+    CandidTypeReserved c;
+    CandidTypeReserved d{c};
+    CandidTypeEmpty e;
+    CandidTypeEmpty f{e};
+    check(b.get_pv() != a.get_pv() && d.get_pv() != c.get_pv() &&
+              f.get_pv() != e.get_pv(),
+          "a copy of a null, reserved or empty points at its own value");
+  }
+  {
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::string wire =
+        CandidSerialize(CandidTypeVariant("stopped", CandidTypeNull{}))
+            .as_hex_string();
+    std::string label;
+    CandidTypeVariant v{&label};
+    v.append("running", CandidTypeNull{});
+    v.append("stopping", CandidTypeNull{});
+    v.append("stopped", CandidTypeNull{});
+    v.append("other", CandidTypeReserved{});
+    decode(wire, v);
+    check(label == "stopped", "a variant of temporary nulls");
+  }
+}
+
+__attribute__((noinline)) void test_type_graph_chains() {
+  { // A chain of 10_000 records (as many as a type table may have),
+    // record {0 : next}, the last record {}: the checks of the type table
+    // follow it to the end, and the value nests deeper than the decoder allows
+    const int n = 10000;
+    std::vector<std::vector<uint8_t>> types;
+    for (int i = 0; i < n; ++i) {
+      std::vector<uint8_t> t{0x6c};
+      if (i + 1 < n) {
+        t.push_back(1);
+        t.push_back(0);
+        sleb(t, i + 1);
+      } else {
+        t.push_back(0);
+      }
+      types.push_back(std::move(t));
+    }
+    std::vector<uint8_t> m = message(types, {0}, {});
+    CandidTypeGraph g;
+    Decoded d =
+        decode_message(m, g, {CandidTypeGraph::prim(CandidKind::Reserved)});
+    check(!d.ok && d.err == "Argument 0: Values nest more than 128 deep",
+          "chain: 10_000 records nest too deep");
+
+    // ... and the same chain, closed into a cycle, is empty
+    types.back() = {0x6c, 1, 0, 0};
+    m = message(types, {0}, {});
+    d = decode_message(m, g, {CandidTypeGraph::prim(CandidKind::Reserved)});
+    check(!d.ok && d.err == "Argument 0: Cannot decode a value of type empty",
+          "chain: a cycle of 10_000 records is empty");
+  }
+  { // opt chains: a cycle is infinite, a chain to nat is not
+    CandidTypeGraph g;
+    int first = g.reserve();
+    int prev = first;
+    for (int i = 0; i < 100000; ++i) {
+      int next = g.reserve();
+      CandidGraphNode o{CandidKind::Opt};
+      o.inner = next;
+      g.define(prev, o);
+      prev = next;
+    }
+    CandidGraphNode o{CandidKind::Opt};
+    o.inner = first;
+    g.define(prev, o);
+    int finite = g.opt(g.opt(CandidTypeGraph::prim(CandidKind::Nat)));
+    int into = g.opt(first);
+    check(g.is_infinite_opt(first) && g.is_infinite_opt(prev) &&
+              g.is_infinite_opt(into) && !g.is_infinite_opt(finite) &&
+              !g.is_infinite_opt(CandidTypeGraph::prim(CandidKind::Nat)),
+          "chain: infinite options");
+  }
+  { // A method name in a textual func value must be valid UTF-8, as on the
+    // wire
+    CandidTypeGraph g;
+    int f = g.func({}, {}, {});
+    std::vector<CandidValue> out;
+    std::string err;
+    check(
+        CandidTextValue::parse("(func \"aaaaa-aa\".\"m\")", g, {f}, out, err) &&
+            !CandidTextValue::parse("(func \"aaaaa-aa\".\"\\ff\")", g, {f}, out,
+                                    err) &&
+            err.find("Invalid UTF-8 in a method name") != std::string::npos,
+        "text: func method name is UTF-8 checked");
+  }
+  { // A decimal integer literal at a float type, as to_text writes 1.0;
+    // a hex one is not a float
+    CandidTypeGraph g;
+    int f64 = CandidTypeGraph::prim(CandidKind::Float64);
+    int f32 = CandidTypeGraph::prim(CandidKind::Float32);
+    std::vector<CandidValue> out;
+    std::string err;
+    check(CandidTextValue::parse("(1, -2_000)", g, {f64, f32}, out, err) &&
+              out[0].f64 == 1.0 && out[1].f64 == -2000.0 &&
+              !CandidTextValue::parse("(0x10)", g, {f64}, out, err),
+          "text: integer literals at float types");
+    CandidValue one;
+    one.kind = CandidKind::Float64;
+    one.f64 = 1.0;
+    check(CandidTextValue::parse(candid_values_to_text({one}), g, {f64}, out,
+                                 err) &&
+              out[0] == one,
+          "text: a whole float round-trips through to_text");
+  }
+  { // An expected type with fields out of order is rejected, not decoded
+    CandidTypeGraph g;
+    int r = g.reserve();
+    CandidGraphNode n{CandidKind::Record};
+    n.fields = {{2, CandidTypeGraph::prim(CandidKind::Nat)},
+                {1, CandidTypeGraph::prim(CandidKind::Nat)}};
+    g.define(r, n);
+    std::string err;
+    check(!g.validate(err) && err == "Field ids are not sorted at 1",
+          "graph: unsorted record fields");
+    int f = g.func({}, {}, {});
+    int s = g.reserve();
+    CandidGraphNode sn{CandidKind::Service};
+    sn.methods = {{"b", f}, {"a", f}};
+    g.define(s, sn);
+    check(!g.validate(err), "graph: unsorted service methods");
+  }
+  { // absent
+    CandidValue a, b;
+    b.absent = true;
+    check(a != b, "a value marked absent differs from null");
+  }
+}
+
+// CandidTypeOptOf: an opt of any type, also null; CandidTypeService
+__attribute__((noinline)) void test_opt_of_and_service() {
+  auto record_of = [](__uint128_t *a) {
+    CandidTypeRecord r;
+    r.append("a", CandidTypeNat{a});
+    return r;
+  };
+
+  { // didc encode -t '(opt record {a: nat})' '(null)'
+    std::string wire = "4449444c026e016c01617d010000";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    __uint128_t a{0};
+    bool has_value{true};
+    decode(wire, CandidTypeOptOf([&]() -> CandidType { return record_of(&a); },
+                                 &has_value));
+    check(!has_value, "opt of: null decodes");
+  }
+
+  { // didc encode -t '(opt record {a: nat})' '(opt record {a=5})'
+    std::string wire = "4449444c026e016c01617d01000105";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    __uint128_t a{0};
+    bool has_value{false};
+    decode(wire, CandidTypeOptOf([&]() -> CandidType { return record_of(&a); },
+                                 &has_value));
+    check(has_value && a == 5, "opt of: a value decodes");
+  }
+
+  { // A null opt record encodes with its content type, and decodes back
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    __uint128_t unused{0};
+    VecBytes B = CandidSerialize(CandidTypeOptOf(record_of(&unused))).get_B();
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    __uint128_t a{0};
+    bool has_value{true};
+    CandidArgs A;
+    A.append(CandidTypeOptOf([&]() -> CandidType { return record_of(&a); },
+                             &has_value));
+    CandidDeserialize(B.as_hex_string(), A);
+    check(!has_value, "opt of: a null opt record roundtrips");
+  }
+
+  { // An opt opt: didc encode -t '(opt opt nat)' '(opt null)'
+    std::string wire = "4449444c026e016e7d01000100";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::optional<__uint128_t> inner{42};
+    bool has_value{false};
+    decode(wire, CandidTypeOptOf(
+                     [&]() -> CandidType { return CandidTypeOptNat{&inner}; },
+                     &has_value));
+    check(has_value && !inner.has_value(), "opt of: opt opt nat");
+  }
+
+  auto greet = [] {
+    CandidTypeFunc f;
+    f.append_arg(CandidTypeText{});
+    f.append_ret(CandidTypeText{});
+    f.set_query();
+    return f;
+  };
+
+  { // didc encode -t '(service { greet : (text) -> (text) query })' '(service "aaaaa-aa")'
+    std::string wire = "4449444c026901056772656574016a01710171010101000100";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::string canister;
+    CandidTypeService s{&canister};
+    s.append_method("greet", greet());
+    decode(wire, s);
+    check(canister == "aaaaa-aa", "service decodes");
+  }
+
+  { // A service encodes, and decodes back
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    CandidTypeService out{CandidTypePrincipal{"w7x7r-cok77-xa"}};
+    out.append_method("greet", greet());
+    VecBytes B = CandidSerialize(out).get_B();
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::string canister;
+    CandidTypeService in{&canister};
+    in.append_method("greet", greet());
+    CandidArgs A;
+    A.append(in);
+    CandidDeserialize(B.as_hex_string(), A);
+    check(canister == "w7x7r-cok77-xa", "service roundtrips");
+  }
+
+  { // Record fields appended out of order are encoded sorted by id
+    // didc encode '(record {1 = 42 : int; 0 = true : bool})'
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    CandidTypeRecord r;
+    r.append(1, CandidTypeInt(42));
+    r.append(0, CandidTypeBool(true));
+    check(!CandidSerialize(r).assert_candid("4449444c016c02007e017c0100012a",
+                                            true),
+          "record fields are encoded sorted");
+  }
+
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+}
+
+// Decoding follows the spec's coercion rules, with CandidDecoder
+__attribute__((noinline)) void test_spec_coercions() {
+  { // A func reference
+    // didc encode -t '(func (text) -> (nat))' '(func "w7x7r-cok77-xa".foo)'
+    std::string wire = "4449444c016a0171017d000100010103caffee03666f6f";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::string canister, method;
+    CandidTypeFunc f{&canister, &method};
+    f.append_arg(CandidTypeText{});
+    f.append_ret(CandidTypeNat{});
+    decode(wire, f);
+    check(canister == "w7x7r-cok77-xa" && method == "foo", "func decodes");
+  }
+
+  { // nat <: int
+    // didc encode -t '(nat)' '(42)'
+    std::string wire = "4449444c00017d2a";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    __int128_t i{0};
+    decode(wire, CandidTypeInt{&i});
+    check(i == 42, "nat decodes at int");
+  }
+
+  { // t <: opt t
+    // didc encode -t '(nat)' '(42)'
+    std::string wire = "4449444c00017d2a";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::optional<__uint128_t> n;
+    decode(wire, CandidTypeOptNat{&n});
+    check(n.has_value() && *n == 42, "nat decodes at opt nat");
+  }
+
+  { // An opt whose value does not coerce is null
+    // didc encode -t '(opt text)' '(opt "x")'
+    std::string wire = "4449444c016e710100010178";
+    CandidSerializeTypeTableRegistry::get_instance().clear();
+    std::optional<__uint128_t> n{7};
+    decode(wire, CandidTypeOptNat{&n});
+    check(!n.has_value(), "opt text decodes at opt nat as null");
+  }
+
+  { // A null opt record, and one with a value
+    // didc encode -t '(opt record {a : nat})' '(null)'
+    // didc encode -t '(opt record {a : nat})' '(opt record {a = 5})'
+    for (const auto &[wire, expected] :
+         std::vector<std::pair<std::string, bool>>{
+             {"4449444c026e016c01617d010000", false},
+             {"4449444c026e016c01617d01000105", true}}) {
+      CandidSerializeTypeTableRegistry::get_instance().clear();
+      __uint128_t a{0};
+      bool has_value{!expected};
+      CandidTypeRecord r;
+      r.append("a", CandidTypeNat{&a});
+      decode(wire, CandidTypeOptRecord{&r, &has_value});
+      check(has_value == expected && a == (expected ? 5 : 0),
+            "opt record decodes, null or not");
+    }
   }
 
   CandidSerializeTypeTableRegistry::get_instance().clear();
@@ -957,6 +1560,25 @@ int unit_test_candid() {
 
   { // A record field that may be absent on the wire
     test_append_optional();
+  }
+
+  { // Coercion, as the spec defines it
+    test_spec_coercions();
+  }
+
+  { // The subtype check retracts the assumptions of a failed check
+    test_subtype_assumptions();
+  }
+
+  { // An opt of any type, and a service
+    test_opt_of_and_service();
+  }
+
+  { // A vec of values that take no bytes is stored once
+    test_zero_width_vec();
+    test_zero_width_records();
+    test_type_graph_chains();
+    test_copies_of_null_reserved_empty();
   }
 
   { // A type table index that needs 2 bytes

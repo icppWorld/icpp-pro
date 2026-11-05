@@ -1,0 +1,12 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-vector.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+*/
+
+type Rose = vec Rose;
+type MayRose = opt vec MayRose;
+assert blob "DIDL\01\6d\00\01\00\03\00\04\00\02\00\00\00\00\00" == "(vec { vec {}; vec { vec {}; vec { vec {}; vec {} }; vec {}; vec {} }; vec {} })" : (Rose) "idl-vector.mo rose: [[], [[], [[], []], [], []], []]";

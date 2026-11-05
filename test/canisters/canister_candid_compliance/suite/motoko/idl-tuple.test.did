@@ -1,0 +1,14 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-tuple.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+*/
+assert blob "DIDL\01\6c\02\00\71\01\75\02\00\71\05\48\65\6c\6c\6f\01\02\03\04\05\57\6f\72\6c\64" == "(record { \"Hello\"; 67305985 }, \"World\")" : (record { text; int32 }, text) "idl-tuple.mo len3: a pair in an argument list";
+assert blob "DIDL\03\6c\02\00\71\01\75\6c\03\00\71\01\75\02\02\6e\00\02\01\71\05\48\65\6c\6c\6f\01\02\03\04\00\05\57\6f\72\6c\64" == "(record { \"Hello\"; 67305985; null }, \"World\")" : (record { text; int32; opt record { text; int32 } }, text) "idl-tuple.mo len3a: a triple in an argument list";
+assert blob "DIDL\01\6c\03\00\71\01\75\02\76\02\00\71\05\48\65\6c\6c\6f\01\02\03\04\de\ad\05\57\6f\72\6c\64" == "(record { \"Hello\"; 67305985 }, \"World\")" : (record { text; int32 }, text) "idl-tuple.mo len3: a redundant third tuple member is ignored";
+assert blob "DIDL\02\6c\03\00\71\01\75\02\01\6e\00\02\00\71\05\48\65\6c\6c\6f\01\02\03\04\00\05\57\6f\72\6c\64" == "(record { \"Hello\"; 67305985; null }, \"World\")" : (record { text; int32; opt record { text; int32 } }, text) "idl-tuple.mo len3a: third member a recursive option containing null";
+assert blob "DIDL\01\6c\02\00\71\02\7f\02\00\71\05\48\65\6c\6c\6f\05\57\6f\72\6c\64" !: (record { text; int32; opt record { text; int32 } }, text) "idl-tuple.mo len3a: did not find tuple field in record";
+assert blob "DIDL\01\6c\02\00\71\01\75\02\00\71\05\48\65\6c\6c\6f\01\02\03\04\05\57\6f\72\6c\64" == "(record { \"Hello\"; 67305985; null }, \"World\")" : (record { text; int32; opt record { text; int32 } }, text) "idl-tuple.mo len3a: a missing optional tuple field is null";

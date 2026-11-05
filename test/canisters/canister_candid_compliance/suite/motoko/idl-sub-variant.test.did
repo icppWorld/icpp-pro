@@ -1,0 +1,10 @@
+/*
+Ported from dfinity/motoko test/run-drun/idl-sub-variant.mo.
+Each //CALL is an assert at the method's parameter types (Motoko -> Candid:
+Nat nat, Int int, Text text, Char nat32, Float float64, Any reserved, None empty,
+Null null, ?T opt T, [T] vec T, (T, U) record { T; U } or an argument list,
+{#a : T} variant { a : T }, actor {..} service {..}, shared .. -> async .. func).
+A trap (IDL error) is !:, a reply is : (with the decoded value where useful).
+*/
+assert blob "DIDL\01\6b\02\41\7c\42\7f\01\00\00\01" == "(variant { A = 1 })" : (variant { A : int }) "idl-sub-variant.mo get_A: variant { A = 1 } : Enum1 decodes at Enum2";
+assert blob "DIDL\01\6b\02\41\7c\42\7f\01\00\01" !: (variant { A : int }) "idl-sub-variant.mo get_B: unexpected variant tag B";

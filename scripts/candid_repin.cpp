@@ -6,6 +6,7 @@
 // encoded again. The type table comes out as the encoder writes it: in Rust's
 // order, without entries no argument uses, equal types shared.
 
+#include <exception>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -52,6 +53,10 @@ int main() {
       std::cout << reencode(line) << "\n";
     } catch (const FuzzTrap &e) {
       std::cout << "ERR trap: " << e.what() << "\n";
+    } catch (const std::exception &e) {
+      std::cout << "ERR " << e.what() << "\n";
+    } catch (...) {
+      std::cout << "ERR unknown exception\n";
     }
   }
   return 0;

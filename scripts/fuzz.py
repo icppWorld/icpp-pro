@@ -57,9 +57,8 @@ def compiler() -> str:
     return "clang++"
 
 
-def build() -> None:
-    """Compile the targets into build-fuzz/"""
-    BUILD_PATH.mkdir(exist_ok=True)
+def candid_sources() -> tuple[list[str], list[str]]:
+    """icpp-candid's sources, and the include flags, for a host program"""
     sources = sorted(
         [str(p) for p in (CANDID_PATH / "candid").glob("*.cpp")]
         + [str(p) for p in (CANDID_PATH / "hooks").glob("*.cpp")]
@@ -75,6 +74,13 @@ def build() -> None:
             CANDID_PATH / "vendors/hash-library",
         ]
     ]
+    return sources, includes
+
+
+def build() -> None:
+    """Compile the targets into build-fuzz/"""
+    BUILD_PATH.mkdir(exist_ok=True)
+    sources, includes = candid_sources()
     for target in TARGETS:
         print(f"--- building {target}", flush=True)
         subprocess.run(

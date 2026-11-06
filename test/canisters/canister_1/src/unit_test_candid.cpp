@@ -28,7 +28,6 @@ namespace {
 enum class Wrap { None, Variant, Opt };
 std::string superset_hex(__uint128_t n, const std::string &t,
                          Wrap wrap = Wrap::None) {
-  // The type table registry must be cleared before the types are built
   CandidTypeRecord inner;
   inner.append(1, CandidTypeText("inner"));
   inner.append(2, CandidTypeVecNat8(std::vector<uint8_t>{1, 2, 3}));
@@ -140,8 +139,6 @@ __attribute__((noinline)) void test_record_width_subtyping() {
     std::string wire = superset_hex(48, "all extra");
     decode(wire, CandidTypeRecord());
   }
-
-  // The tests that follow expect an empty type table registry
 }
 
 // A vec of variants: each element is matched by the id (hash) of its case,
@@ -821,16 +818,21 @@ __attribute__((noinline)) void test_append_optional() {
 // A type table index is a sleb128 (Candid: T(<datatype>) = sleb128(i)). An
 // index of 64 or more needs 2 bytes in sleb128, and differs from uleb128.
 __attribute__((noinline)) void test_type_table_index_64() {
-  // Fill the registry with 64 distinct type tables
-  std::vector<CandidTypeRecord> fillers(64);
+  // Field 0 of the argument holds 64 distinct record types. The type table
+  // is built depth first, in field id order, so they take the entries 1-65,
+  // and every type below takes an index of 66 or more
+  CandidTypeRecord fillers;
   for (uint32_t k = 0; k < 64; ++k) {
-    fillers[k].append(k, CandidTypeNat(__uint128_t(k)));
+    CandidTypeRecord filler;
+    filler.append(k, CandidTypeNat(__uint128_t(k)));
+    fillers.append(k, filler);
   }
   // Every type that refers to another type table: the argument itself, a
   // record field, a variant case, an opt record, an opt variant, an opt vec
   CandidTypeRecord inner;
   inner.append("q", CandidTypeText("deep"));
   CandidTypeRecord outer;
+  outer.append(0, fillers);
   outer.append("p", inner);
   outer.append("v", CandidTypeVariant("c", inner));
   outer.append("o", CandidTypeOptRecord(inner));
@@ -838,6 +840,10 @@ __attribute__((noinline)) void test_type_table_index_64() {
   outer.append("x",
                CandidTypeOptVec(CandidTypeVecNat8(std::vector<uint8_t>{7})));
   std::string wire = CandidSerialize(outer).as_hex_string();
+  // The number of entries, a uleb128 of one byte while under 128
+  int entries = std::stoi(wire.substr(8, 2), nullptr, 16);
+  check(entries >= 70 && entries < 128,
+        "the type table has 70 or more entries");
 
   std::string q_p, q_v, q_o, q_w;
   std::string label_v, label_w;

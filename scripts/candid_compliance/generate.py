@@ -962,6 +962,8 @@ class TypedApi:
         body = ""
         for name, mt in t[1]:
             ft, fseen = self.resolve(mt, seen)
+            if ft[0] == "rec":
+                raise NotExpressible("a service method of a recursive func type")
             if ft[0] != "func":
                 raise ParseError("a service method whose type is not a func")
             body += f"s.append_method({cpp_str(name)}, {self.func(ft, '', fseen)}); "

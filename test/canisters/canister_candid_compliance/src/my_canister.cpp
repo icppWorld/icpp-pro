@@ -4,6 +4,7 @@
 #include "my_canister.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "compliance_runner.h"
@@ -69,11 +70,13 @@ void list() {
     CandidValue node;
     node.kind = CandidKind::Record;
     node.ids = {HEAD, TAIL}; // sorted by id
-    node.items = {head, v};
+    // Moved, not copied: each step is constant time, whatever the tail
+    node.items.push_back(std::move(head));
+    node.items.push_back(std::move(v));
     CandidValue opt;
     opt.kind = CandidKind::Opt;
-    opt.items = {node};
-    v = opt;
+    opt.items.push_back(std::move(node));
+    v = std::move(opt);
   }
   CandidTypeGraph g;
   int t = list_type(g);

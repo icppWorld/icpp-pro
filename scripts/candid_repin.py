@@ -31,7 +31,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.fuzz import BUILD_PATH, CANDID_PATH, FUZZ_PATH
+from scripts.fuzz import BUILD_PATH, FUZZ_PATH, candid_sources, compiler
 
 ROOT_PATH = Path(__file__).parent.parent
 TOOL = BUILD_PATH / "candid_repin"
@@ -52,23 +52,9 @@ LITERAL = re.compile(
 def build() -> None:
     """Compile the re-encode tool"""
     BUILD_PATH.mkdir(exist_ok=True)
-    sources = sorted(
-        [str(p) for p in (CANDID_PATH / "candid").glob("*.cpp")]
-        + [str(p) for p in (CANDID_PATH / "hooks").glob("*.cpp")]
-        + [str(p) for p in (CANDID_PATH / "vendors/hash-library").glob("*.cpp")]
-    )
-    includes = [
-        f"-I{p}"
-        for p in [
-            FUZZ_PATH,
-            CANDID_PATH / "candid",
-            CANDID_PATH / "hooks",
-            CANDID_PATH / "vendors",
-            CANDID_PATH / "vendors/hash-library",
-        ]
-    ]
+    sources, includes = candid_sources()
     subprocess.run(
-        ["clang++", "-std=c++20", "-O1", "-D", "ICPP_VERBOSE=0", *includes]
+        [compiler(), "-std=c++20", "-O1", "-D", "ICPP_VERBOSE=0", *includes]
         + [str(ROOT_PATH / "scripts/candid_repin.cpp"), str(FUZZ_PATH / "fuzz_ic0.cpp")]
         + sources
         + ["-o", str(TOOL)],
@@ -219,8 +205,7 @@ def files(paths: list[Path]) -> list[Path]:
                 f
                 for f in sorted(p.rglob("*"))
                 if f.suffix in (".cpp", ".py")
-                and "build" not in f.parts[-3:-1]
-                and not any(part.startswith("build") for part in f.parts)
+                and not any(part.startswith("build") for part in f.relative_to(p).parts)
             ]
     return out
 
@@ -258,7 +243,8 @@ def main() -> int:
             if not is_expected(text, m.start(), python):
                 review.append(f"{where}: input or unknown, left as is: {old}")
                 continue
-            if didc_decode(old) != didc_decode(new) or didc_decode(new) is None:
+            value = didc_decode(new)
+            if value is None or value != didc_decode(old):
                 print(f"{where}: didc reads other values from {new}", file=sys.stderr)
                 failed += 1
                 continue

@@ -316,6 +316,47 @@ __attribute__((noinline)) void test_tables() {
                  "4449444c036d7f6c02000201716e7c06007073726801020000c03f000000"
                  "00000002c001010401070178");
   }
+  {
+    // Two recursive types, linked by cycles through unnamed nodes only (built
+    // with add): each cycle gets a name, and the table is didc's, of
+    // type A = record {0 : V; 1 : W}; V = variant {0 : V; 1 : O};
+    // O = opt A; W = vec O; and B the same, with a case 2 : nat in V
+    CandidTypeGraph g;
+    auto gadget = [&](bool extra) {
+      int base = int(g.size());
+      CandidGraphNode r, v, o, w;
+      r.kind = CandidKind::Record;
+      r.fields = {{0, base + 1}, {1, base + 3}};
+      v.kind = CandidKind::Variant;
+      v.fields = {{0, base + 1}, {1, base + 2}};
+      if (extra) v.fields.push_back({2, prim(CandidKind::Nat)});
+      o.kind = CandidKind::Opt;
+      o.inner = base;
+      w.kind = CandidKind::Vec;
+      w.inner = base + 2;
+      g.add(r);
+      g.add(v);
+      g.add(o);
+      g.add(w);
+      return base;
+    };
+    int a = gadget(false);
+    int b = gadget(true);
+    check_encode("linked cycles through unnamed nodes", g, {a, b},
+                 "(record {0 = variant {1 = null}; 1 = vec {}}, "
+                 "record {0 = variant {2 = 7}; 1 = vec {}})",
+                 "4449444c086c02000101036b02000101026e006d026c02000501076b0300"
+                 "050106027d6e046d06020004010000020700");
+  }
+  {
+    // A vec of any vec class in an opt keeps its type: opt vec blob
+    std::vector<std::vector<uint8_t>> blobs{{1, 2}, {}};
+    CandidArgs A;
+    A.append(CandidTypeOptVec{CandidTypeVecBlob{blobs}});
+    check(CandidSerialize(A).as_hex_string() ==
+              "4449444c036e016d026d7b0100010202010200",
+          "opt vec blob");
+  }
 }
 
 __attribute__((noinline)) void test_value_checks() {
@@ -461,6 +502,25 @@ __attribute__((noinline)) void test_value_checks() {
   v.repeat = 1001;
   check_refused("1001 x 1000 nulls, repeated, over the budget", g, vec_vec_null,
                 v);
+
+  // 14 bytes on the wire: a vec of 1e6 empty records. Read at a record of
+  // 100 opt nat fields, each element takes 100 bytes to send: refused, so
+  // what icpp decodes cannot make it send 100 MB
+  {
+    std::vector<uint8_t> wire = {'D',  'I', 'D', 'L', 2,    0x6c, 0,
+                                 0x6d, 0,   1,   1,   0xc0, 0x84, 0x3d};
+    int opt_nat = g.opt(prim(CandidKind::Nat));
+    std::vector<CandidGraphField> fields;
+    for (uint32_t i = 0; i < 100; ++i)
+      fields.push_back({i, opt_nat});
+    int vec_rec = g.vec(g.record(fields));
+    std::vector<CandidValue> vs;
+    check(
+        CandidDecoder::decode(wire.data(), wire.size(), g, {vec_rec}, vs, err),
+        "1e6 empty records decode: " + err);
+    check_refused("1e6 records of 100 nulls, repeated, over the budget", g,
+                  vec_rec, vs[0]);
+  }
 
   // The argument count must match the values
   std::vector<CandidValue> none;

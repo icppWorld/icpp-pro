@@ -180,7 +180,9 @@ def is_expected(text: str, start: int, python: bool) -> bool:
     if python:
         return is_expected_python(text, start)
     before = text[max(0, start - 200) : start].rstrip()
-    if re.search(r"(==|!=)$", before):
+    # x == "...", and candid_out = "..." as in
+    # mockIC.run_test(..., candid_in, candid_out, ...)
+    if re.search(r"(==|!=|\b(candid_out|expected\w*)\s*=)$", before):
         return True
     # check_eq(actual, expected, what): a literal is never the actual
     call = text.rfind("check_eq(", 0, start)

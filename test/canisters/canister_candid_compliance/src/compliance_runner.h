@@ -13,7 +13,8 @@
 // CandidTextValue.
 //
 // check_encode runs the encode vectors of the ported Rust and Motoko corpora:
-// a value encoded with the typed API (CandidType* and CandidSerialize) must
+// a value encoded with the typed API (CandidType*, CandidTypeValue for a
+// recursive type, and CandidSerialize) must
 // have exactly the reference encoding's argument types, decode to the same
 // values as the reference and as the value's text, and be the reference's
 // bytes: the type table in the order Rust's encoder and didc write it.

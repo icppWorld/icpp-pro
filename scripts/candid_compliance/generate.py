@@ -17,13 +17,14 @@ ported Rust and Motoko corpora add one form of our own, for encoding:
 The value is encoded with icpp-candid's typed API (CandidType* classes and
 CandidSerialize), and the result must be the reference encoding, byte for
 byte: the same types and values, and the type table in the order Rust's
-encoder and didc write it.
+encoder and didc write it. A value of a recursive type is put in the typed API
+as a CandidTypeValue, built from the value's text.
 
 This script reads them, builds each assert's expected types as a Candid type
-graph (named types included, so recursion works), and writes one C++ file per
-.test.did file, with a function that runs every assert through a
-ComplianceRunner. The runner decodes the binary inputs with CandidDecoder and
-parses the textual ones with CandidTextValue.
+graph (named types are reserved, as didc's named types, so recursion works),
+and writes one C++ file per .test.did file, with a function that runs every
+assert through a ComplianceRunner. The runner decodes the binary inputs with
+CandidDecoder and parses the textual ones with CandidTextValue.
 
 Usage, from the root of icpp-pro:
 

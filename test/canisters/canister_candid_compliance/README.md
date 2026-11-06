@@ -8,7 +8,13 @@ Every assert must pass.
 
 The `encode.test.did` files hold the encode vectors of those corpora: a value
 is encoded with the typed API (`CandidType*` and `CandidSerialize`), and must
-be the reference encoding, byte for byte.
+be the reference encoding, byte for byte. A value of a recursive type is put in
+the typed API as a `CandidTypeValue`.
+
+The canister also has two methods with the recursive type
+`List = opt record { head : int; tail : List }`: `list(n)` sends the List
+1, 2, ..., n, and `list_sum` receives a List. Their bytes are checked against
+`didc encode`, natively and deployed.
 
 | Source            | Version                                                                                         |
 |-------------------|-------------------------------------------------------------------------------------------------|
@@ -26,9 +32,9 @@ be the reference encoding, byte for byte.
 | official/reference.test.did              | 50       |
 | official/spacebomb.test.did              | 17       |
 | official/subtypes.test.did               | 58       |
-| icpp/encode.test.did                     | 14       |
+| icpp/encode.test.did                     | 21       |
 | rust/compatibility.test.did              | 28       |
-| rust/encode.test.did                     | 78       |
+| rust/encode.test.did                     | 82       |
 | rust/header_len.test.did                 | 10       |
 | rust/number.test.did                     | 41       |
 | rust/parse_value.test.did                | 18       |
@@ -40,7 +46,7 @@ be the reference encoding, byte for byte.
 | rust/type_table_alloc.test.did           | 3        |
 | rust/types.test.did                      | 6        |
 | rust/value.test.did                      | 16       |
-| motoko/encode.test.did                   | 17       |
+| motoko/encode.test.did                   | 21       |
 | motoko/idl-any-stable.test.did           | 1        |
 | motoko/idl-any.test.did                  | 29       |
 | motoko/idl-bad.test.did                  | 1        |
@@ -71,10 +77,10 @@ be the reference encoding, byte for byte.
 | motoko/idl-vector.test.did               | 1        |
 | motoko/run-deser.test.did                | 10       |
 | **official total**                       | **472**  |
-| **rust total**                           | **508**  |
-| **motoko total**                         | **181**  |
-| **icpp total**                           | **14**   |
-| **total**                                | **1175** |
+| **rust total**                           | **512**  |
+| **motoko total**                         | **185**  |
+| **icpp total**                           | **21**   |
+| **total**                                | **1190** |
 
 ## How it works
 
@@ -96,7 +102,7 @@ which tests they come from, and which of those are not ported, and why.
 ## Running it
 
 ```bash
-# natively: exits non-zero if any assert fails
+# natively: exits non-zero if any assert or method test fails
 icpp build-native && icpp run-native
 
 # on a local replica: one pytest per suite file

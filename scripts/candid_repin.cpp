@@ -6,6 +6,7 @@
 // encoded again. The type table comes out as the encoder writes it: in Rust's
 // order, without entries no argument uses, equal types shared.
 
+#include <cctype>
 #include <exception>
 #include <iostream>
 #include <string>
@@ -18,9 +19,9 @@
 static bool unhex(const std::string &s, std::vector<uint8_t> &out) {
   if (s.size() % 2) return false;
   for (size_t i = 0; i < s.size(); i += 2) {
-    unsigned v;
-    if (sscanf(s.c_str() + i, "%2x", &v) != 1) return false;
-    out.push_back(uint8_t(v));
+    if (!isxdigit((unsigned char)s[i]) || !isxdigit((unsigned char)s[i + 1]))
+      return false;
+    out.push_back(uint8_t(std::stoi(s.substr(i, 2), nullptr, 16)));
   }
   return true;
 }

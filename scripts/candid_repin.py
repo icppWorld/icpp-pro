@@ -109,6 +109,12 @@ def top_level_index(text: str, open_paren: int, pos: int, python: bool) -> int:
             if i < 0:
                 return -1
             continue
+        if not python and text.startswith("/*", i):
+            i = text.find("*/", i)
+            if i < 0:
+                return -1
+            i += 2
+            continue
         if c in "([{":
             depth += 1
         elif c in ")]}":
@@ -140,7 +146,7 @@ def enclosing_open(text: str, pos: int) -> int:
 def is_expected_python(text: str, start: int) -> bool:
     """Is the literal at start of a Python file an expected output?"""
     before = text[max(0, start - 200) : start].rstrip()
-    if re.search(r"(response\s*==|expected\w*\s*=\s*\(?)$", before):
+    if re.search(r"(response\s*==|\bexpected(?!_input)\w*\s*=\s*\(?)$", before):
         return True
     # The expected column of a parametrize table
     p = text.rfind("@pytest.mark.parametrize(", 0, start)
@@ -168,7 +174,7 @@ def is_expected(text: str, start: int, python: bool) -> bool:
     before = text[max(0, start - 200) : start].rstrip()
     # x == "...", and candid_out = "..." as in
     # mockIC.run_test(..., candid_in, candid_out, ...)
-    if re.search(r"(==|!=|\b(candid_out|expected\w*)\s*=)$", before):
+    if re.search(r"(==|!=|\b(candid_out|expected(?!_input)\w*)\s*=)$", before):
         return True
     # check_eq(actual, expected, what): a literal is never the actual
     call = text.rfind("check_eq(", 0, start)
@@ -234,12 +240,22 @@ def main() -> int:
         news = reencode(olds)
         edits: list[tuple[int, int, str]] = []
         for m, old, new in zip(matches, olds, news):
-            if not new.startswith("OK ") or new[3:] == old:
+            if new.startswith("OK ") and new[3:] == old:
                 continue
-            new = new[3:]
             line = text.count("\n", 0, m.start()) + 1
             rel = f.relative_to(ROOT_PATH) if f.is_relative_to(ROOT_PATH) else f
             where = f"{rel}:{line}"
+            if not new.startswith("OK "):
+                # A malformed input is a test of its own; an expected output must re-encode
+                # (the magic alone, as in a prefix check, is not a message)
+                if old != "4449444c" and is_expected(text, m.start(), python):
+                    print(
+                        f"{where}: an expected output that does not re-encode: {new}",
+                        file=sys.stderr,
+                    )
+                    failed += 1
+                continue
+            new = new[3:]
             if not is_expected(text, m.start(), python):
                 review.append(f"{where}: input or unknown, left as is: {old}")
                 continue

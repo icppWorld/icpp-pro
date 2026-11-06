@@ -9,7 +9,6 @@
 
 #include "candid_deserialize.h"
 #include "candid_serialize.h"
-#include "candid_serialize_type_table_registry.h"
 #include "current_entry.h"
 #include "entry_contexts.h"
 #include "ic0.h"
@@ -63,7 +62,6 @@ std::vector<uint8_t> empty_args() { return {'D', 'I', 'D', 'L', 0, 0}; }
 
 std::vector<uint8_t> serialize(const CandidArgs &args) {
   VecBytes B = CandidSerialize(args).get_B();
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   std::vector<uint8_t> bytes;
   for (std::byte b : B.vec())
     bytes.push_back(static_cast<uint8_t>(b));
@@ -146,7 +144,6 @@ extern "C" void icpp_call_callback(uintptr_t env) {
           : (code == 0 ? CanisterBase(CanisterReplyCallback{slot->method})
                        : CanisterBase(CanisterRejectCallback{slot->method}));
   set_current_entry(entry);
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 
   // A composite query sends no cycles, and can't read refunded cycles
   __uint128_t refunded =
@@ -493,10 +490,7 @@ void IC_CallReply::decode(CandidType arg) {
   decode(args);
 }
 
-void IC_CallReply::decode(CandidArgs args) {
-  CandidDeserialize(bytes, args);
-  CandidSerializeTypeTableRegistry::get_instance().clear();
-}
+void IC_CallReply::decode(CandidArgs args) { CandidDeserialize(bytes, args); }
 
 bool IC_CallError::is_clean_reject() const {
   return kind == Kind::CallRejected &&

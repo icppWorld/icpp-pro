@@ -1,7 +1,15 @@
 // The Candid specification's test suite, run by icpp-candid
+
+// A recursive type
+type List = opt record { head : int; tail : List };
+
 service : {
     // The suite files, e.g. "official/prim.test.did"
     "suites" : () -> (vec text) query;
     // Runs the asserts of one suite file
     "run_suite" : (text) -> (record { passed : nat64; total : nat64; failures : text }) query;
+    // The List 1, 2, ..., n
+    "list" : (nat) -> (List) query;
+    // The sum of the heads of a List
+    "list_sum" : (List) -> (int) query;
 };

@@ -1,101 +1,32 @@
 // libFuzzer target: CandidDecoder, the decoder every canister uses.
 //
-// The first byte of the input picks the expected types, the rest is the
-// message. The memory the decoder holds is checked against the size of the
-// message (memory_oracle.h). A message that decodes is also printed as text
-// and parsed back with CandidTextValue at the same types, when its values,
-// written out in full, are not many more than its bytes.
+// The first byte of the input picks the expected types (expected_types.h),
+// the rest is the message. The memory the decoder holds is checked against
+// the size of the message (memory_oracle.h). A message that decodes, when its
+// values, written out in full, are not many more than its bytes, is also:
+// - printed as text and parsed back with CandidTextValue at the same types;
+// - encoded again with CandidEncoder at the same types. That must succeed,
+//   decode to equal values, and encode again to the same bytes.
 //
 // Build and run with `make fuzz` from the root of icpp-pro.
 
 #include "candid_decoder.h"
+#include "candid_encoder.h"
 #include "candid_text_value.h"
 #include "candid_type_graph.h"
 #include "candid_value.h"
+#include "expected_types.h"
 #include "memory_oracle.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <map>
 #include <string>
 #include <vector>
 
 namespace {
-
-int prim(CandidKind k) { return CandidTypeGraph::prim(k); }
-
-struct Expected {
-  CandidTypeGraph g;
-  std::vector<int> args;
-};
-
-// The expected types, one per value of the first byte (mod the count)
-std::vector<Expected> make_expected() {
-  std::vector<Expected> out;
-  int nat = prim(CandidKind::Nat), text = prim(CandidKind::Text);
-
-  { // Skip everything
-    Expected e;
-    int r = prim(CandidKind::Reserved);
-    e.args = {r, r, r};
-    out.push_back(e);
-  }
-  { // Primitives, and coercions to them
-    Expected e;
-    e.args = {nat,
-              prim(CandidKind::Int),
-              e.g.opt(nat),
-              text,
-              e.g.vec(prim(CandidKind::Nat8)),
-              prim(CandidKind::Principal),
-              prim(CandidKind::Float64),
-              prim(CandidKind::Bool)};
-    out.push_back(e);
-  }
-  { // Records, variants and vecs
-    Expected e;
-    int v =
-        e.g.variant({{0, prim(CandidKind::Null)}, {1, prim(CandidKind::Int)}});
-    int r = e.g.record({{97, nat}, {98, e.g.opt(text)}, {99, e.g.vec(v)}});
-    e.args = {r, e.g.vec(r), e.g.opt(e.g.record({}))};
-    out.push_back(e);
-  }
-  { // A recursive type: type List = opt record { head : int; tail : List }
-    Expected e;
-    int list = e.g.reserve();
-    int node = e.g.record({{0, prim(CandidKind::Int)}, {1, list}});
-    CandidGraphNode n;
-    n.kind = CandidKind::Opt;
-    n.inner = node;
-    e.g.define(list, n);
-    e.args = {list, list};
-    out.push_back(e);
-  }
-  { // References: func and service
-    Expected e;
-    int f = e.g.func({text}, {nat}, {CANDID_FUNC_QUERY});
-    int m = e.g.func({nat}, {}, {});
-    int s = e.g.service({{"get", f}, {"set", m}});
-    e.args = {f, s, e.g.opt(f)};
-    out.push_back(e);
-  }
-  { // Nested opts, and types with no values
-    Expected e;
-    e.args = {e.g.opt(e.g.opt(e.g.opt(nat))), e.g.vec(e.g.opt(e.g.record({}))),
-              prim(CandidKind::Null), e.g.opt(prim(CandidKind::Empty))};
-    out.push_back(e);
-  }
-  { // Fixed-width numbers in a variant
-    Expected e;
-    e.args = {e.g.variant({{0, prim(CandidKind::Float64)},
-                           {1, prim(CandidKind::Float32)},
-                           {2, prim(CandidKind::Int64)},
-                           {3, prim(CandidKind::Nat32)},
-                           {4, prim(CandidKind::Int8)}})};
-    out.push_back(e);
-  }
-  return out;
-}
 
 // The number of values in v, written out in full (shared records once per
 // place they are in), or more than `cap`
@@ -129,9 +60,48 @@ size_t expanded(const CandidValue &v, size_t cap,
   return std::min(n, cap + 1);
 }
 
-void decode_and_reparse(const uint8_t *data, size_t size,
-                        const CandidTypeGraph &g,
-                        const std::vector<int> &args) {
+[[noreturn]] void fail(const std::string &what) {
+  std::fprintf(stderr, "fuzz_decoder: %s\n", what.c_str());
+  std::abort();
+}
+
+// A type of a future version of Candid, which a message may have and the
+// decoder skips, but the encoder cannot write
+bool has_future(const CandidTypeGraph &g, const std::vector<int> &args) {
+  auto future = [&](int t) { return g.kind(t) == CandidKind::Future; };
+  for (int t : args)
+    if (future(t)) return true;
+  for (size_t i = 0; i < g.size(); ++i) {
+    const CandidGraphNode &n = g.node(int(i));
+    if (n.inner != -1 && future(n.inner)) return true;
+    for (const auto &f : n.fields)
+      if (future(f.type)) return true;
+    for (int t : n.args)
+      if (future(t)) return true;
+    for (int t : n.rets)
+      if (future(t)) return true;
+  }
+  return false;
+}
+
+// Encodes the decoded values again, at the types they were decoded at
+void reencode(const CandidTypeGraph &g, const std::vector<int> &args,
+              const std::vector<CandidValue> &values) {
+  std::vector<uint8_t> once, twice;
+  std::vector<CandidValue> again;
+  std::string err;
+  if (!CandidEncoder::encode(g, args, values, once, err))
+    fail("a decoded value does not encode: " + err);
+  if (!CandidDecoder::decode(once.data(), once.size(), g, args, again, err))
+    fail("an encoded value does not decode: " + err);
+  if (again != values) fail("an encoded value decodes to another value");
+  if (!CandidEncoder::encode(g, args, again, twice, err) || twice != once)
+    fail("a value encodes to other bytes the second time");
+}
+
+void decode_and_roundtrip(const uint8_t *data, size_t size,
+                          const CandidTypeGraph &g,
+                          const std::vector<int> &args) {
   std::vector<CandidValue> values;
   std::string err;
   MemoryOracle::start();
@@ -147,12 +117,13 @@ void decode_and_reparse(const uint8_t *data, size_t size,
   std::string text = candid_values_to_text(values);
   std::vector<CandidValue> reparsed;
   CandidTextValue::parse(text, g, args, reparsed, err);
+  if (!has_future(g, args)) reencode(g, args, values);
 }
 
 } // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-  static const std::vector<Expected> expected = make_expected();
+  static const std::vector<FuzzExpected> expected = make_fuzz_expected();
   if (size < 1) return 0;
   size_t pick = data[0] % (expected.size() + 1);
   ++data;
@@ -164,9 +135,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     std::vector<int> args;
     std::string err;
     if (CandidDecoder::read_types(data, size, wire, args, err))
-      decode_and_reparse(data, size, wire, args);
+      decode_and_roundtrip(data, size, wire, args);
     return 0;
   }
-  decode_and_reparse(data, size, expected[pick].g, expected[pick].args);
+  decode_and_roundtrip(data, size, expected[pick].g, expected[pick].args);
   return 0;
 }

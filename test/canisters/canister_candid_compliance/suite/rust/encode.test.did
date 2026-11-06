@@ -3,17 +3,19 @@ Encode vectors ported from dfinity/candid@572c80a rust/candid/tests/serde.rs,
 number.rs and rust/candid_parser/tests/value.rs: the value, encoded with the
 typed API, must have the reference's types and decode to the same values.
 
-Not ported: the types of these are recursive. A typed API value is a finite
-tree of CandidType objects, so its type cannot refer to itself. The decode
-suites cover recursive types.
-  serde.rs test_struct: (List) (record { head = 42; tail = opt record { head =...
-  serde.rs test_equivalent_types: (RootType) (record { typeas = vec {} })
-  serde.rs test_equivalent_types: (TypeB) (record { typea = null })
-  serde.rs test_mutual_recursion: (ListOpt) (null)
+The recursive types are named types of this file. The typed API holds a
+value of one as a CandidTypeValue, and the bytes are didc's with these
+definitions (`didc encode -d`).
 */
 
 type Unit = variant { Foo; Bar };
 type E = variant { Foo; Bar : record { bool; int }; Baz : record { a : int; b : nat } };
+type List = record { head : int; tail : opt List };
+type ListOpt = opt ListA;
+type ListA = record { head : int; tail : ListOpt };
+type RootType = record { typeas : vec TypeA };
+type TypeA = record { typeb : opt TypeB };
+type TypeB = record { typea : opt TypeA };
 
 assert "(true)" encode blob "DIDL\00\01\7e\01" : (bool) "serde.rs test_bool";
 assert "(false)" encode blob "DIDL\00\01\7e\00" : (bool) "serde.rs test_bool";
@@ -93,3 +95,8 @@ assert "(-24197857200151252728969465429440056815)" encode blob "DIDL\00\01\7c\91
 assert "(blob \"\\01\\02\\03\\04\")" encode blob "DIDL\01\6d\7b\01\00\04\01\02\03\04" : (blob) "value.rs test_value";
 assert "(record { 0 = 42; 1 = \"💩\" })" encode blob "DIDL\01\6c\02\00\7c\01\71\01\00\2a\04\f0\9f\92\a9" : (record { 0 : int; 1 : text }) "value.rs test_value";
 assert "(record { 4895187 = true; 5097222 = 42 })" encode blob "DIDL\01\6c\02\d3\e3\aa\02\7e\86\8e\b7\02\7c\01\00\01\2a" : (record { 4895187 : bool; 5097222 : int }) "value.rs test_value";
+
+assert "(record { head = 42; tail = opt record { head = 43; tail = null } })" encode blob "DIDL\02\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\01\6e\00\01\00\2a\01\2b\00" : (List) "serde.rs test_struct";
+assert "(record { typeas = vec {} })" encode blob "DIDL\06\6c\01\ac\d4\db\b9\05\01\6d\02\6c\01\e8\e0\ad\d6\01\03\6e\04\6c\01\e7\e0\ad\d6\01\05\6e\02\01\00\00" : (RootType) "serde.rs test_equivalent_types";
+assert "(record { typea = null })" encode blob "DIDL\04\6c\01\e7\e0\ad\d6\01\01\6e\02\6c\01\e8\e0\ad\d6\01\03\6e\00\01\00\00" : (TypeB) "serde.rs test_equivalent_types";
+assert "(null)" encode blob "DIDL\02\6e\01\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\00\01\00\00" : (ListOpt) "serde.rs test_mutual_recursion";

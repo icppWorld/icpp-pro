@@ -668,7 +668,7 @@ int main() {
   // '(vec { blob "ab" })'
   mockIC.run_test("roundtrip_vec_blob", roundtrip_vec_blob,
                   "4449444c026d016d7b010001026162",
-                  "4449444c026d7b6d00010101026162", silent_on_trap,
+                  "4449444c026d016d7b010001026162", silent_on_trap,
                   my_principal);
   // Malformed messages trap; none is read past its end or out of a table.
   // A vec blob whose blob declares 5 bytes and has 2
@@ -784,7 +784,7 @@ int main() {
   // -> '(vec { blob "\01\02" })'; a 'vec vec nat8' field instead traps
   mockIC.run_test("vec record with a blob field", native_vec_record_blob,
                   "4449444c036d016c0162026d7b010001020102",
-                  "4449444c026d7b6d00010101020102", silent_on_trap,
+                  "4449444c026d016d7b010001020102", silent_on_trap,
                   my_principal);
   mockIC.run_trap_test(
       "vec record with a vec vec nat8 field", native_vec_record_blob,
@@ -867,13 +867,13 @@ int main() {
   mockIC.run_test(
       "roundtrip_vec_record", roundtrip_vec_record,
       "4449444c026d016c02f1fee18d0371cbe4fdc70471010003034831560348314e034832560348324e034833560348334e",
-      "4449444c056c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d03010403034831560348314e034832560348324e034833560348334e",
+      "4449444c026d016c02f1fee18d0371cbe4fdc70471010003034831560348314e034832560348324e034833560348334e",
       silent_on_trap, my_principal);
   // Use larger type table of icpp
   mockIC.run_test(
       "roundtrip_vec_record 2", roundtrip_vec_record,
       "4449444c086c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc70471010403034831560348314e034832560348324e034833560348334e",
-      "4449444c056c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d03010403034831560348314e034832560348324e034833560348334e",
+      "4449444c026d016c02f1fee18d0371cbe4fdc70471010003034831560348314e034832560348324e034833560348334e",
       silent_on_trap, my_principal);
 
   // '(vec { variant { AdminQuery }; variant { AdminUpdate }; variant { AdminQuery } })'
@@ -881,14 +881,14 @@ int main() {
   // Use compact type table of didc
   mockIC.run_test("roundtrip_vec_variant", roundtrip_vec_variant,
                   "4449444c026d016b0299d8ddf2087fd8a7f6ae0b7f010003000100",
-                  "4449444c036b0299d8ddf2087fd8a7f6ae0b7f6b006d00010203000100",
+                  "4449444c026d016b0299d8ddf2087fd8a7f6ae0b7f010003000100",
                   silent_on_trap, my_principal);
   // Use larger type table of icpp
   mockIC.run_test(
       "roundtrip_vec_variant 2", roundtrip_vec_variant,
       "4449444c046b0299d8ddf2087fd8a7f6ae0b7f6b006b0299d8ddf2087fd8a7f6ae0b7f6d02010303000100",
-      "4449444c036b0299d8ddf2087fd8a7f6ae0b7f6b006d00010203000100",
-      silent_on_trap, my_principal);
+      "4449444c026d016b0299d8ddf2087fd8a7f6ae0b7f010003000100", silent_on_trap,
+      my_principal);
 
   // vec record { "principal": text; role: variant { AdminQuery; AdminUpdate }; assignedBy: text; assignedAt: nat64; note: text }
   // Tests the complex type pattern used in llama_cpp_canister's getAdminRoles
@@ -897,7 +897,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_vec_record_variant", roundtrip_vec_record_variant,
       "4449444c036d016c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd04026b0299d8ddf2087fd8a7f6ae0b7f010002076162632d313233d2029649000000000a636f6e74726f6c6c65720474657374000778797a2d373839ea16b04c020000000b636f6e74726f6c6c65723205746573743201",
-      "4449444c096b0299d8ddf2087fd8a7f6ae0b7f6c05ae9db1900102e1e194b40205c5e394b40202f2afa8c80402f6d6bbdd04046d716b006d006d786c006c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd04006d07010802076162632d313233d2029649000000000a636f6e74726f6c6c65720474657374000778797a2d373839ea16b04c020000000b636f6e74726f6c6c65723205746573743201",
+      "4449444c036d016c05ae9db1900171e1e194b40278c5e394b40271f2afa8c80471f6d6bbdd04026b0299d8ddf2087fd8a7f6ae0b7f010002076162632d313233d2029649000000000a636f6e74726f6c6c65720474657374000778797a2d373839ea16b04c020000000b636f6e74726f6c6c65723205746573743201",
       silent_on_trap, my_principal);
 
   // CandidTypeVecOf: the inputs are from didc encode; the outputs are icpp's,
@@ -906,43 +906,43 @@ int main() {
   mockIC.run_test(
       "roundtrip_vec_of_items 2", roundtrip_vec_of_items,
       "4449444c066d016c05dbb70178d4c2a7b80402f2afa8c80403d9e9dae7040496e3f0f00b056b02617f627d6e716d716c01717101000201000000000000000001026e310201780179027131020000000000000001ac020000027132",
-      "4449444c066c0171716b02617f627d6c05dbb70178d4c2a7b80401f2afa8c80403d9e9dae7040496e3f0f00b006e716d716d0201050201000000000000000001026e310201780179027131020000000000000001ac020000027132",
+      "4449444c066d016c05dbb70178d4c2a7b80402f2afa8c80403d9e9dae7040496e3f0f00b056b02617f627d6e716d716c01717101000201000000000000000001026e310201780179027131020000000000000001ac020000027132",
       silent_on_trap, my_principal);
   // '(vec {})'
   mockIC.run_test(
       "roundtrip_vec_of_items 0", roundtrip_vec_of_items,
       "4449444c066d016c05dbb70178d4c2a7b80402f2afa8c80403d9e9dae7040496e3f0f00b056b02617f627d6e716d716c017171010000",
-      "4449444c066c0171716b02617f627d6c05dbb70178d4c2a7b80401f2afa8c80403d9e9dae7040496e3f0f00b006e716d716d02010500",
+      "4449444c066d016c05dbb70178d4c2a7b80402f2afa8c80403d9e9dae7040496e3f0f00b056b02617f627d6e716d716c017171010000",
       silent_on_trap, my_principal);
   // '(vec { record { id = 7; note = null; kind = variant { b = 5 }; tags = vec { "t" }; inner = record { q = "" } } })'
   mockIC.run_test(
       "roundtrip_vec_of_items 1", roundtrip_vec_of_items,
       "4449444c066d016c05dbb70178d4c2a7b80402f2afa8c80403d9e9dae7040496e3f0f00b056b02617f627d6e716d716c017171010001070000000000000001050001017400",
-      "4449444c066c0171716b02617f627d6c05dbb70178d4c2a7b80401f2afa8c80403d9e9dae7040496e3f0f00b006e716d716d02010501070000000000000001050001017400",
+      "4449444c066d016c05dbb70178d4c2a7b80402f2afa8c80403d9e9dae7040496e3f0f00b056b02617f627d6e716d716c017171010001070000000000000001050001017400",
       silent_on_trap, my_principal);
   // '(vec { variant { i32 = -2147483648 }; variant { f64 = 1.5 }; variant { v128 = 340282366920938463463374607431768211455 }; variant { t = "hi" }; variant { u } })'
   mockIC.run_test(
       "roundtrip_vec_of_variants", roundtrip_vec_of_variants,
       "4449444c026d016b057471757fa4aab60272c8b2bf0275818f92f1047d010005030000008002000000000000f83f04ffffffffffffffffffffffffffffffffffff030002686901",
-      "4449444c026b057471757fa4aab60272c8b2bf0275818f92f1047d6d00010105030000008002000000000000f83f04ffffffffffffffffffffffffffffffffffff030002686901",
+      "4449444c026d016b057471757fa4aab60272c8b2bf0275818f92f1047d010005030000008002000000000000f83f04ffffffffffffffffffffffffffffffffffff030002686901",
       silent_on_trap, my_principal);
   // '(vec {})'
   mockIC.run_test(
       "roundtrip_vec_of_variants 0", roundtrip_vec_of_variants,
       "4449444c026d016b057471757fa4aab60272c8b2bf0275818f92f1047d010000",
-      "4449444c026b057471757fa4aab60272c8b2bf0275818f92f1047d6d00010100",
+      "4449444c026d016b057471757fa4aab60272c8b2bf0275818f92f1047d010000",
       silent_on_trap, my_principal);
   // '(vec { record { ts = 10; items = vec { record { id = principal "aaaaa-aa"; n = 1; m = opt 9 }; record { id = principal "2vxsx-fae"; n = 2; m = null } } }; record { ts = 20; items = vec {} } })'
   mockIC.run_test(
       "roundtrip_vec_of_nested", roundtrip_vec_of_nested,
       "4449444c056d016c02ffca017880d8b2900c026d036c036d046e78dbb701686e7d0100020a0000000000000002010901000000000000000100000200000000000000010104140000000000000000",
-      "4449444c056c036d016e78dbb701686e7d6c02ffca017880d8b2900c036d006d020104020a0000000000000002010901000000000000000100000200000000000000010104140000000000000000",
+      "4449444c056d016c02ffca017880d8b2900c026d036c036d046e78dbb701686e7d0100020a0000000000000002010901000000000000000100000200000000000000010104140000000000000000",
       silent_on_trap, my_principal);
   // '(record { r1 = vec { record { k = opt 1 } }; r2 = vec {} })'
   // The two fields share one type table, as with didc: 4 type tables
   mockIC.run_test("roundtrip_vec_of_shared", roundtrip_vec_of_shared,
                   "4449444c046c02ffc6010180c701016d026c016b036e7d010001010100",
-                  "4449444c046c02ffc6010380c701036e7d6c016b016d02010001010100",
+                  "4449444c046c02ffc6010180c701016d026c016b036e7d010001010100",
                   silent_on_trap, my_principal);
 
   // CandidTypeVecOf traps
@@ -1060,7 +1060,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_opt_record", roundtrip_opt_record,
       "4449444c026e016c02b79cba840871b89cba84087a0100010568656c6c6f1000",
-      "4449444c036c02b79cba840871b89cba84087a6c006e000102010568656c6c6f1000",
+      "4449444c026e016c02b79cba840871b89cba84087a0100010568656c6c6f1000",
       silent_on_trap, my_principal);
 
   // ------------------------------------------------------------------------
@@ -1070,11 +1070,11 @@ int main() {
   // -> same
   mockIC.run_test("roundtrip_opt_vec_nat16", roundtrip_opt_vec_nat16,
                   "4449444c026e016d7a01000103650066006700",
-                  "4449444c026d7a6e0001010103650066006700", silent_on_trap,
+                  "4449444c026e016d7a01000103650066006700", silent_on_trap,
                   my_principal);
   mockIC.run_test("roundtrip_opt_vec_nat16 2", roundtrip_opt_vec_nat16,
                   "4449444c026d7a6e0001010103650066006700",
-                  "4449444c026d7a6e0001010103650066006700", silent_on_trap,
+                  "4449444c026e016d7a01000103650066006700", silent_on_trap,
                   my_principal);
 
   // '(opt (vec { record {field1 = "hello1" : text; field2 = "bye1" : text}; record {field1 = "hello2" : text; field2 = "bye2" : text}; record {field1 = "hello3" : text; field3 = "bye3" : text} }))'
@@ -1082,12 +1082,12 @@ int main() {
   mockIC.run_test(
       "roundtrip_opt_vec_record", roundtrip_opt_vec_record,
       "4449444c036e016d026c02b79cba840871b89cba840871010001030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f330462796533",
-      "4449444c066c02b79cba840801b89cba8408016d716c006c02b79cba840871b89cba8408716d036e04010501030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f330462796533",
+      "4449444c036e016d026c02b79cba840871b89cba840871010001030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f330462796533",
       silent_on_trap, my_principal);
   mockIC.run_test(
       "roundtrip_opt_vec_record 2", roundtrip_opt_vec_record,
       "4449444c096c02b79cba840801b89cba8408016d716c006c02b79cba840871b89cba8408716d036c02b79cba840871b89cba8408716c02b79cba840871b89cba8408716c02b79cba840871b89cba8408716e04010801030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f330462796533",
-      "4449444c066c02b79cba840801b89cba8408016d716c006c02b79cba840871b89cba8408716d036e04010501030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f330462796533",
+      "4449444c036e016d026c02b79cba840871b89cba840871010001030668656c6c6f3104627965310668656c6c6f3204627965320668656c6c6f330462796533",
       silent_on_trap, my_principal);
 
   // TODO: opt_vec_XXX      create a test for every vec_XXX type !!!
@@ -1110,7 +1110,7 @@ int main() {
   // '(opt ( variant { Ok } ))' -> same
   mockIC.run_test("roundtrip_opt_variant_ok (1)", roundtrip_opt_variant_ok,
                   "4449444c026e016b01bc8a017f01000100", // (1)
-                  "4449444c036b01bc8a017f6b006e0001020100", silent_on_trap,
+                  "4449444c026e016b01bc8a017f01000100", silent_on_trap,
                   my_principal);
 
   // '()' -> '()'
@@ -1131,7 +1131,7 @@ int main() {
   // '(opt ( variant { Err = "Error" : text} ))' -> same
   mockIC.run_test("roundtrip_opt_variant_err (1)", roundtrip_opt_variant_err,
                   "4449444c026e016b01c5fed2017101000100054572726f72", // (1)
-                  "4449444c036b01c5fed201716b006e0001020100054572726f72",
+                  "4449444c026e016b01c5fed2017101000100054572726f72",
                   silent_on_trap, my_principal);
 
   // '()' -> '()'
@@ -1184,19 +1184,19 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_record_record 1", roundtrip_record_record_record,
       "4449444c036c01b2c39bb804016c01b3c39bb804026c01b4c39bb8047101000676616c756531",
-      "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531",
+      "4449444c036c01b2c39bb804016c01b3c39bb804026c01b4c39bb8047101000676616c756531",
       silent_on_trap, my_principal);
   // Candid with only used type tables, as created by icpp-pro, with type tables flipped (record3,2,1)
   mockIC.run_test(
       "roundtrip_record_record_record 2", roundtrip_record_record_record,
       "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531",
-      "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531",
+      "4449444c036c01b2c39bb804016c01b3c39bb804026c01b4c39bb8047101000676616c756531",
       silent_on_trap, my_principal);
   // candid_in contains unused type tables, as created by older version of icpp. Must work too.
   mockIC.run_test(
       "roundtrip_record_record_record 3", roundtrip_record_record_record,
       "4449444c046c006c01b4c39bb804716c01b3c39bb804016c01b2c39bb8040201030676616c756531",
-      "4449444c036c01b4c39bb804716c01b3c39bb804006c01b2c39bb8040101020676616c756531",
+      "4449444c036c01b2c39bb804016c01b3c39bb804026c01b4c39bb8047101000676616c756531",
       silent_on_trap, my_principal);
 
   // '(record {"names" = vec { "H1N" : text; "H2N" : text}; "values" = vec { "H1V" : text; "H2V" : text};})'
@@ -1227,7 +1227,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt 1", roundtrip_record_opt,
       "4449444c036c02b79cba840801b99cba8408026e7a6e71027b0001011000010568656c6c6f",
-      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
+      "4449444c036c02b79cba840801b99cba8408026e7a6e710100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // Test 2: Both fields have no value
@@ -1239,7 +1239,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt 2a", roundtrip_record_opt,
       "4449444c026c02b79cba840801b99cba8408016e7f027b00020101",
-      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
+      "4449444c036c02b79cba840801b99cba8408026e7a6e710100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // Test 2: Both fields have no value
@@ -1251,7 +1251,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt 2 b", roundtrip_record_opt,
       "4449444c016c00027b0002",
-      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
+      "4449444c036c02b79cba840801b99cba8408026e7a6e710100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // Test 3: Only field1 has a value
@@ -1263,7 +1263,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt 3a", roundtrip_record_opt,
       "4449444c036c02b79cba840801b99cba8408026e7a6e7f027b000301100001",
-      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
+      "4449444c036c02b79cba840801b99cba8408026e7a6e710100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // Test 3: Only field1 has a value
@@ -1275,7 +1275,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt 3b", roundtrip_record_opt,
       "4449444c026c01b79cba8408016e7a027b0003011000",
-      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
+      "4449444c036c02b79cba840801b99cba8408026e7a6e710100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // Test 4: Only field3 has a value
@@ -1287,7 +1287,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt 4a", roundtrip_record_opt,
       "4449444c036c02b79cba840801b99cba8408026e7f6e71027b000401010568656c6c6f",
-      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
+      "4449444c036c02b79cba840801b99cba8408026e7a6e710100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // Test 4: Only field3 has a value
@@ -1299,7 +1299,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt 4b", roundtrip_record_opt,
       "4449444c026c01b99cba8408016e71027b0004010568656c6c6f",
-      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
+      "4449444c036c02b79cba840801b99cba8408026e7a6e710100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // ------------------------------------------------------------------------
@@ -1314,7 +1314,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt_variant 1", roundtrip_record_opt_variant,
       "4449444c056c02b79cba840801b99cba8408036e026b01bc8a017f6e046b01c5fed20171027b000101000100054572726f72",
-      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      "4449444c056c02b79cba840801b99cba8408036e026b01bc8a017f6e046b01c5fed20171010001000100054572726f72",
       silent_on_trap, my_principal);
 
   // Test 2: Both fields have no value
@@ -1326,7 +1326,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt_variant 2a", roundtrip_record_opt_variant,
       "4449444c026c02b79cba840801b99cba8408016e7f027b00020101",
-      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      "4449444c056c02b79cba840801b99cba8408036e026b01bc8a017f6e046b01c5fed20171010001000100054572726f72",
       silent_on_trap, my_principal);
 
   // Test 2: Both fields have no value
@@ -1338,7 +1338,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt_variant 2 b", roundtrip_record_opt_variant,
       "4449444c016c00027b0002",
-      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      "4449444c056c02b79cba840801b99cba8408036e026b01bc8a017f6e046b01c5fed20171010001000100054572726f72",
       silent_on_trap, my_principal);
 
   // Test 3: Only field1 has a value
@@ -1350,7 +1350,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt_variant 3a", roundtrip_record_opt_variant,
       "4449444c046c02b79cba840801b99cba8408036e026b01bc8a017f6e7f027b0003010001",
-      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      "4449444c056c02b79cba840801b99cba8408036e026b01bc8a017f6e046b01c5fed20171010001000100054572726f72",
       silent_on_trap, my_principal);
 
   // Test 3: Only field1 has a value
@@ -1362,7 +1362,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt_variant 3b", roundtrip_record_opt_variant,
       "4449444c036c01b79cba8408016e026b01bc8a017f027b00030100",
-      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      "4449444c056c02b79cba840801b99cba8408036e026b01bc8a017f6e046b01c5fed20171010001000100054572726f72",
       silent_on_trap, my_principal);
 
   // Test 4: Only field3 has a value
@@ -1374,7 +1374,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt_variant 4a", roundtrip_record_opt_variant,
       "4449444c046c02b79cba840801b99cba8408026e7f6e036b01c5fed20171027b0004010100054572726f72",
-      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      "4449444c056c02b79cba840801b99cba8408036e026b01bc8a017f6e046b01c5fed20171010001000100054572726f72",
       silent_on_trap, my_principal);
 
   // Test 4: Only field3 has a value
@@ -1386,7 +1386,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt_variant 4b", roundtrip_record_opt_variant,
       "4449444c036c01b99cba8408016e026b01c5fed20171027b00040100054572726f72",
-      "4449444c066c02b79cba840805b99cba8408036b01c5fed201716b006e016b01bc8a017f6e04010001000100054572726f72",
+      "4449444c056c02b79cba840801b99cba8408036e026b01bc8a017f6e046b01c5fed20171010001000100054572726f72",
       silent_on_trap, my_principal);
 
   // ------------------------------------------------------------------------
@@ -1397,13 +1397,13 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_vec_record", roundtrip_record_vec_record,
       "4449444c036c01c6a4a19806016d026c02f1fee18d0371cbe4fdc70471010003034831560348314e034832560348324e034833560348334e",
-      "4449444c066c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c01c6a4a1980604010503034831560348314e034832560348324e034833560348334e",
+      "4449444c036c01c6a4a19806016d026c02f1fee18d0371cbe4fdc70471010003034831560348314e034832560348324e034833560348334e",
       silent_on_trap, my_principal);
   // Use larger type table of icpp
   mockIC.run_test(
       "roundtrip_record_vec_record 2", roundtrip_record_vec_record,
       "4449444c096c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c02f1fee18d0371cbe4fdc704716c01c6a4a1980604010803034831560348314e034832560348324e034833560348334e",
-      "4449444c066c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d036c01c6a4a1980604010503034831560348314e034832560348324e034833560348334e",
+      "4449444c036c01c6a4a19806016d026c02f1fee18d0371cbe4fdc70471010003034831560348314e034832560348324e034833560348334e",
       silent_on_trap, my_principal);
 
   // Record with Vec Record field (headers of http_request)
@@ -1413,7 +1413,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_http_headers", roundtrip_http_headers,
       "4449444c036c01c6a4a19806016d026c020071017101000704686f73742735756772762d7a716161612d61616161672d6163666e612d6361692e7261772e696370302e696f09782d7265616c2d69700d32312e39382e3234312e3234350f782d666f727761726465642d666f720d32312e39382e3234312e32343511782d666f727761726465642d70726f746f0568747470730c782d726571756573742d69642464396234316462342d346539372d383237362d313466312d3664623764303037623537640a757365722d6167656e740b6375726c2f372e38312e3006616363657074032a2f2a",
-      "4449444c066c02000101016d716c006c02007101716d036c01c6a4a198060401050704686f73742735756772762d7a716161612d61616161672d6163666e612d6361692e7261772e696370302e696f09782d7265616c2d69700d32312e39382e3234312e3234350f782d666f727761726465642d666f720d32312e39382e3234312e32343511782d666f727761726465642d70726f746f0568747470730c782d726571756573742d69642464396234316462342d346539372d383237362d313466312d3664623764303037623537640a757365722d6167656e740b6375726c2f372e38312e3006616363657074032a2f2a",
+      "4449444c036c01c6a4a19806016d026c020071017101000704686f73742735756772762d7a716161612d61616161672d6163666e612d6361692e7261772e696370302e696f09782d7265616c2d69700d32312e39382e3234312e3234350f782d666f727761726465642d666f720d32312e39382e3234312e32343511782d666f727761726465642d70726f746f0568747470730c782d726571756573742d69642464396234316462342d346539372d383237362d313466312d3664623764303037623537640a757365722d6167656e740b6375726c2f372e38312e3006616363657074032a2f2a",
       silent_on_trap, my_principal);
 
   // ----------------------------------------------------------------------------------
@@ -1422,7 +1422,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_opt_record_variant", roundtrip_opt_record_variant,
       "4449444c036e016c03b79cba840871b89cba840802b99cba8408716b01fc9cba84087c0100010568656c6c6f001003627965",
-      "4449444c046b01fc9cba84087c6c03b79cba840871b89cba840800b99cba8408716c006e010103010568656c6c6f001003627965",
+      "4449444c036e016c03b79cba840871b89cba840802b99cba8408716b01fc9cba84087c0100010568656c6c6f001003627965",
       silent_on_trap, my_principal);
 
   // ----------------------------------------------------------------------------------
@@ -1612,7 +1612,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt 1 fwc a", roundtrip_record_opt,
       "4449444c036c05b69cba840801b79cba840802b89cba840801b99cba840801ba9cba8408016e716e7a027b000101097374617274206f7074011000010a6d6964646c65206f7074010568656c6c6f0107656e64206f7074",
-      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
+      "4449444c036c02b79cba840801b99cba8408026e7a6e710100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // Test 1: Both fields are provided with actual values
@@ -1624,7 +1624,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt 1 fwc b", roundtrip_record_opt,
       "4449444c046c05b69cba840801b79cba840802b89cba840801b99cba840803ba9cba8408016e7f6e7a6e71027b00010101100001010568656c6c6f01",
-      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
+      "4449444c036c02b79cba840801b99cba8408026e7a6e710100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // vec record with additional Opt fields in the record
@@ -1658,7 +1658,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_vec_record w opts", roundtrip_vec_record,
       "4449444c036d016c05e1bde70202f1fee18d03718094ebdc0302cbe4fdc70471b49f92b409026e710100030109626567696e206f707403483156010a6d6964646c65206f70740348314e0107656e64206f70740109626567696e206f707403483256010a6d6964646c65206f70740348324e0107656e64206f70740109626567696e206f707403483356010a6d6964646c65206f70740348334e0107656e64206f7074",
-      "4449444c056c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d03010403034831560348314e034832560348324e034833560348334e",
+      "4449444c026d016c02f1fee18d0371cbe4fdc70471010003034831560348314e034832560348324e034833560348334e",
       silent_on_trap, my_principal);
 
   // vec record with additional Opt fields in the record
@@ -1692,7 +1692,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_vec_record w opt variant", roundtrip_vec_record,
       "4449444c086d016c05e1bde70202f1fee18d03718094ebdc0304cbe4fdc70471b49f92b409066e036b01edd694ed047f6e056b0191dba2a3057f6e076b01c5fed2017101000301000348315601000348314e010003456e6401000348325601000348324e010003456e6401000348335601000348334e010003456e64",
-      "4449444c056c02f1fee18d0301cbe4fdc704016d716c006c02f1fee18d0371cbe4fdc704716d03010403034831560348314e034832560348324e034833560348334e",
+      "4449444c026d016c02f1fee18d0371cbe4fdc70471010003034831560348314e034832560348324e034833560348334e",
       silent_on_trap, my_principal);
 
   // ----------------------------------------------------------------------------------
@@ -1744,7 +1744,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt 1 fwc c", roundtrip_record_opt,
       "4449444c046c05b69cba840871b79cba840801b89cba840802b99cba840803ba9cba8408026e7a6e7f6e71027b00010a6630206e6f6e206f707401100001010568656c6c6f01",
-      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
+      "4449444c036c02b79cba840801b99cba8408026e7a6e710100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // Both fields are provided with actual values, with an additional non-Opt in the middle,
@@ -1754,7 +1754,7 @@ int main() {
   mockIC.run_test(
       "roundtrip_record_opt 1 fwc d", roundtrip_record_opt,
       "4449444c046c05b69cba840801b79cba840802b89cba840871b99cba840801ba9cba8408036e716e7a6e7f027b000101097374617274206f70740110000a6632206e6f6e206f7074010568656c6c6f01",
-      "4449444c036c02b79cba840802b99cba8408016e716e7a0100011000010568656c6c6f",
+      "4449444c036c02b79cba840801b99cba8408026e7a6e710100011000010568656c6c6f",
       silent_on_trap, my_principal);
 
   // Verify that a variant traps if the variant's id (hash) on wire does not match expected

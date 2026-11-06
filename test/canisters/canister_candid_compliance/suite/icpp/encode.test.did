@@ -4,6 +4,8 @@ references from didc 0.6.2 `didc encode`. They were checked byte for byte in
 canister_1 before this runner existed.
 */
 
+type List = opt record { head : int; tail : List };
+
 assert "()" encode blob "DIDL\00\00" : () "prim: nullary";
 assert "(null)" encode blob "DIDL\00\01\7f" : (null) "prim: null";
 assert "(false)" encode blob "DIDL\00\01\7e\00" : (bool) "prim: false";
@@ -18,3 +20,11 @@ assert "(340282366920938463463374607431768211455)" encode blob "DIDL\00\01\7d\ff
 assert "(record {})" encode blob "DIDL\01\6c\00\01\00" : (record {}) "record: empty";
 assert "(record {}, record {}, record {})" encode blob "DIDL\01\6c\00\03\00\00\00" : (record {}, record {}, record {}) "record: multiple records";
 assert "(record { 1 = 42 })" encode blob "DIDL\01\6c\01\01\7c\01\00\2a" : (record { 1 : int }) "record";
+
+assert "(opt record { head = 1; tail = opt record { head = 2; tail = null } })" encode blob "DIDL\02\6e\01\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\00\01\00\01\01\01\02\00" : (List) "recursive: a List";
+assert "(null)" encode blob "DIDL\02\6e\01\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\00\01\00\00" : (List) "recursive: an empty List";
+assert "(record { name = \"two\"; list = opt record { head = 1; tail = opt record { head = 2; tail = null } } })" encode blob "DIDL\03\6c\02\de\b8\cc\bd\04\01\cb\e4\fd\c7\04\71\6e\02\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\01\01\00\01\01\01\02\00\03\74\77\6f" : (record { name : text; list : List }) "recursive: a List in a record";
+assert "(vec { opt record { head = 1; tail = opt record { head = 2; tail = null } }; null })" encode blob "DIDL\03\6d\01\6e\02\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\01\01\00\02\01\01\01\02\00\00" : (vec List) "recursive: a vec of List";
+assert "(opt opt record { head = 1; tail = opt record { head = 2; tail = null } })" encode blob "DIDL\03\6e\01\6e\02\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\01\01\00\01\01\01\01\02\00" : (opt List) "recursive: an opt List";
+assert "(opt record { head = 1; tail = opt record { head = 2; tail = null } }, null)" encode blob "DIDL\03\6e\01\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\00\6e\00\02\00\02\01\01\01\02\00\00" : (List, opt List) "recursive: a List and an opt List share its entry";
+assert "(variant { some = opt record { head = 1; tail = opt record { head = 2; tail = null } } })" encode blob "DIDL\03\6b\02\b8\a5\a8\c8\04\7f\f4\c5\e0\e2\04\01\6e\02\6c\02\a0\d2\ac\a8\04\7c\90\ed\da\e7\04\01\01\00\01\01\01\01\02\00" : (variant { none; some : List }) "recursive: a List in a variant";

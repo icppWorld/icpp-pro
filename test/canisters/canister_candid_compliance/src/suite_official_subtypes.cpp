@@ -5,11 +5,15 @@
 
 void suite_official_subtypes(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_vec(0));
-  base.add(cn_record({{0u, 1}}));
-  base.add(cn_record({{0u, 4}}));
-  base.add(cn_variant({{0u, 3}}));
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
   base.add(cn_opt(2));
+  base.define(0, cn_vec(0));
+  base.define(1, cn_record({{0u, 1}}));
+  base.define(2, cn_record({{0u, 4}}));
+  base.define(3, cn_variant({{0u, 3}}));
   {
     CandidTypeGraph g = base;
     g.add(cn_opt(6));

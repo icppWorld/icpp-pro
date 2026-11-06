@@ -5,9 +5,11 @@
 
 void suite_rust_value(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_opt(2));
-  base.add(cn_variant({{97u, -3}, {98u, -15}, {99u, -1}}));
+  base.reserve();
+  base.reserve();
   base.add(cn_record({{1158359328u, -10}, {1291237008u, 0}}));
+  base.define(0, cn_opt(2));
+  base.define(1, cn_variant({{97u, -3}, {98u, -15}, {99u, -1}}));
   {
     CandidTypeGraph g = base;
     r.check(14,

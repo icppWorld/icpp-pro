@@ -5,16 +5,16 @@
 
 void suite_motoko_idl_sub_rec(ComplianceRunner &r) {
   CandidTypeGraph base;
-  base.add(cn_variant({{5493713u, -1}, {1202718727u, 10}}));
-  base.add(cn_variant({{5493713u, -1}, {1202718727u, 11}, {3915647964u, 12}}));
-  base.add(cn_variant({{5493713u, -1}, {1202718727u, 13}}));
-  base.add(cn_variant({{5493713u, -1}, {1202718727u, 16}, {3915647964u, 17}}));
-  base.add(cn_variant({{1202718727u, 18}, {3915647964u, 19}}));
-  base.add(cn_variant({{5493713u, -1}, {1202718727u, 20}}));
-  base.add(cn_variant({{5493713u, -1}, {1202718727u, 21}, {3915647964u, 22}}));
-  base.add(cn_variant({{5493713u, -1}, {1202718727u, 23}}));
-  base.add(cn_variant({{5493713u, -1}, {1202718727u, 26}, {3915647964u, 27}}));
-  base.add(cn_variant({{1202718727u, 28}, {3915647964u, 29}}));
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
+  base.reserve();
   base.add(cn_record({{0u, -3}, {1u, 0}}));
   base.add(cn_record({{0u, -3}, {1u, 1}}));
   base.add(cn_record({{0u, -3}, {1u, 1}}));
@@ -35,6 +35,20 @@ void suite_motoko_idl_sub_rec(ComplianceRunner &r) {
   base.add(cn_record({{0u, -4}, {1u, 9}}));
   base.add(cn_record({{0u, -4}, {1u, 8}}));
   base.add(cn_record({{0u, -4}, {1u, 8}}));
+  base.define(0, cn_variant({{5493713u, -1}, {1202718727u, 10}}));
+  base.define(
+      1, cn_variant({{5493713u, -1}, {1202718727u, 11}, {3915647964u, 12}}));
+  base.define(2, cn_variant({{5493713u, -1}, {1202718727u, 13}}));
+  base.define(
+      3, cn_variant({{5493713u, -1}, {1202718727u, 16}, {3915647964u, 17}}));
+  base.define(4, cn_variant({{1202718727u, 18}, {3915647964u, 19}}));
+  base.define(5, cn_variant({{5493713u, -1}, {1202718727u, 20}}));
+  base.define(
+      6, cn_variant({{5493713u, -1}, {1202718727u, 21}, {3915647964u, 22}}));
+  base.define(7, cn_variant({{5493713u, -1}, {1202718727u, 23}}));
+  base.define(
+      8, cn_variant({{5493713u, -1}, {1202718727u, 26}, {3915647964u, 27}}));
+  base.define(9, cn_variant({{1202718727u, 28}, {3915647964u, 29}}));
   {
     CandidTypeGraph g = base;
     g.add(cn_opt(31));

@@ -28,8 +28,6 @@ namespace {
 enum class Wrap { None, Variant, Opt };
 std::string superset_hex(__uint128_t n, const std::string &t,
                          Wrap wrap = Wrap::None) {
-  // The type table registry must be cleared before the types are built
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   CandidTypeRecord inner;
   inner.append(1, CandidTypeText("inner"));
   inner.append(2, CandidTypeVecNat8(std::vector<uint8_t>{1, 2, 3}));
@@ -105,7 +103,6 @@ __attribute__((noinline)) void test_record_width_subtyping() {
   }
 
   { // Records in a vec
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     CandidTypeRecord w;
     w.append(3, CandidTypeVecNat(std::vector<__uint128_t>{7, 8}));
     w.append(10, CandidTypeVecNat(std::vector<__uint128_t>{45, 46}));
@@ -142,9 +139,6 @@ __attribute__((noinline)) void test_record_width_subtyping() {
     std::string wire = superset_hex(48, "all extra");
     decode(wire, CandidTypeRecord());
   }
-
-  // The tests that follow expect an empty type table registry
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // A vec of variants: each element is matched by the id (hash) of its case,
@@ -153,7 +147,6 @@ __attribute__((noinline)) void test_record_width_subtyping() {
 __attribute__((noinline)) void test_vec_variant() {
   { // didc encode -t '(vec variant {a; b; c})' '(vec {variant {b}; variant {c}; variant {b}})'
     std::string wire = "4449444c026d016b03617f627f637f010003010201";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::vector<std::string> labels;
     CandidTypeVariant v;
     v.append("c", CandidTypeNull{});
@@ -166,15 +159,12 @@ __attribute__((noinline)) void test_vec_variant() {
   { // didc encode -t '(record {x: vec variant {a: nat; b: text}; y: nat})' '(record {x = vec {variant {a = 5}; variant {b = "hi"}}; y = 7})'
     std::string wire =
         "4449444c036c027801797d6d026b02617d627101000200050102686907";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __uint128_t y{0};
     CandidTypeRecord r;
     r.append("y", CandidTypeNat(&y));
     decode(wire, r);
     check(y == 7, "skipped vec variant with payloads");
   }
-
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // The subtype check retracts what it assumed for a check that failed, as
@@ -256,7 +246,6 @@ __attribute__((noinline)) void test_zero_width_vec() {
   { // The typed API sees every element:
     // didc encode -t '(vec null)' '(vec {null; null; null})'
     std::string wire = "4449444c016d7f010003";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     size_t count{0};
     decode(wire,
            CandidTypeVecOf([&]() -> CandidType { return CandidTypeNull{}; },
@@ -264,7 +253,6 @@ __attribute__((noinline)) void test_zero_width_vec() {
     check(count == 3, "zero width: vec null binds 3 elements");
 
     // ... also at vec opt nat, where each null is an opt nat null
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::optional<__uint128_t> o{1};
     std::vector<std::optional<__uint128_t>> os;
     decode(wire,
@@ -273,7 +261,6 @@ __attribute__((noinline)) void test_zero_width_vec() {
     check(os.size() == 3 && !os[0] && !os[1] && !os[2],
           "zero width: vec null binds at vec opt nat");
   }
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // Messages for the tests of values that take no bytes
@@ -492,7 +479,6 @@ __attribute__((noinline)) void test_copies_of_null_reserved_empty() {
           "a copy of a null, reserved or empty points at its own value");
   }
   {
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::string wire =
         CandidSerialize(CandidTypeVariant("stopped", CandidTypeNull{}))
             .as_hex_string();
@@ -625,7 +611,6 @@ __attribute__((noinline)) void test_opt_of_and_service() {
 
   { // didc encode -t '(opt record {a: nat})' '(null)'
     std::string wire = "4449444c026e016c01617d010000";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __uint128_t a{0};
     bool has_value{true};
     decode(wire, CandidTypeOptOf([&]() -> CandidType { return record_of(&a); },
@@ -635,7 +620,6 @@ __attribute__((noinline)) void test_opt_of_and_service() {
 
   { // didc encode -t '(opt record {a: nat})' '(opt record {a=5})'
     std::string wire = "4449444c026e016c01617d01000105";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __uint128_t a{0};
     bool has_value{false};
     decode(wire, CandidTypeOptOf([&]() -> CandidType { return record_of(&a); },
@@ -644,10 +628,8 @@ __attribute__((noinline)) void test_opt_of_and_service() {
   }
 
   { // A null opt record encodes with its content type, and decodes back
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __uint128_t unused{0};
     VecBytes B = CandidSerialize(CandidTypeOptOf(record_of(&unused))).get_B();
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __uint128_t a{0};
     bool has_value{true};
     CandidArgs A;
@@ -659,7 +641,6 @@ __attribute__((noinline)) void test_opt_of_and_service() {
 
   { // An opt opt: didc encode -t '(opt opt nat)' '(opt null)'
     std::string wire = "4449444c026e016e7d01000100";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::optional<__uint128_t> inner{42};
     bool has_value{false};
     decode(wire, CandidTypeOptOf(
@@ -678,7 +659,6 @@ __attribute__((noinline)) void test_opt_of_and_service() {
 
   { // didc encode -t '(service { greet : (text) -> (text) query })' '(service "aaaaa-aa")'
     std::string wire = "4449444c026901056772656574016a01710171010101000100";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::string canister;
     CandidTypeService s{&canister};
     s.append_method("greet", greet());
@@ -687,11 +667,9 @@ __attribute__((noinline)) void test_opt_of_and_service() {
   }
 
   { // A service encodes, and decodes back
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     CandidTypeService out{CandidTypePrincipal{"w7x7r-cok77-xa"}};
     out.append_method("greet", greet());
     VecBytes B = CandidSerialize(out).get_B();
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::string canister;
     CandidTypeService in{&canister};
     in.append_method("greet", greet());
@@ -703,7 +681,6 @@ __attribute__((noinline)) void test_opt_of_and_service() {
 
   { // Record fields appended out of order are encoded sorted by id
     // didc encode '(record {1 = 42 : int; 0 = true : bool})'
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     CandidTypeRecord r;
     r.append(1, CandidTypeInt(42));
     r.append(0, CandidTypeBool(true));
@@ -711,8 +688,6 @@ __attribute__((noinline)) void test_opt_of_and_service() {
                                             true),
           "record fields are encoded sorted");
   }
-
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // Decoding follows the spec's coercion rules, with CandidDecoder
@@ -720,7 +695,6 @@ __attribute__((noinline)) void test_spec_coercions() {
   { // A func reference
     // didc encode -t '(func (text) -> (nat))' '(func "w7x7r-cok77-xa".foo)'
     std::string wire = "4449444c016a0171017d000100010103caffee03666f6f";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::string canister, method;
     CandidTypeFunc f{&canister, &method};
     f.append_arg(CandidTypeText{});
@@ -732,7 +706,6 @@ __attribute__((noinline)) void test_spec_coercions() {
   { // nat <: int
     // didc encode -t '(nat)' '(42)'
     std::string wire = "4449444c00017d2a";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __int128_t i{0};
     decode(wire, CandidTypeInt{&i});
     check(i == 42, "nat decodes at int");
@@ -741,7 +714,6 @@ __attribute__((noinline)) void test_spec_coercions() {
   { // t <: opt t
     // didc encode -t '(nat)' '(42)'
     std::string wire = "4449444c00017d2a";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::optional<__uint128_t> n;
     decode(wire, CandidTypeOptNat{&n});
     check(n.has_value() && *n == 42, "nat decodes at opt nat");
@@ -750,7 +722,6 @@ __attribute__((noinline)) void test_spec_coercions() {
   { // An opt whose value does not coerce is null
     // didc encode -t '(opt text)' '(opt "x")'
     std::string wire = "4449444c016e710100010178";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::optional<__uint128_t> n{7};
     decode(wire, CandidTypeOptNat{&n});
     check(!n.has_value(), "opt text decodes at opt nat as null");
@@ -763,7 +734,6 @@ __attribute__((noinline)) void test_spec_coercions() {
          std::vector<std::pair<std::string, bool>>{
              {"4449444c026e016c01617d010000", false},
              {"4449444c026e016c01617d01000105", true}}) {
-      CandidSerializeTypeTableRegistry::get_instance().clear();
       __uint128_t a{0};
       bool has_value{!expected};
       CandidTypeRecord r;
@@ -773,8 +743,6 @@ __attribute__((noinline)) void test_spec_coercions() {
             "opt record decodes, null or not");
     }
   }
-
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // A record field added with append_optional may be absent on the wire: it is
@@ -783,7 +751,6 @@ __attribute__((noinline)) void test_append_optional() {
   { // On the wire
     // didc encode -t '(record {a: nat; b: text})' '(record {a = 1; b = "x"})'
     std::string wire = "4449444c016c02617d62710100010178";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __uint128_t a{0};
     bool a_on_wire{false};
     std::string b;
@@ -797,7 +764,6 @@ __attribute__((noinline)) void test_append_optional() {
   { // Absent, first field
     // didc encode -t '(record {b: text})' '(record {b = "x"})'
     std::string wire = "4449444c016c01627101000178";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __uint128_t a{11};
     bool a_on_wire{true};
     std::string b;
@@ -811,7 +777,6 @@ __attribute__((noinline)) void test_append_optional() {
   { // Absent, after an additional field
     // didc encode -t '(record {a: nat; c: text})' '(record {a = 9; c = "y"})'
     std::string wire = "4449444c016c02617d63710100090179";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::string b{"unchanged"};
     std::string c;
     CandidTypeRecord r;
@@ -825,7 +790,6 @@ __attribute__((noinline)) void test_append_optional() {
   { // Absent, last field
     // didc encode -t '(record {a: nat})' '(record {a = 3})'
     std::string wire = "4449444c016c01617d010003";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __uint128_t a{0};
     std::vector<std::string> z{"unchanged"};
     bool z_on_wire{true};
@@ -838,12 +802,10 @@ __attribute__((noinline)) void test_append_optional() {
   }
 
   { // Encodes exactly like append
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     CandidTypeRecord r1;
     r1.append("a", CandidTypeNat(__uint128_t(1)));
     r1.append("b", CandidTypeText("x"));
     std::string hex1 = CandidSerialize(r1).as_hex_string();
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     CandidTypeRecord r2;
     r2.append_optional("a", CandidTypeNat(__uint128_t(1)));
     r2.append("b", CandidTypeText("x"));
@@ -851,24 +813,26 @@ __attribute__((noinline)) void test_append_optional() {
     check(hex1 == "4449444c016c02617d62710100010178" && hex2 == hex1,
           "append_optional encodes like append");
   }
-
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // A type table index is a sleb128 (Candid: T(<datatype>) = sleb128(i)). An
 // index of 64 or more needs 2 bytes in sleb128, and differs from uleb128.
 __attribute__((noinline)) void test_type_table_index_64() {
-  CandidSerializeTypeTableRegistry::get_instance().clear();
-  // Fill the registry with 64 distinct type tables
-  std::vector<CandidTypeRecord> fillers(64);
+  // Field 0 of the argument holds 64 distinct record types. The type table
+  // is built depth first, in field id order, so they take the entries 1-65,
+  // and every type below takes an index of 66 or more
+  CandidTypeRecord fillers;
   for (uint32_t k = 0; k < 64; ++k) {
-    fillers[k].append(k, CandidTypeNat(__uint128_t(k)));
+    CandidTypeRecord filler;
+    filler.append(k, CandidTypeNat(__uint128_t(k)));
+    fillers.append(k, filler);
   }
   // Every type that refers to another type table: the argument itself, a
   // record field, a variant case, an opt record, an opt variant, an opt vec
   CandidTypeRecord inner;
   inner.append("q", CandidTypeText("deep"));
   CandidTypeRecord outer;
+  outer.append(0, fillers);
   outer.append("p", inner);
   outer.append("v", CandidTypeVariant("c", inner));
   outer.append("o", CandidTypeOptRecord(inner));
@@ -876,8 +840,11 @@ __attribute__((noinline)) void test_type_table_index_64() {
   outer.append("x",
                CandidTypeOptVec(CandidTypeVecNat8(std::vector<uint8_t>{7})));
   std::string wire = CandidSerialize(outer).as_hex_string();
+  // The number of entries, a uleb128 of one byte while under 128
+  int entries = std::stoi(wire.substr(8, 2), nullptr, 16);
+  check(entries >= 70 && entries < 128,
+        "the type table has 70 or more entries");
 
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   std::string q_p, q_v, q_o, q_w;
   std::string label_v, label_w;
   bool has_o{false}, has_w{false}, has_x{false};
@@ -906,14 +873,12 @@ __attribute__((noinline)) void test_type_table_index_64() {
             q_o == "deep" && has_w && label_w == "d" && q_w == "deep" &&
             has_x && x == std::vector<uint8_t>{7},
         "a type table index of 64 or more");
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // A Candid value built before IC_API::cost_http_request_v2 still encodes
 // correctly after it: the cost function encodes its own Candid argument, and
 // must not clear the type table registry the value refers to
 __attribute__((noinline)) void test_registry_survives_cost_http_v2() {
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   CandidTypeRecord inner;
   inner.append("n", CandidTypeNat32{uint32_t(7)});
   CandidTypeRecord outer;
@@ -926,7 +891,6 @@ __attribute__((noinline)) void test_registry_survives_cost_http_v2() {
   IC_API::cost_http_request_v2(params);
 
   std::string wire = CandidSerialize(outer).as_hex_string();
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   std::string url;
   uint32_t n{0};
   bool has_inner{false};
@@ -938,12 +902,10 @@ __attribute__((noinline)) void test_registry_survives_cost_http_v2() {
   decode(wire, outer_d);
   check(url == "https://example.com/" && has_inner && n == 7,
         "a value encodes after cost_http_request_v2");
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // CandidTypeVecOf: a vec of any element type
 std::vector<VecOfItem> decode_vec_of_items(const std::string &wire) {
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   VecOfItem item;
   std::vector<VecOfItem> items;
   decode(wire, CandidTypeVecOf(
@@ -963,7 +925,6 @@ const char *VEC_OF_A2 =
 // Encodes n elements record { k: nat64; o: opt nat } with CandidTypeVecOf,
 // decodes and checks them, and returns the instructions of the decode
 __attribute__((noinline)) uint64_t encode_decode_k(uint64_t n) {
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   std::vector<CandidType> elements;
   for (uint64_t k = 0; k < n; ++k) {
     CandidTypeRecord r;
@@ -974,7 +935,6 @@ __attribute__((noinline)) uint64_t encode_decode_k(uint64_t n) {
   }
   std::string wire =
       CandidSerialize(CandidTypeVecOf(elements[0], elements)).as_hex_string();
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   uint64_t k{0};
   std::optional<__uint128_t> o;
   uint64_t count{0};
@@ -1048,7 +1008,6 @@ __attribute__((noinline)) void test_vec_of_decode() {
         "4449444c026d016b057471757fa4aab60272c8b2bf0275818f92f1047d01000503000000"
         "8002000000000000f83f04ffffffffffffffffffffffffffffffffffff0300026869"
         "01";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     struct G {
       std::string kind;
       int32_t i32{0};
@@ -1084,7 +1043,6 @@ __attribute__((noinline)) void test_vec_of_decode() {
         "4449444c056d016c02ffca017880d8b2900c026d036c036d046e78dbb701686e7d01000"
         "20a0000000000000002010901000000000000000100000200000000000000010104140"
         "000000000000000";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     struct Item {
       std::string id;
       uint64_t n{0};
@@ -1127,7 +1085,6 @@ __attribute__((noinline)) void test_vec_of_decode() {
     // didc encode -t '(variant { ok: vec record { x: opt nat }; err: text })' '(variant { ok = vec { record { x = opt 1 }; record { x = null } } })'
     std::string wire =
         "4449444c046b029cc20101e58eb402716d026c0178036e7d01000002010100";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::string label;
     std::string err;
     std::optional<__uint128_t> x;
@@ -1151,7 +1108,6 @@ __attribute__((noinline)) void test_vec_of_decode() {
     // didc encode -t '(opt record { list: vec variant { a: nat; b } })' '(opt record { list = vec { variant { b }; variant { a = 4 } } })'
     std::string wire =
         "4449444c046e016c01deb8ccbd04026d036b02617d627f01000102010004";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     bool has_value{false};
     std::string kind;
     __uint128_t a{0};
@@ -1175,7 +1131,6 @@ __attribute__((noinline)) void test_vec_of_decode() {
 
   { // Primitive elements
     // didc encode -t '(vec nat64)' '(vec { 1; 18446744073709551615 })'
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     uint64_t n{0};
     std::vector<uint64_t> ns;
     decode("4449444c016d780100020100000000000000ffffffffffffffff",
@@ -1185,7 +1140,6 @@ __attribute__((noinline)) void test_vec_of_decode() {
           "vec_of nat64");
 
     // didc encode -t '(vec principal)' '(vec { principal "aaaaa-aa"; principal "2vxsx-fae" })'
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::string p;
     std::vector<std::string> ps;
     decode(
@@ -1203,7 +1157,6 @@ __attribute__((noinline)) void test_vec_of_decode() {
     std::string wire =
         "4449444c056d016c05617d62026371a1c792b90c71a2c792b90c036e716d046b02707d71"
         "7f010002010101420263310165020003010200026332016600";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __uint128_t a{0};
     std::optional<std::string> b;
     std::string c;
@@ -1239,8 +1192,6 @@ __attribute__((noinline)) void test_vec_of_decode() {
               std::to_string(instructions_100) + " for 100, " +
               std::to_string(instructions_1000) + " for 1,000");
   }
-
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // An additional field of a vec of records with opt & variant fields, or of a
@@ -1250,7 +1201,6 @@ __attribute__((noinline)) void test_skip_vec_of() {
     std::string wire =
         "4449444c066c03617d7a7190b58ab907016d026c02780379046e7d6b027005727f6c0171"
         "710100020561667465720201010001710001";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __uint128_t a{0};
     std::string z;
     CandidTypeRecord r;
@@ -1277,7 +1227,6 @@ __attribute__((noinline)) void test_skip_vec_of() {
         "000000000000040000000000000000010005000600000000000000050000000000000000"
         "010003010101010400070000000000000006000000000000000001000401010401000000"
         "000000000400000000000000010001000300000000000000";
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     __uint128_t a{0};
     std::string z;
     CandidTypeRecord r;
@@ -1286,13 +1235,53 @@ __attribute__((noinline)) void test_skip_vec_of() {
     decode(wire, r);
     check(a == 1 && z == "after", "skip a vec of change records");
   }
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 } // namespace
 
+// The registry is deprecated, its clear() a no-op: the bytes of a message no
+// longer depend on what was serialized before
+__attribute__((noinline)) void test_registry_clear_is_a_no_op() {
+  auto bytes = [] {
+    CandidTypeRecord r;
+    r.append("a", CandidTypeVecText{std::vector<std::string>{"x"}});
+    return CandidSerialize(r).as_hex_string();
+  };
+  std::string first = bytes();
+  CandidSerializeTypeTableRegistry::get_instance().clear();
+  check(bytes() == first && first == bytes(),
+        "the bytes do not depend on clear()");
+  check(CandidSerializeTypeTableRegistry::get_instance()
+            .get_unique_type_tables()
+            .empty(),
+        "the registry holds nothing");
+}
+
+// A decoder's pointers may be gone when an object is serialized: the type
+// comes from the object's own copy (IC_API::cost_http_request_v2 encodes an
+// opt record without a value this way)
+__attribute__((noinline)) void test_serialize_after_pointers_are_gone() {
+  CandidArgs A;
+  {
+    CandidTypeRecord r;
+    uint32_t a{0};
+    r.append("a", CandidTypeNat32{&a});
+    bool has_r{false};
+    std::vector<std::string> texts;
+    CandidTypeVecText vt{&texts};
+    bool has_vt{false};
+    A.append(CandidTypeOptRecord{&r, &has_r});
+    A.append(CandidTypeOptVec{&vt, &has_vt});
+  }
+  // The decoder's constructors encode the opt with a value, as before:
+  // didc encode -t "(opt record {a:nat32}, opt vec text)"
+  //                "(opt record {a=0}, opt vec {})"
+  check(CandidSerialize(A).as_hex_string() ==
+            "4449444c046e016c0161796e036d7102000201000000000100",
+        "serialize after the pointers are gone");
+}
+
 int unit_test_candid() {
   { // Verify idl hash
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     if (CandidTypeBase<CandidTypeRecord>().idl_hash("syndactyle") != 4260381820)
       IC_API::trap(std::string(__func__) + ": 1a");
     if (CandidTypeBase<CandidTypeRecord>().idl_hash("rectum") != 4260381820)
@@ -1306,7 +1295,6 @@ int unit_test_candid() {
   {
     // Verify that the CandidType '<' operator enables sorting
     // This does not compile to wasm
-    // CandidSerializeTypeTableRegistry::get_instance().clear();
     // std::vector<CandidType> vec;
     // vec.push_back(CandidTypeBool(true));
     // vec.push_back(CandidTypeInt(42));
@@ -1323,7 +1311,6 @@ int unit_test_candid() {
   }
 
   { // Verify the VecBytes static utils
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     const std::byte b = std::byte(42);
     if (VecBytes::byte_to_hex(b) != "0x2a")
       IC_API::trap(std::string(__func__) + ": 3a");
@@ -1361,7 +1348,6 @@ int unit_test_candid() {
 
     { // serialize
 
-      CandidSerializeTypeTableRegistry::get_instance().clear();
       CandidTypeRecord r1;
       r1.append(6, CandidTypeInt(42));
       r1.append(9, CandidTypeInt(43));
@@ -1380,7 +1366,6 @@ int unit_test_candid() {
     }
 
     { // deserialize
-      CandidSerializeTypeTableRegistry::get_instance().clear();
       __int128_t r1_i1;
       __int128_t r1_i2;
       CandidTypeRecord r1;
@@ -1409,7 +1394,6 @@ int unit_test_candid() {
   { // Verify serialization variant of tiny Stories example
     // didc encode '(variant { ok = "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty.\nLily wanted to play with the ball, but it was too high up in the sky. She tried to jump and reach it, but she couldn't. Then, she had an idea. She would use a stick to knock the" : text })'
 
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     CandidArgs A;
     std::string output =
         "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty.\nLily wanted to play with the ball, but it was too high up in the sky. She tried to jump and reach it, but she couldn\'t. Then, she had an idea. She would use a stick to knock the";
@@ -1426,7 +1410,6 @@ int unit_test_candid() {
     // Note: We test unit variants where the variant options have no associated data
 
     { // serialize
-      CandidSerializeTypeTableRegistry::get_instance().clear();
 
       // Create a template variant with the valid options
       CandidTypeVariant v_template;
@@ -1449,7 +1432,6 @@ int unit_test_candid() {
     }
 
     { // deserialize
-      CandidSerializeTypeTableRegistry::get_instance().clear();
 
       // Create a template variant with the valid options
       CandidTypeVariant v_template;
@@ -1463,7 +1445,6 @@ int unit_test_candid() {
       A.append(CandidTypeVecVariant{&v_template, &labels});
 
       // First serialize to get the hex string
-      CandidSerializeTypeTableRegistry::get_instance().clear();
       CandidTypeVariant v_template_encode;
       v_template_encode.append("AdminQuery", CandidTypeNull{});
       v_template_encode.append("AdminUpdate", CandidTypeNull{});
@@ -1474,7 +1455,6 @@ int unit_test_candid() {
       std::string hex = CandidSerialize(A_encode).as_hex_string();
 
       // Now deserialize
-      CandidSerializeTypeTableRegistry::get_instance().clear();
       CandidDeserialize(hex, A);
 
       if (labels.size() != 3)
@@ -1492,7 +1472,6 @@ int unit_test_candid() {
     // append order. Hash order is noul, score, choice: append in another order.
     // Verified with an independent decoder (icp-py-core's icp_candid.decode):
     // '(vec { variant { choice }; variant { noul }; variant { score } })'
-    CandidSerializeTypeTableRegistry::get_instance().clear();
 
     CandidTypeVariant v_template;
     v_template.append("choice", CandidTypeNull{});
@@ -1504,18 +1483,16 @@ int unit_test_candid() {
     CandidArgs A;
     A.append(CandidTypeVecVariant{v_template, labels});
 
-    // Identical type tables share one index: the template's variant appears
-    // once (before 7.0.0rc4 it appeared twice). didc decodes both the same.
+    // The type table holds the vec and the variant, as didc writes it (before
+    // 7.1.0rc2 it also held an unused, empty variant)
     std::string s = CandidSerialize(A).as_hex_string();
     if (s !=
-        "4449444c036b03d8b1a8c8047fd2e6e5c6077fe1febe850c7f6b006d0001020302"
-        "0001")
+        "4449444c026d016b03d8b1a8c8047fd2e6e5c6077fe1febe850c7f010003020001")
       IC_API::trap(std::string(__func__) + ": vec_variant 2");
   }
 
   { // An implicit variant field id is the previously appended id + 1, even
     // though the fields are kept sorted by id
-    CandidSerializeTypeTableRegistry::get_instance().clear();
 
     CandidTypeVariant v;
     v.append(CandidTypeNull{});
@@ -1531,7 +1508,6 @@ int unit_test_candid() {
 
   // Verify CandidTypePrincipal (https://internetcomputer.org/docs/current/references/id-encoding-spec#decode)
   {
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::string s = "2ibo7-dia";
     CandidTypePrincipal p = CandidTypePrincipal(s);
     std::vector<std::byte> v = p.get_M().vec();
@@ -1540,7 +1516,6 @@ int unit_test_candid() {
     if (v != v_expected) IC_API::trap(std::string(__func__) + ": 5a");
   }
   {
-    CandidSerializeTypeTableRegistry::get_instance().clear();
     std::string s = "w3gef-eqbai";
     CandidTypePrincipal p = CandidTypePrincipal(s);
     std::vector<std::byte> v = p.get_M().vec();
@@ -1576,6 +1551,8 @@ int unit_test_candid() {
 
   { // A vec of values that take no bytes is stored once
     test_zero_width_vec();
+    test_registry_clear_is_a_no_op();
+    test_serialize_after_pointers_are_gone();
     test_zero_width_records();
     test_type_graph_chains();
     test_copies_of_null_reserved_empty();

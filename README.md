@@ -5,7 +5,7 @@
 
 icpp-pro is a cdk to develop C++ smart contracts for the  [Internet Computer](https://internetcomputer.org/).
 
-Its Candid library decodes every message of the [Candid Interface Specification](https://github.com/dfinity/candid/blob/572c80a/spec/Candid.md) (spec 0.1.8, dfinity/candid@572c80a), within its [limits](https://icpp-pro.onicai.com/candid-compliance.html#limits): all 472 asserts of the official suite pass. Full compliance, recursive types included in encoding, comes in 7.1.0rc2. See [Candid compliance](https://icpp-pro.onicai.com/candid-compliance.html).
+Its Candid library is 100% compliant with the [Candid Interface Specification](https://github.com/dfinity/candid/blob/572c80a/spec/Candid.md) (spec 0.1.8, dfinity/candid@572c80a), within its [limits](https://icpp-pro.onicai.com/candid-compliance.html#limits): it decodes every message of the spec, and encodes every value, recursive types included, to the bytes of the reference implementation. All 472 asserts of the official suite pass, and all 1190 with the Candid tests of the Rust and Motoko CDKs. See [Candid compliance](https://icpp-pro.onicai.com/candid-compliance.html).
 
 # In the wild
 

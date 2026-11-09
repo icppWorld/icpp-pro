@@ -211,7 +211,37 @@ after the llama_cpp_canister pin bump. Before the release, llama's docker
 build can only install the previous icpp-pro from PyPI (its `docker-compose.yml`
 pins the version), so it would not exercise the release at all.
 
+## Fuzz the release candidate
+
+Mandatory before tagging. On every push, CI fuzzes the Candid decoder & encoder
+for a minute per target. A release gets an hour per target, about 3.5 hours in
+total, from the manually triggered `fuzz` workflow:
+
+```bash
+# Or: GitHub > Actions > fuzz > Run workflow
+gh workflow run fuzz.yml -R icppWorld/icpp-pro --ref main -f seconds=3600
+gh run watch -R icppWorld/icpp-pro $(gh run list -R icppWorld/icpp-pro --workflow fuzz.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+```
+
+It fuzzes icpp-pro's `--ref` and icpp-candid's `main`. To fuzz another
+icpp-candid branch, add `-f icpp-candid-ref=<branch>`.
+
+A crash blocks the release. Download the input from the run's `fuzz-crashes`
+artifact, fix the bug in icpp-candid and keep the input in
+`test/fuzz/regressions/`. Put the run length, the result and the two commits
+printed by the run's `versions` step in the release notes.
+
 ## Tag & publish
+
+**Prerequisite: do not tag until the `fuzz` workflow has passed with
+`seconds=3600` on the exact icpp-pro and icpp-candid commits you are about to
+tag.** It is started by hand and nothing starts it for you; see
+[Fuzz the release candidate](#fuzz-the-release-candidate). The commits are in
+the run's `versions` step. To find the run:
+
+```bash
+gh run list -R icppWorld/icpp-pro --workflow fuzz.yml --branch main --status success --limit 1
+```
 
 Publishing is **CI-only**. Pushing a `vX.Y.Z` tag runs that repo's
 `.github/workflows/release.yml`, which builds the distributions and uploads

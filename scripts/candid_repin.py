@@ -246,8 +246,8 @@ def main() -> int:
             rel = f.relative_to(ROOT_PATH) if f.is_relative_to(ROOT_PATH) else f
             where = f"{rel}:{line}"
             if not new.startswith("OK "):
-                # A malformed input is a test of its own; an expected output must re-encode
-                # (the magic alone, as in a prefix check, is not a message)
+                # A malformed input is a test of its own; an expected output must
+                # re-encode (the magic alone, as in a prefix check, is not a message)
                 if old != "4449444c" and is_expected(text, m.start(), python):
                     print(
                         f"{where}: an expected output that does not re-encode: {new}",

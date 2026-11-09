@@ -3,16 +3,16 @@ Encode vectors ported from dfinity/motoko test/run-drun/idl-*.mo, from the
 replies those tests check: the value, encoded with the typed API, must have
 the reference's types and decode to the same values.
 
-Not ported: the types of these are recursive. A typed API value is a finite
-tree of CandidType objects, so its type cannot refer to itself. The decode
-suites cover recursive types.
-  idl-func.mo fun reply: (opt Func) (null)
-  idl-func.mo fun3 reply: (Query) (func "rwlgt-iiaaa-aaaaa-aaaaa-cai".fun)
-  idl-variant.mo numify reply: (Either) (variant { fix = variant { left = 32 } })
-  idl-vector.mo rose reply: (MayRose) (opt vec { opt vec {}; opt vec { opt vec {}; op...
+The recursive types are named types of this file. The typed API holds a
+value of one as a CandidTypeValue, and the bytes are didc's with these
+definitions (`didc encode -d`).
 */
 
 type Oneway = func () -> () oneway;
+type Func = func (int) -> (Func);
+type Query = func () -> (opt Func) query;
+type Either = variant { left : nat32; right : nat32; fix : Either };
+type MayRose = opt vec MayRose;
 
 assert "(record { 0 = 65535; 1 = 4096; \"async\" = \"XXX\" })" encode blob "DIDL\01\6c\03\00\7c\01\7d\bc\fe\f7\b1\02\71\01\00\ff\ff\03\80\20\03\58\58\58" : (record { 0 : int; 1 : nat; "async" : text }) "idl-field-escape.mo out reply";
 assert "(record { foo = null })" encode blob "DIDL\01\6c\01\86\8e\b7\02\7f\01\00" : (record { foo : null }) "idl-field-escape.mo foo1/foo2 reply";
@@ -31,3 +31,8 @@ assert "(25)" encode blob "DIDL\00\01\77\19" : (int8) "idl-record.mo record2 rep
 assert "(variant { nil })" encode blob "DIDL\01\6b\01\d1\a7\cf\02\7f\01\00\00" : (variant { nil }) "idl-shorthand.mo foo reply";
 assert "(2, 5)" encode blob "DIDL\00\02\7c\7c\02\05" : (int, int) "idl-tuple.mo len2 reply";
 assert "(5, 5, 67305985)" encode blob "DIDL\00\03\7c\7c\7c\05\05\81\84\8c\20" : (int, int, int) "idl-tuple.mo len3 reply";
+
+assert "(null)" encode blob "DIDL\02\6e\01\6a\01\7c\01\01\00\01\00\00" : (opt Func) "idl-func.mo fun reply";
+assert "(func \"rwlgt-iiaaa-aaaaa-aaaaa-cai\".\"fun\")" encode blob "DIDL\03\6a\00\01\01\01\01\6e\02\6a\01\7c\01\02\00\01\00\01\01\0a\00\00\00\00\00\00\00\00\01\01\03\66\75\6e" : (Query) "idl-func.mo fun3 reply";
+assert "(variant { fix = variant { left = 32 } })" encode blob "DIDL\01\6b\03\d5\83\b7\02\00\87\90\c0\bd\04\79\dc\97\90\cb\0e\79\01\00\00\01\20\00\00\00" : (Either) "idl-variant.mo numify reply";
+assert "(opt vec { opt vec {}; opt vec { opt vec {}; opt vec { opt vec {}; opt vec {} }; opt vec {}; opt vec {} }; opt vec {} })" encode blob "DIDL\02\6e\01\6d\00\01\00\01\03\01\00\01\04\01\00\01\02\01\00\01\00\01\00\01\00\01\00" : (MayRose) "idl-vector.mo rose reply";

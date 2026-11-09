@@ -5,12 +5,15 @@
 
 void suite_icpp_encode(ComplianceRunner &r) {
   CandidTypeGraph base;
+  base.reserve();
+  base.add(cn_record({{1158359328u, -4}, {1291237008u, 0}}));
+  base.define(0, cn_opt(1));
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        7, std::string("prim: nullary", 13), g, {},
+        9, std::string("prim: nullary", 13), g, {},
         ComplianceInput{false, std::string("()", 2)},
-        [] {
+        [&] {
           CandidArgs A;
           return CandidSerialize(A).get_B();
         },
@@ -19,9 +22,9 @@ void suite_icpp_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        8, std::string("prim: null", 10), g, {-1},
+        10, std::string("prim: null", 10), g, {-1},
         ComplianceInput{false, std::string("(null)", 6)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNull());
           return CandidSerialize(A).get_B();
@@ -31,9 +34,9 @@ void suite_icpp_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        9, std::string("prim: false", 11), g, {-2},
+        11, std::string("prim: false", 11), g, {-2},
         ComplianceInput{false, std::string("(false)", 7)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeBool(false));
           return CandidSerialize(A).get_B();
@@ -43,9 +46,9 @@ void suite_icpp_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        10, std::string("prim: true", 10), g, {-2},
+        12, std::string("prim: true", 10), g, {-2},
         ComplianceInput{false, std::string("(true)", 6)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeBool(true));
           return CandidSerialize(A).get_B();
@@ -55,9 +58,9 @@ void suite_icpp_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        11, std::string("prim: nat 0", 11), g, {-3},
+        13, std::string("prim: nat 0", 11), g, {-3},
         ComplianceInput{false, std::string("(0)", 3)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(0ULL)));
           return CandidSerialize(A).get_B();
@@ -67,9 +70,9 @@ void suite_icpp_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        12, std::string("prim: nat 1", 11), g, {-3},
+        14, std::string("prim: nat 1", 11), g, {-3},
         ComplianceInput{false, std::string("(1)", 3)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(1ULL)));
           return CandidSerialize(A).get_B();
@@ -79,9 +82,9 @@ void suite_icpp_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        13, std::string("prim: nat 127, the largest one-byte leb128", 42), g,
+        15, std::string("prim: nat 127, the largest one-byte leb128", 42), g,
         {-3}, ComplianceInput{false, std::string("(127)", 5)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(127ULL)));
           return CandidSerialize(A).get_B();
@@ -91,9 +94,9 @@ void suite_icpp_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        14, std::string("prim: nat 128, the smallest two-byte leb128", 43), g,
+        16, std::string("prim: nat 128, the smallest two-byte leb128", 43), g,
         {-3}, ComplianceInput{false, std::string("(128)", 5)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(128ULL)));
           return CandidSerialize(A).get_B();
@@ -103,9 +106,9 @@ void suite_icpp_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        15, std::string("prim: nat 16383", 15), g, {-3},
+        17, std::string("prim: nat 16383", 15), g, {-3},
         ComplianceInput{false, std::string("(16383)", 7)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(16383ULL)));
           return CandidSerialize(A).get_B();
@@ -115,9 +118,9 @@ void suite_icpp_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        16, std::string("prim: nat 60000000000000000", 27), g, {-3},
+        18, std::string("prim: nat 60000000000000000", 27), g, {-3},
         ComplianceInput{false, std::string("(60000000000000000)", 19)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat(__uint128_t(60000000000000000ULL)));
           return CandidSerialize(A).get_B();
@@ -129,11 +132,11 @@ void suite_icpp_encode(ComplianceRunner &r) {
   {
     CandidTypeGraph g = base;
     r.check_encode(
-        17, std::string("prim: nat 2^128 - 1", 19), g, {-3},
+        19, std::string("prim: nat 2^128 - 1", 19), g, {-3},
         ComplianceInput{
             false,
             std::string("(340282366920938463463374607431768211455)", 41)},
-        [] {
+        [&] {
           CandidArgs A;
           A.append(CandidTypeNat((__uint128_t(18446744073709551615ULL) << 64 |
                                   __uint128_t(18446744073709551615ULL))));
@@ -149,11 +152,11 @@ void suite_icpp_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({}));
     r.check_encode(
-        18, std::string("record: empty", 13), g, {0},
+        20, std::string("record: empty", 13), g, {2},
         ComplianceInput{false, std::string("(record {})", 11)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             return r;
           }());
@@ -167,20 +170,20 @@ void suite_icpp_encode(ComplianceRunner &r) {
     g.add(cn_record({}));
     g.add(cn_record({}));
     r.check_encode(
-        19, std::string("record: multiple records", 24), g, {0, 1, 2},
+        21, std::string("record: multiple records", 24), g, {2, 3, 4},
         ComplianceInput{false,
                         std::string("(record {}, record {}, record {})", 33)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             return r;
           }());
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             return r;
           }());
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             return r;
           }());
@@ -193,11 +196,11 @@ void suite_icpp_encode(ComplianceRunner &r) {
     CandidTypeGraph g = base;
     g.add(cn_record({{1u, -4}}));
     r.check_encode(
-        20, std::string("record", 6), g, {0},
+        22, std::string("record", 6), g, {2},
         ComplianceInput{false, std::string("(record { 1 = 42 })", 19)},
-        [] {
+        [&] {
           CandidArgs A;
-          A.append([] {
+          A.append([&] {
             CandidTypeRecord r;
             r.append(1u, CandidTypeInt(__int128_t(__uint128_t(42ULL))));
             return r;
@@ -205,5 +208,199 @@ void suite_icpp_encode(ComplianceRunner &r) {
           return CandidSerialize(A).get_B();
         },
         ComplianceInput{true, std::string("DIDL\001l\001\001|\001\000*", 12)});
+  }
+  {
+    CandidTypeGraph g = base;
+    r.check_encode(
+        24, std::string("recursive: a List", 17), g, {0},
+        ComplianceInput{
+            false,
+            std::string(
+                "(opt record { head = 1; tail = opt record { head = 2; tail = null } })",
+                70)},
+        [&] {
+          CandidArgs A;
+          A.append(CandidTypeValue(
+              g, 0,
+              cv(g, 0,
+                 std::string(
+                     "opt record { 1158359328 = 1; 1291237008 = opt record { 1158359328 = 2; 1291237008 = null; }; }",
+                     94))));
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\002n\001l\002\240\322\254\250\004|\220\355\332\347\004\000\001\000\001\001\001\002\000",
+                28)});
+  }
+  {
+    CandidTypeGraph g = base;
+    r.check_encode(
+        25, std::string("recursive: an empty List", 24), g, {0},
+        ComplianceInput{false, std::string("(null)", 6)},
+        [&] {
+          CandidArgs A;
+          A.append(CandidTypeValue(g, 0, cv(g, 0, std::string("null", 4))));
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\002n\001l\002\240\322\254\250\004|\220\355\332\347\004\000\001\000\000",
+                24)});
+  }
+  {
+    CandidTypeGraph g = base;
+    g.add(cn_record({{1202920542u, 0}, {1224700491u, -15}}));
+    r.check_encode(
+        26, std::string("recursive: a List in a record", 29), g, {2},
+        ComplianceInput{
+            false,
+            std::string(
+                "(record { name = \042two\042; list = opt record { head = 1; tail = opt record { head = 2; tail = null } } })",
+                102)},
+        [&] {
+          CandidArgs A;
+          A.append([&] {
+            CandidTypeRecord r;
+            r.append(
+                1202920542u,
+                CandidTypeValue(
+                    g, 0,
+                    cv(g, 0,
+                       std::string(
+                           "opt record { 1158359328 = 1; 1291237008 = opt record { 1158359328 = 2; 1291237008 = null; }; }",
+                           94))));
+            r.append(1224700491u, CandidTypeText(std::string("two", 3)));
+            return r;
+          }());
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\003l\002\336\270\314\275\004\001\313\344\375\307\004qn\002l\002\240\322\254\250\004|\220\355\332\347\004\001\001\000\001\001\001\002\000\003two",
+                46)});
+  }
+  {
+    CandidTypeGraph g = base;
+    g.add(cn_vec(0));
+    r.check_encode(
+        27, std::string("recursive: a vec of List", 24), g, {2},
+        ComplianceInput{
+            false,
+            std::string(
+                "(vec { opt record { head = 1; tail = opt record { head = 2; tail = null } }; null })",
+                84)},
+        [&] {
+          CandidArgs A;
+          A.append(CandidTypeVecOf(
+              CandidTypeValue(g, 0),
+              std::vector<CandidType>{
+                  CandidTypeValue(
+                      g, 0,
+                      cv(g, 0,
+                         std::string(
+                             "opt record { 1158359328 = 1; 1291237008 = opt record { 1158359328 = 2; 1291237008 = null; }; }",
+                             94))),
+                  CandidTypeValue(g, 0, cv(g, 0, std::string("null", 4)))}));
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\003m\001n\002l\002\240\322\254\250\004|\220\355\332\347\004\001\001\000\002\001\001\001\002\000\000",
+                32)});
+  }
+  {
+    CandidTypeGraph g = base;
+    g.add(cn_opt(0));
+    r.check_encode(
+        28, std::string("recursive: an opt List", 22), g, {2},
+        ComplianceInput{
+            false,
+            std::string(
+                "(opt opt record { head = 1; tail = opt record { head = 2; tail = null } })",
+                74)},
+        [&] {
+          CandidArgs A;
+          A.append(CandidTypeOptOf(
+              CandidTypeValue(g, 0),
+              CandidTypeValue(
+                  g, 0,
+                  cv(g, 0,
+                     std::string(
+                         "opt record { 1158359328 = 1; 1291237008 = opt record { 1158359328 = 2; 1291237008 = null; }; }",
+                         94)))));
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\003n\001n\002l\002\240\322\254\250\004|\220\355\332\347\004\001\001\000\001\001\001\001\002\000",
+                31)});
+  }
+  {
+    CandidTypeGraph g = base;
+    g.add(cn_opt(0));
+    r.check_encode(
+        29,
+        std::string("recursive: a List and an opt List share its entry", 49), g,
+        {0, 2},
+        ComplianceInput{
+            false,
+            std::string(
+                "(opt record { head = 1; tail = opt record { head = 2; tail = null } }, null)",
+                76)},
+        [&] {
+          CandidArgs A;
+          A.append(CandidTypeValue(
+              g, 0,
+              cv(g, 0,
+                 std::string(
+                     "opt record { 1158359328 = 1; 1291237008 = opt record { 1158359328 = 2; 1291237008 = null; }; }",
+                     94))));
+          A.append(CandidTypeOptOf(CandidTypeValue(g, 0)));
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\003n\001l\002\240\322\254\250\004|\220\355\332\347\004\000n\000\002\000\002\001\001\001\002\000\000",
+                32)});
+  }
+  {
+    CandidTypeGraph g = base;
+    g.add(cn_variant({{1225396920u, -1}, {1280844532u, 0}}));
+    r.check_encode(
+        30, std::string("recursive: a List in a variant", 30), g, {2},
+        ComplianceInput{
+            false,
+            std::string(
+                "(variant { some = opt record { head = 1; tail = opt record { head = 2; tail = null } } })",
+                89)},
+        [&] {
+          CandidArgs A;
+          A.append([&] {
+            CandidTypeVariant v(std::string("some", 4));
+            v.append(1225396920u, CandidTypeNull());
+            v.append(
+                std::string("some", 4),
+                CandidTypeValue(
+                    g, 0,
+                    cv(g, 0,
+                       std::string(
+                           "opt record { 1158359328 = 1; 1291237008 = opt record { 1158359328 = 2; 1291237008 = null; }; }",
+                           94))));
+            return v;
+          }());
+          return CandidSerialize(A).get_B();
+        },
+        ComplianceInput{
+            true,
+            std::string(
+                "DIDL\003k\002\270\245\250\310\004\177\364\305\340\342\004\001n\002l\002\240\322\254\250\004|\220\355\332\347\004\001\001\000\001\001\001\001\002\000",
+                43)});
   }
 }

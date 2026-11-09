@@ -24,6 +24,8 @@ void test_env_var_count()
     WASM_SYMBOL_EXPORTED("canister_query test_env_var_count");
 void test_cost() WASM_SYMBOL_EXPORTED("canister_query test_cost");
 void test_candid() WASM_SYMBOL_EXPORTED("canister_query test_candid");
+void test_candid_zero_width()
+    WASM_SYMBOL_EXPORTED("canister_query test_candid_zero_width");
 void roundtrip_vec_of_items()
     WASM_SYMBOL_EXPORTED("canister_query roundtrip_vec_of_items");
 void roundtrip_vec_of_variants()

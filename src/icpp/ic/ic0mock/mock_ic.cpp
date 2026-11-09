@@ -4,7 +4,6 @@
 
 #include "candid_assert.h"
 #include "candid_serialize.h"
-#include "candid_serialize_type_table_registry.h"
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
 #include "current_entry.h"
@@ -258,8 +257,6 @@ void MockIC::expect_call(const std::string &callee, const std::string &method,
 void MockIC::start_message(const std::string &test_name,
                            const std::string &candid_in,
                            const std::string &caller, bool reset) {
-  // Always start with a clean type table registry in the registry singleton
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   m_B_in.clear();
   m_B_out.clear();
   m_B_in.store_hex_string(candid_in);
@@ -446,7 +443,6 @@ bool MockIC::management_reply(const std::string &method,
     return false;
   }
   VecBytes B = CandidSerialize(out).get_B();
-  CandidSerializeTypeTableRegistry::get_instance().clear();
   reply = B.vec_uint8_t();
   return true;
 }

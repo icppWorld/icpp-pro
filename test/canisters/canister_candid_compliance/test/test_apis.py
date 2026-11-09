@@ -4,7 +4,8 @@ First deploy the canister, then run:
 
 $ pytest --network=[local/ic]
 
-Every assert of every suite file must pass.
+Every assert of every suite file must pass, and the methods for the recursive
+type List must send and receive didc's bytes.
 """
 
 # pylint: disable=missing-function-docstring, unused-import, wildcard-import, unused-wildcard-import
@@ -28,9 +29,9 @@ SUITES = {
     "official/reference.test.did": 50,
     "official/spacebomb.test.did": 17,
     "official/subtypes.test.did": 58,
-    "icpp/encode.test.did": 14,
+    "icpp/encode.test.did": 21,
     "rust/compatibility.test.did": 28,
-    "rust/encode.test.did": 78,
+    "rust/encode.test.did": 82,
     "rust/header_len.test.did": 10,
     "rust/number.test.did": 41,
     "rust/parse_value.test.did": 18,
@@ -42,7 +43,7 @@ SUITES = {
     "rust/type_table_alloc.test.did": 3,
     "rust/types.test.did": 6,
     "rust/value.test.did": 16,
-    "motoko/encode.test.did": 17,
+    "motoko/encode.test.did": 21,
     "motoko/idl-any-stable.test.did": 1,
     "motoko/idl-any.test.did": 29,
     "motoko/idl-bad.test.did": 1,
@@ -98,3 +99,61 @@ def test__run_suite(network: str, path: str, total: int) -> None:
     assert f"passed = {total} : nat64" in response, response
     assert f"total = {total} : nat64" in response, response
     assert 'failures = ""' in response, response
+
+
+# type List = opt record { head : int; tail : List }, with bytes of didc
+# 0.6.2: `didc encode -d src/my_canister.did -t '(List)'`
+LIST_4 = "4449444c026e016c02a0d2aca8047c90eddae704000100010101020103010400"
+LIST_0 = "4449444c026e016c02a0d2aca8047c90eddae70400010000"
+
+
+@pytest.mark.parametrize(
+    "argument,expected",
+    [
+        ("4449444c00017d04", LIST_4),  # (4 : nat)
+        ("4449444c00017d00", LIST_0),  # (0 : nat)
+    ],
+)
+def test__list(network: str, argument: str, expected: str) -> None:
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="list",
+        canister_argument=argument,
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert response == expected
+
+
+def test__list_too_deep(network: str) -> None:
+    # A List of 64 nests 129 deep, over the limit of 128
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="list",
+        canister_argument="(64 : nat)",
+        network=network,
+    )
+    assert "Values nest more than 128 deep" in response, response
+
+
+@pytest.mark.parametrize(
+    "argument,expected",
+    [
+        (LIST_4, "4449444c00017c0a"),  # (10 : int)
+        (LIST_0, "4449444c00017c00"),  # (0 : int)
+    ],
+)
+def test__list_sum(network: str, argument: str, expected: str) -> None:
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="list_sum",
+        canister_argument=argument,
+        canister_input="raw",
+        canister_output="raw",
+        network=network,
+    )
+    assert response == expected

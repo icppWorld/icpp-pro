@@ -13,17 +13,17 @@
 // CandidTextValue.
 //
 // check_encode runs the encode vectors of the ported Rust and Motoko corpora:
-// a value encoded with the typed API (CandidType* and CandidSerialize) must
-// have exactly the reference encoding's argument types, and decode to the same
-// values as the reference and as the value's text. The bytes may differ: the
-// order of a type table is not fixed.
+// a value encoded with the typed API (CandidType*, CandidTypeValue for a
+// recursive type, and CandidSerialize) must
+// have exactly the reference encoding's argument types, decode to the same
+// values as the reference and as the value's text, and be the reference's
+// bytes: the type table in the order Rust's encoder and didc write it.
 
 #pragma once
 
 #include "candid_args.h"
 #include "candid_decoder.h"
 #include "candid_serialize.h"
-#include "candid_serialize_type_table_registry.h"
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
 #include "candid_text_value.h"
@@ -84,3 +84,6 @@ CandidGraphNode cn_variant(std::vector<CandidGraphField> fields);
 CandidGraphNode cn_func(std::vector<int> args, std::vector<int> rets,
                         std::vector<uint8_t> modes);
 CandidGraphNode cn_service(std::vector<CandidGraphMethod> methods);
+// The value of type t of g that the text holds, for a CandidTypeValue; traps
+// if it does not parse
+CandidValue cv(const CandidTypeGraph &g, int t, const std::string &text);

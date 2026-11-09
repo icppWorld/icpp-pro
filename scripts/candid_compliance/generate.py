@@ -15,14 +15,16 @@ ported Rust and Motoko corpora add one form of our own, for encoding:
     assert "(<value>)" encode blob "DIDL..." : (<types>) "<description>";
 
 The value is encoded with icpp-candid's typed API (CandidType* classes and
-CandidSerialize), and the result must be valid Candid of the same types as the
-reference encoding, decoding to the same values.
+CandidSerialize), and the result must be the reference encoding, byte for
+byte: the same types and values, and the type table in the order Rust's
+encoder and didc write it. A value of a recursive type is put in the typed API
+as a CandidTypeValue, built from the value's text.
 
 This script reads them, builds each assert's expected types as a Candid type
-graph (named types included, so recursion works), and writes one C++ file per
-.test.did file, with a function that runs every assert through a
-ComplianceRunner. The runner decodes the binary inputs with CandidDecoder and
-parses the textual ones with CandidTextValue.
+graph (named types are reserved, as didc's named types, so recursion works),
+and writes one C++ file per .test.did file, with a function that runs every
+assert through a ComplianceRunner. The runner decodes the binary inputs with
+CandidDecoder and parses the textual ones with CandidTextValue.
 
 Usage, from the root of icpp-pro:
 
@@ -38,7 +40,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from icpp.config_default import CLANG_FORMAT
 
@@ -742,21 +744,95 @@ def cpp_number(text: str, opcode: int) -> str:
     return f"{ctype}({v}LL)" if v < 0 else f"{ctype}({v}ULL)"
 
 
+def recursive_names(defs: Dict[str, Type]) -> Set[str]:
+    """The named types that refer to themselves, directly or not"""
+
+    def names(ty: Type) -> Set[str]:
+        """The names a type refers to, not through other names"""
+        kind = ty[0]
+        if kind == "name":
+            return {str(ty[1])}
+        if kind in ("opt", "vec"):
+            return names(ty[1])
+        if kind in ("record", "variant", "service"):
+            return set().union(*(names(t) for _, t in ty[1]))
+        if kind == "func":
+            return set().union(*(names(t) for t in ty[1] + ty[2]))
+        return set()
+
+    direct = {n: names(t) for n, t in defs.items()}
+    rec: Set[str] = set()
+    for start in defs:
+        todo, seen = list(direct[start]), set()
+        while todo:
+            n = todo.pop()
+            if n == start:
+                rec.add(start)
+                break
+            if n in seen or n not in direct:
+                continue
+            seen.add(n)
+            todo += direct[n]
+    return rec
+
+
+def text_escape(b: bytes) -> str:
+    """A Candid text literal of these bytes"""
+    out = []
+    for c in b:
+        if 0x20 <= c < 0x7F and chr(c) not in '"\\':
+            out.append(chr(c))
+        else:
+            out.append(f"\\{c:02x}")
+    return '"' + "".join(out) + '"'
+
+
+def value_text(v: Value) -> str:
+    """The Candid text of a value, as CandidTextValue::parse reads it"""
+    kind = v[0]
+    if kind == "num":
+        return str(v[1])
+    if kind == "text":
+        return text_escape(v[1])
+    if kind == "bool":
+        return "true" if v[1] else "false"
+    if kind == "null":
+        return "null"
+    if kind == "opt":
+        return f"opt {value_text(v[1])}"
+    if kind == "blob":
+        return f"blob {text_escape(v[1])}"
+    if kind in ("principal", "service"):
+        return f'{kind} "{v[1]}"'
+    if kind == "func":
+        return f'func "{v[1]}".{text_escape(v[2])}'
+    if kind == "vec":
+        return "vec { " + "".join(f"{value_text(e)}; " for e in v[1]) + "}"
+    if kind == "record":
+        return "record { " + "".join(f"{i} = {value_text(e)}; " for i, e in v[1]) + "}"
+    if kind == "variant":
+        return f"variant {{ {v[1]} = {value_text(v[3])} }}"
+    raise ParseError(f"a value of kind {kind}")
+
+
 class TypedApi:
     """The C++ that builds a value with the typed API"""
 
-    def __init__(self, defs: Dict[str, Type]):
-        self.defs = defs
+    def __init__(self, graph: "Graph"):
+        self.defs = graph.defs
+        self.graph = graph
+        self.recursive = recursive_names(graph.defs)
 
     def resolve(
         self, ty: Type, seen: Tuple[str, ...] = ()
     ) -> Tuple[Type, Tuple[str, ...]]:
         """The constructor or primitive behind a named type. The names passed
-        through are added to seen; a name met twice is a recursive type"""
+        through are added to seen. A recursive type gives ("rec", its node):
+        the typed API holds it as a CandidTypeValue"""
         while ty[0] == "name":
             name = str(ty[1])
-            if name in seen:
-                raise NotExpressible(f"the recursive type {name}")
+            if name in self.recursive:
+                return ("rec", self.graph.resolve(name)), seen
             seen = seen + (name,)
             ty = self.defs[name]
         return ty, seen
@@ -798,7 +874,7 @@ class TypedApi:
                 f"r.append({fid}u, {self.value(ft, vals[fid], seen)}); "
                 for fid, ft in sorted(t[1])
             )
-            return f"[] {{ CandidTypeRecord r; {body}return r; }}()"
+            return f"[&] {{ CandidTypeRecord r; {body}return r; }}()"
         if kind == "variant":
             _, fid, name, val = v
             if not name:
@@ -809,7 +885,10 @@ class TypedApi:
                     body += f"v.append({cpp_str(name.encode())}, {self.value(ct, val, seen)}); "
                 else:
                     body += f"v.append({cid}u, {self.type_only(ct, seen)}); "
-            return f"[] {{ CandidTypeVariant v({cpp_str(name.encode())}); {body}return v; }}()"
+            return f"[&] {{ CandidTypeVariant v({cpp_str(name.encode())}); {body}return v; }}()"
+        if kind == "rec":
+            text = cpp_str(value_text(v).encode("utf-8"))
+            return f"CandidTypeValue(g, {t[1]}, cv(g, {t[1]}, {text}))"
         if kind == "func":
             return self.func(
                 t, f'CandidTypePrincipal(std::string("{v[1]}")), {cpp_str(v[2])}', seen
@@ -876,17 +955,19 @@ class TypedApi:
             3: "f.set_composite_query(); ",
         }
         body += "".join(setters[m] for m in t[3])
-        return f"[] {{ CandidTypeFunc f{{{ctor_args}}}; {body}return f; }}()"
+        return f"[&] {{ CandidTypeFunc f{{{ctor_args}}}; {body}return f; }}()"
 
     def service(self, t: Type, ctor_args: str, seen: Tuple[str, ...]) -> str:
         """A service reference, or with ctor_args empty, only its type"""
         body = ""
         for name, mt in t[1]:
             ft, fseen = self.resolve(mt, seen)
+            if ft[0] == "rec":
+                raise NotExpressible("a service method of a recursive func type")
             if ft[0] != "func":
                 raise ParseError("a service method whose type is not a func")
             body += f"s.append_method({cpp_str(name)}, {self.func(ft, '', fseen)}); "
-        return f"[] {{ CandidTypeService s{{{ctor_args}}}; {body}return s; }}()"
+        return f"[&] {{ CandidTypeService s{{{ctor_args}}}; {body}return s; }}()"
 
     def type_only(self, ty: Type, seen: Tuple[str, ...]) -> str:
         """A CandidType expression of a type, for its type table entry only"""
@@ -913,7 +994,9 @@ class TypedApi:
                 f"x.append({fid}u, {self.type_only(ft, seen)}); "
                 for fid, ft in sorted(t[1])
             )
-            return f"[] {{ {cls} x; {body}return x; }}()"
+            return f"[&] {{ {cls} x; {body}return x; }}()"
+        if kind == "rec":
+            return f"CandidTypeValue(g, {t[1]})"
         if kind == "func":
             return self.func(t, "", seen)
         if kind == "service":
@@ -934,7 +1017,7 @@ OPS = {":": "Op::Decodes", "!:": "Op::Fails", "==": "Op::Equal", "!=": "Op::NotE
 def generate(name: str, path: str, tf: TestFile) -> str:
     """The C++ file for one .test.did file"""
     base = Graph(tf.defs)
-    typed = TypedApi(tf.defs)
+    typed = TypedApi(base)
     fn = f"suite_{name}"
     lines = [
         f"// Generated by scripts/candid_compliance/generate.py from suite/{path}.",
@@ -945,8 +1028,14 @@ def generate(name: str, path: str, tf: TestFile) -> str:
         f"void {fn}(ComplianceRunner &r) {{",
         "  CandidTypeGraph base;",
     ]
-    for n in base.nodes:
+    # Named types are reserved, so that the encoder gives each its own type
+    # table entry, as didc does for the named types of a .did file
+    k = len(base.named)
+    lines += ["  base.reserve();"] * k
+    for n in base.nodes[k:]:
         lines.append(f"  base.add({n});")
+    for i, n in enumerate(base.nodes[:k]):
+        lines.append(f"  base.define({i}, {n});")
     for a in tf.asserts:
         g = base.copy()
         args = [g.ref(t) for t in a.types]
@@ -962,7 +1051,7 @@ def generate(name: str, path: str, tf: TestFile) -> str:
             lines.append(
                 f"    r.check_encode({a.line}, {desc}, g, {{{arg_list}}},\n"
                 f"            {cpp_input(a.left)},\n"
-                f"            [] {{ CandidArgs A; {body}return CandidSerialize(A).get_B(); }},\n"
+                f"            [&] {{ CandidArgs A; {body}return CandidSerialize(A).get_B(); }},\n"
                 f"            {cpp_input(a.right)});"
             )
         else:

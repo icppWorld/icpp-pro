@@ -25,12 +25,18 @@ of truth. The gates and follow-ups to not skip:
    build can only install the previous icpp-pro from PyPI.
 5. The release guide's own testing matrix (python 3.11-3.14, wheel installs,
    demo scripts with the grep-based log verification, the definitive pytest).
-6. `make fuzz FUZZ_SECONDS=3600` — an hour per target of the Candid decoder
-   fuzzers (CI runs only a minute). A crash blocks the release: fix it in
-   icpp-candid and keep the input in `test/fuzz/regressions/`. Put the run
-   length and the result in the release notes.
+6. `gh workflow run fuzz.yml --ref main -f seconds=3600` — an hour per target
+   of the Candid decoder fuzzers, about 3.5 hours in GitHub Actions (CI runs
+   only a minute). A crash blocks the release: fix it in icpp-candid and keep
+   the input, from the run's `fuzz-crashes` artifact, in
+   `test/fuzz/regressions/`. Put the run length and the result in the release
+   notes.
 
 ## Publish (tag-triggered, CI-only)
+
+**Prerequisite:** the manually triggered `fuzz` workflow (step 6) has passed
+with `seconds=3600` on the exact icpp-pro and icpp-candid commits to be tagged.
+Do not tag before that; the commits are in the run's `versions` step.
 
 Publishing happens ONLY by pushing a `vX.Y.Z` tag, which runs that repo's
 `.github/workflows/release.yml` and uploads to PyPI with trusted publishing

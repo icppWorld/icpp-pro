@@ -1,8 +1,10 @@
-"""Fuzzes icpp-candid's decoder with libFuzzer, under ASan and UBSan.
+"""Fuzzes icpp-candid's decoder and encoder with libFuzzer, under ASan and UBSan.
 
-Two targets, in test/fuzz/:
-  fuzz_decoder    CandidDecoder, and the text printer and parser after it
+Three targets, in test/fuzz/:
+  fuzz_decoder    CandidDecoder, then the text printer and parser, and
+                  CandidEncoder on what it decoded
   fuzz_typed_api  CandidDeserialize into the typed API's CandidType* objects
+  fuzz_encoder    CandidEncoder on malformed CandidValues
 
 The seeds are every blob of the compliance suite (test/canisters/
 canister_candid_compliance/suite), each prefixed with every value of the first
@@ -31,7 +33,7 @@ BUILD_PATH = ROOT_PATH / "build-fuzz"
 CANDID_PATH = ROOT_PATH / "icpp-candid/src/icpp_candid"
 
 # Each target, and how many values its first byte picks from
-TARGETS = {"fuzz_decoder": 8, "fuzz_typed_api": 6}
+TARGETS = {"fuzz_decoder": 9, "fuzz_typed_api": 6, "fuzz_encoder": 8}
 
 FLAGS = [
     "-std=c++20",
@@ -55,9 +57,8 @@ def compiler() -> str:
     return "clang++"
 
 
-def build() -> None:
-    """Compile both targets into build-fuzz/"""
-    BUILD_PATH.mkdir(exist_ok=True)
+def candid_sources() -> tuple[list[str], list[str]]:
+    """icpp-candid's sources, and the include flags, for a host program"""
     sources = sorted(
         [str(p) for p in (CANDID_PATH / "candid").glob("*.cpp")]
         + [str(p) for p in (CANDID_PATH / "hooks").glob("*.cpp")]
@@ -73,6 +74,13 @@ def build() -> None:
             CANDID_PATH / "vendors/hash-library",
         ]
     ]
+    return sources, includes
+
+
+def build() -> None:
+    """Compile the targets into build-fuzz/"""
+    BUILD_PATH.mkdir(exist_ok=True)
+    sources, includes = candid_sources()
     for target in TARGETS:
         print(f"--- building {target}", flush=True)
         subprocess.run(

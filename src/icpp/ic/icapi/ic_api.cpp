@@ -9,7 +9,6 @@
 #include "ic_api.h"
 #include "candid_deserialize.h"
 #include "candid_serialize.h"
-#include "candid_serialize_type_table_registry.h"
 #include "candid_type.h"
 #include "candid_type_all_includes.h"
 
@@ -87,9 +86,6 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
   // An upgrade while calls are in flight would run their callbacks against
   // the new code, with the heap of this version gone.
   if (m_canister_entry.is_entry_G()) icpp_check_no_calls_in_flight();
-
-  // Always start with a clean type table registry in the registry singleton
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 
   // Read only what the replica provides in this entry point - calling a
   // size/copy pair in a refused context traps on the IC:
@@ -462,14 +458,13 @@ __uint128_t IC_API::cost_http_request_v2(const HttpOutcallCostParams &params) {
                     CandidTypeNat32{params.flexible_counts->max_responses});
       outcall_type = CandidTypeVariant{"flexible", CandidTypeOptRecord{counts}};
     } else {
-      // opt record { ... } without a value: the IC's default counts
+      // opt record { ... } without a value (null): the IC's default counts.
+      // CandidTypeOptRecord always encodes a value, so CandidTypeOptOf.
       CandidTypeRecord counts;
       counts.append("total_requests", CandidTypeNat32{});
       counts.append("min_responses", CandidTypeNat32{});
       counts.append("max_responses", CandidTypeNat32{});
-      bool has_counts{false};
-      outcall_type = CandidTypeVariant{
-          "flexible", CandidTypeOptRecord{&counts, &has_counts}};
+      outcall_type = CandidTypeVariant{"flexible", CandidTypeOptOf{counts}};
     }
     break;
   }
@@ -486,9 +481,6 @@ __uint128_t IC_API::cost_http_request_v2(const HttpOutcallCostParams &params) {
   record.append("outcall_type", CandidTypeOptVariant{outcall_type});
   CandidArgs args;
   args.append(record);
-  // The type table registry is not cleared here: the caller may be building
-  // a Candid value, e.g. the argument of the outcall this cost is for, whose
-  // type tables are in the registry
   VecBytes B = CandidSerialize(args).get_B();
   std::vector<uint8_t> bytes = B.vec_uint8_t();
 
@@ -578,9 +570,6 @@ void IC_API::from_wire(CandidArgs A) {
   m_called_from_wire = true;
 
   CandidDeserialize(m_B_in, A);
-
-  // Reset the type table registry singleton
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 // DeSerialize the byte stream received over the wire
 void IC_API::from_wire(CandidType c) {
@@ -798,9 +787,6 @@ void IC_API::to_wire(const CandidArgs &args_out) {
     // Send it out over the wire
     msg_reply();
   }
-
-  // Reset the type table registry singleton
-  CandidSerializeTypeTableRegistry::get_instance().clear();
 }
 
 // Serialize to byte stream & send out over the wire, when a HttpResponse is sent

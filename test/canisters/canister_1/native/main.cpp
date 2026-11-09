@@ -469,6 +469,11 @@ int main() {
   mockIC.run_test("test_candid", test_candid, "4449444c0000",
                   "4449444c00017c00", silent_on_trap, my_principal);
 
+  // '()' -> '(0)'
+  mockIC.run_test("test_candid_zero_width", test_candid_zero_width,
+                  "4449444c0000", "4449444c00017c00", silent_on_trap,
+                  my_principal);
+
   //----------------------------------------------------------------------------------
   // Run all unit tests for ic_api
 

@@ -201,6 +201,17 @@ def test__test_candid(network: str, principal: str) -> None:
     assert response == expected_response
 
 
+def test__test_candid_zero_width(network: str, principal: str) -> None:
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_candid_zero_width",
+        network=network,
+    )
+    expected_response = "(0 : int)"
+    assert response == expected_response
+
+
 # ----------------------------------------------------------------------------------
 # Run all unit tests for ic_api
 def test__test_ic_api(network: str, principal: str) -> None:

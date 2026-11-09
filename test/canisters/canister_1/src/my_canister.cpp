@@ -33,6 +33,11 @@ void test_candid() {
   ic_api.to_wire(CandidTypeInt{result});
 }
 
+void test_candid_zero_width() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  ic_api.to_wire(CandidTypeInt{unit_test_candid_zero_width()});
+}
+
 //----------------------------------------------------------------------------------
 // Run all unit tests for ic_api
 void test_ic_api() {

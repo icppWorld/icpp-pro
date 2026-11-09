@@ -1553,7 +1553,6 @@ int unit_test_candid() {
     test_zero_width_vec();
     test_registry_clear_is_a_no_op();
     test_serialize_after_pointers_are_gone();
-    test_zero_width_records();
     test_type_graph_chains();
     test_copies_of_null_reserved_empty();
   }
@@ -1574,5 +1573,12 @@ int unit_test_candid() {
     test_skip_vec_of();
   }
 
+  return 0;
+}
+
+// A query of its own: these tests decode up to the full budget of values that
+// take no bytes, more than half of what fits in a query with the other tests
+int unit_test_candid_zero_width() {
+  test_zero_width_records();
   return 0;
 }

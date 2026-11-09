@@ -1,0 +1,85 @@
+name: fuzz
+
+# The long fuzz run of the release ceremony (README-release-guide.md), by hand:
+# Actions > fuzz > Run workflow, or
+#   gh workflow run fuzz.yml --ref main -f seconds=3600
+#
+# Fuzzes icpp-candid's decoder & encoder under ASan & UBSan (scripts/fuzz.py).
+# cicd-ubuntu.yml runs the same fuzzers for a minute per target on every push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      seconds:
+        # The targets run one after the other, and a job may last 6 hours
+        description: "Seconds to fuzz each of the 3 targets (at most 6600)"
+        type: number
+        default: 3600
+      icpp-candid-ref:
+        description: "icpp-candid branch, tag or commit to fuzz"
+        type: string
+        default: main
+
+# Least privilege: the job only reads the repository
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+
+    steps:
+      # https://github.com/marketplace/actions/setup-miniconda
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb # v4.1.0
+        with:
+          python-version: "3.14"
+          channels: conda-forge,defaults
+          channel-priority: strict
+
+      # -------------------------------------------------------------------
+      # Checkout icpp-pro & icpp-candid as nested directory
+      - name: checkout icpp-pro
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: checkout icpp-candid
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          repository: icppWorld/icpp-candid
+          path: icpp-candid
+          ref: ${{ inputs.icpp-candid-ref }}
+      # -------------------------------------------------------------------
+
+      - name: install
+        shell: bash -l {0} # activates the default conda environment ('test')
+        run: |
+          sudo apt-get update
+          make install-python
+          make install-clang-ubuntu
+          sudo apt-get install -y libclang-rt-$(cat version_clang.txt)-dev
+
+      # The release notes state what was fuzzed
+      - name: versions
+        shell: bash -l {0}
+        run: |
+          echo "icpp-pro    : $(git rev-parse HEAD)"
+          echo "icpp-candid : $(git -C icpp-candid rev-parse HEAD)"
+          echo "clang++     : $(clang++ --version | head -1)"
+
+      - name: fuzz
+        shell: bash -l {0}
+        env:
+          FUZZ_SECONDS: ${{ inputs.seconds }}
+        run: |
+          make fuzz FUZZ_SECONDS="$FUZZ_SECONDS"
+
+      # always(): a run that hits the job's time limit still keeps its crashes
+      - name: fuzz-crashes
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: fuzz-crashes
+          path: build-fuzz/crashes/
+          if-no-files-found: ignore

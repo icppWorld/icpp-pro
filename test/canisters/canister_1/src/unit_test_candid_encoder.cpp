@@ -504,21 +504,23 @@ __attribute__((noinline)) void test_value_checks() {
                 v);
 
   // 14 bytes on the wire: a vec of 1e6 empty records. Read at a record of
-  // 100 opt nat fields, each element takes 100 bytes to send: refused, so
-  // what icpp decodes cannot make it send 100 MB
+  // 2 opt nat fields, each element takes 2 bytes to send: refused, so what
+  // icpp decodes cannot make it send more than the budget. Only 2 fields,
+  // because the decoder visits every field of every element, and 100 fields
+  // use up the 5B instructions of this query
   {
     std::vector<uint8_t> wire = {'D',  'I', 'D', 'L', 2,    0x6c, 0,
                                  0x6d, 0,   1,   1,   0xc0, 0x84, 0x3d};
     int opt_nat = g.opt(prim(CandidKind::Nat));
     std::vector<CandidGraphField> fields;
-    for (uint32_t i = 0; i < 100; ++i)
+    for (uint32_t i = 0; i < 2; ++i)
       fields.push_back({i, opt_nat});
     int vec_rec = g.vec(g.record(fields));
     std::vector<CandidValue> vs;
     check(
         CandidDecoder::decode(wire.data(), wire.size(), g, {vec_rec}, vs, err),
         "1e6 empty records decode: " + err);
-    check_refused("1e6 records of 100 nulls, repeated, over the budget", g,
+    check_refused("1e6 records of 2 nulls, repeated, over the budget", g,
                   vec_rec, vs[0]);
   }
 

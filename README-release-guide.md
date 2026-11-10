@@ -298,8 +298,10 @@ On PyPI (pypi.org → project → Manage → Publishing → add a GitHub publish
 | `icpp-candid` | `icppWorld` | `icpp-candid` | `release.yml` | `pypi`      |
 | `icpp-pro`    | `icppWorld` | `icpp-pro`    | `release.yml` | `pypi`      |
 
-On GitHub: each repo needs an environment named `pypi` (no protection rules
-required — it exists to scope the OIDC claim).
+On GitHub: each repo needs an environment named `pypi`. It scopes the OIDC claim,
+and its required reviewer (`icppWorld`) approves each publish: the release run
+waits at the `publish` job until the reviewer approves it, under "Review
+deployments" on the run's page.
 
 ## Follow up steps
 

@@ -211,6 +211,44 @@ after the llama_cpp_canister pin bump. Before the release, llama's docker
 build can only install the previous icpp-pro from PyPI (its `docker-compose.yml`
 pins the version), so it would not exercise the release at all.
 
+## Deep reviews of the release
+
+Every PR of the release already had the reviews of the README's
+[Contributing](README.md#contributing) section. Before a release, everything
+since the previous release gets two deeper reviews on top. There is no release
+PR (the version bump goes straight to `main`), so each repo gets a review-only
+PR of its changes since the previous tag. Open it after the version bump is
+pushed, in icpp-candid and in icpp-pro:
+
+```bash
+# from: icpp-candid, then from: icpp-pro, each on an up-to-date main
+PREV=v7.1.0rc2   # the previous release tag
+git push origin "refs/tags/$PREV:refs/heads/release-base/$PREV"
+gh pr create --draft --base "release-base/$PREV" --head main --title "Release review: changes since $PREV" --body "Review-only PR for the deep reviews of the release. Never merge it: it is closed after the release."
+```
+
+Then, on each review PR:
+
+- Ask the maintainer to run `/code-review ultra <PR number>`: it is billed, and
+  only the maintainer can start it.
+- Run `/claude-security` "Scan changes" at high effort, from that repo on
+  `main`, after a `git fetch`:
+  `/claude-security scan changes --base origin/release-base/$PREV --effort high`.
+- CodeRabbit on GitHub reviews the PR as well.
+
+Fix their findings like any other review's: on a feature branch, through a PR
+that merges before the release. Those fixes change the commits to tag, so do
+these reviews before the fuzz run below, which must run on the exact commits
+that are tagged.
+
+After the release, close each review PR and delete its base branch. Do not use
+`gh pr close --delete-branch` here: the PR's head branch is `main`.
+
+```bash
+gh pr close <PR number>
+git push origin --delete "release-base/$PREV"
+```
+
 ## Fuzz the release candidate
 
 Mandatory before tagging. On every push, CI fuzzes the Candid decoder & encoder

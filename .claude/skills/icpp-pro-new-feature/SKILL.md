@@ -66,8 +66,10 @@ Then run the sibling tier that matches the change — see the
 - PRs: one per changed repo from the same branch name, cross-referencing the
   icpp-pro PR. Merge order: icpp-pro → icpp-demos → icpp-docs →
   llama_cpp_canister.
-- After each PR is created: evaluate and resolve every CodeRabbit finding on
-  it (use the `icpp-pro-coderabbit` skill) — fix or rebut with reasoning
-  before the maintainer reviews.
+- Before each push to a PR: the local reviews of the README's Contributing
+  section (`/simplify` first on a larger change, then
+  `coderabbit review --base main --agent`, `/code-review`, `/security-review`).
+  After each push: CodeRabbit's GitHub findings with `/coderabbit:autofix` —
+  fix or rebut with reasoning before the maintainer reviews.
 - Every PR needs a manual approval from the maintainer before merging.
   Never merge a PR yourself — ask the user for the approval and wait for it.

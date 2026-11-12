@@ -25,7 +25,15 @@ of truth. The gates and follow-ups to not skip:
    build can only install the previous icpp-pro from PyPI.
 5. The release guide's own testing matrix (python 3.11-3.14, wheel installs,
    demo scripts with the grep-based log verification, the definitive pytest).
-6. `gh workflow run fuzz.yml --ref main -f seconds=3600` — an hour per target
+6. The deep reviews of the release, on a review-only PR per repo of
+   everything since the previous tag (the guide's "Deep reviews of the
+   release" has the commands): ask the user to run `/code-review ultra` on
+   each (billed; only the user can start it), and run `/claude-security`
+   "Scan changes" at high effort. Fix their findings through PRs that merge
+   before the fuzz run, since that run must be on the commits to tag. After
+   the release, close the review PRs and delete their `release-base/` branches,
+   never with `gh pr close --delete-branch` (the head is `main`).
+7. `gh workflow run fuzz.yml --ref main -f seconds=3600` — an hour per target
    of the Candid decoder fuzzers, about 3.5 hours in GitHub Actions (CI runs
    only a minute). A crash blocks the release: fix it in icpp-candid and keep
    the input, from the run's `fuzz-crashes` artifact, in
@@ -34,7 +42,7 @@ of truth. The gates and follow-ups to not skip:
 
 ## Publish (tag-triggered, CI-only)
 
-**Prerequisite:** the manually triggered `fuzz` workflow (step 6) has passed
+**Prerequisite:** the manually triggered `fuzz` workflow (step 7) has passed
 with `seconds=3600` on the exact icpp-pro and icpp-candid commits to be tagged.
 Do not tag before that; the commits are in the run's `versions` step.
 

@@ -55,13 +55,18 @@ what makes cross-repo work trackable and the PRs easy to relate.
   preemptively in repos the feature does not touch.
 - One PR per repo, all from the same branch name. Cross-reference the icpp-pro
   PR from each sibling PR.
-- **After a PR is created, every CodeRabbit finding on it is evaluated and
-  resolved before the maintainer review.** CodeRabbit reviews each PR on
-  GitHub automatically; work through its findings with the
-  `icpp-pro-coderabbit` skill: fix the legitimate ones (commit to the same
-  branch — CodeRabbit re-reviews incrementally), and reply on the thread with
-  the reasoning for anything assessed as a false positive. A PR is ready for
-  the maintainer only when no CodeRabbit finding is left unaddressed.
+- **Every push to a PR is reviewed, before and after.** Before each push, run
+  the reviews of the README's [Contributing](README.md#contributing) section
+  on the branch: `/simplify` first on a larger change, then
+  `coderabbit review --base main --agent`, `/code-review` and
+  `/security-review`, each until nothing is left to address. After each push,
+  CodeRabbit reviews the PR on GitHub as well: handle its findings with
+  `/coderabbit:autofix`. Fix the legitimate ones on the same branch and re-run
+  the tests each fix touches; give the reasoning for anything assessed as a
+  false positive; put a real finding that is out of scope on the roadmap in
+  `todo/` or in a GitHub issue. The PR lists each review's findings and what
+  was done. A PR is ready for the maintainer only when no finding is left
+  unaddressed.
 - **Every PR requires a manual approval by the maintainer before merging** —
   no self-merges, no auto-merge, in every repo. An AI agent never merges a PR
   on its own; it asks and waits for the approval.
@@ -259,9 +264,10 @@ For every user-facing capability:
    maintainer says so.
 5. PRs: one per changed repo from the same branch name, cross-referencing the
    icpp-pro PR; merge icpp-pro first, llama_cpp_canister last.
-6. CodeRabbit pass: evaluate and resolve every CodeRabbit finding on each PR
-   (`icpp-pro-coderabbit` skill) — fix or rebut with reasoning, re-run the
-   affected tests for any fix, push to the same branch.
+6. Reviews: the local reviews before each push, and CodeRabbit's GitHub
+   findings after it with `/coderabbit:autofix` (see Branching & PRs) — fix or
+   rebut with reasoning, re-run the affected tests for any fix, push to the
+   same branch.
 7. Every PR needs a manual maintainer approval before it merges (see
    Branching & PRs).
 
@@ -273,6 +279,8 @@ gates added by this guide:
 - `make check-sibling-pins` — before and after the sibling pin bumps.
 - `make upgrade-test` — the released → release-candidate upgrade must be clean.
 - `make siblings-verify-api` — the trio against the dev install, mandatory.
+- The deep reviews of the release: `/code-review ultra` and `/claude-security`
+  "Scan changes", on a review PR of everything since the previous tag.
 - `make siblings-verify-full` — after the llama pin bump; its Docker /
   prebuilt-WASM leg checks the published release.
 - Sibling pin bumps (exact locations are in the release guide follow-ups):

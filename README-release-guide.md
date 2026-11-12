@@ -223,7 +223,7 @@ pushed, in icpp-candid and in icpp-pro:
 ```bash
 # from: icpp-candid, then from: icpp-pro, each on an up-to-date main
 PREV=v7.1.0rc2   # the previous release tag
-git push origin "refs/tags/$PREV:refs/heads/release-base/$PREV"
+git push origin "$PREV^{commit}:refs/heads/release-base/$PREV"   # ^{commit}: works for annotated tags too
 gh pr create --draft --base "release-base/$PREV" --head main --title "Release review: changes since $PREV" --body "Review-only PR for the deep reviews of the release. Never merge it: it is closed after the release."
 ```
 

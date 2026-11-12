@@ -17,12 +17,12 @@ order. This skill is the checklist; the guide is the source of truth.
 - Reference implementations: `../dfinity/motoko` (what Motoko does),
   `../dfinity/ic/rs/embedders/src/wasm_utils/validation.rs` (what the replica
   accepts).
-- The plan MUST contain a **compatibility assessment**: additive vs breaking
+- The plan contains a **compatibility assessment**: additive vs breaking
   for the C++ API, the candid wire encoding, and deployed-canister state.
   Default must be additive — a canister built with the previous release
   upgrades as-is. Breaking needs explicit user sign-off + migration plan.
-- The plan MUST name the **branch**: `feature/<short-kebab-slug>`, used with
-  the EXACT same name in every repo the feature touches, plus the expected
+- The plan names the **branch**: `feature/<short-kebab-slug>`, used with
+  the same name in every repo the feature touches, plus the expected
   repo list.
 
 ## 2. Implement (guide Ceremony 2) — five layers, always together
@@ -42,7 +42,7 @@ Create the same branch in a sibling repo only at the moment it needs a change.
 
 ```bash
 make all-static
-cd test/canisters/<touched> && icpp build-native && ./build-native/mockic.exe
+cd test/canisters/<touched> && icpp build-native && icpp run-native
 cd test/canisters/<touched> && icpp build-wasm
 make all-tests          # before merge
 make upgrade-test       # when deployed state / wire format could be affected
@@ -58,7 +58,7 @@ Then run the sibling tier that matches the change — see the
   the same sitting — never the file without republishing the artifact.
   `todo/` is git-ignored, so the artifact is the only shareable copy.
 - Statuses reflect merge state: an open PR marks an item "in review" (link
-  the PRs), NEVER "done". "done" happens only after all PRs merged — edit
+  the PRs), not "done". "done" happens only after all PRs merged — edit
   the local file and republish (no commit; `todo/` is not tracked). Split
   items keep the parent id (02a/02b), no renumbering.
 - Commit per repo on the shared `feature/<slug>` branch: single-line message,
@@ -69,5 +69,5 @@ Then run the sibling tier that matches the change — see the
 - After each PR is created: evaluate and resolve every CodeRabbit finding on
   it (use the `icpp-pro-coderabbit` skill) — fix or rebut with reasoning
   before the maintainer reviews.
-- Every PR must receive a MANUAL approval from the maintainer before merging.
+- Every PR needs a manual approval from the maintainer before merging.
   Never merge a PR yourself — ask the user for the approval and wait for it.

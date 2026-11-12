@@ -9,8 +9,13 @@ user-invocable: true
 
 Part of the Branching & PRs ceremony in `README-feature-guide.md`: after a PR
 is created, every CodeRabbit finding is evaluated and resolved BEFORE the
-maintainer reviews. Applies to every repo in the family (icpp-pro,
-icpp-demos, icpp-docs, llama_cpp_canister).
+maintainer reviews. Applies to the public repos in the family (icpp-pro,
+icpp-demos, llama_cpp_canister).
+
+On a private repo (`gh repo view --json visibility`), such as icpp-docs,
+CodeRabbit on GitHub posts only a PR summary, never findings. There the
+reviews run locally before each push instead (`coderabbit review --base main
+--agent`, then `/code-review`), so this skill does not apply.
 
 ## 1. Fetch the findings
 
@@ -23,14 +28,14 @@ gh api repos/<owner>/<repo>/pulls/<N>/comments # inline review comments (the fin
 gh api repos/<owner>/<repo>/pulls/<N>/reviews  # review bodies
 ```
 
-CodeRabbit needs a few minutes after push — if there is no review yet, wait
-and re-fetch rather than concluding there are no findings.
+On a public repo, CodeRabbit needs a few minutes after push — if there is no
+review yet, wait and re-fetch rather than concluding there are no findings.
 
 ## 2. Evaluate each finding — three verdicts
 
 - **Legitimate** → fix it. Follow the normal implementation rules
   (README-feature-guide.md Ceremony 2), re-run the tests the fix touches
-  (at minimum the affected canister's native build + mockic run, or the
+  (at minimum the affected canister's `icpp build-native` + `icpp run-native`, or the
   docs/demos verification for those repos), and commit to the SAME feature
   branch — single-line message, no trailers. CodeRabbit re-reviews
   incrementally on push.

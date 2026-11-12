@@ -84,7 +84,6 @@ pytest --network=local
   - `ic0mock/` - Mock IC0 for native debugging
   - `canister/` - Canister lifecycle hooks
   - `icapi/` - IC API C++ wrappers
-  - `pro/` - Pro features
 - `src/icpp/canisters/greet/` - Template canister (used by `icpp init`)
 - `test/canisters/` - Integration test canisters (canister_1, canister_flags, canister_http, etc.).
   `canister_upgrade` is upgraded in place by `make all-tests` and `make upgrade-test`,
@@ -106,17 +105,17 @@ Every canister supports two build targets configured in `icpp.toml`:
 - `.pylintrc` - Pylint configuration
 - `.mypy.ini` - Mypy strict mode configuration
 
-### External Toolchains (installed to `~/.icpp/`)
+### External Toolchains
 
-- wasi-sdk (WASM compiler)
-- Rust (for wasi2ic converter)
-- icp-cli (Internet Computer SDK, `npm install -g @icp-sdk/icp-cli`)
+- wasi-sdk (WASM compiler), installed to `~/.icpp/`
+- Rust (for wasi2ic converter), installed to `~/.icpp/`
+- icp-cli (Internet Computer SDK), installed globally with npm by `make install-icp`
 
 ## Code Quality
 
-- **Python formatting:** black 26.3.1
-- **Python linting:** pylint 3.3.4
-- **Python type checking:** mypy 1.13.0 (strict mode)
+- **Python formatting:** black
+- **Python linting:** pylint
+- **Python type checking:** mypy (strict mode)
 - Linter pins live in `pyproject.toml` and are kept identical across
   icpp-candid, icpp-demos and llama_cpp_canister — verified by `make check-sibling-pins`
 - **C++ formatting:** clang-format from wasi-sdk

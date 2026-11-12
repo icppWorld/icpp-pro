@@ -59,9 +59,12 @@ what makes cross-repo work trackable and the PRs easy to relate.
   the reviews of the README's [Contributing](README.md#contributing) section
   on the branch: `/simplify` first on a larger change, then
   `coderabbit review --base main --agent`, `/code-review` and
-  `/security-review`, each until nothing is left to address. After each push,
-  CodeRabbit reviews the PR on GitHub as well: handle its findings with
-  `/coderabbit:autofix`. Fix the legitimate ones on the same branch and re-run
+  `/security-review`, each until nothing is left to address. After each push
+  to a public repo, CodeRabbit reviews the PR on GitHub as well (on a private
+  repo, such as icpp-docs, it posts only a summary). Wait for its review, a few
+  minutes after the push, then handle its findings with
+  `/coderabbit:autofix`. Never silence a finding by disabling CodeRabbit or
+  editing its configuration. Fix the legitimate ones on the same branch and re-run
   the tests each fix touches; give the reasoning for anything assessed as a
   false positive; put a real finding that is out of scope on the roadmap in
   `todo/` or in a GitHub issue. The PR lists each review's findings and what

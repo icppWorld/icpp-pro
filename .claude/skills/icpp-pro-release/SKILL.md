@@ -17,22 +17,24 @@ of truth. The gates and follow-ups to not skip:
    and `icpp-candid/src/icpp_candid/version.py`, plus the
    `icpp-candid==X.Y.Z` pin in icpp-pro's `pyproject.toml`. Push icpp-candid
    first (icpp-pro CI needs it).
-3. `make upgrade-test` — a canister deployed with the previous PyPI release
+3. The deep reviews of the release, right after the version bump, on a
+   review-only PR per repo of everything since the previous tag (the guide's
+   "Deep reviews of the release" has the commands, including the
+   `@coderabbitai full review` request the draft PR needs): ask the user to
+   run `/code-review ultra` on each (billed; only the user can start it), and
+   run `/claude-security` "Scan changes" at high effort. Fix their findings
+   through PRs that merge before steps 4-7, which must run on the commits to
+   tag. After the release, close the review PRs and delete their
+   `release-base/` branches, never with `gh pr close --delete-branch` (the
+   head is `main`).
+4. `make upgrade-test` — a canister deployed with the previous PyPI release
    must upgrade in place to the release candidate, state intact. This gate is
    mandatory at release.
-4. `make siblings-verify-api` — docs, demos and llama native against the dev
+5. `make siblings-verify-api` — docs, demos and llama native against the dev
    install. NOT `siblings-verify-full`: before the release, llama's docker
    build can only install the previous icpp-pro from PyPI.
-5. The release guide's own testing matrix (python 3.11-3.14, wheel installs,
+6. The release guide's own testing matrix (python 3.11-3.14, wheel installs,
    demo scripts with the grep-based log verification, the definitive pytest).
-6. The deep reviews of the release, on a review-only PR per repo of
-   everything since the previous tag (the guide's "Deep reviews of the
-   release" has the commands): ask the user to run `/code-review ultra` on
-   each (billed; only the user can start it), and run `/claude-security`
-   "Scan changes" at high effort. Fix their findings through PRs that merge
-   before the fuzz run, since that run must be on the commits to tag. After
-   the release, close the review PRs and delete their `release-base/` branches,
-   never with `gh pr close --delete-branch` (the head is `main`).
 7. `gh workflow run fuzz.yml --ref main -f seconds=3600` — an hour per target
    of the Candid decoder fuzzers, about 3.5 hours in GitHub Actions (CI runs
    only a minute). A crash blocks the release: fix it in icpp-candid and keep

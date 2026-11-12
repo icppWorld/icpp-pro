@@ -39,6 +39,48 @@ Push the version.py directly to `main` branch in GitHub, with commit message `x.
 
 If all OK, then proceed with publishing the package.
 
+## Deep reviews of the release
+
+Every PR of the release already had the reviews of the README's
+[Contributing](README.md#contributing) section. Before a release, everything
+since the previous release tag (the most recent one, rc or final) gets two
+deeper reviews on top. There is no release PR (the version bump goes straight
+to `main`), so each repo gets a review-only PR of its changes since that tag.
+Open it right after the version bump is pushed, in icpp-candid and in
+icpp-pro:
+
+```bash
+# from: icpp-candid, then from: icpp-pro, each on an up-to-date main
+PREV=$(git describe --tags --abbrev=0)   # the previous release tag; check it
+git push origin "$PREV^{commit}:refs/heads/release-base/$PREV"   # ^{commit}: works for annotated tags too
+gh pr create --draft --base "release-base/$PREV" --head main --title "Release review: changes since $PREV" --body "Review-only PR for the deep reviews of the release. Never merge it: it is closed after the release."
+gh pr comment <PR number> --body "@coderabbitai full review"
+```
+
+The PR is a draft into a branch other than `main`, so CodeRabbit skips it
+unless asked: the last command asks it. Then, on each review PR:
+
+- Ask the maintainer to run `/code-review ultra <PR number>`: it is billed, and
+  only the maintainer can start it.
+- Run `/claude-security` "Scan changes" at high effort, from that repo on
+  `main`, after a `git fetch`. Write the tag out, since a slash command does
+  not expand `$PREV`, e.g.
+  `/claude-security scan changes --base origin/release-base/v7.1.0rc2 --effort high`.
+- Handle CodeRabbit's findings on the PR as well.
+
+Fix their findings like any other review's: on a feature branch, through a PR
+that merges before the release. Do these reviews before the builds, tests,
+upgrade test, sibling verification and fuzz run below: those must run on the
+exact commits that are tagged, so if a fix merges, run them on the new commits.
+
+After the release, close each review PR and delete its base branch. Do not use
+`gh pr close --delete-branch` here: the PR's head branch is `main`.
+
+```bash
+gh pr close <PR number>
+git push origin --delete "release-base/$PREV"
+```
+
 ## Build icpp-candid
 
 ```bash
@@ -210,44 +252,6 @@ The llama docker wasm leg (`make siblings-verify-full`, hours) runs
 after the llama_cpp_canister pin bump. Before the release, llama's docker
 build can only install the previous icpp-pro from PyPI (its `docker-compose.yml`
 pins the version), so it would not exercise the release at all.
-
-## Deep reviews of the release
-
-Every PR of the release already had the reviews of the README's
-[Contributing](README.md#contributing) section. Before a release, everything
-since the previous release gets two deeper reviews on top. There is no release
-PR (the version bump goes straight to `main`), so each repo gets a review-only
-PR of its changes since the previous tag. Open it after the version bump is
-pushed, in icpp-candid and in icpp-pro:
-
-```bash
-# from: icpp-candid, then from: icpp-pro, each on an up-to-date main
-PREV=v7.1.0rc2   # the previous release tag
-git push origin "$PREV^{commit}:refs/heads/release-base/$PREV"   # ^{commit}: works for annotated tags too
-gh pr create --draft --base "release-base/$PREV" --head main --title "Release review: changes since $PREV" --body "Review-only PR for the deep reviews of the release. Never merge it: it is closed after the release."
-```
-
-Then, on each review PR:
-
-- Ask the maintainer to run `/code-review ultra <PR number>`: it is billed, and
-  only the maintainer can start it.
-- Run `/claude-security` "Scan changes" at high effort, from that repo on
-  `main`, after a `git fetch`:
-  `/claude-security scan changes --base origin/release-base/$PREV --effort high`.
-- CodeRabbit on GitHub reviews the PR as well.
-
-Fix their findings like any other review's: on a feature branch, through a PR
-that merges before the release. Those fixes change the commits to tag, so do
-these reviews before the fuzz run below, which must run on the exact commits
-that are tagged.
-
-After the release, close each review PR and delete its base branch. Do not use
-`gh pr close --delete-branch` here: the PR's head branch is `main`.
-
-```bash
-gh pr close <PR number>
-git push origin --delete "release-base/$PREV"
-```
 
 ## Fuzz the release candidate
 

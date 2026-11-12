@@ -69,7 +69,10 @@ Then run the sibling tier that matches the change — see the
 - Before each push to a PR: the local reviews of the README's Contributing
   section (`/simplify` first on a larger change, then
   `coderabbit review --base main --agent`, `/code-review`, `/security-review`).
-  After each push: CodeRabbit's GitHub findings with `/coderabbit:autofix` —
-  fix or rebut with reasoning before the maintainer reviews.
+  After each push, on a public repo: CodeRabbit's GitHub findings with
+  `/coderabbit:autofix` — fix or rebut with reasoning before the maintainer
+  reviews. CodeRabbit takes a few minutes: wait for its review before calling
+  the PR clean. Never silence a finding by disabling CodeRabbit or editing its
+  configuration.
 - Every PR needs a manual approval from the maintainer before merging.
   Never merge a PR yourself — ask the user for the approval and wait for it.

@@ -413,6 +413,10 @@ def test__a_sticky_parent_like_tmp_is_fine(tmp_path: Path, built: Path) -> None:
         ("!#acl 1\ngroup:ABCD:everyone:12:deny,inherited:write\n", False),
         (f"!#acl 1\nuser:ABCD:me:{os.getuid()}:allow:write\n", False),
         ("!#acl 1\nuser:ABCD:root:0:allow:write\n", False),
+        (
+            "!#acl 1\ngroup:ABCD:everyone:12:allow,file_inherit,only_inherit:write\n",
+            False,
+        ),
         (f"!#acl 1\nuser:ABCD:other:{os.getuid() + 1}:allow:write\n", True),
     ],
 )

@@ -56,9 +56,9 @@ static int environ_available = 0;
 static char **built_environ = NULL;
 static size_t built_size = 0;
 
-// Builds the "NAME=VALUE" array from ic0.env_var_*, and its size in bytes, or
-// returns NULL when out of memory.
-static char **build_environ(size_t *size) {
+// Builds the "NAME=VALUE" array from ic0.env_var_*, with its size in bytes and
+// that of its pointer array, or returns NULL when out of memory.
+static char **build_environ(size_t *size, size_t *array_size_out) {
   uint32_t count = ic0_env_var_count();
   size_t strings_size = 0;
   for (uint32_t i = 0; i < count; ++i) {
@@ -74,6 +74,7 @@ static char **build_environ(size_t *size) {
   }
 
   size_t array_size = (count + 1) * sizeof(char *);
+  *array_size_out = array_size;
   *size = array_size + strings_size;
   char **env = malloc(*size);
   if (env == NULL) return NULL;
@@ -100,18 +101,19 @@ static char **build_environ(size_t *size) {
 // did not change, else a new one (the previous block stays allocated). Returns
 // 0 when out of memory, leaving built_environ as it was.
 static int update_built_environ(void) {
-  size_t size = 0;
-  char **env = build_environ(&size);
+  size_t size = 0, array_size = 0;
+  char **env = build_environ(&size, &array_size);
   if (env == NULL) return 0;
   // The blocks hold the same strings when they have the same size and the
   // same bytes after their pointer arrays, which point into each block itself
   if (built_environ != NULL && size == built_size) {
-    size_t array_size = 0;
-    while (env[array_size / sizeof(char *)] != NULL)
-      array_size += sizeof(char *);
-    array_size += sizeof(char *);
     if (memcmp((char *)env + array_size, (char *)built_environ + array_size,
                size - array_size) == 0) {
+      // Restore the pointer array: setenv(), unsetenv() and clearenv() change
+      // it in place, and their changes last for one message only
+      for (size_t i = 0; env[i] != NULL; ++i)
+        built_environ[i] = (char *)built_environ + (env[i] - (char *)env);
+      built_environ[array_size / sizeof(char *) - 1] = NULL;
       free(env);
       return 1;
     }

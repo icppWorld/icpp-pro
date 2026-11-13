@@ -50,3 +50,12 @@ void test_getenv_kept() {
 #endif
   ic_api.to_wire(CandidTypeText{kept != nullptr ? kept : ""});
 }
+
+// '()' -> '(getenv("ICPP_TEST_GREETING"))' after setenv() changed it. The
+// change lasts for this message only
+void test_setenv() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  setenv("ICPP_TEST_GREETING", "changed by setenv", 1);
+  const char *value = getenv("ICPP_TEST_GREETING");
+  ic_api.to_wire(CandidTypeText{value != nullptr ? value : ""});
+}

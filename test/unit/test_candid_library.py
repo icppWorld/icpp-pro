@@ -4,6 +4,7 @@ it can never fail a build."""
 
 # pylint: disable=missing-function-docstring, redefined-outer-name
 
+import ctypes
 import os
 import platform
 import re
@@ -402,7 +403,14 @@ def test__a_sticky_parent_like_tmp_is_fine(tmp_path: Path, built: Path) -> None:
         ("!#acl 1\ngroup:ABCD:everyone:12:deny:delete\n", False),
         ("!#acl 1\nuser:ABCD:bob:502:allow:read,execute\n", False),
         ("!#acl 1\nuser:ABCD:bob:502:allow:read,write\n", True),
-        ("!#acl 1\ngroup:ABCD:staff:20:allow:add_file,file_inherit\n", True),
+        ("!#acl 1\ngroup:ABCD:staff:20:allow,file_inherit:add_file\n", True),
+        ("!#acl 1\ngroup:ABCD:everyone:12:allow,inherited:write\n", True),
+        (
+            "!#acl 1\ngroup:ABCD:everyone:12:allow,file_inherit,directory_inherit:"
+            "write\n",
+            True,
+        ),
+        ("!#acl 1\ngroup:ABCD:everyone:12:deny,inherited:write\n", False),
     ],
 )
 def test__an_acl_that_allows_a_write_right_is_found(text: str, grants: bool) -> None:
@@ -423,6 +431,27 @@ def test__a_saved_copy_with_a_write_acl_is_never_trusted(
     assert "has an ACL that lets others write to it" in capsys.readouterr().out
 
 
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")
+def test__an_inherited_write_acl_is_never_trusted(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An ACL set on a folder with inheritance reaches what is made in it."""
+    root = tmp_path / "folder"
+    root.mkdir(mode=0o700)
+    subprocess.run(
+        [
+            "chmod",
+            "+a",
+            "everyone allow write,file_inherit,directory_inherit",
+            str(root),
+        ],
+        check=True,
+    )
+    key = saved(root, built)
+    assert not candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
+    assert "has an ACL that lets others write to it" in capsys.readouterr().out
+
+
 def test__a_volume_that_ignores_ownership_is_never_trusted(
     tmp_path: Path,
     built: Path,
@@ -439,3 +468,12 @@ def test__a_volume_that_ignores_ownership_is_never_trusted(
     )
     assert not candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
     assert "is on a volume that ignores ownership" in capsys.readouterr().out
+
+
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS statfs")
+def test__a_private_folder_on_the_system_volume_is_trusted(tmp_path: Path) -> None:
+    """The real statfs and ACL calls: struct statfs is 2168 bytes, and a
+    private folder in the temp dir has neither ignored ownership nor an ACL."""
+    # pylint: disable=protected-access
+    assert ctypes.sizeof(candid_library._Statfs) == 2168
+    assert candid_library._darwin_untrusted(tmp_path) is None

@@ -174,14 +174,25 @@ def _darwin_libc() -> Optional[ctypes.CDLL]:
     return libc
 
 
+@functools.lru_cache(maxsize=None)
+def _darwin_statfs(libc: ctypes.CDLL) -> Any:
+    """statfs with the 64-bit inode struct: x86_64 has both layouts, and names
+    this one statfs$INODE64."""
+    try:
+        return libc["statfs$INODE64"]
+    except AttributeError:
+        return libc["statfs"]
+
+
 def _acl_grants_write(text: str) -> bool:
     """Whether an ACL in acl_to_text form allows anyone a write right. Its
-    entries read like group:<uuid>:everyone:12:deny:delete."""
+    entries read like group:<uuid>:everyone:12:deny:delete, and the allow or
+    deny carries the entry's flags: allow,inherited,file_inherit."""
     for line in text.splitlines()[1:]:
         fields = line.split(":")
         if (
             len(fields) >= 6
-            and fields[4] == "allow"
+            and fields[4].split(",")[0] == "allow"
             and _ACL_WRITE_RIGHTS & set(fields[5].split(","))
         ):
             return True
@@ -199,6 +210,8 @@ def _acl_untrusted(libc: ctypes.CDLL, path: Path) -> Optional[str]:
         return f"{path}: cannot read its ACL"
     try:
         text = libc.acl_to_text(acl, None)
+        if not text:
+            return f"{path}: cannot read its ACL"
         try:
             acl_text = ctypes.string_at(text).decode(errors="replace")
         finally:
@@ -216,13 +229,8 @@ def _darwin_untrusted(path: Path) -> Optional[str]:
     libc = _darwin_libc()
     if libc is None:
         return None
-    # x86_64 has both layouts: the 64-bit inode one is statfs$INODE64
-    try:
-        statfs = libc["statfs$INODE64"]
-    except AttributeError:
-        statfs = libc["statfs"]
     buf = _Statfs()
-    if statfs(os.fsencode(path), ctypes.byref(buf)) != 0:
+    if _darwin_statfs(libc)(os.fsencode(path), ctypes.byref(buf)) != 0:
         return f"{path}: cannot read its volume's flags"
     if buf.f_flags & _MNT_IGNORE_OWNERSHIP:
         return f"{path} is on a volume that ignores ownership"

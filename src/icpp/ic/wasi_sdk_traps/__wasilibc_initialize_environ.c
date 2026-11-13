@@ -52,9 +52,10 @@ static int environ_available = 0;
 
 // The array built from the environment variables: the NULL-terminated pointer
 // array, followed by the "NAME=VALUE" strings, in one allocation of
-// built_size bytes.
+// built_size bytes, of which built_array_size the pointer array.
 static char **built_environ = NULL;
 static size_t built_size = 0;
+static size_t built_array_size = 0;
 
 // Builds the "NAME=VALUE" array from ic0.env_var_*, with its size in bytes and
 // that of its pointer array, or returns NULL when out of memory.
@@ -104,9 +105,11 @@ static int update_built_environ(void) {
   size_t size = 0, array_size = 0;
   char **env = build_environ(&size, &array_size);
   if (env == NULL) return 0;
-  // The blocks hold the same strings when they have the same size and the
-  // same bytes after their pointer arrays, which point into each block itself
-  if (built_environ != NULL && size == built_size) {
+  // The blocks hold the same strings when they have the same size, the same
+  // number of variables, and the same bytes after their pointer arrays, which
+  // point into each block itself
+  if (built_environ != NULL && size == built_size &&
+      array_size == built_array_size) {
     if (memcmp((char *)env + array_size, (char *)built_environ + array_size,
                size - array_size) == 0) {
       // Restore the pointer array: setenv(), unsetenv() and clearenv() change
@@ -120,6 +123,7 @@ static int update_built_environ(void) {
   }
   built_environ = env;
   built_size = size;
+  built_array_size = array_size;
   return 1;
 }
 

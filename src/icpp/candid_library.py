@@ -185,14 +185,15 @@ def _darwin_statfs(libc: ctypes.CDLL) -> Any:
 
 
 def _acl_grants_write(text: str) -> bool:
-    """Whether an ACL in acl_to_text form allows someone other than us a write
-    right. Its entries read like group:<uuid>:everyone:12:deny:delete, and the
-    allow or deny carries the entry's flags: allow,inherited,file_inherit."""
+    """Whether an ACL in acl_to_text form allows someone other than us or root
+    a write right. Its entries read like group:<uuid>:everyone:12:deny:delete,
+    and the allow or deny carries the entry's flags: allow,inherited."""
+    trusted = {("user", str(os.getuid())), ("user", "0")}
     for line in text.splitlines()[1:]:
         fields = line.split(":")
         if (
             len(fields) >= 6
-            and (fields[0], fields[3]) != ("user", str(os.getuid()))
+            and (fields[0], fields[3]) not in trusted
             and fields[4].split(",")[0] == "allow"
             and _ACL_WRITE_RIGHTS & set(fields[5].split(","))
         ):

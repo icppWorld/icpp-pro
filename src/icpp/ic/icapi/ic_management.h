@@ -386,6 +386,9 @@ public:
   // for anything secret, e.g. from a zero-delay timer set in canister_init and
   // canister_post_upgrade. Make no secret until it succeeded, and make them in
   // update calls: a query discards its changes, so each one draws the same.
+  // Seed before anything draws from them: a generator that already drew, such
+  // as arc4random's or a crypto library's, may keep the state it derived from
+  // the constant seed.
   static IC_Task<IC_CallResult<void>> seed_wasi_random();
 
   // Creates an empty canister, e.g. one per user, controlled by this

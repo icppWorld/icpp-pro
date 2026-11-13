@@ -401,8 +401,8 @@ def test__a_sticky_parent_like_tmp_is_fine(tmp_path: Path, built: Path) -> None:
     "text, grants",
     [
         ("!#acl 1\ngroup:ABCD:everyone:12:deny:delete\n", False),
-        ("!#acl 1\nuser:ABCD:bob:502:allow:read,execute\n", False),
-        ("!#acl 1\nuser:ABCD:bob:502:allow:read,write\n", True),
+        ("!#acl 1\nuser:ABCD:bob:99999:allow:read,execute\n", False),
+        ("!#acl 1\nuser:ABCD:bob:99999:allow:read,write\n", True),
         ("!#acl 1\ngroup:ABCD:staff:20:allow,file_inherit:add_file\n", True),
         ("!#acl 1\ngroup:ABCD:everyone:12:allow,inherited:write\n", True),
         (
@@ -411,6 +411,8 @@ def test__a_sticky_parent_like_tmp_is_fine(tmp_path: Path, built: Path) -> None:
             True,
         ),
         ("!#acl 1\ngroup:ABCD:everyone:12:deny,inherited:write\n", False),
+        (f"!#acl 1\nuser:ABCD:me:{os.getuid()}:allow:write\n", False),
+        (f"!#acl 1\nuser:ABCD:other:{os.getuid() + 1}:allow:write\n", True),
     ],
 )
 def test__an_acl_that_allows_a_write_right_is_found(text: str, grants: bool) -> None:

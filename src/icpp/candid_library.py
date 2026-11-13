@@ -185,13 +185,14 @@ def _darwin_statfs(libc: ctypes.CDLL) -> Any:
 
 
 def _acl_grants_write(text: str) -> bool:
-    """Whether an ACL in acl_to_text form allows anyone a write right. Its
-    entries read like group:<uuid>:everyone:12:deny:delete, and the allow or
-    deny carries the entry's flags: allow,inherited,file_inherit."""
+    """Whether an ACL in acl_to_text form allows someone other than us a write
+    right. Its entries read like group:<uuid>:everyone:12:deny:delete, and the
+    allow or deny carries the entry's flags: allow,inherited,file_inherit."""
     for line in text.splitlines()[1:]:
         fields = line.split(":")
         if (
             len(fields) >= 6
+            and fields[0:4:3] != ["user", str(os.getuid())]
             and fields[4].split(",")[0] == "allow"
             and _ACL_WRITE_RIGHTS & set(fields[5].split(","))
         ):
@@ -204,8 +205,9 @@ def _acl_untrusted(libc: ctypes.CDLL, path: Path) -> Optional[str]:
     ctypes.set_errno(0)
     acl = libc.acl_get_link_np(os.fsencode(path), _ACL_TYPE_EXTENDED)
     if not acl:
-        # ENOENT: the path has no ACL. Any other error: it could not be read
-        if ctypes.get_errno() == errno.ENOENT:
+        # ENOENT: the path has no ACL, ENOTSUP: its file system has none. Any
+        # other error: it could not be read
+        if ctypes.get_errno() in (errno.ENOENT, errno.ENOTSUP, errno.EOPNOTSUPP):
             return None
         return f"{path}: cannot read its ACL"
     try:

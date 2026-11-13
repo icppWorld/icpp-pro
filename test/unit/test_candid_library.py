@@ -499,8 +499,9 @@ def test__a_parent_passing_on_a_write_acl_is_fine_until_it_reaches_us(
     assert candid_library.restore(parent / "files", TARGET, key, LIB_FILE, tmp_path)
     rights = "everyone allow write,directory_inherit,only_inherit"
     subprocess.run(["chmod", "+a", rights, str(parent)], check=True)
-    saved(parent / "folders", built)
+    key = saved(parent / "folders", built)
     assert "has an ACL that lets others write to it" in capsys.readouterr().out
+    assert not (parent / "folders" / TARGET / key).exists()
 
 
 @pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")

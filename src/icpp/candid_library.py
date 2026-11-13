@@ -229,7 +229,8 @@ def _acl_untrusted(libc: ctypes.CDLL, path: Path, inheritable: bool) -> Optional
     finally:
         libc.acl_free(acl)
     if _acl_grants_write(acl_text, inheritable):
-        return f"{path} has an ACL that lets others write to it"
+        made = ", or to what is made in it" if inheritable else ""
+        return f"{path} has an ACL that lets others write to it{made}"
     return None
 
 

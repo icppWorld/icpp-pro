@@ -189,8 +189,9 @@ def test__test_vendors(network: str, principal: str) -> None:
 
 
 def test__test_getenv_kept(network: str, principal: str) -> None:
-    # A getenv() pointer stays valid after the entry point changes: the block
-    # it points into is not freed and reused
+    # A getenv() pointer stays valid after the entry point changes and environ
+    # is rebuilt with the same variables: the block it points into is reused,
+    # not freed and overwritten
     response = call_canister_api(
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,

@@ -20,9 +20,10 @@ others (our own folders are made 0700 first, e.g. after a `tar` restore in CI).
 The folder's parent must belong to us or to root, and be closed to others or
 sticky (like /tmp), so that nobody else can swap the folder. On macOS, where an
 ACL can let others write without any mode bit, and a volume can ignore
-ownership (every file then seems ours), both are refused too. An ACL entry that
-only passes rights on (only_inherit) gives none on its folder: what a save
-makes is checked for what it inherited instead.
+ownership (every file then seems ours), both are refused too. An ACL entry
+that only passes rights on (only_inherit) is refused in the folder and below,
+where we make files, but not in the parents: what they pass on shows up as an
+inherited entry on the folders made in them, which are checked.
 """
 
 import ctypes
@@ -186,19 +187,19 @@ def _darwin_statfs(libc: ctypes.CDLL) -> Any:
         return libc["statfs"]
 
 
-def _acl_grants_write(text: str) -> bool:
+def _acl_grants_write(text: str, inheritable: bool = True) -> bool:
     """Whether an ACL in acl_to_text form allows someone other than us or root
     a write right. Its entries read like group:<uuid>:everyone:12:deny:delete,
     and the allow or deny carries the entry's flags: allow,inherited. An
-    only_inherit entry applies to what is made in a folder later, not to the
-    folder: those get their own check."""
+    only_inherit entry gives no right on its folder, only to what is made in it
+    later: it counts unless inheritable is False."""
     trusted = {("user", str(os.getuid())), ("user", "0")}
     for line in text.splitlines()[1:]:
         fields = line.split(":")
         kind = fields[4].split(",") if len(fields) >= 6 else []
         if (
             kind[:1] == ["allow"]
-            and "only_inherit" not in kind
+            and (inheritable or "only_inherit" not in kind)
             and (fields[0], fields[3]) not in trusted
             and _ACL_WRITE_RIGHTS & set(fields[5].split(","))
         ):
@@ -206,8 +207,9 @@ def _acl_grants_write(text: str) -> bool:
     return False
 
 
-def _acl_untrusted(libc: ctypes.CDLL, path: Path) -> Optional[str]:
-    """macOS: why the ACL of path lets others write to it, or None."""
+def _acl_untrusted(libc: ctypes.CDLL, path: Path, inheritable: bool) -> Optional[str]:
+    """macOS: why the ACL of path lets others write to it, or to what is made
+    in it when inheritable, or None."""
     ctypes.set_errno(0)
     acl = libc.acl_get_link_np(os.fsencode(path), _ACL_TYPE_EXTENDED)
     if not acl:
@@ -226,14 +228,14 @@ def _acl_untrusted(libc: ctypes.CDLL, path: Path) -> Optional[str]:
             libc.acl_free(text)
     finally:
         libc.acl_free(acl)
-    if _acl_grants_write(acl_text):
+    if _acl_grants_write(acl_text, inheritable):
         return f"{path} has an ACL that lets others write to it"
     return None
 
 
-def _darwin_untrusted(path: Path) -> Optional[str]:
+def _darwin_untrusted(path: Path, inheritable: bool = True) -> Optional[str]:
     """macOS: why others may write to path although its owner and mode say
-    they cannot, or None."""
+    they cannot, or None. inheritable: also to what is made in it later."""
     libc = _darwin_libc()
     if libc is None:
         return None
@@ -242,7 +244,7 @@ def _darwin_untrusted(path: Path) -> Optional[str]:
         return f"{path}: cannot read its volume's flags"
     if buf.f_flags & _MNT_IGNORE_OWNERSHIP:
         return f"{path} is on a volume that ignores ownership"
-    return _acl_untrusted(libc, path)
+    return _acl_untrusted(libc, path, inheritable)
 
 
 def _untrusted(path: Path) -> Optional[str]:
@@ -283,7 +285,9 @@ def _safe_parent(root: Path) -> Optional[str]:
                 return f"{level} is writable by its group or by others"
             # Also for a sticky folder: an ACL can undo what its sticky bit
             # protects
-            reason = _darwin_untrusted(level)
+            # What is made in a parent is checked itself: only its effective
+            # entries matter here
+            reason = _darwin_untrusted(level, inheritable=False)
             if reason is not None:
                 return reason
     return None
@@ -336,14 +340,6 @@ def restore(root: Path, target: str, key: str, lib_file: str, build_path: Path) 
     return True
 
 
-def _check_made(path: Path, source: Path) -> None:
-    """Raises when path, just made inside source, is not trusted: e.g. it
-    inherited an ACL entry from source or a folder above it."""
-    reason = _untrusted(path)
-    if reason is not None:
-        raise RuntimeError(f"{reason}, passed on by {source} or a folder above")
-
-
 def save(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     root: Path,
     target: str,
@@ -377,12 +373,7 @@ def save(  # pylint: disable=too-many-arguments, too-many-positional-arguments
             reason = _untrusted(level)
             if reason is not None:
                 raise RuntimeError(reason)
-        # What is made here carries what it inherits, e.g. an ACL entry passed
-        # on by an only_inherit entry above, which the folder checks skip. So
-        # tmp is checked before anything is written into it, the files once
-        # written, and all before the rename
         tmp.mkdir(mode=0o700)
-        _check_made(tmp, root / target)
         lib_sha256 = _copy_hashed(build_path / lib_file, tmp / lib_file)
         (tmp / STAMP).write_text(
             json.dumps(dict(data, lib_sha256=lib_sha256), indent=1, sort_keys=True),
@@ -390,7 +381,7 @@ def save(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         )
         for file in (tmp / lib_file, tmp / STAMP):
             os.chmod(file, 0o600)
-            _check_made(file, root / target)
+        os.chmod(tmp, 0o700)
         entry = root / target / key
         try:
             os.rename(tmp, entry)

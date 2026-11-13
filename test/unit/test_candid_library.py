@@ -415,7 +415,7 @@ def test__a_sticky_parent_like_tmp_is_fine(tmp_path: Path, built: Path) -> None:
         ("!#acl 1\nuser:ABCD:root:0:allow:write\n", False),
         (
             "!#acl 1\ngroup:ABCD:everyone:12:allow,file_inherit,only_inherit:write\n",
-            False,
+            True,
         ),
         (f"!#acl 1\nuser:ABCD:other:{os.getuid() + 1}:allow:write\n", True),
     ],
@@ -456,7 +456,7 @@ def test__a_write_acl_passed_on_to_what_is_saved_is_refused(
     tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """An only_inherit entry does not apply to the folder itself, but the copy
-    saved in it inherits the entry, and is refused."""
+    saved in it would inherit the entry: the folder is refused."""
     root = tmp_path / "folder"
     (root / TARGET).mkdir(parents=True, mode=0o700)
     os.chmod(root, 0o700)
@@ -472,9 +472,35 @@ def test__a_write_acl_passed_on_to_what_is_saved_is_refused(
     key = saved(root, built)
     out = capsys.readouterr().out
     assert "has an ACL that lets others write to it" in out
-    assert f"passed on by {root / TARGET}" in out
     assert not (root / TARGET / key).exists()
     assert not list((root / TARGET).glob(".tmp-*"))
+
+
+def test__an_only_inherit_entry_of_a_parent_is_fine() -> None:
+    """It gives no right on the parent; what it passes on to the folders made
+    in it shows up there as an inherited entry."""
+    text = "!#acl 1\ngroup:ABCD:everyone:12:allow,file_inherit,only_inherit:write\n"
+    # pylint: disable-next=protected-access
+    assert not candid_library._acl_grants_write(text, inheritable=False)
+
+
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")
+def test__a_parent_passing_on_a_write_acl_is_fine_until_it_reaches_us(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A file-only entry of the parent reaches no folder made in it; a
+    directory one reaches the folder, which is refused."""
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    rights = "everyone allow write,file_inherit,only_inherit"
+    subprocess.run(["chmod", "+a", rights, str(parent)], check=True)
+    key = saved(parent / "files", built)
+    assert "WARNING" not in capsys.readouterr().out
+    assert candid_library.restore(parent / "files", TARGET, key, LIB_FILE, tmp_path)
+    rights = "everyone allow write,directory_inherit,only_inherit"
+    subprocess.run(["chmod", "+a", rights, str(parent)], check=True)
+    saved(parent / "folders", built)
+    assert "has an ACL that lets others write to it" in capsys.readouterr().out
 
 
 @pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")

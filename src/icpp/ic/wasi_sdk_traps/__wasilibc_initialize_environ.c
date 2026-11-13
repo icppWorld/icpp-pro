@@ -97,11 +97,12 @@ static char **build_environ(size_t *size) {
 }
 
 // Points built_environ at the current variables: the previous block when they
-// did not change, else a new one (the previous block stays allocated).
-static void update_built_environ(void) {
+// did not change, else a new one (the previous block stays allocated). Returns
+// 0 when out of memory, leaving built_environ as it was.
+static int update_built_environ(void) {
   size_t size = 0;
   char **env = build_environ(&size);
-  if (env == NULL) return;
+  if (env == NULL) return 0;
   // The blocks hold the same strings when they have the same size and the
   // same bytes after their pointer arrays, which point into each block itself
   if (built_environ != NULL && size == built_size) {
@@ -112,17 +113,18 @@ static void update_built_environ(void) {
     if (memcmp((char *)env + array_size, (char *)built_environ + array_size,
                size - array_size) == 0) {
       free(env);
-      return;
+      return 1;
     }
   }
   built_environ = env;
   built_size = size;
+  return 1;
 }
 
 // See the comments in libc-environ.h.
+// When out of memory, the environment is empty rather than out of date.
 void __wasilibc_initialize_environ(void) {
-  if (environ_available) update_built_environ();
-  __wasilibc_environ = environ_available && built_environ != NULL
+  __wasilibc_environ = environ_available && update_built_environ()
                            ? built_environ
                            : empty_environ;
 }

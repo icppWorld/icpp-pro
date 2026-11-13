@@ -25,6 +25,7 @@ ownership (every file then seems ours), both are refused too.
 
 import ctypes
 import ctypes.util
+import errno
 import functools
 import hashlib
 import json
@@ -164,7 +165,7 @@ def _darwin_libc() -> Optional[ctypes.CDLL]:
     """The C library on macOS, else None."""
     if platform.system() != "Darwin":
         return None
-    libc = ctypes.CDLL(ctypes.util.find_library("c"))
+    libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
     libc.acl_get_link_np.restype = ctypes.c_void_p
     libc.acl_get_link_np.argtypes = [ctypes.c_char_p, ctypes.c_int]
     libc.acl_to_text.restype = ctypes.c_void_p
@@ -187,26 +188,15 @@ def _acl_grants_write(text: str) -> bool:
     return False
 
 
-def _darwin_untrusted(path: Path) -> Optional[str]:
-    """macOS: why others may write to path although its owner and mode say
-    they cannot, or None."""
-    libc = _darwin_libc()
-    if libc is None:
-        return None
-    raw = os.fsencode(path)
-    # x86_64 has both layouts: the 64-bit inode one is statfs$INODE64
-    try:
-        statfs = libc["statfs$INODE64"]
-    except AttributeError:
-        statfs = libc["statfs"]
-    buf = _Statfs()
-    if statfs(raw, ctypes.byref(buf)) != 0:
-        return f"{path}: cannot read its volume's flags"
-    if buf.f_flags & _MNT_IGNORE_OWNERSHIP:
-        return f"{path} is on a volume that ignores ownership"
-    acl = libc.acl_get_link_np(raw, _ACL_TYPE_EXTENDED)
+def _acl_untrusted(libc: ctypes.CDLL, path: Path) -> Optional[str]:
+    """macOS: why the ACL of path lets others write to it, or None."""
+    ctypes.set_errno(0)
+    acl = libc.acl_get_link_np(os.fsencode(path), _ACL_TYPE_EXTENDED)
     if not acl:
-        return None
+        # ENOENT: the path has no ACL. Any other error: it could not be read
+        if ctypes.get_errno() == errno.ENOENT:
+            return None
+        return f"{path}: cannot read its ACL"
     try:
         text = libc.acl_to_text(acl, None)
         try:
@@ -218,6 +208,25 @@ def _darwin_untrusted(path: Path) -> Optional[str]:
     if _acl_grants_write(acl_text):
         return f"{path} has an ACL that lets others write to it"
     return None
+
+
+def _darwin_untrusted(path: Path) -> Optional[str]:
+    """macOS: why others may write to path although its owner and mode say
+    they cannot, or None."""
+    libc = _darwin_libc()
+    if libc is None:
+        return None
+    # x86_64 has both layouts: the 64-bit inode one is statfs$INODE64
+    try:
+        statfs = libc["statfs$INODE64"]
+    except AttributeError:
+        statfs = libc["statfs"]
+    buf = _Statfs()
+    if statfs(os.fsencode(path), ctypes.byref(buf)) != 0:
+        return f"{path}: cannot read its volume's flags"
+    if buf.f_flags & _MNT_IGNORE_OWNERSHIP:
+        return f"{path} is on a volume that ignores ownership"
+    return _acl_untrusted(libc, path)
 
 
 def _untrusted(path: Path) -> Optional[str]:

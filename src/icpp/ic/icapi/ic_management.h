@@ -388,7 +388,8 @@ public:
   // in the heap, not stable memory, so an upgrade clears it - and make them in
   // update calls. Let nothing made with it leave a query, e.g. a signature
   // with a random nonce: a query discards its changes, so it draws the same
-  // bytes as the next update. Seed again after loading a canister snapshot.
+  // bytes as the next update. A loaded canister snapshot restores the heap,
+  // generators included: load it while stopped, and upgrade before starting.
   // Seed before anything draws from them: a generator that already drew, such
   // as arc4random's or a crypto library's, may keep the state it derived from
   // the constant seed.

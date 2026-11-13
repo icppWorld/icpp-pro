@@ -192,7 +192,7 @@ def _acl_grants_write(text: str) -> bool:
         fields = line.split(":")
         if (
             len(fields) >= 6
-            and fields[0:4:3] != ["user", str(os.getuid())]
+            and (fields[0], fields[3]) != ("user", str(os.getuid()))
             and fields[4].split(",")[0] == "allow"
             and _ACL_WRITE_RIGHTS & set(fields[5].split(","))
         ):
@@ -270,14 +270,16 @@ def _safe_parent(root: Path) -> Optional[str]:
                 return f"{level} belongs to another user"
             if stat.S_ISLNK(st.st_mode):
                 todo.append(level.parent / os.readlink(level))
-            elif st.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and not (
+                continue
+            if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and not (
                 st.st_mode & stat.S_ISVTX
             ):
                 return f"{level} is writable by its group or by others"
-            else:
-                reason = _darwin_untrusted(level)
-                if reason is not None:
-                    return reason
+            # Also for a sticky folder: an ACL can undo what its sticky bit
+            # protects
+            reason = _darwin_untrusted(level)
+            if reason is not None:
+                return reason
     return None
 
 

@@ -13,7 +13,7 @@ import stat
 import subprocess
 import threading
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 import pytest
 import typer
@@ -437,37 +437,53 @@ def test__a_saved_copy_with_a_write_acl_is_never_trusted(
 def test__an_inherited_write_acl_is_never_trusted(
     tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """An ACL set on a folder with inheritance reaches what is made in it."""
+    """An entry inherited from a folder above carries the inherited flag."""
     root = tmp_path / "folder"
-    root.mkdir(mode=0o700)
-    subprocess.run(
-        [
-            "chmod",
-            "+a",
-            "everyone allow write,file_inherit,directory_inherit",
-            str(root),
-        ],
-        check=True,
-    )
     key = saved(root, built)
+    library = root / TARGET / key / LIB_FILE
+    subprocess.run(["chmod", "+ai", "everyone allow write", str(library)], check=True)
     assert not candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
     assert "has an ACL that lets others write to it" in capsys.readouterr().out
 
 
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")
+def test__a_sticky_parent_with_a_write_acl_is_refused(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An ACL can let others replace the folder despite the sticky bit."""
+    parent = tmp_path / "sticky"
+    parent.mkdir()
+    os.chmod(parent, 0o1777)
+    subprocess.run(
+        ["chmod", "+a", "everyone allow delete_child", str(parent)], check=True
+    )
+    try:
+        saved(parent / "folder", built)
+        assert "has an ACL that lets others write to it" in capsys.readouterr().out
+    finally:
+        os.chmod(parent, 0o755)
+
+
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS statfs")
 def test__a_volume_that_ignores_ownership_is_never_trusted(
     tmp_path: Path,
     built: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """On such a volume (macOS), every file seems to be ours."""
+    """On such a volume (macOS), every file seems to be ours. statfs reports
+    the volume flag, here MNT_IGNORE_OWNERSHIP set by a stand-in."""
     root = tmp_path / "folder"
     key = saved(root, built)
-    monkeypatch.setattr(
-        candid_library,
-        "_darwin_untrusted",
-        lambda path: f"{path} is on a volume that ignores ownership",
-    )
+    # pylint: disable=protected-access
+    real = candid_library._darwin_statfs(candid_library._darwin_libc())
+
+    def statfs(path: bytes, buf: Any) -> int:
+        result = real(path, buf)
+        buf._obj.f_flags |= candid_library._MNT_IGNORE_OWNERSHIP
+        return int(result)
+
+    monkeypatch.setattr(candid_library, "_darwin_statfs", lambda libc: statfs)
     assert not candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
     assert "is on a volume that ignores ownership" in capsys.readouterr().out
 

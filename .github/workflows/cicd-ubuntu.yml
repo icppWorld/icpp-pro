@@ -14,6 +14,8 @@ on:
       # so it must re-run the matrix (an arch-broken wheel from a pinned
       # dependency is exactly the kind of failure only this matrix sees)
       - "pyproject.toml"
+      # the clang version installed for the native builds and the fuzzers
+      - "version_clang.txt"
       - ".github/trigger.txt"
       - ".github/workflows/cicd-ubuntu.yml"
 
@@ -41,8 +43,9 @@ jobs:
         # actions/setup-python. Keep the quotes even though the current
         # matrix has no such version.
         python-version: ["3.11", "3.12", "3.13", "3.14"]
-        # apt.llvm.org has no clang-18 for ubuntu-latest (26.04, resolute):
-        # make install-clang-ubuntu needs 24.04
+        # A fixed image rather than ubuntu-latest, so a new Ubuntu never breaks CI
+        # unannounced. The required checks of main are named after it: change
+        # them with it. version_clang.txt must exist for it on apt.llvm.org
         os: [ubuntu-24.04]
 
     runs-on: ${{ matrix.os }}

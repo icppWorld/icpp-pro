@@ -41,7 +41,9 @@ jobs:
         # actions/setup-python. Keep the quotes even though the current
         # matrix has no such version.
         python-version: ["3.11", "3.12", "3.13", "3.14"]
-        os: [ubuntu-latest]
+        # apt.llvm.org has no clang-18 for ubuntu-latest (26.04, resolute):
+        # make install-clang-ubuntu needs 24.04
+        os: [ubuntu-24.04]
 
     runs-on: ${{ matrix.os }}
 

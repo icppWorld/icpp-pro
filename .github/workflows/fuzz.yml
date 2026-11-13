@@ -26,7 +26,9 @@ permissions:
 
 jobs:
   fuzz:
-    runs-on: ubuntu-latest
+    # apt.llvm.org has no clang-18 for ubuntu-latest (26.04, resolute):
+    # make install-clang-ubuntu needs 24.04
+    runs-on: ubuntu-24.04
 
     steps:
       # https://github.com/marketplace/actions/setup-miniconda

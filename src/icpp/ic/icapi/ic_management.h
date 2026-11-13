@@ -386,8 +386,9 @@ public:
   // for anything secret, e.g. from a zero-delay timer set in canister_init and
   // canister_post_upgrade. Make no secret until it succeeded - keep that flag
   // in the heap, not stable memory, so an upgrade clears it - and make them in
-  // update calls. Never return its output from a query: a query discards its
-  // changes, so it draws the same bytes as the next update.
+  // update calls. Let nothing made with it leave a query, e.g. a signature
+  // with a random nonce: a query discards its changes, so it draws the same
+  // bytes as the next update. Seed again after loading a canister snapshot.
   // Seed before anything draws from them: a generator that already drew, such
   // as arc4random's or a crypto library's, may keep the state it derived from
   // the constant seed.

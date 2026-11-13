@@ -20,7 +20,9 @@ others (our own folders are made 0700 first, e.g. after a `tar` restore in CI).
 The folder's parent must belong to us or to root, and be closed to others or
 sticky (like /tmp), so that nobody else can swap the folder. On macOS, where an
 ACL can let others write without any mode bit, and a volume can ignore
-ownership (every file then seems ours), both are refused too.
+ownership (every file then seems ours), both are refused too. An ACL entry that
+only passes rights on (only_inherit) gives none on its folder: what a save
+makes is checked for what it inherited instead.
 """
 
 import ctypes
@@ -334,6 +336,14 @@ def restore(root: Path, target: str, key: str, lib_file: str, build_path: Path) 
     return True
 
 
+def _check_made(path: Path, source: Path) -> None:
+    """Raises when path, just made inside source, is not trusted: e.g. it
+    inherited an ACL entry from source or a folder above it."""
+    reason = _untrusted(path)
+    if reason is not None:
+        raise RuntimeError(f"{reason}, passed on by {source} or a folder above")
+
+
 def save(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     root: Path,
     target: str,
@@ -367,7 +377,12 @@ def save(  # pylint: disable=too-many-arguments, too-many-positional-arguments
             reason = _untrusted(level)
             if reason is not None:
                 raise RuntimeError(reason)
+        # What is made here carries what it inherits, e.g. an ACL entry passed
+        # on by an only_inherit entry above, which the folder checks skip. So
+        # tmp is checked before anything is written into it, the files once
+        # written, and all before the rename
         tmp.mkdir(mode=0o700)
+        _check_made(tmp, root / target)
         lib_sha256 = _copy_hashed(build_path / lib_file, tmp / lib_file)
         (tmp / STAMP).write_text(
             json.dumps(dict(data, lib_sha256=lib_sha256), indent=1, sort_keys=True),
@@ -375,13 +390,7 @@ def save(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         )
         for file in (tmp / lib_file, tmp / STAMP):
             os.chmod(file, 0o600)
-        os.chmod(tmp, 0o700)
-        # What was made carries what it inherited, e.g. an ACL entry passed
-        # on by an only_inherit entry above, which the folder checks skip
-        for path in (tmp, tmp / lib_file, tmp / STAMP):
-            reason = _untrusted(path)
-            if reason is not None:
-                raise RuntimeError(reason)
+            _check_made(file, root / target)
         entry = root / target / key
         try:
             os.rename(tmp, entry)

@@ -470,8 +470,11 @@ def test__a_write_acl_passed_on_to_what_is_saved_is_refused(
         check=True,
     )
     key = saved(root, built)
-    assert "has an ACL that lets others write to it" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "has an ACL that lets others write to it" in out
+    assert f"passed on by {root / TARGET}" in out
     assert not (root / TARGET / key).exists()
+    assert not list((root / TARGET).glob(".tmp-*"))
 
 
 @pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")

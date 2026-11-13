@@ -11,6 +11,13 @@
 
 extern "C" void raw_init(char *p, std::size_t len) __IMPORT(polyfill, raw_init);
 
+// Reseeds the polyfill's random number generator, which serves WASI
+// random_get (getentropy, std::random_device, arc4random). raw_init leaves it
+// at a constant all-zero seed, so its output is predictable until a canister
+// seeds it with IC_Management::seed_wasi_random().
+extern "C" void raw_init_seed(const unsigned char *seed, std::size_t len)
+    __IMPORT(polyfill, raw_init_seed);
+
 // -------------------------------------------------------------------
 // Singleton class to ensure the WASI polyfill library is initialized only once.
 class WasiPolyfill {

@@ -38,6 +38,7 @@ void vec_of_wrong_element()
     WASM_SYMBOL_EXPORTED("canister_query vec_of_wrong_element");
 void test_vendors() WASM_SYMBOL_EXPORTED("canister_query test_vendors");
 void test_getenv() WASM_SYMBOL_EXPORTED("canister_query test_getenv");
+void test_getenv_kept() WASM_SYMBOL_EXPORTED("canister_query test_getenv_kept");
 
 void roundtrip_deprecated_ic_api_constructor() WASM_SYMBOL_EXPORTED(
     "canister_query roundtrip_deprecated_ic_api_constructor");

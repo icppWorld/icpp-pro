@@ -394,3 +394,48 @@ def test__a_sticky_parent_like_tmp_is_fine(tmp_path: Path, built: Path) -> None:
         assert candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
     finally:
         os.chmod(parent, 0o755)
+
+
+@pytest.mark.parametrize(
+    "text, grants",
+    [
+        ("!#acl 1\ngroup:ABCD:everyone:12:deny:delete\n", False),
+        ("!#acl 1\nuser:ABCD:bob:502:allow:read,execute\n", False),
+        ("!#acl 1\nuser:ABCD:bob:502:allow:read,write\n", True),
+        ("!#acl 1\ngroup:ABCD:staff:20:allow:add_file,file_inherit\n", True),
+    ],
+)
+def test__an_acl_that_allows_a_write_right_is_found(text: str, grants: bool) -> None:
+    # pylint: disable-next=protected-access
+    assert candid_library._acl_grants_write(text) is grants
+
+
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")
+def test__a_saved_copy_with_a_write_acl_is_never_trusted(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An ACL lets others write without any mode bit (macOS)."""
+    root = tmp_path / "folder"
+    key = saved(root, built)
+    library = root / TARGET / key / LIB_FILE
+    subprocess.run(["chmod", "+a", "everyone allow write", str(library)], check=True)
+    assert not candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
+    assert "has an ACL that lets others write to it" in capsys.readouterr().out
+
+
+def test__a_volume_that_ignores_ownership_is_never_trusted(
+    tmp_path: Path,
+    built: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """On such a volume (macOS), every file seems to be ours."""
+    root = tmp_path / "folder"
+    key = saved(root, built)
+    monkeypatch.setattr(
+        candid_library,
+        "_darwin_untrusted",
+        lambda path: f"{path} is on a volume that ignores ownership",
+    )
+    assert not candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
+    assert "is on a volume that ignores ownership" in capsys.readouterr().out

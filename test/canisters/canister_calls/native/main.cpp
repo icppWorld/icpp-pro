@@ -601,6 +601,15 @@ int main() {
   mockIC.run_trap_test("canister_pre_upgrade (IC_API), call in flight",
                        native_pre_upgrade_with_ic_api, EMPTY, silent_on_trap,
                        my_principal);
+  mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_STOPPING);
+  mockIC.run_trap_test(
+      "canister_pre_upgrade (default), stopping, call in flight",
+      icpp_default_pre_upgrade, EMPTY, silent_on_trap, my_principal);
+  mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_STOPPED);
+  mockIC.run_test("canister_pre_upgrade (default), stopped, call in flight",
+                  icpp_default_pre_upgrade, EMPTY, "", silent_on_trap,
+                  my_principal);
+  mockIC.set_canister_status(MOCKIC_CANISTER_STATUS_RUNNING);
   mockIC.run_test("release", release, EMPTY, "4449444c0000", silent_on_trap,
                   my_principal);
   mockIC.drain(); // hold() sees the release and returns

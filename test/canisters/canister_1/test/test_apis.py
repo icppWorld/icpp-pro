@@ -188,6 +188,18 @@ def test__test_vendors(network: str, principal: str) -> None:
     assert response == expected_response
 
 
+def test__test_getenv_kept(network: str, principal: str) -> None:
+    # A getenv() pointer stays valid after the entry point changes: the block
+    # it points into is not freed and reused
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_getenv_kept",
+        network=network,
+    )
+    assert response == '("hello from icp.yaml")'
+
+
 # ----------------------------------------------------------------------------------
 # Run all unit tests for candid
 def test__test_candid(network: str, principal: str) -> None:

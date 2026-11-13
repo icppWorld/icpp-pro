@@ -74,6 +74,16 @@ def test__raw_rand(network: str) -> None:
     assert len(a) == 32 and len(b) == 32 and a != b
 
 
+def test__seed_wasi_random(network: str) -> None:
+    # A query's draws are discarded, so it sees the same bytes until a seed
+    a = blobs(call(network, "wasi_random"))[0]
+    b = blobs(call(network, "wasi_random"))[0]
+    assert len(a) == 32 and a == b
+    assert call(network, "seed_wasi_random") == "()"
+    c = blobs(call(network, "wasi_random"))[0]
+    assert len(c) == 32 and c != a
+
+
 def test__create_canister(network: str) -> None:
     # Created with exactly cost_create_canister() attached
     response = call(network, "create_canister")

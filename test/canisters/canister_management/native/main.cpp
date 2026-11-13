@@ -103,6 +103,16 @@ int main() {
           "raw_rand: 32 bytes, different each call");
   }
   {
+    CandidArgs none;
+    run(mockIC, "seed_wasi_random", seed_wasi_random, CandidArgs{}, none,
+        caller);
+    IC_Blob a;
+    CandidArgs out;
+    out.append(CandidTypeVecNat8{&a});
+    run(mockIC, "wasi_random", wasi_random, CandidArgs{}, out, caller);
+    check(a.size() == 32, "wasi_random: 32 bytes");
+  }
+  {
     std::string id;
     CandidArgs out;
     out.append(CandidTypePrincipal{&id});

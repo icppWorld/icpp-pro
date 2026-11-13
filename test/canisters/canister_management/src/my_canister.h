@@ -4,6 +4,9 @@
 
 // The management canister helpers (ic_management.h), each making its call
 void raw_rand() WASM_SYMBOL_EXPORTED("canister_update raw_rand");
+void seed_wasi_random()
+    WASM_SYMBOL_EXPORTED("canister_update seed_wasi_random");
+void wasi_random() WASM_SYMBOL_EXPORTED("canister_query wasi_random");
 void create_canister() WASM_SYMBOL_EXPORTED("canister_update create_canister");
 void canister_status() WASM_SYMBOL_EXPORTED("canister_update canister_status");
 void ecdsa() WASM_SYMBOL_EXPORTED("canister_update ecdsa");

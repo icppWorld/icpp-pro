@@ -18,9 +18,14 @@ code injection. The folder must be private to the user: everything is created
 when one of them is a symlink, belongs to another user, or is writable by
 others (our own folders are made 0700 first, e.g. after a `tar` restore in CI).
 The folder's parent must belong to us or to root, and be closed to others or
-sticky (like /tmp), so that nobody else can swap the folder.
+sticky (like /tmp), so that nobody else can swap the folder. On macOS, where an
+ACL can let others write without any mode bit, and a volume can ignore
+ownership (every file then seems ours), both are refused too.
 """
 
+import ctypes
+import ctypes.util
+import functools
 import hashlib
 import json
 import os
@@ -113,6 +118,108 @@ def _tighten(path: Path) -> None:
             os.chmod(path, 0o700)
 
 
+# macOS: an ACL entry that grants one of these lets others change a path
+_ACL_WRITE_RIGHTS = {
+    "write",
+    "append",
+    "add_file",
+    "add_subdirectory",
+    "delete",
+    "delete_child",
+    "writeattr",
+    "writeextattr",
+    "writesecurity",
+    "chown",
+}
+_ACL_TYPE_EXTENDED = 0x00000100
+_MNT_IGNORE_OWNERSHIP = 0x00200000
+
+
+class _Statfs(ctypes.Structure):  # pylint: disable=too-few-public-methods
+    """macOS struct statfs, the 64-bit inode variant."""
+
+    _fields_ = [
+        ("f_bsize", ctypes.c_uint32),
+        ("f_iosize", ctypes.c_int32),
+        ("f_blocks", ctypes.c_uint64),
+        ("f_bfree", ctypes.c_uint64),
+        ("f_bavail", ctypes.c_uint64),
+        ("f_files", ctypes.c_uint64),
+        ("f_ffree", ctypes.c_uint64),
+        ("f_fsid", ctypes.c_int32 * 2),
+        ("f_owner", ctypes.c_uint32),
+        ("f_type", ctypes.c_uint32),
+        ("f_flags", ctypes.c_uint32),
+        ("f_fssubtype", ctypes.c_uint32),
+        ("f_fstypename", ctypes.c_char * 16),
+        ("f_mntonname", ctypes.c_char * 1024),
+        ("f_mntfromname", ctypes.c_char * 1024),
+        ("f_flags_ext", ctypes.c_uint32),
+        ("f_reserved", ctypes.c_uint32 * 7),
+    ]
+
+
+@functools.lru_cache(maxsize=None)
+def _darwin_libc() -> Optional[ctypes.CDLL]:
+    """The C library on macOS, else None."""
+    if platform.system() != "Darwin":
+        return None
+    libc = ctypes.CDLL(ctypes.util.find_library("c"))
+    libc.acl_get_link_np.restype = ctypes.c_void_p
+    libc.acl_get_link_np.argtypes = [ctypes.c_char_p, ctypes.c_int]
+    libc.acl_to_text.restype = ctypes.c_void_p
+    libc.acl_to_text.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    libc.acl_free.argtypes = [ctypes.c_void_p]
+    return libc
+
+
+def _acl_grants_write(text: str) -> bool:
+    """Whether an ACL in acl_to_text form allows anyone a write right. Its
+    entries read like group:<uuid>:everyone:12:deny:delete."""
+    for line in text.splitlines()[1:]:
+        fields = line.split(":")
+        if (
+            len(fields) >= 6
+            and fields[4] == "allow"
+            and _ACL_WRITE_RIGHTS & set(fields[5].split(","))
+        ):
+            return True
+    return False
+
+
+def _darwin_untrusted(path: Path) -> Optional[str]:
+    """macOS: why others may write to path although its owner and mode say
+    they cannot, or None."""
+    libc = _darwin_libc()
+    if libc is None:
+        return None
+    raw = os.fsencode(path)
+    # x86_64 has both layouts: the 64-bit inode one is statfs$INODE64
+    try:
+        statfs = libc["statfs$INODE64"]
+    except AttributeError:
+        statfs = libc["statfs"]
+    buf = _Statfs()
+    if statfs(raw, ctypes.byref(buf)) != 0:
+        return f"{path}: cannot read its volume's flags"
+    if buf.f_flags & _MNT_IGNORE_OWNERSHIP:
+        return f"{path} is on a volume that ignores ownership"
+    acl = libc.acl_get_link_np(raw, _ACL_TYPE_EXTENDED)
+    if not acl:
+        return None
+    try:
+        text = libc.acl_to_text(acl, None)
+        try:
+            acl_text = ctypes.string_at(text).decode(errors="replace")
+        finally:
+            libc.acl_free(text)
+    finally:
+        libc.acl_free(acl)
+    if _acl_grants_write(acl_text):
+        return f"{path} has an ACL that lets others write to it"
+    return None
+
+
 def _untrusted(path: Path) -> Optional[str]:
     """None if path may be trusted, else why not."""
     st = path.lstat()
@@ -122,7 +229,7 @@ def _untrusted(path: Path) -> Optional[str]:
         return f"{path} belongs to another user"
     if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
         return f"{path} is writable by its group or by others"
-    return None
+    return _darwin_untrusted(path)
 
 
 def _safe_parent(root: Path) -> Optional[str]:
@@ -148,6 +255,10 @@ def _safe_parent(root: Path) -> Optional[str]:
                 st.st_mode & stat.S_ISVTX
             ):
                 return f"{level} is writable by its group or by others"
+            else:
+                reason = _darwin_untrusted(level)
+                if reason is not None:
+                    return reason
     return None
 
 

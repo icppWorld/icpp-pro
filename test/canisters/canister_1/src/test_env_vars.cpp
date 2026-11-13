@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "ic_api.h"
 
@@ -29,4 +30,23 @@ void test_env_var() {
 void test_env_var_count() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   ic_api.to_wire(CandidTypeNat64{IC_API::get_env_vars().size()});
+}
+
+#if defined(__wasm__)
+extern "C" void icpp_environ_set_available(int available);
+#endif
+
+// '()' -> '(getenv("ICPP_TEST_GREETING"))', read through a pointer taken
+// before an entry-point change, after the heap was reused
+void test_getenv_kept() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  const char *kept = getenv("ICPP_TEST_GREETING");
+#if defined(__wasm__)
+  // What IC_API does at every co_await and at the end of every message
+  icpp_environ_set_available(1);
+  std::vector<std::string> fill;
+  for (size_t n = 16; n <= 4096; n += 16)
+    fill.emplace_back(n, 'X');
+#endif
+  ic_api.to_wire(CandidTypeText{kept != nullptr ? kept : ""});
 }

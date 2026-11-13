@@ -15,6 +15,12 @@
 // environment variables can change between messages (update_settings).
 // Changes made with setenv() / putenv() therefore last for one message.
 //
+// A string getenv() returned stays valid for the canister's lifetime, as C and
+// POSIX promise until the program itself changes the environment: a rebuild
+// with the same variables reuses the block, and a block replaced after an
+// update_settings is kept, never freed - a canister may hold the pointer
+// across a co_await or in a static.
+//
 // IMPORTANT (bug fixed 2026-07): the previous version left every function as a
 // no-op, so `__wasilibc_environ` stayed at its (char**)-1 sentinel. getenv()
 // calls __wasilibc_ensure_environ() (a no-op) and then dereferenced -1
@@ -45,12 +51,14 @@ static char *empty_environ[1] = {NULL};
 static int environ_available = 0;
 
 // The array built from the environment variables: the NULL-terminated pointer
-// array, followed by the "NAME=VALUE" strings, in one allocation.
+// array, followed by the "NAME=VALUE" strings, in one allocation of
+// built_size bytes.
 static char **built_environ = NULL;
+static size_t built_size = 0;
 
-// Builds the "NAME=VALUE" array from ic0.env_var_*, or returns NULL when out
-// of memory.
-static char **build_environ(void) {
+// Builds the "NAME=VALUE" array from ic0.env_var_*, and its size in bytes, or
+// returns NULL when out of memory.
+static char **build_environ(size_t *size) {
   uint32_t count = ic0_env_var_count();
   size_t strings_size = 0;
   for (uint32_t i = 0; i < count; ++i) {
@@ -66,7 +74,8 @@ static char **build_environ(void) {
   }
 
   size_t array_size = (count + 1) * sizeof(char *);
-  char **env = malloc(array_size + strings_size);
+  *size = array_size + strings_size;
+  char **env = malloc(*size);
   if (env == NULL) return NULL;
 
   char *p = (char *)env + array_size;
@@ -87,11 +96,35 @@ static char **build_environ(void) {
   return env;
 }
 
+// Points built_environ at the current variables: the previous block when they
+// did not change, else a new one (the previous block stays allocated).
+static void update_built_environ(void) {
+  size_t size = 0;
+  char **env = build_environ(&size);
+  if (env == NULL) return;
+  // The blocks hold the same strings when they have the same size and the
+  // same bytes after their pointer arrays, which point into each block itself
+  if (built_environ != NULL && size == built_size) {
+    size_t array_size = 0;
+    while (env[array_size / sizeof(char *)] != NULL)
+      array_size += sizeof(char *);
+    array_size += sizeof(char *);
+    if (memcmp((char *)env + array_size, (char *)built_environ + array_size,
+               size - array_size) == 0) {
+      free(env);
+      return;
+    }
+  }
+  built_environ = env;
+  built_size = size;
+}
+
 // See the comments in libc-environ.h.
 void __wasilibc_initialize_environ(void) {
-  free(built_environ);
-  built_environ = environ_available ? build_environ() : NULL;
-  __wasilibc_environ = built_environ != NULL ? built_environ : empty_environ;
+  if (environ_available) update_built_environ();
+  __wasilibc_environ = environ_available && built_environ != NULL
+                           ? built_environ
+                           : empty_environ;
 }
 
 // See the comments in libc-environ.h.
@@ -106,11 +139,8 @@ void __wasilibc_ensure_environ(void) {
 
 // See the comments in libc-environ.h.
 // Reset to the sentinel so a subsequent __wasilibc_ensure_environ() re-inits.
-void __wasilibc_deinitialize_environ(void) {
-  free(built_environ);
-  built_environ = NULL;
-  __wasilibc_environ = (char **)-1;
-}
+// built_environ is not freed: getenv() may have handed out its strings.
+void __wasilibc_deinitialize_environ(void) { __wasilibc_environ = (char **)-1; }
 
 // See the comments in libc-environ.h.
 // This version does nothing, as in wasi-libc. When the program references

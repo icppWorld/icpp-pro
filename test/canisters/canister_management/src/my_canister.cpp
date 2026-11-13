@@ -3,6 +3,7 @@
 
 #include "my_canister.h"
 
+#include <random>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,29 @@ IC_Async raw_rand_async() {
   ic_api.to_wire(CandidTypeVecNat8{r.value()});
 }
 void raw_rand() { raw_rand_async(); }
+
+// '()' -> '()': seeds WASI random_get from raw_rand
+IC_Async seed_wasi_random_async() {
+  IC_API ic_api(CanisterUpdate{"seed_wasi_random"}, false);
+  ic_api.from_wire();
+  IC_CallResult<void> r = co_await IC_Management::seed_wasi_random();
+  if (!r) IC_API::trap("seed_wasi_random: " + r.error().to_string());
+  ic_api.to_wire();
+}
+void seed_wasi_random() { seed_wasi_random_async(); }
+
+// '()' -> '(32 bytes from std::random_device)'
+void wasi_random() {
+  IC_API ic_api(CanisterQuery{"wasi_random"}, false);
+  std::random_device rd;
+  IC_Blob bytes;
+  while (bytes.size() < 32) {
+    uint32_t v = rd();
+    for (int i = 0; i < 4; ++i)
+      bytes.push_back((uint8_t)(v >> (8 * i)));
+  }
+  ic_api.to_wire(CandidTypeVecNat8{bytes});
+}
 
 // '()' -> '(principal of a new canister)', with 100B cycles to start with
 IC_Async create_canister_async() {

@@ -379,6 +379,22 @@ public:
   // randomness.
   static IC_Task<IC_CallResult<IC_Blob>> raw_rand();
 
+  // Seeds the random number generator behind WASI random_get - getentropy,
+  // std::random_device, arc4random, and crypto libraries seeded from them -
+  // with raw_rand. Until then it starts from a constant seed at every install
+  // and upgrade, so its output is predictable: call this before using those
+  // for anything secret, e.g. from a zero-delay timer set in canister_init and
+  // canister_post_upgrade. Make no secret until it succeeded - keep that flag
+  // in the heap, not stable memory, so an upgrade clears it - and make them in
+  // update calls. Let nothing made with it leave a query, e.g. a signature
+  // with a random nonce: a query discards its changes, so it draws the same
+  // bytes as the next update. A loaded canister snapshot restores the heap,
+  // generators included: load it while stopped, and upgrade before starting.
+  // Seed before anything draws from them: a generator that already drew, such
+  // as arc4random's or a crypto library's, may keep the state it derived from
+  // the constant seed.
+  static IC_Task<IC_CallResult<void>> seed_wasi_random();
+
   // Creates an empty canister, e.g. one per user, controlled by this
   // canister unless settings say otherwise. It starts with extra_cycles, attached on top of the cost of
   // the creation: a canister needs cycles to allocate memory, so give it some

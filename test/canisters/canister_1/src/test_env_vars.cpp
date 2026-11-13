@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "ic_api.h"
 
@@ -29,4 +30,35 @@ void test_env_var() {
 void test_env_var_count() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   ic_api.to_wire(CandidTypeNat64{IC_API::get_env_vars().size()});
+}
+
+#if defined(__wasm__)
+extern "C" void icpp_environ_set_available(int available);
+#endif
+
+// '()' -> '(getenv("ICPP_TEST_GREETING"))', read through a pointer taken
+// before an entry-point change, after the heap was reused
+void test_getenv_kept() {
+  IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
+  const char *kept = getenv("ICPP_TEST_GREETING");
+#if defined(__wasm__)
+  // What IC_API does at the end of a message and at the start of the next
+  icpp_environ_set_available(0);
+  icpp_environ_set_available(1);
+  // Rebuilds environ with the same variables, so the old block is reused
+  (void)getenv("ICPP_TEST_GREETING");
+  std::vector<std::string> fill;
+  for (size_t n = 16; n <= 4096; n += 16)
+    fill.emplace_back(n, 'X');
+#endif
+  ic_api.to_wire(CandidTypeText{kept != nullptr ? kept : ""});
+}
+
+// '()' -> '(getenv("ICPP_TEST_GREETING"))' after setenv() changed it. The
+// change lasts for this message only
+void test_setenv() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  setenv("ICPP_TEST_GREETING", "changed by setenv", 1);
+  const char *value = getenv("ICPP_TEST_GREETING");
+  ic_api.to_wire(CandidTypeText{value != nullptr ? value : ""});
 }

@@ -53,6 +53,7 @@ bool is_registered_ic_api(IC_API *ic_api);
 uint32_t calls_in_flight();
 void add_calls_in_flight(int32_t delta);
 
-// Traps when calls are in flight and the canister is running (ic_api.cpp).
+// Traps when calls are in flight and the canister is not stopped: running, or
+// still stopping (ic_api.cpp).
 // The IC_API constructor runs it in canister_pre_upgrade.
 void icpp_check_no_calls_in_flight();

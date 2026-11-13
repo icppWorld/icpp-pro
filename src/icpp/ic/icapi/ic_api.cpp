@@ -164,8 +164,9 @@ uint64_t IC_API::get_msg_deadline() {
 void icpp_check_no_calls_in_flight() {
   uint32_t n = calls_in_flight();
   // A stopped canister has no open call contexts: always allow it, so a
-  // miscounted call can never block the upgrade for good.
-  if (n > 0 && ic0_canister_status() == 1) {
+  // miscounted call can never block the upgrade for good. A stopping one
+  // still has them, and their callbacks would get pointers into the old heap.
+  if (n > 0 && ic0_canister_status() != 3) {
     IC_API::trap(
         "canister_pre_upgrade: " + std::to_string(n) +
         " inter-canister call(s) in flight. Their callbacks would run against "

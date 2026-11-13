@@ -5,6 +5,7 @@
 #if defined(__cpp_impl_coroutine)
 
 #include "ic0.h"
+#include "ic_wasi_polyfill.h"
 
 namespace {
 // The default and maximum response size of an HTTPS outcall
@@ -454,6 +455,13 @@ IC_Task<IC_CallResult<IC_Blob>> IC_Management::raw_rand() {
   IC_Blob bytes;
   r->decode(CandidTypeVecNat8{&bytes});
   co_return bytes;
+}
+
+IC_Task<IC_CallResult<void>> IC_Management::seed_wasi_random() {
+  IC_CallResult<IC_Blob> r = co_await raw_rand();
+  if (!r) co_return r.error();
+  raw_init_seed(r->data(), r->size());
+  co_return IC_CallResult<void>{};
 }
 
 IC_Task<IC_CallResult<CandidTypePrincipal>>

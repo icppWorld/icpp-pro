@@ -4,6 +4,7 @@ it can never fail a build."""
 
 # pylint: disable=missing-function-docstring, redefined-outer-name
 
+import ctypes
 import os
 import platform
 import re
@@ -12,7 +13,7 @@ import stat
 import subprocess
 import threading
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 import pytest
 import typer
@@ -394,3 +395,161 @@ def test__a_sticky_parent_like_tmp_is_fine(tmp_path: Path, built: Path) -> None:
         assert candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
     finally:
         os.chmod(parent, 0o755)
+
+
+@pytest.mark.parametrize(
+    "text, grants",
+    [
+        ("!#acl 1\ngroup:ABCD:everyone:12:deny:delete\n", False),
+        ("!#acl 1\nuser:ABCD:bob:99999:allow:read,execute\n", False),
+        ("!#acl 1\nuser:ABCD:bob:99999:allow:read,write\n", True),
+        ("!#acl 1\ngroup:ABCD:staff:20:allow,file_inherit:add_file\n", True),
+        ("!#acl 1\ngroup:ABCD:everyone:12:allow,inherited:write\n", True),
+        (
+            "!#acl 1\ngroup:ABCD:everyone:12:allow,file_inherit,directory_inherit:"
+            "write\n",
+            True,
+        ),
+        ("!#acl 1\ngroup:ABCD:everyone:12:deny,inherited:write\n", False),
+        (f"!#acl 1\nuser:ABCD:me:{os.getuid()}:allow:write\n", False),
+        ("!#acl 1\nuser:ABCD:root:0:allow:write\n", False),
+        (
+            "!#acl 1\ngroup:ABCD:everyone:12:allow,file_inherit,only_inherit:write\n",
+            True,
+        ),
+        (f"!#acl 1\nuser:ABCD:other:{os.getuid() + 1}:allow:write\n", True),
+    ],
+)
+def test__an_acl_that_allows_a_write_right_is_found(text: str, grants: bool) -> None:
+    # pylint: disable-next=protected-access
+    assert candid_library._acl_grants_write(text) is grants
+
+
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")
+def test__a_saved_copy_with_a_write_acl_is_never_trusted(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An ACL lets others write without any mode bit (macOS)."""
+    root = tmp_path / "folder"
+    key = saved(root, built)
+    library = root / TARGET / key / LIB_FILE
+    subprocess.run(["chmod", "+a", "everyone allow write", str(library)], check=True)
+    assert not candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
+    assert "has an ACL that lets others write to it" in capsys.readouterr().out
+
+
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")
+def test__an_inherited_write_acl_is_never_trusted(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An entry inherited from a folder above carries the inherited flag."""
+    root = tmp_path / "folder"
+    key = saved(root, built)
+    library = root / TARGET / key / LIB_FILE
+    subprocess.run(["chmod", "+ai", "everyone allow write", str(library)], check=True)
+    assert not candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
+    assert "has an ACL that lets others write to it" in capsys.readouterr().out
+
+
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")
+def test__a_write_acl_passed_on_to_what_is_saved_is_refused(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An only_inherit entry does not apply to the folder itself, but the copy
+    saved in it would inherit the entry: the folder is refused."""
+    root = tmp_path / "folder"
+    (root / TARGET).mkdir(parents=True, mode=0o700)
+    os.chmod(root, 0o700)
+    subprocess.run(
+        [
+            "chmod",
+            "+a",
+            "everyone allow write,file_inherit,directory_inherit,only_inherit",
+            str(root / TARGET),
+        ],
+        check=True,
+    )
+    key = saved(root, built)
+    out = capsys.readouterr().out
+    assert "has an ACL that lets others write to it" in out
+    assert not (root / TARGET / key).exists()
+    assert not list((root / TARGET).glob(".tmp-*"))
+
+
+def test__an_only_inherit_entry_of_a_parent_is_fine() -> None:
+    """It gives no right on the parent; what it passes on to the folders made
+    in it shows up there as an inherited entry."""
+    text = "!#acl 1\ngroup:ABCD:everyone:12:allow,file_inherit,only_inherit:write\n"
+    # pylint: disable-next=protected-access
+    assert not candid_library._acl_grants_write(text, inheritable=False)
+
+
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")
+def test__a_parent_passing_on_a_write_acl_is_fine_until_it_reaches_us(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A file-only entry of the parent reaches no folder made in it; a
+    directory one reaches the folder, which is refused."""
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    rights = "everyone allow write,file_inherit,only_inherit"
+    subprocess.run(["chmod", "+a", rights, str(parent)], check=True)
+    key = saved(parent / "files", built)
+    assert "WARNING" not in capsys.readouterr().out
+    assert candid_library.restore(parent / "files", TARGET, key, LIB_FILE, tmp_path)
+    rights = "everyone allow write,directory_inherit,only_inherit"
+    subprocess.run(["chmod", "+a", rights, str(parent)], check=True)
+    key = saved(parent / "folders", built)
+    assert "has an ACL that lets others write to it" in capsys.readouterr().out
+    assert not (parent / "folders" / TARGET / key).exists()
+
+
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS ACLs")
+def test__a_sticky_parent_with_a_write_acl_is_refused(
+    tmp_path: Path, built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An ACL can let others replace the folder despite the sticky bit."""
+    parent = tmp_path / "sticky"
+    parent.mkdir()
+    os.chmod(parent, 0o1777)
+    subprocess.run(
+        ["chmod", "+a", "everyone allow delete_child", str(parent)], check=True
+    )
+    try:
+        saved(parent / "folder", built)
+        assert "has an ACL that lets others write to it" in capsys.readouterr().out
+    finally:
+        os.chmod(parent, 0o755)
+
+
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS statfs")
+def test__a_volume_that_ignores_ownership_is_never_trusted(
+    tmp_path: Path,
+    built: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """On such a volume (macOS), every file seems to be ours. statfs reports
+    the volume flag, here MNT_IGNORE_OWNERSHIP set by a stand-in."""
+    root = tmp_path / "folder"
+    key = saved(root, built)
+    # pylint: disable=protected-access
+    real = candid_library._darwin_statfs(candid_library._darwin_libc())
+
+    def statfs(path: bytes, buf: Any) -> int:
+        result = real(path, buf)
+        buf._obj.f_flags |= candid_library._MNT_IGNORE_OWNERSHIP
+        return int(result)
+
+    monkeypatch.setattr(candid_library, "_darwin_statfs", lambda libc: statfs)
+    assert not candid_library.restore(root, TARGET, key, LIB_FILE, tmp_path)
+    assert "is on a volume that ignores ownership" in capsys.readouterr().out
+
+
+@pytest.mark.skipif(platform.system() != "Darwin", reason="macOS statfs")
+def test__a_private_folder_on_the_system_volume_is_trusted(tmp_path: Path) -> None:
+    """The real statfs and ACL calls: struct statfs is 2168 bytes, and a
+    private folder in the temp dir has neither ignored ownership nor an ACL."""
+    # pylint: disable=protected-access
+    assert ctypes.sizeof(candid_library._Statfs) == 2168
+    assert candid_library._darwin_untrusted(tmp_path) is None

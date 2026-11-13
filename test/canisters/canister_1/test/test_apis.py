@@ -188,6 +188,32 @@ def test__test_vendors(network: str, principal: str) -> None:
     assert response == expected_response
 
 
+def test__test_getenv_kept(network: str, principal: str) -> None:
+    # A getenv() pointer stays valid after the entry point changes and environ
+    # is rebuilt with the same variables: the block it points into is reused,
+    # not freed and overwritten
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_getenv_kept",
+        network=network,
+    )
+    assert response == '("hello from icp.yaml")'
+
+
+def test__test_setenv_lasts_one_message(network: str, principal: str) -> None:
+    # setenv() changes the environment of its own message only
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_setenv",
+        network=network,
+    )
+    assert response == '("changed by setenv")'
+    response = call_test_env_var(network, "ICPP_TEST_GREETING")
+    assert response == '(opt "hello from icp.yaml", opt "hello from icp.yaml")'
+
+
 # ----------------------------------------------------------------------------------
 # Run all unit tests for candid
 def test__test_candid(network: str, principal: str) -> None:

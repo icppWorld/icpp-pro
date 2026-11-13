@@ -26,8 +26,8 @@ permissions:
 
 jobs:
   fuzz:
-    # apt.llvm.org has no clang-18 for ubuntu-latest (26.04, resolute):
-    # make install-clang-ubuntu needs 24.04
+    # A fixed image rather than ubuntu-latest, so a new Ubuntu never breaks
+    # the run unannounced. version_clang.txt must exist for it on apt.llvm.org
     runs-on: ubuntu-24.04
 
     steps:

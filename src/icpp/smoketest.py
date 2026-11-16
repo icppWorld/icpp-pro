@@ -27,6 +27,7 @@ import json
 import re
 import shlex
 import subprocess
+import tempfile
 import warnings
 from pathlib import Path
 from typing import Optional, Any, Dict, List, Tuple
@@ -40,6 +41,10 @@ ICP = "icp"
 # Names the identity the tests run as, when `pytest --identity <name>` is not
 # given.
 IDENTITY_ENV_VAR = "ICPP_PRO_TEST_IDENTITY"
+
+# A larger argument goes to icp through a file: Linux caps one argument of a
+# command at 128 KiB, and the whole command is one argument of /bin/sh
+_INLINE_ARG_MAX_BYTES = 64 * 1024
 
 # dfx's `--type` / `--output` values, mapped onto the icp-cli equivalents
 # (`--args-format` / `--output`). The icp-cli names are passed through, so
@@ -418,27 +423,35 @@ def call_canister_api(
             did_text is not None and _is_query_in_did(did_text, canister_method)
         )
 
-    arg = (
-        f" canister call "
-        f" {shlex.quote(canister_name)} "
-        f" {shlex.quote(canister_method)} "
-        f" {shlex.quote(argument)} "
-        f" --environment {shlex.quote(network)} "
-        f" --args-format {_ARGS_FORMATS[canister_input]} "
-        f" --output {_OUTPUT_FORMATS[canister_output]} "
-    )
-    if query:
-        arg += " --query "
-
-    try:
-        response = _run_icp(arg, project_root, timeout_seconds, identity=identity)
-    except subprocess.CalledProcessError as e:
-        if _is_not_deployed_error(e.output):
-            pytest.exit(_not_deployed_msg(canister_name, network, canister_method))
-        response = (
-            f"Failed call to api '{canister_method}' of canister '{canister_name}':"
-            f"{e.output}"
+    args_format = _ARGS_FORMATS[canister_input]
+    with tempfile.TemporaryDirectory() as tmp:
+        # bin arguments are file references already
+        if args_format != "bin" and len(argument.encode()) > _INLINE_ARG_MAX_BYTES:
+            args_file = Path(tmp) / "args"
+            args_file.write_text(argument, encoding="utf-8")
+            call_argument = f" --args-file {shlex.quote(str(args_file))} "
+        else:
+            call_argument = f" {shlex.quote(argument)} "
+        arg = (
+            f" canister call "
+            f" {shlex.quote(canister_name)} "
+            f" {shlex.quote(canister_method)} "
+            f" {call_argument} "
+            f" --environment {shlex.quote(network)} "
+            f" --args-format {args_format} "
+            f" --output {_OUTPUT_FORMATS[canister_output]} "
         )
+        if query:
+            arg += " --query "
+        try:
+            response = _run_icp(arg, project_root, timeout_seconds, identity=identity)
+        except subprocess.CalledProcessError as e:
+            if _is_not_deployed_error(e.output):
+                pytest.exit(_not_deployed_msg(canister_name, network, canister_method))
+            response = (
+                f"Failed call to api '{canister_method}' of canister '{canister_name}':"
+                f"{e.output}"
+            )
 
     return response
 

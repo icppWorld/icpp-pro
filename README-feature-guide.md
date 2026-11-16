@@ -126,11 +126,13 @@ make all-static                  # clang-format + black + pylint + mypy
 # targeted, for the canisters you touched:
 cd test/canisters/<canister> && icpp build-native && icpp run-native
 cd test/canisters/<canister> && icpp build-wasm
-# full suite before merge:
-make all-tests
 ```
 
-CI (mac + ubuntu matrix, python 3.11-3.14) must be green.
+The full suite (`make all-tests`) runs in CI, not on the laptop: it builds and
+deploys every test canister, which loads the machine for half an hour. CI runs
+on every push to a PR that changes code (`src/`, `test/`, the Makefile, ...):
+`all-tests` on Python 3.14 for each OS, `smoke-tests` on 3.11-3.13. CI
+(mac + ubuntu matrix) must be green.
 
 **Upgrade test** — required when the change can affect deployed state or the
 wire format, and always at release:

@@ -44,9 +44,11 @@ Create the same branch in a sibling repo only at the moment it needs a change.
 make all-static
 cd test/canisters/<touched> && icpp build-native && icpp run-native
 cd test/canisters/<touched> && icpp build-wasm
-make all-tests          # before merge
 make upgrade-test       # when deployed state / wire format could be affected
 ```
+
+Do not run `make all-tests` locally: CI runs it (on Python 3.14 for each OS) on
+every push to the PR that changes code, and must be green before merge.
 
 Then run the sibling tier that matches the change — see the
 `icpp-pro-verify-siblings` skill.

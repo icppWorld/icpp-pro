@@ -133,6 +133,10 @@ Tests run in two modes:
    one exception
 2. **Deployed:** Build WASM, deploy to a local icp network, run pytest with `--network=local`
 
+Locally, test only the canisters a change touches. Do not run `make all-tests` on the
+laptop: it builds and deploys every test canister, and CI runs it (on Python 3.14 for each
+OS) on every push to a PR that changes code.
+
 `make all-tests` and `make smoke-tests` build the icpp-candid library once per set of
 compile flags and reuse it in every other canister, through a fresh
 `ICPP_CANDID_LIBRARY_DIR` folder per run (`--candid-library-dir` on the build commands;

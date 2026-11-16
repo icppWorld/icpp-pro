@@ -663,15 +663,24 @@ def test__canister_roundtrip_text(network: str, principal: str) -> None:
 def test__roundtrip_blob_over_128_kib(network: str, principal: str) -> None:
     # Linux caps one argument of a command at 128 KiB: call_canister_api passes
     # a larger argument to icp through a file
-    data = "x" * 200 * 1024
+    size = 200 * 1024
+    leb128 = ""
+    while True:
+        byte, size = size & 0x7F, size >> 7
+        leb128 += f"{byte | (0x80 if size else 0):02x}"
+        if not size:
+            break
+    message = "4449444c016d7b0100" + leb128 + "78" * 200 * 1024
     response = call_canister_api(
         icp_yaml_path=ICP_YAML_PATH,
         canister_name=CANISTER_NAME,
         canister_method="roundtrip_blob",
-        canister_argument=f'(blob "{data}")',
+        canister_argument=message,
+        canister_input="raw",
+        canister_output="raw",
         network=network,
     )
-    assert response == f'(\n  blob "{data}",\n)'
+    assert response == message
 
 
 def test__roundtrip_blob(network: str, principal: str) -> None:

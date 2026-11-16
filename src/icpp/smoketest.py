@@ -23,6 +23,7 @@ so using it would clobber the identity you use for mainnet work and leave a run
 exposed to anything that changes it mid-flight.
 """
 
+import contextlib
 import json
 import re
 import shlex
@@ -30,7 +31,7 @@ import subprocess
 import tempfile
 import warnings
 from pathlib import Path
-from typing import Optional, Any, Dict, List, Tuple
+from typing import Optional, Any, Dict, Iterator, List, Tuple
 import pytest  # pylint: disable=unused-import
 import yaml
 
@@ -364,6 +365,21 @@ def _run_icp(
     ).rstrip("\n")
 
 
+@contextlib.contextmanager
+def _call_argument(argument: str, args_format: str) -> Iterator[str]:
+    """The argument of an icp canister call, quoted, or, when that is too large
+    for one argument of a command, passed through a file that exists until the
+    block ends. bin arguments are file references already."""
+    quoted = shlex.quote(argument)
+    if args_format == "bin" or len(quoted.encode()) <= _INLINE_ARG_MAX_BYTES:
+        yield quoted
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        args_file = Path(tmp) / "args"
+        args_file.write_text(argument, encoding="utf-8")
+        yield f"--args-file {shlex.quote(str(args_file))}"
+
+
 def call_canister_api(
     *,
     canister_name: str,
@@ -424,14 +440,7 @@ def call_canister_api(
         )
 
     args_format = _ARGS_FORMATS[canister_input]
-    with tempfile.TemporaryDirectory() as tmp:
-        # bin arguments are file references already
-        if args_format != "bin" and len(argument.encode()) > _INLINE_ARG_MAX_BYTES:
-            args_file = Path(tmp) / "args"
-            args_file.write_text(argument, encoding="utf-8")
-            call_argument = f" --args-file {shlex.quote(str(args_file))} "
-        else:
-            call_argument = f" {shlex.quote(argument)} "
+    with _call_argument(argument, args_format) as call_argument:
         arg = (
             f" canister call "
             f" {shlex.quote(canister_name)} "

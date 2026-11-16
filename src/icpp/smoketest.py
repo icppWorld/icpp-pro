@@ -44,7 +44,8 @@ ICP = "icp"
 IDENTITY_ENV_VAR = "ICPP_PRO_TEST_IDENTITY"
 
 # A larger argument goes to icp through a file: Linux caps one argument of a
-# command at 128 KiB, and the whole command is one argument of /bin/sh
+# command at 128 KiB, and the whole command is one argument of /bin/sh. Half of
+# that leaves room for the rest of the command (names, paths, identity).
 _INLINE_ARG_MAX_BYTES = 64 * 1024
 
 # dfx's `--type` / `--output` values, mapped onto the icp-cli equivalents

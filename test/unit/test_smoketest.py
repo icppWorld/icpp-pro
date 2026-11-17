@@ -179,8 +179,13 @@ def test__timeout_output_cuts_a_long_output() -> None:
     assert run_shell_cmd_module.timeout_output(e) == "y" * 132 + "..."
 
 
-def test__timeout_output_drops_an_escape_code_cut_off_at_the_end() -> None:
-    e = subprocess.TimeoutExpired("icp x", 1, output=b"waiting \x1b[1")
+@pytest.mark.parametrize(
+    "cut_off", [b"\x1b", b"\x1b[1", b"\x1b[?25", b"\x1b[38;5;20", b"\x1b("]
+)
+def test__timeout_output_drops_an_escape_code_cut_off_at_the_end(
+    cut_off: bytes,
+) -> None:
+    e = subprocess.TimeoutExpired("icp x", 1, output=b"waiting " + cut_off)
     assert run_shell_cmd_module.timeout_output(e) == "waiting "
 
 

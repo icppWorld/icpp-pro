@@ -188,6 +188,16 @@ public:
       PerformanceCounterType type = PerformanceCounterType::Instructions);
   // docs end: performance_counter
 
+  // docs start: stable_size
+  // The size of all of stable memory in 64 KiB pages, at any size (the
+  // 32-bit ic0_stable_size traps above 4 GiB). Most of it is usually the
+  // space the file system reserved for its files: its memory manager reserves
+  // room in large steps, starting at about 64 MiB, and never gives it back
+  // when files are deleted. Pages grown directly with ic0_stable_grow count
+  // too. Available in every entry point. Natively it is 0, unless a test sets
+  // it with mockIC.set_stable_size.
+  static uint64_t get_stable_size(); // docs end: stable_size
+
   // docs start: subnet
   // The subnet this canister runs on, and its number of nodes. Not available
   // in canister_start.

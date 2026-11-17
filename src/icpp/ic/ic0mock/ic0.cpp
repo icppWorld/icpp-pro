@@ -413,15 +413,33 @@ uint64_t ic0_msg_deadline() {
 }
 
 uint32_t ic0_stable_size() {
-  std::cout << "ic0mock ic0::stable_size" << std::endl;
-  std::cout << "...PATCH-PATCH- Returning 0..." << std::endl;
-  return 0;
+  // Permitted everywhere. Like the IC, it traps above 4 GiB (64 Ki pages).
+  uint64_t pages = global_mockIC->get_stable_size();
+  if (pages > 64 * 1024) {
+    IC_API::trap("ic0_stable_size: stable memory is larger than 4 GiB (" +
+                 std::to_string(pages) +
+                 " pages); use ic0_stable64_size instead");
+  }
+  return static_cast<uint32_t>(pages);
+}
+
+uint64_t ic0_stable64_size() {
+  // Permitted everywhere
+  return global_mockIC->get_stable_size();
 }
 
 uint32_t ic0_stable_grow(uint32_t new_pages) {
-  std::cout << "ic0mock ic0::stable_grow" << std::endl;
-  std::cout << "...PATCH-PATCH- Returning 0..." << std::endl;
-  return 0;
+  // Permitted everywhere. Grows the size that ic0_stable_size reports and
+  // returns the old size, or -1 when the new size would pass 4 GiB. Like the
+  // IC, it traps when stable memory is already larger than 4 GiB.
+  uint64_t pages = global_mockIC->get_stable_size();
+  if (pages > 64 * 1024) {
+    IC_API::trap("ic0_stable_grow: stable memory is larger than 4 GiB (" +
+                 std::to_string(pages) + " pages)");
+  }
+  if (pages + new_pages > 64 * 1024) return UINT32_MAX;
+  global_mockIC->set_stable_size(pages + new_pages);
+  return static_cast<uint32_t>(pages);
 }
 
 void ic0_stable_write(uint32_t off, uintptr_t src, uint32_t size) {

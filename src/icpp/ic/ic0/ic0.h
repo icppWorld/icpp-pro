@@ -121,6 +121,10 @@ void ic0_stable_write(uint32_t off, uint32_t src, uint32_t size)
 void ic0_stable_read(uint32_t dst, uint32_t off, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "stable_read");
 
+// The size of stable memory in 64 KiB pages. Unlike ic0_stable_size, which
+// traps above 4 GiB, it works at any size. Available everywhere.
+uint64_t ic0_stable64_size() WASM_SYMBOL_IMPORTED("ic0", "stable64_size");
+
 // Certified data. The value set may be at most 32 bytes; the data
 // certificate is only present in a (composite) query call.
 void ic0_certified_data_set(uint32_t src, uint32_t size)

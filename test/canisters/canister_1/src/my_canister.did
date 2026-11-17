@@ -26,6 +26,7 @@ service: {
     "test_certified_data_set" : () -> ();
     "test_data_certificate" : () -> (int) query;
     "test_introspection" : () -> (int);
+    "test_stable_size" : () -> (nat64);
     "test_introspection_query" : () -> (int) query;
     "test_env_var" : (text) -> (opt text, opt text) query;
     "test_env_var_count" : () -> (nat64) query;

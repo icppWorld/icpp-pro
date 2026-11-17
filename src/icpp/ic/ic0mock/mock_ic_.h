@@ -110,6 +110,12 @@ public:
   }
   void clear_performance_counter() { m_performance_counter = nullptr; }
 
+  // The size of stable memory in 64 KiB pages, which ic0.stable_size and
+  // ic0.stable64_size report. Natively the file system lives on the host, not
+  // in stable memory, so it is 0 unless a test sets it. Sticky too.
+  uint64_t get_stable_size() const { return m_stable_size; }
+  void set_stable_size(uint64_t pages) { m_stable_size = pages; }
+
   // -------------------------------------------------------------------------
   // Inter-canister calls (ic_async.h).
   //
@@ -254,6 +260,7 @@ private:
   std::vector<uint8_t> m_caller_info_signer;
   std::map<std::string, std::string> m_env_vars;
   std::function<uint64_t(uint32_t)> m_performance_counter;
+  uint64_t m_stable_size{0};
   // Inter-canister calls
   struct PendingCall {
     std::vector<uint8_t> callee;

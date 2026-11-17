@@ -294,6 +294,30 @@ static void native_caller_info_signer_size_in_heartbeat() {
   (void)ic0_msg_caller_info_signer_size(); // must trap
 }
 
+// Stable memory size scenarios.
+// Above 4 GiB only the 64-bit size works: '()' -> '()'
+static void native_stable_size_above_4_gib() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  if (IC_API::get_stable_size() != 64 * 1024 + 1) {
+    IC_API::trap(std::string(__func__) + ": wrong size");
+  }
+  ic_api.to_wire();
+}
+
+// ic0_stable_grow grows the size both stable_size calls report, from 3
+// pages, and fails past 4 GiB: '()' -> '()'
+static void native_stable_grow() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  if (ic0_stable_grow(2) != 3 || ic0_stable_size() != 5 ||
+      IC_API::get_stable_size() != 5) {
+    IC_API::trap(std::string(__func__) + ": did not grow from 3 to 5 pages");
+  }
+  if (ic0_stable_grow(64 * 1024) != UINT32_MAX || ic0_stable_size() != 5) {
+    IC_API::trap(std::string(__func__) + ": grew past 4 GiB");
+  }
+  ic_api.to_wire();
+}
+
 // Step-03b scenarios: environment variables.
 static void native_env_vars() {
   IC_API ic_api(CanisterUpdate{"native_env_vars"}, false);
@@ -2059,6 +2083,30 @@ int main() {
   mockIC.run_trap_test("native_caller_info_signer_size_in_heartbeat",
                        native_caller_info_signer_size_in_heartbeat,
                        "4449444c0000", silent_on_trap, my_principal);
+
+  // ------------------------------------------------------------------------
+  // Stable memory size
+
+  // '()' -> '(0 : nat64)': natively the file system is not in stable memory
+  mockIC.run_test("test_stable_size", test_stable_size, "4449444c0000",
+                  "4449444c0001780000000000000000", silent_on_trap,
+                  my_principal);
+  // '()' -> '(3 : nat64)'
+  mockIC.set_stable_size(3);
+  mockIC.run_test("test_stable_size (3 pages)", test_stable_size,
+                  "4449444c0000", "4449444c0001780300000000000000",
+                  silent_on_trap, my_principal);
+  mockIC.set_stable_size(3);
+  mockIC.run_test("native_stable_grow", native_stable_grow, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+  // Above 4 GiB the 32-bit ic0_stable_size traps, as on the IC
+  mockIC.set_stable_size(64 * 1024 + 1);
+  mockIC.run_test("native_stable_size_above_4_gib",
+                  native_stable_size_above_4_gib, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+  mockIC.run_trap_test("test_stable_size (above 4 GiB)", test_stable_size,
+                       "4449444c0000", silent_on_trap, my_principal);
+  mockIC.set_stable_size(0);
 
   // ------------------------------------------------------------------------
   // Environment variables (step 03b)

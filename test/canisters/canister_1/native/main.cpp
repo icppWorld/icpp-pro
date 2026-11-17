@@ -319,7 +319,6 @@ static void native_stable_grow() {
 }
 
 // Step-03b scenarios: environment variables.
-
 static void native_env_vars() {
   IC_API ic_api(CanisterUpdate{"native_env_vars"}, false);
   std::map<std::string, std::string> expected{{"A_NAME", "a value"},
@@ -2097,6 +2096,7 @@ int main() {
   mockIC.run_test("test_stable_size (3 pages)", test_stable_size,
                   "4449444c0000", "4449444c0001780300000000000000",
                   silent_on_trap, my_principal);
+  mockIC.set_stable_size(3);
   mockIC.run_test("native_stable_grow", native_stable_grow, "4449444c0000",
                   "4449444c0000", silent_on_trap, my_principal);
   // Above 4 GiB the 32-bit ic0_stable_size traps, as on the IC

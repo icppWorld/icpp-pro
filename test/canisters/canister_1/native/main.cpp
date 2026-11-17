@@ -2105,7 +2105,8 @@ int main() {
                   native_stable_size_above_4_gib, "4449444c0000",
                   "4449444c0000", silent_on_trap, my_principal);
   mockIC.run_trap_test("test_stable_size (above 4 GiB)", test_stable_size,
-                       "4449444c0000", silent_on_trap, my_principal);
+                       "4449444c0000", silent_on_trap, my_principal,
+                       "ic0_stable_size: stable memory is larger than 4 GiB");
   mockIC.set_stable_size(0);
 
   // ------------------------------------------------------------------------

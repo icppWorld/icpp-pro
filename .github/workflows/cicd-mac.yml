@@ -166,13 +166,18 @@ jobs:
       # macOS this halves the wall-clock time: the free plan runs at most 5
       # macOS jobs at once. JOBS deploys & tests that many canisters at a
       # time; each gets its own local network. The macOS runners are too slow
-      # for 3 at a time: replica calls time out. macos-15-intel tests one
-      # canister at a time, macos-latest two.
+      # for 3 at a time: replica calls time out. macos-latest tests two
+      # canisters at a time.
+      # On macos-15-intel, the slowest runner, all-tests builds and tests every
+      # canister natively, but deploys only greet: deploying all of them took
+      # ~45 minutes there, and their wasm comes from the same pinned toolchain
+      # that all-tests deploys on ubuntu (x86_64) and macos-latest. Greet still
+      # checks the x86_64 macOS wasm toolchain, for its own compile flags.
       - name: all-tests
         if: matrix.python-version == env.ALL_TESTS_PYTHON
         shell: bash -l {0}
         run: |
-          make all-tests JOBS=${{ matrix.os == 'macos-15-intel' && 1 || 2 }}
+          make all-tests JOBS=2 ${{ matrix.os == 'macos-15-intel' && 'CANISTERS=greet' || '' }}
 
       - name: smoke-tests
         if: matrix.python-version != env.ALL_TESTS_PYTHON

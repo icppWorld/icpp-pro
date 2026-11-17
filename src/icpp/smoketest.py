@@ -35,7 +35,7 @@ from typing import Optional, Any, Dict, Iterator, List, Tuple
 import pytest  # pylint: disable=unused-import
 import yaml
 
-from icpp.run_shell_cmd import run_shell_cmd
+from icpp.run_shell_cmd import run_shell_cmd, timeout_output
 
 ICP = "icp"
 
@@ -47,6 +47,11 @@ IDENTITY_ENV_VAR = "ICPP_PRO_TEST_IDENTITY"
 # command at 128 KiB, and the whole command is one argument of /bin/sh. Half of
 # that leaves room for the rest of the command (names, paths, identity).
 _INLINE_ARG_MAX_BYTES = 64 * 1024
+
+# The default timeout of a canister call whose argument goes through a file: icp
+# can take longer than the usual 30 seconds to encode and send an argument near
+# the IC's 2 MB limit.
+_ARGS_FILE_TIMEOUT_SECONDS = 300
 
 # dfx's `--type` / `--output` values, mapped onto the icp-cli equivalents
 # (`--args-format` / `--output`). The icp-cli names are passed through, so
@@ -314,9 +319,13 @@ def _candid_text(
                 project_root,
                 timeout_seconds,
                 identity=identity,
+                raise_on_timeout=True,
             )
         except subprocess.CalledProcessError:
             did_text = None
+        except subprocess.TimeoutExpired:
+            # Unknown for now, but not for good: the next call asks again
+            return None
 
     _CANDID_CACHE[key] = did_text
     return did_text
@@ -341,6 +350,7 @@ def _run_icp(
     project_root: Optional[Path] = None,
     timeout_seconds: Optional[int] = None,
     identity: Optional[str] = None,
+    raise_on_timeout: bool = False,
 ) -> str:
     """Runs an icp command against a project & returns its captured output.
 
@@ -363,22 +373,24 @@ def _run_icp(
         f"{cmd} < /dev/null",
         capture_output=True,
         timeout_seconds=timeout_seconds,
+        raise_on_timeout=raise_on_timeout,
     ).rstrip("\n")
 
 
 @contextlib.contextmanager
-def _call_argument(argument: str, args_format: str) -> Iterator[str]:
+def _call_argument(argument: str, args_format: str) -> Iterator[Tuple[str, bool]]:
     """The argument of an icp canister call, quoted, or, when that is too large
     for one argument of a command, passed through a file that exists until the
-    block ends. bin arguments are file references already."""
+    block ends; and whether it went through a file. bin arguments are file
+    references already."""
     quoted = shlex.quote(argument)
     if args_format == "bin" or len(quoted.encode()) <= _INLINE_ARG_MAX_BYTES:
-        yield quoted
+        yield quoted, False
         return
     with tempfile.TemporaryDirectory() as tmp:
         args_file = Path(tmp) / "args"
         args_file.write_text(argument, encoding="utf-8")
-        yield f"--args-file {shlex.quote(str(args_file))}"
+        yield f"--args-file {shlex.quote(str(args_file))}", True
 
 
 def call_canister_api(
@@ -402,6 +414,13 @@ def call_canister_api(
     of the pytest session (`pytest --identity <name>` or the
     ICPP_PRO_TEST_IDENTITY environment variable), which the
     `identity_anonymous` fixture temporarily overrides.
+
+    `timeout_seconds` defaults to 30, or to 300 for an argument that goes to icp
+    through a file (over 64 KiB once quoted for the shell). A call that times
+    out returns a "Timed out call to api ..." text, distinct from the "Failed
+    call to api ..." of a trap or reject, so a test that expects a call to fail
+    does not pass on a hang. An update call that timed out may still have
+    reached the canister.
 
     `query` selects the request type:
 
@@ -441,7 +460,9 @@ def call_canister_api(
         )
 
     args_format = _ARGS_FORMATS[canister_input]
-    with _call_argument(argument, args_format) as call_argument:
+    with _call_argument(argument, args_format) as (call_argument, via_file):
+        if timeout_seconds is None and via_file:
+            timeout_seconds = _ARGS_FILE_TIMEOUT_SECONDS
         arg = (
             f" canister call "
             f" {shlex.quote(canister_name)} "
@@ -453,15 +474,24 @@ def call_canister_api(
         )
         if query:
             arg += " --query "
+        api = f"call to api '{canister_method}' of canister '{canister_name}'"
         try:
-            response = _run_icp(arg, project_root, timeout_seconds, identity=identity)
+            response = _run_icp(
+                arg,
+                project_root,
+                timeout_seconds,
+                identity=identity,
+                raise_on_timeout=True,
+            )
+        except subprocess.TimeoutExpired as e:
+            response = (
+                f"Timed out {api} after {e.timeout} seconds, with output: "
+                f"{timeout_output(e)}"
+            )
         except subprocess.CalledProcessError as e:
             if _is_not_deployed_error(e.output):
                 pytest.exit(_not_deployed_msg(canister_name, network, canister_method))
-            response = (
-                f"Failed call to api '{canister_method}' of canister '{canister_name}':"
-                f"{e.output}"
-            )
+            response = f"Failed {api}:{e.output}"
 
     return response
 

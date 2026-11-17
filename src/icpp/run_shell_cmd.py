@@ -20,6 +20,7 @@ def escape_ansi(line: Optional[str]) -> Optional[str]:
 
     ansi_regex = (
         r"\x1b("
+        r"(\[[\d;]*m)|"
         r"(\[\??\d+[hl])|"
         r"([=<>a-kzNM78])|"
         r"([\(\)][a-b0-2])|"
@@ -73,12 +74,28 @@ def run_shell_cmd_with_log(
             return
 
 
+def timeout_output(e: subprocess.TimeoutExpired, max_chars: int = 132) -> str:
+    """The start of what a command printed before it timed out. subprocess gives
+    raw bytes, which may stop inside a UTF-8 character."""
+    raw = e.output
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8", errors="replace")
+    # First an escape code the timeout cut off before its final byte, which
+    # escape_ansi would only half remove
+    raw = re.sub(r"\x1b(\[[\x20-\x3f]*|[\x20-\x2f]*)$", "", raw or "")
+    output: str = escape_ansi(raw) or ""
+    if len(output) > max_chars:
+        return output[:max_chars] + "..."
+    return output
+
+
 def run_shell_cmd(
     cmd: Union[Path, str],
     capture_output: bool = False,
     print_captured_output: bool = False,
     cwd: Optional[Path] = None,
     timeout_seconds: Optional[int] = None,
+    raise_on_timeout: bool = False,
 ) -> str:
     """Runs 'cmd' with following behavior, so we can
     use it in our sequential CI/CD pipeline:
@@ -106,6 +123,11 @@ def run_shell_cmd(
             False (default) - Does NOT print output if all runs ok
                               If an error occurs, it will print it
             True            - Prints output while running
+
+        raise_on_timeout:
+            Only used when capture_output=True and print_captured_output=False
+            False (default) - On a timeout, prints and returns an "ERROR: ..." text
+            True            - On a timeout, raises subprocess.TimeoutExpired
 
     Explanation:
         - Runs `cmd` as a shell command, as if run from the command line
@@ -162,20 +184,14 @@ def run_shell_cmd(
                     )
                 capture_stdout += p_1.stdout
             except subprocess.TimeoutExpired as e:
+                if raise_on_timeout:
+                    raise
                 capture_stdout = (
                     f"ERROR: Command '{e.cmd}' timed out after {e.timeout} seconds, "
                     f"with stdout: "
                 )
 
-                if e.stdout is not None:
-                    lmax = 132
-                    lstdout = len(e.stdout)
-                    if isinstance(e.stdout, bytes):
-                        capture_stdout += e.stdout.decode("utf-8")[: min(lmax, lstdout)]
-                    else:
-                        capture_stdout += e.stdout[: min(lmax, lstdout)]
-                    if lstdout > lmax:
-                        capture_stdout += "..."
+                capture_stdout += timeout_output(e)
 
                 print(capture_stdout)
         else:

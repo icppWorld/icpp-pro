@@ -81,6 +81,8 @@ def timeout_output(e: subprocess.TimeoutExpired, max_chars: int = 132) -> str:
     if isinstance(raw, bytes):
         raw = raw.decode("utf-8", errors="replace")
     output: str = escape_ansi(raw) or ""
+    # An escape code the timeout cut off before its last letter
+    output = re.sub(r"\x1b\[?[\d;]*$", "", output)
     if len(output) > max_chars:
         return output[:max_chars] + "..."
     return output

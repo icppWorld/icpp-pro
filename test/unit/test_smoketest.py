@@ -45,8 +45,7 @@ def test__call_canister_api_quotes_its_values(commands: List[str]) -> None:
         identity="icpp-pro-testing",
     )
     words = shlex.split(commands[0])
-    assert words[:2] == ["exec", "icp"]
-    assert words[4:7] == ["my_canister", "greet", '("it\'s; rm -rf ~")']
+    assert words[3:6] == ["my_canister", "greet", '("it\'s; rm -rf ~")']
     assert words[words.index("--project-root-override") + 1].endswith("my project")
 
 
@@ -178,6 +177,11 @@ def test__call_canister_api_does_not_cache_an_interface_lookup_that_timed_out(
 def test__timeout_output_cuts_a_long_output() -> None:
     e = subprocess.TimeoutExpired("icp x", 1, output=b"y" * 200)
     assert run_shell_cmd_module.timeout_output(e) == "y" * 132 + "..."
+
+
+def test__timeout_output_drops_an_escape_code_cut_off_at_the_end() -> None:
+    e = subprocess.TimeoutExpired("icp x", 1, output=b"waiting \x1b[1")
+    assert run_shell_cmd_module.timeout_output(e) == "waiting "
 
 
 def test__run_shell_cmd_raises_on_a_timeout_when_asked(

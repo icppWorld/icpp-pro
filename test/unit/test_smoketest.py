@@ -44,7 +44,8 @@ def test__call_canister_api_quotes_its_values(commands: List[str]) -> None:
         identity="icpp-pro-testing",
     )
     words = shlex.split(commands[0])
-    assert words[3:6] == ["my_canister", "greet", '("it\'s; rm -rf ~")']
+    assert words[:2] == ["exec", "icp"]
+    assert words[4:7] == ["my_canister", "greet", '("it\'s; rm -rf ~")']
     assert words[words.index("--project-root-override") + 1].endswith("my project")
 
 
@@ -140,18 +141,49 @@ def test__call_canister_api_reports_a_timeout_as_a_failed_call(
     )
     assert response == (
         "Failed call to api 'greet' of canister 'my_canister': "
-        "timed out after 30 seconds"
+        "timed out after 30 seconds, with output: "
     )
 
 
-def test__run_shell_cmd_raises_on_a_timeout_when_asked() -> None:
-    cmd = "sleep 5"
-    assert run_shell_cmd(cmd, capture_output=True, timeout_seconds=1).startswith(
-        "ERROR: Command 'sleep 5' timed out after 1 seconds"
+def test__call_canister_api_does_not_cache_an_interface_lookup_that_timed_out(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    lookups: List[str] = []
+
+    def fake_run_shell_cmd(cmd: str, **_kwargs: object) -> str:
+        if "candid:service" in cmd:
+            lookups.append(cmd)
+            raise subprocess.TimeoutExpired(cmd, 30)
+        return "()"
+
+    monkeypatch.setattr(smoketest, "run_shell_cmd", fake_run_shell_cmd)
+    monkeypatch.setattr(
+        smoketest, "_verify_canister_name", lambda *_args: tmp_path / "icp.yaml"
+    )
+    monkeypatch.setattr(smoketest, "_canister_wasm_path", lambda *_args: None)
+    monkeypatch.setattr(smoketest, "_CANDID_CACHE", {})
+    for _ in range(2):
+        smoketest.call_canister_api(
+            canister_name="my_canister",
+            canister_method="greet",
+            identity="icpp-pro-testing",
+        )
+    assert len(lookups) == 2
+
+
+def test__run_shell_cmd_raises_on_a_timeout_when_asked(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_run(cmd: str, **_kwargs: object) -> object:
+        raise subprocess.TimeoutExpired(cmd, 1, output="partial")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    assert run_shell_cmd("icp x", capture_output=True, timeout_seconds=1).startswith(
+        "ERROR: Command 'icp x' timed out after 1 seconds, with stdout: "
     )
     with pytest.raises(subprocess.TimeoutExpired):
         run_shell_cmd(
-            cmd, capture_output=True, timeout_seconds=1, raise_on_timeout=True
+            "icp x", capture_output=True, timeout_seconds=1, raise_on_timeout=True
         )
 
 

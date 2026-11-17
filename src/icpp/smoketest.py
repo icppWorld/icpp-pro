@@ -319,9 +319,13 @@ def _candid_text(
                 project_root,
                 timeout_seconds,
                 identity=identity,
+                raise_on_timeout=True,
             )
         except subprocess.CalledProcessError:
             did_text = None
+        except subprocess.TimeoutExpired:
+            # Unknown for now, but not for good: the next call asks again
+            return None
 
     _CANDID_CACHE[key] = did_text
     return did_text
@@ -358,7 +362,8 @@ def _run_icp(
     `canister status` and `deploy` do, `network ping` and `network status`
     do not.
     """
-    cmd = f"{ICP} {args} "
+    # exec: a timeout kills icp itself, not only the shell that started it
+    cmd = f"exec {ICP} {args} "
     if identity is not None:
         cmd += f"--identity {shlex.quote(identity)} "
     if project_root is not None:
@@ -411,9 +416,10 @@ def call_canister_api(
     ICPP_PRO_TEST_IDENTITY environment variable), which the
     `identity_anonymous` fixture temporarily overrides.
 
-    `timeout_seconds` defaults to 30, or to 300 for an argument over 64 KiB,
-    which goes to icp through a file. A call that times out returns a
-    "Failed call to api ..." text, like any other failed call.
+    `timeout_seconds` defaults to 30, or to 300 for an argument that goes to icp
+    through a file (over 64 KiB once quoted for the shell). A call that times
+    out returns a "Failed call to api ..." text, like any other failed call; an
+    update call may still have reached the canister.
 
     `query` selects the request type:
 
@@ -479,7 +485,11 @@ def call_canister_api(
                 raise_on_timeout=True,
             )
         except subprocess.TimeoutExpired as e:
-            response = f"{failed} timed out after {e.timeout} seconds"
+            output = e.output.decode() if isinstance(e.output, bytes) else e.output
+            response = (
+                f"{failed} timed out after {e.timeout} seconds, with output: "
+                f"{output or ''}"
+            )
         except subprocess.CalledProcessError as e:
             if _is_not_deployed_error(e.output):
                 pytest.exit(_not_deployed_msg(canister_name, network, canister_method))

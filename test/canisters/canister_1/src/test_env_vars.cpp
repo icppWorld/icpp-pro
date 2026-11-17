@@ -42,13 +42,20 @@ void test_getenv_kept() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   const char *kept = getenv("ICPP_TEST_GREETING");
 #if defined(__wasm__)
-  // What IC_API does at the end of a message and at the start of the next
+  if (kept == nullptr)
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__) +
+                 ": ICPP_TEST_GREETING is not set");
+  // Two fills of 256 strings, reserved up front so that growing the vector
+  // frees no buffer of its own
+  constexpr size_t fill_min = 16, fill_max = 4096, fill_step = 16;
+  constexpr size_t fill_count = (fill_max - fill_min) / fill_step + 1;
   std::vector<std::string> fill;
-  fill.reserve(512);
+  fill.reserve(2 * fill_count);
   auto fill_heap = [&fill] {
-    for (size_t n = 16; n <= 4096; n += 16)
+    for (size_t n = fill_min; n <= fill_max; n += fill_step)
       fill.emplace_back(n, 'X');
   };
+  // What IC_API does at the end of a message and at the start of the next
   icpp_environ_set_available(0);
   icpp_environ_set_available(1);
   // Overwrites the block if the reset freed it
@@ -57,7 +64,8 @@ void test_getenv_kept() {
   if (getenv("ICPP_TEST_GREETING") != kept)
     IC_API::trap("ASSERT ERROR - " + std::string(__func__) +
                  ": the environ block was not reused");
-  // Overwrites the block if the rebuild freed it
+  // Overwrites the block if the rebuild freed it and took the same address
+  // again, which the pointer check above cannot see
   fill_heap();
 #endif
   ic_api.to_wire(CandidTypeText{kept != nullptr ? kept : ""});

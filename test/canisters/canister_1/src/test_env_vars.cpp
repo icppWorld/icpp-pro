@@ -45,9 +45,13 @@ void test_getenv_kept() {
   // What IC_API does at the end of a message and at the start of the next
   icpp_environ_set_available(0);
   icpp_environ_set_available(1);
+  // Fills the heap before and after the rebuild: a block freed by the reset or
+  // by the rebuild is overwritten, rather than taken again with the same bytes
+  std::vector<std::string> fill;
+  for (size_t n = 16; n <= 4096; n += 16)
+    fill.emplace_back(n, 'X');
   // Rebuilds environ with the same variables, so the old block is reused
   (void)getenv("ICPP_TEST_GREETING");
-  std::vector<std::string> fill;
   for (size_t n = 16; n <= 4096; n += 16)
     fill.emplace_back(n, 'X');
 #endif

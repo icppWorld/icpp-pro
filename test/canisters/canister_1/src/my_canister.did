@@ -35,6 +35,8 @@ service: {
     "test_vendors" : () -> (int) query;
     "test_getenv" : () -> (int) query;
     "test_getenv_kept" : () -> (text) query;
+    "test_getenv_keep" : () -> ();
+    "test_getenv_kept_read" : () -> (text, bool);
     "test_setenv" : () -> (text);
     "roundtrip_bool_true" : (bool) -> (bool) query;
     "roundtrip_bool_false" : (bool) -> (bool) query;

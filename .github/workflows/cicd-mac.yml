@@ -51,7 +51,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      # The Python version that runs all-tests; the others run smoke-tests
+      # The Python version that runs all-tests (native-tests on Intel); the
+      # others run smoke-tests
       ALL_TESTS_PYTHON: "3.14"
       # `icp network start` downloads the icp-cli-network-launcher from the
       # GitHub API. Unauthenticated, that is 60 requests/hour shared across
@@ -151,7 +152,7 @@ jobs:
         id: candid-key
         run: |
           echo "ICPP_CANDID_LIBRARY_DIR=${{ runner.temp }}/candid-library" >> "$GITHUB_ENV"
-          echo "key=candid-lib-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && 'all' || 'smoke' }}-${{ hashFiles('icpp-candid/src/icpp_candid/**', 'src/icpp/ic/**', 'src/icpp/version*.py', 'src/icpp/config_default.py', 'src/icpp/icpp_toml.py', 'src/icpp/candid_library.py', 'src/icpp/commands_build_library*.py', 'src/icpp/canisters/**/icpp*.toml', 'test/canisters/**/icpp*.toml', '!**/__pycache__/**') }}" >> "$GITHUB_OUTPUT"
+          echo "key=candid-lib-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.os }}-${{ matrix.python-version == env.ALL_TESTS_PYTHON && matrix.os != 'macos-15-intel' && 'all' || 'smoke' }}-${{ hashFiles('icpp-candid/src/icpp_candid/**', 'src/icpp/ic/**', 'src/icpp/version*.py', 'src/icpp/config_default.py', 'src/icpp/icpp_toml.py', 'src/icpp/candid_library.py', 'src/icpp/commands_build_library*.py', 'src/icpp/canisters/**/icpp*.toml', 'test/canisters/**/icpp*.toml', '!**/__pycache__/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: restore-candid-library
         id: candid-library
@@ -166,13 +167,24 @@ jobs:
       # macOS this halves the wall-clock time: the free plan runs at most 5
       # macOS jobs at once. JOBS deploys & tests that many canisters at a
       # time; each gets its own local network. The macOS runners are too slow
-      # for 3 at a time: replica calls time out. macos-15-intel tests one
-      # canister at a time, macos-latest two.
+      # for 3 at a time: replica calls time out.
       - name: all-tests
-        if: matrix.python-version == env.ALL_TESTS_PYTHON
+        if: matrix.python-version == env.ALL_TESTS_PYTHON && matrix.os != 'macos-15-intel'
         shell: bash -l {0}
         run: |
-          make all-tests JOBS=${{ matrix.os == 'macos-15-intel' && 1 || 2 }}
+          make all-tests JOBS=2
+
+      # On Intel only what depends on the machine: every canister built and
+      # tested natively for x86_64 macOS. Deploying every canister took this,
+      # the slowest runner, ~45 minutes, and added nothing: the wasm is the
+      # same on every machine, and all-tests deploys it on ubuntu and on
+      # Apple Silicon. Its cache key is the smoke one: it builds the wasm
+      # libraries of greet only.
+      - name: native-tests
+        if: matrix.python-version == env.ALL_TESTS_PYTHON && matrix.os == 'macos-15-intel'
+        shell: bash -l {0}
+        run: |
+          make native-tests
 
       - name: smoke-tests
         if: matrix.python-version != env.ALL_TESTS_PYTHON

@@ -95,6 +95,17 @@ smoke-tests:
 	$(MAKE) all-static
 	$(MAKE) python-test
 	$(call WITH_CANDID_LIBRARY_DIR,python -m scripts.all_canister_native --canister greet && $(MAKE) all-canister-deploy-local-pytest CANISTERS=greet)
+
+# The variant CI runs on macos-15-intel with the Python version of all-tests:
+# every canister is built and tested natively for x86_64 macOS, and only greet
+# is deployed. The wasm is the same whatever machine builds it, so the deployed
+# tests of every canister run where all-tests runs: on ubuntu and Apple Silicon.
+.PHONY: native-tests
+native-tests:
+	$(MAKE) all-static
+	$(MAKE) python-test
+	$(call WITH_CANDID_LIBRARY_DIR,$(MAKE) all-canister-native && $(MAKE) all-canister-deploy-local-pytest CANISTERS=greet)
+
 .PHONY: all-canister-deploy-local-pytest
 # JOBS = how many canisters to build & test concurrently. Each canister has its
 # own local network on an ephemeral port, so they do not collide. The default is

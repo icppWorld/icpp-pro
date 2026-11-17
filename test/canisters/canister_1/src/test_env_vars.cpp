@@ -97,10 +97,11 @@ void test_getenv_keep() {
   ic_api.to_wire();
 }
 
-// '()' -> '(text, bool)': the string test_getenv_keep kept, read after the heap
-// was filled in this message, and whether getenv() still returns that pointer:
-// it does while the variables are unchanged, and not after an update_settings
-// changed them (the old block is kept, never freed)
+// '()' -> '(text, opt text, bool)': the string test_getenv_keep kept, read
+// after the heap was filled in this message; getenv("ICPP_TEST_GREETING") now;
+// and whether that is still the kept pointer. A rebuild reuses only the most
+// recent block, when the variables match it: after an update_settings changed
+// them, getenv() points into a new block, and the old one is kept, never freed
 void test_getenv_kept_read() {
   IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
   if (g_kept == nullptr)
@@ -118,12 +119,16 @@ void test_getenv_kept_read() {
   fill_heap(fill);
   check_kept();
   // Rebuilds environ for this message
-  bool reused = getenv("ICPP_TEST_GREETING") == g_kept;
+  const char *rebuilt = getenv("ICPP_TEST_GREETING");
+  std::optional<std::string> rebuilt_value;
+  if (rebuilt != nullptr) rebuilt_value = rebuilt;
+  bool reused = rebuilt == g_kept;
   // Overwrites the block if the rebuild freed it
   fill_heap(fill);
   check_kept();
   CandidArgs args_out;
   args_out.append(CandidTypeText{std::string(g_kept)});
+  args_out.append(CandidTypeOptText{rebuilt_value});
   args_out.append(CandidTypeBool{reused});
   ic_api.to_wire(args_out);
 }

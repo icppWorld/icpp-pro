@@ -201,6 +201,44 @@ def test__test_getenv_kept(network: str, principal: str) -> None:
     assert response == '("hello from icp.yaml")'
 
 
+def call_test_getenv_kept_read(network: str) -> str:
+    return call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_getenv_kept_read",
+        network=network,
+    )
+
+
+def test__test_getenv_kept_across_messages(network: str, identity: str) -> None:
+    # A getenv() pointer kept in a static stays valid in later messages: the
+    # environ block is reused while the variables match it, and kept, not freed,
+    # when an update_settings changes them
+    call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_getenv_keep",
+        network=network,
+    )
+    greeting = '"hello from icp.yaml"'
+    response = call_test_getenv_kept_read(network)
+    assert response == f"({greeting}, opt {greeting}, true)"
+
+    update_env_var(network, identity, "--add-environment-variable ICPP_TEST_ADDED=1")
+    try:
+        response = call_test_getenv_kept_read(network)
+        assert response == f"({greeting}, opt {greeting}, false)"
+    finally:
+        update_env_var(
+            network, identity, "--remove-environment-variable ICPP_TEST_ADDED"
+        )
+    # The variables match the kept block again, but a rebuild compares them only
+    # with the most recent block (the one with ICPP_TEST_ADDED), so it builds a
+    # new one
+    response = call_test_getenv_kept_read(network)
+    assert response == f"({greeting}, opt {greeting}, false)"
+
+
 def test__test_setenv_lasts_one_message(network: str, principal: str) -> None:
     # setenv() changes the environment of its own message only
     response = call_canister_api(

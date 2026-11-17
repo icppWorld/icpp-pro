@@ -14,6 +14,7 @@ from typing import List, Optional
 import pytest
 
 from icpp import smoketest
+from icpp import run_shell_cmd as run_shell_cmd_module
 from icpp.run_shell_cmd import run_shell_cmd
 
 
@@ -128,7 +129,9 @@ def test__call_canister_api_reports_a_timeout_as_a_failed_call(
     def fake_run_shell_cmd(cmd: str, **kwargs: object) -> str:
         assert kwargs.get("raise_on_timeout") is True
         # What icp printed so far: colored, and cut inside a UTF-8 character
-        raise subprocess.TimeoutExpired(cmd, 30, output=b"\x1b[33mwaiting\x1b[0m \xc3")
+        raise subprocess.TimeoutExpired(
+            cmd, 30, output=b"\x1b[1;33mwaiting\x1b[0m \xc3"
+        )
 
     monkeypatch.setattr(smoketest, "run_shell_cmd", fake_run_shell_cmd)
     monkeypatch.setattr(
@@ -172,12 +175,17 @@ def test__call_canister_api_does_not_cache_an_interface_lookup_that_timed_out(
     assert len(lookups) == 2
 
 
+def test__timeout_output_cuts_a_long_output() -> None:
+    e = subprocess.TimeoutExpired("icp x", 1, output=b"y" * 200)
+    assert run_shell_cmd_module.timeout_output(e) == "y" * 132 + "..."
+
+
 def test__run_shell_cmd_raises_on_a_timeout_when_asked(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_run(cmd: str, **_kwargs: object) -> object:
         # Raw bytes, colored, and cut inside a UTF-8 character
-        raise subprocess.TimeoutExpired(cmd, 1, output=b"\x1b[33mwaiting\x1b[0m \xc3")
+        raise subprocess.TimeoutExpired(cmd, 1, output=b"\x1b[1;33mwaiting\x1b[0m \xc3")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     assert run_shell_cmd("icp x", capture_output=True, timeout_seconds=1) == (

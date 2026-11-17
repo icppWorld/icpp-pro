@@ -361,8 +361,10 @@ def _run_icp(
     subcommands that accept it: `canister call`, `canister metadata`,
     `canister status` and `deploy` do, `network ping` and `network status`
     do not.
+
+    `args` is a single icp command: it runs with `exec`, so that a timeout
+    kills icp itself, not only the shell that started it.
     """
-    # exec: a timeout kills icp itself, not only the shell that started it
     cmd = f"exec {ICP} {args} "
     if identity is not None:
         cmd += f"--identity {shlex.quote(identity)} "

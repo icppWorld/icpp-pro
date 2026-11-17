@@ -20,6 +20,7 @@ def escape_ansi(line: Optional[str]) -> Optional[str]:
 
     ansi_regex = (
         r"\x1b("
+        r"(\[[\d;]*m)|"
         r"(\[\??\d+[hl])|"
         r"([=<>a-kzNM78])|"
         r"([\(\)][a-b0-2])|"
@@ -73,13 +74,16 @@ def run_shell_cmd_with_log(
             return
 
 
-def timeout_output(e: subprocess.TimeoutExpired) -> str:
-    """What a command printed before it timed out. subprocess gives raw bytes,
-    which may stop inside a UTF-8 character."""
-    output = e.output
-    if isinstance(output, bytes):
-        output = output.decode("utf-8", errors="replace")
-    return escape_ansi(output) or ""
+def timeout_output(e: subprocess.TimeoutExpired, max_chars: int = 132) -> str:
+    """The start of what a command printed before it timed out. subprocess gives
+    raw bytes, which may stop inside a UTF-8 character."""
+    raw = e.output
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8", errors="replace")
+    output: str = escape_ansi(raw) or ""
+    if len(output) > max_chars:
+        return output[:max_chars] + "..."
+    return output
 
 
 def run_shell_cmd(
@@ -184,11 +188,7 @@ def run_shell_cmd(
                     f"with stdout: "
                 )
 
-                output = timeout_output(e)
-                lmax = 132
-                capture_stdout += output[:lmax]
-                if len(output) > lmax:
-                    capture_stdout += "..."
+                capture_stdout += timeout_output(e)
 
                 print(capture_stdout)
         else:

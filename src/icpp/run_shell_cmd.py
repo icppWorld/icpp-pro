@@ -73,6 +73,15 @@ def run_shell_cmd_with_log(
             return
 
 
+def timeout_output(e: subprocess.TimeoutExpired) -> str:
+    """What a command printed before it timed out. subprocess gives raw bytes,
+    which may stop inside a UTF-8 character."""
+    output = e.output
+    if isinstance(output, bytes):
+        output = output.decode("utf-8", errors="replace")
+    return escape_ansi(output) or ""
+
+
 def run_shell_cmd(
     cmd: Union[Path, str],
     capture_output: bool = False,
@@ -175,15 +184,11 @@ def run_shell_cmd(
                     f"with stdout: "
                 )
 
-                if e.stdout is not None:
-                    lmax = 132
-                    lstdout = len(e.stdout)
-                    if isinstance(e.stdout, bytes):
-                        capture_stdout += e.stdout.decode("utf-8")[: min(lmax, lstdout)]
-                    else:
-                        capture_stdout += e.stdout[: min(lmax, lstdout)]
-                    if lstdout > lmax:
-                        capture_stdout += "..."
+                output = timeout_output(e)
+                lmax = 132
+                capture_stdout += output[:lmax]
+                if len(output) > lmax:
+                    capture_stdout += "..."
 
                 print(capture_stdout)
         else:

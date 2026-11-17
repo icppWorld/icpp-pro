@@ -176,11 +176,12 @@ def test__run_shell_cmd_raises_on_a_timeout_when_asked(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_run(cmd: str, **_kwargs: object) -> object:
-        raise subprocess.TimeoutExpired(cmd, 1, output="partial")
+        # Raw bytes, colored, and cut inside a UTF-8 character
+        raise subprocess.TimeoutExpired(cmd, 1, output=b"\x1b[33mwaiting\x1b[0m \xc3")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    assert run_shell_cmd("icp x", capture_output=True, timeout_seconds=1).startswith(
-        "ERROR: Command 'icp x' timed out after 1 seconds, with stdout: "
+    assert run_shell_cmd("icp x", capture_output=True, timeout_seconds=1) == (
+        "ERROR: Command 'icp x' timed out after 1 seconds, with stdout: waiting \ufffd"
     )
     with pytest.raises(subprocess.TimeoutExpired):
         run_shell_cmd(

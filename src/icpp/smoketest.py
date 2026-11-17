@@ -417,8 +417,10 @@ def call_canister_api(
 
     `timeout_seconds` defaults to 30, or to 300 for an argument that goes to icp
     through a file (over 64 KiB once quoted for the shell). A call that times
-    out returns a "Failed call to api ..." text, like any other failed call; an
-    update call may still have reached the canister.
+    out returns a "Timed out call to api ..." text, distinct from the "Failed
+    call to api ..." of a trap or reject, so a test that expects a call to fail
+    does not pass on a hang. An update call that timed out may still have
+    reached the canister.
 
     `query` selects the request type:
 
@@ -472,9 +474,7 @@ def call_canister_api(
         )
         if query:
             arg += " --query "
-        failed = (
-            f"Failed call to api '{canister_method}' of canister '{canister_name}':"
-        )
+        api = f"call to api '{canister_method}' of canister '{canister_name}'"
         try:
             response = _run_icp(
                 arg,
@@ -485,13 +485,13 @@ def call_canister_api(
             )
         except subprocess.TimeoutExpired as e:
             response = (
-                f"{failed} timed out after {e.timeout} seconds, with output: "
+                f"Timed out {api} after {e.timeout} seconds, with output: "
                 f"{timeout_output(e)}"
             )
         except subprocess.CalledProcessError as e:
             if _is_not_deployed_error(e.output):
                 pytest.exit(_not_deployed_msg(canister_name, network, canister_method))
-            response = f"{failed}{e.output}"
+            response = f"Failed {api}:{e.output}"
 
     return response
 

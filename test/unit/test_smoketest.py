@@ -122,7 +122,7 @@ def test__call_canister_api_gives_a_large_argument_a_longer_timeout(
     assert _timeouts_of_calls(monkeypatch, tmp_path, large, 7) == [7]
 
 
-def test__call_canister_api_reports_a_timeout_as_a_failed_call(
+def test__call_canister_api_reports_a_timeout_apart_from_a_failed_call(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     def fake_run_shell_cmd(cmd: str, **kwargs: object) -> str:
@@ -143,8 +143,8 @@ def test__call_canister_api_reports_a_timeout_as_a_failed_call(
         identity="icpp-pro-testing",
     )
     assert response == (
-        "Failed call to api 'greet' of canister 'my_canister': "
-        "timed out after 30 seconds, with output: waiting \ufffd"
+        "Timed out call to api 'greet' of canister 'my_canister' "
+        "after 30 seconds, with output: waiting \ufffd"
     )
 
 

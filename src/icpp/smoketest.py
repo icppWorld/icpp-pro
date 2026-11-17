@@ -35,7 +35,7 @@ from typing import Optional, Any, Dict, Iterator, List, Tuple
 import pytest  # pylint: disable=unused-import
 import yaml
 
-from icpp.run_shell_cmd import run_shell_cmd
+from icpp.run_shell_cmd import escape_ansi, run_shell_cmd
 
 ICP = "icp"
 
@@ -485,10 +485,12 @@ def call_canister_api(
                 raise_on_timeout=True,
             )
         except subprocess.TimeoutExpired as e:
-            output = e.output.decode() if isinstance(e.output, bytes) else e.output
+            output = e.output
+            if isinstance(output, bytes):
+                output = output.decode("utf-8", errors="replace")
             response = (
                 f"{failed} timed out after {e.timeout} seconds, with output: "
-                f"{output or ''}"
+                f"{escape_ansi(output) or ''}"
             )
         except subprocess.CalledProcessError as e:
             if _is_not_deployed_error(e.output):

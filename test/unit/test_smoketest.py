@@ -127,7 +127,8 @@ def test__call_canister_api_reports_a_timeout_as_a_failed_call(
 ) -> None:
     def fake_run_shell_cmd(cmd: str, **kwargs: object) -> str:
         assert kwargs.get("raise_on_timeout") is True
-        raise subprocess.TimeoutExpired(cmd, 30)
+        # What icp printed so far: colored, and cut inside a UTF-8 character
+        raise subprocess.TimeoutExpired(cmd, 30, output=b"\x1b[33mwaiting\x1b[0m \xc3")
 
     monkeypatch.setattr(smoketest, "run_shell_cmd", fake_run_shell_cmd)
     monkeypatch.setattr(
@@ -141,7 +142,7 @@ def test__call_canister_api_reports_a_timeout_as_a_failed_call(
     )
     assert response == (
         "Failed call to api 'greet' of canister 'my_canister': "
-        "timed out after 30 seconds, with output: "
+        "timed out after 30 seconds, with output: waiting \ufffd"
     )
 
 

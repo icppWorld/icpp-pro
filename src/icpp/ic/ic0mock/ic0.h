@@ -82,6 +82,8 @@ void ic0_stable_write(uint32_t off, uintptr_t src, uint32_t size);
 
 void ic0_stable_read(uintptr_t dst, uint32_t off, uint32_t size);
 
+uint64_t ic0_stable64_size();
+
 void ic0_certified_data_set(uintptr_t src, uint32_t size);
 
 uint32_t ic0_data_certificate_present();

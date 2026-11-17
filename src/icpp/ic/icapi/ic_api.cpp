@@ -335,6 +335,8 @@ uint64_t IC_API::performance_counter(PerformanceCounterType type) {
   return ic0_performance_counter(static_cast<uint32_t>(type));
 }
 
+uint64_t IC_API::get_stable_size() { return ic0_stable64_size(); }
+
 CandidTypePrincipal IC_API::get_subnet_self() {
   check_entry(m_canister_entry,
               entry_contexts::all_except_start(m_canister_entry),

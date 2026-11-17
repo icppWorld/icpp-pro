@@ -15,6 +15,8 @@ void test_certified_data_set()
     WASM_SYMBOL_EXPORTED("canister_update test_certified_data_set");
 void test_data_certificate()
     WASM_SYMBOL_EXPORTED("canister_query test_data_certificate");
+void test_stable_size()
+    WASM_SYMBOL_EXPORTED("canister_update test_stable_size");
 void test_introspection()
     WASM_SYMBOL_EXPORTED("canister_update test_introspection");
 void test_introspection_query()

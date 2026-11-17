@@ -295,6 +295,15 @@ static void native_caller_info_signer_size_in_heartbeat() {
 }
 
 // Step-03b scenarios: environment variables.
+// Above 4 GiB only the 64-bit size works: '()' -> '()'
+static void native_stable_size_above_4_gib() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  if (IC_API::get_stable_size() != 64 * 1024 + 1) {
+    IC_API::trap(std::string(__func__) + ": wrong size");
+  }
+  ic_api.to_wire();
+}
+
 static void native_env_vars() {
   IC_API ic_api(CanisterUpdate{"native_env_vars"}, false);
   std::map<std::string, std::string> expected{{"A_NAME", "a value"},
@@ -2059,6 +2068,27 @@ int main() {
   mockIC.run_trap_test("native_caller_info_signer_size_in_heartbeat",
                        native_caller_info_signer_size_in_heartbeat,
                        "4449444c0000", silent_on_trap, my_principal);
+
+  // ------------------------------------------------------------------------
+  // Stable memory size
+
+  // '()' -> '(0 : nat64)': natively the file system is not in stable memory
+  mockIC.run_test("test_stable_size", test_stable_size, "4449444c0000",
+                  "4449444c0001780000000000000000", silent_on_trap,
+                  my_principal);
+  // '()' -> '(3 : nat64)'
+  mockIC.set_stable_size(3);
+  mockIC.run_test("test_stable_size (3 pages)", test_stable_size,
+                  "4449444c0000", "4449444c0001780300000000000000",
+                  silent_on_trap, my_principal);
+  // Above 4 GiB the 32-bit ic0_stable_size traps, as on the IC
+  mockIC.set_stable_size(64 * 1024 + 1);
+  mockIC.run_test("native_stable_size_above_4_gib",
+                  native_stable_size_above_4_gib, "4449444c0000",
+                  "4449444c0000", silent_on_trap, my_principal);
+  mockIC.run_trap_test("test_stable_size (above 4 GiB)", test_stable_size,
+                       "4449444c0000", silent_on_trap, my_principal);
+  mockIC.set_stable_size(0);
 
   // ------------------------------------------------------------------------
   // Environment variables (step 03b)

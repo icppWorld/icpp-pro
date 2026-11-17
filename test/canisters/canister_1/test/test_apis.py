@@ -11,6 +11,7 @@ $ pytest --network=[local/ic]
 from pathlib import Path
 from typing import Dict
 import json
+import re
 import pytest
 from icpp.run_shell_cmd import run_shell_cmd
 from icpp.smoketest import (
@@ -105,6 +106,20 @@ def test__test_introspection_query(network: str, principal: str) -> None:
         network=network,
     )
     assert response == "(0 : int)"
+
+
+def test__test_stable_size(network: str) -> None:
+    """The file system keeps its files in stable memory, so its size is above 0
+    on the IC; the canister traps if the 32-bit size disagrees."""
+    response = call_canister_api(
+        icp_yaml_path=ICP_YAML_PATH,
+        canister_name=CANISTER_NAME,
+        canister_method="test_stable_size",
+        network=network,
+    )
+    match = re.fullmatch(r"\(([\d_]+) : nat64\)", response)
+    assert match, response
+    assert int(match.group(1).replace("_", "")) > 0
 
 
 def call_test_env_var(network: str, name: str) -> str:

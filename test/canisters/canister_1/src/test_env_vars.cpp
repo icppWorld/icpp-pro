@@ -54,6 +54,8 @@ void test_getenv_kept() {
   auto fill_heap = [&fill] {
     for (size_t n = fill_min; n <= fill_max; n += fill_step)
       fill.emplace_back(n, 'X');
+    // Nothing reads the strings: keep the optimizer from dropping them
+    asm volatile("" : : "r"(fill.data()) : "memory");
   };
   // What IC_API does at the end of a message and at the start of the next
   icpp_environ_set_available(0);
@@ -61,11 +63,15 @@ void test_getenv_kept() {
   // Overwrites the block if the reset freed it
   fill_heap();
   // Rebuilds environ with the same variables, which must reuse the old block
-  if (getenv("ICPP_TEST_GREETING") != kept)
+  const char *rebuilt = getenv("ICPP_TEST_GREETING");
+  if (rebuilt == nullptr)
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__) +
+                 ": ICPP_TEST_GREETING is gone after the rebuild");
+  if (rebuilt != kept)
     IC_API::trap("ASSERT ERROR - " + std::string(__func__) +
                  ": the environ block was not reused");
-  // Overwrites the block if the rebuild freed it and took the same address
-  // again, which the pointer check above cannot see
+  // Overwrites the block if the rebuild kept its address but freed it, which
+  // the pointer check above cannot see
   fill_heap();
 #endif
   ic_api.to_wire(CandidTypeText{kept != nullptr ? kept : ""});

@@ -45,6 +45,7 @@ void test_getenv_kept() {
   if (kept == nullptr)
     IC_API::trap("ASSERT ERROR - " + std::string(__func__) +
                  ": ICPP_TEST_GREETING is not set");
+  const std::string expected{kept};
   // Two fills of 256 strings, reserved up front so that growing the vector
   // frees no buffer of its own
   constexpr size_t fill_min = 16, fill_max = 4096, fill_step = 16;
@@ -73,6 +74,9 @@ void test_getenv_kept() {
   // Overwrites the block if the rebuild kept its address but freed it, which
   // the pointer check above cannot see
   fill_heap();
+  if (expected != kept)
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__) +
+                 ": the environ block was freed");
 #endif
   ic_api.to_wire(CandidTypeText{kept != nullptr ? kept : ""});
 }

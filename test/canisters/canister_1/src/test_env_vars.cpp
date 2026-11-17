@@ -43,17 +43,22 @@ void test_getenv_kept() {
   const char *kept = getenv("ICPP_TEST_GREETING");
 #if defined(__wasm__)
   // What IC_API does at the end of a message and at the start of the next
+  std::vector<std::string> fill;
+  fill.reserve(512);
+  auto fill_heap = [&fill] {
+    for (size_t n = 16; n <= 4096; n += 16)
+      fill.emplace_back(n, 'X');
+  };
   icpp_environ_set_available(0);
   icpp_environ_set_available(1);
-  // Fills the heap before and after the rebuild: a block freed by the reset or
-  // by the rebuild is overwritten, rather than taken again with the same bytes
-  std::vector<std::string> fill;
-  for (size_t n = 16; n <= 4096; n += 16)
-    fill.emplace_back(n, 'X');
-  // Rebuilds environ with the same variables, so the old block is reused
-  (void)getenv("ICPP_TEST_GREETING");
-  for (size_t n = 16; n <= 4096; n += 16)
-    fill.emplace_back(n, 'X');
+  // Overwrites the block if the reset freed it
+  fill_heap();
+  // Rebuilds environ with the same variables, which must reuse the old block
+  if (getenv("ICPP_TEST_GREETING") != kept)
+    IC_API::trap("ASSERT ERROR - " + std::string(__func__) +
+                 ": the environ block was not reused");
+  // Overwrites the block if the rebuild freed it
+  fill_heap();
 #endif
   ic_api.to_wire(CandidTypeText{kept != nullptr ? kept : ""});
 }

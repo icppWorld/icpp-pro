@@ -7,12 +7,14 @@ the quotes around it, and the shell split it into other words.
 # pylint: disable=missing-function-docstring, redefined-outer-name, protected-access
 
 import shlex
+import subprocess
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import pytest
 
 from icpp import smoketest
+from icpp.run_shell_cmd import run_shell_cmd
 
 
 @pytest.fixture
@@ -76,6 +78,81 @@ def test__call_canister_api_passes_a_large_argument_through_a_file(
     )
     assert len(seen[0]) < 1024
     assert not args_files[0].exists()
+
+
+def _timeouts_of_calls(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    argument: str,
+    timeout_seconds: Optional[int] = None,
+) -> List[object]:
+    """Calls call_canister_api, recording the timeout each shell command got."""
+    timeouts: List[object] = []
+
+    def fake_run_shell_cmd(_cmd: str, **kwargs: object) -> str:
+        timeouts.append(kwargs.get("timeout_seconds"))
+        return "()"
+
+    monkeypatch.setattr(smoketest, "run_shell_cmd", fake_run_shell_cmd)
+    monkeypatch.setattr(
+        smoketest, "_verify_canister_name", lambda *_args: tmp_path / "icp.yaml"
+    )
+    smoketest.call_canister_api(
+        canister_name="my_canister",
+        canister_method="greet",
+        canister_argument=argument,
+        query=False,
+        identity="icpp-pro-testing",
+        timeout_seconds=timeout_seconds,
+    )
+    return timeouts
+
+
+def test__call_canister_api_gives_a_large_argument_a_longer_timeout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """icp can take longer than 30 seconds to send an argument near 2 MB."""
+    large = '("' + "x" * 200 * 1024 + '")'
+    # None: run_shell_cmd's own default of 30 seconds
+    assert _timeouts_of_calls(monkeypatch, tmp_path, '("hi")') == [None]
+    assert _timeouts_of_calls(monkeypatch, tmp_path, large) == [
+        smoketest._ARGS_FILE_TIMEOUT_SECONDS
+    ]
+    assert _timeouts_of_calls(monkeypatch, tmp_path, large, 7) == [7]
+
+
+def test__call_canister_api_reports_a_timeout_as_a_failed_call(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def fake_run_shell_cmd(cmd: str, **kwargs: object) -> str:
+        assert kwargs.get("raise_on_timeout") is True
+        raise subprocess.TimeoutExpired(cmd, 30)
+
+    monkeypatch.setattr(smoketest, "run_shell_cmd", fake_run_shell_cmd)
+    monkeypatch.setattr(
+        smoketest, "_verify_canister_name", lambda *_args: tmp_path / "icp.yaml"
+    )
+    response = smoketest.call_canister_api(
+        canister_name="my_canister",
+        canister_method="greet",
+        query=False,
+        identity="icpp-pro-testing",
+    )
+    assert response == (
+        "Failed call to api 'greet' of canister 'my_canister': "
+        "timed out after 30 seconds"
+    )
+
+
+def test__run_shell_cmd_raises_on_a_timeout_when_asked() -> None:
+    cmd = "sleep 5"
+    assert run_shell_cmd(cmd, capture_output=True, timeout_seconds=1).startswith(
+        "ERROR: Command 'sleep 5' timed out after 1 seconds"
+    )
+    with pytest.raises(subprocess.TimeoutExpired):
+        run_shell_cmd(
+            cmd, capture_output=True, timeout_seconds=1, raise_on_timeout=True
+        )
 
 
 def test__is_query_in_did() -> None:

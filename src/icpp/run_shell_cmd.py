@@ -79,6 +79,7 @@ def run_shell_cmd(
     print_captured_output: bool = False,
     cwd: Optional[Path] = None,
     timeout_seconds: Optional[int] = None,
+    raise_on_timeout: bool = False,
 ) -> str:
     """Runs 'cmd' with following behavior, so we can
     use it in our sequential CI/CD pipeline:
@@ -106,6 +107,11 @@ def run_shell_cmd(
             False (default) - Does NOT print output if all runs ok
                               If an error occurs, it will print it
             True            - Prints output while running
+
+        raise_on_timeout:
+            Only used when capture_output=True and print_captured_output=False
+            False (default) - On a timeout, prints and returns an "ERROR: ..." text
+            True            - On a timeout, raises subprocess.TimeoutExpired
 
     Explanation:
         - Runs `cmd` as a shell command, as if run from the command line
@@ -162,6 +168,8 @@ def run_shell_cmd(
                     )
                 capture_stdout += p_1.stdout
             except subprocess.TimeoutExpired as e:
+                if raise_on_timeout:
+                    raise
                 capture_stdout = (
                     f"ERROR: Command '{e.cmd}' timed out after {e.timeout} seconds, "
                     f"with stdout: "

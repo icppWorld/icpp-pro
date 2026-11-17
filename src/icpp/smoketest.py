@@ -48,6 +48,11 @@ IDENTITY_ENV_VAR = "ICPP_PRO_TEST_IDENTITY"
 # that leaves room for the rest of the command (names, paths, identity).
 _INLINE_ARG_MAX_BYTES = 64 * 1024
 
+# The default timeout of a canister call whose argument goes through a file: icp
+# can take longer than the usual 30 seconds to encode and send an argument near
+# the IC's 2 MB limit.
+_ARGS_FILE_TIMEOUT_SECONDS = 300
+
 # dfx's `--type` / `--output` values, mapped onto the icp-cli equivalents
 # (`--args-format` / `--output`). The icp-cli names are passed through, so
 # callers can already use them today.
@@ -341,6 +346,7 @@ def _run_icp(
     project_root: Optional[Path] = None,
     timeout_seconds: Optional[int] = None,
     identity: Optional[str] = None,
+    raise_on_timeout: bool = False,
 ) -> str:
     """Runs an icp command against a project & returns its captured output.
 
@@ -363,22 +369,24 @@ def _run_icp(
         f"{cmd} < /dev/null",
         capture_output=True,
         timeout_seconds=timeout_seconds,
+        raise_on_timeout=raise_on_timeout,
     ).rstrip("\n")
 
 
 @contextlib.contextmanager
-def _call_argument(argument: str, args_format: str) -> Iterator[str]:
+def _call_argument(argument: str, args_format: str) -> Iterator[Tuple[str, bool]]:
     """The argument of an icp canister call, quoted, or, when that is too large
     for one argument of a command, passed through a file that exists until the
-    block ends. bin arguments are file references already."""
+    block ends; and whether it went through a file. bin arguments are file
+    references already."""
     quoted = shlex.quote(argument)
     if args_format == "bin" or len(quoted.encode()) <= _INLINE_ARG_MAX_BYTES:
-        yield quoted
+        yield quoted, False
         return
     with tempfile.TemporaryDirectory() as tmp:
         args_file = Path(tmp) / "args"
         args_file.write_text(argument, encoding="utf-8")
-        yield f"--args-file {shlex.quote(str(args_file))}"
+        yield f"--args-file {shlex.quote(str(args_file))}", True
 
 
 def call_canister_api(
@@ -402,6 +410,10 @@ def call_canister_api(
     of the pytest session (`pytest --identity <name>` or the
     ICPP_PRO_TEST_IDENTITY environment variable), which the
     `identity_anonymous` fixture temporarily overrides.
+
+    `timeout_seconds` defaults to 30, or to 300 for an argument over 64 KiB,
+    which goes to icp through a file. A call that times out returns a
+    "Failed call to api ..." text, like any other failed call.
 
     `query` selects the request type:
 
@@ -441,7 +453,9 @@ def call_canister_api(
         )
 
     args_format = _ARGS_FORMATS[canister_input]
-    with _call_argument(argument, args_format) as call_argument:
+    with _call_argument(argument, args_format) as (call_argument, via_file):
+        if timeout_seconds is None and via_file:
+            timeout_seconds = _ARGS_FILE_TIMEOUT_SECONDS
         arg = (
             f" canister call "
             f" {shlex.quote(canister_name)} "
@@ -453,15 +467,23 @@ def call_canister_api(
         )
         if query:
             arg += " --query "
+        failed = (
+            f"Failed call to api '{canister_method}' of canister '{canister_name}':"
+        )
         try:
-            response = _run_icp(arg, project_root, timeout_seconds, identity=identity)
+            response = _run_icp(
+                arg,
+                project_root,
+                timeout_seconds,
+                identity=identity,
+                raise_on_timeout=True,
+            )
+        except subprocess.TimeoutExpired as e:
+            response = f"{failed} timed out after {e.timeout} seconds"
         except subprocess.CalledProcessError as e:
             if _is_not_deployed_error(e.output):
                 pytest.exit(_not_deployed_msg(canister_name, network, canister_method))
-            response = (
-                f"Failed call to api '{canister_method}' of canister '{canister_name}':"
-                f"{e.output}"
-            )
+            response = f"{failed}{e.output}"
 
     return response
 

@@ -191,9 +191,10 @@ public:
   // docs start: stable_size
   // The size of stable memory in 64 KiB pages, at any size (the 32-bit
   // ic0_stable_size traps above 4 GiB). The file system keeps its files in
-  // stable memory, so this is how much it uses. Available in every entry
-  // point. Natively it is 0, unless a test sets it with
-  // mockIC.set_stable_size.
+  // stable memory, so this is the space it has reserved: its memory manager
+  // reserves room in large steps, starting at about 64 MiB, and never gives
+  // it back when files are deleted. Available in every entry point.
+  // Natively it is 0, unless a test sets it with mockIC.set_stable_size.
   static uint64_t get_stable_size(); // docs end: stable_size
 
   // docs start: subnet

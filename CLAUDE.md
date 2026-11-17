@@ -135,7 +135,7 @@ Tests run in two modes:
 
 Locally, test only the canisters a change touches. Do not run `make all-tests` on the
 laptop: it builds and deploys every test canister, and CI runs it (on Python 3.14 for each
-OS) on every push to a PR that changes code.
+OS; on Intel macOS it deploys only greet) on every push to a PR that changes code.
 
 `make all-tests` and `make smoke-tests` build the icpp-candid library once per set of
 compile flags and reuse it in every other canister, through a fresh

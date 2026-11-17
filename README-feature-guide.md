@@ -131,10 +131,8 @@ cd test/canisters/<canister> && icpp build-wasm
 The full suite (`make all-tests`) runs in CI, not on the laptop: it builds and
 deploys every test canister, which loads the machine for half an hour. CI runs
 on every push to a PR that changes code (`src/`, `test/`, the Makefile, ...):
-`all-tests` on Python 3.14 on ubuntu and Apple Silicon, and on Intel macOS
-`native-tests` (every canister built and tested natively, greet deployed);
-`smoke-tests` on 3.11-3.13. CI
-(mac + ubuntu matrix) must be green.
+`all-tests` on Python 3.14 for each OS (on Intel macOS with only greet
+deployed), `smoke-tests` on 3.11-3.13. CI (mac + ubuntu matrix) must be green.
 
 **Upgrade test** — required when the change can affect deployed state or the
 wire format, and always at release:

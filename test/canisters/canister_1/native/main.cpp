@@ -118,6 +118,13 @@ static void native_appends_no_reply() {
   ic0_msg_reply_data_append((uintptr_t)empty, sizeof(empty));
 }
 
+// Rejects the call
+static void native_rejects() {
+  IC_API ic_api(CanisterQuery{"native_rejects"}, false);
+  const std::string message{"no reply for you"};
+  ic0_msg_reject((uintptr_t)message.data(), message.size());
+}
+
 // The same, and sends it: the control for native_appends_no_reply
 static void native_appends_and_replies() {
   native_appends_no_reply();
@@ -2165,6 +2172,15 @@ int main() {
                        "roundtrip_text", "(\"Hello C++ Canister\")",
                        "(\"Hello C++ Canister\")", silent_on_trap,
                        my_principal);
+  // The reply of a call as the argument of the next, in one string
+  std::string chained{"(\"Hello C++ Canister\")"};
+  mockIC.run_test_text("roundtrip_text (reply_out is arg_text)", roundtrip_text,
+                       did_path, "roundtrip_text", chained, "Hello",
+                       silent_on_trap, my_principal, &chained);
+  mockIC.run_test_text("roundtrip_text (the reply as argument)", roundtrip_text,
+                       did_path, "roundtrip_text", chained,
+                       "(\"Hello C++ Canister\")", silent_on_trap,
+                       my_principal);
   // Control for the must-fail test "roundtrip_no_arguments (no reply)"
   mockIC.run_test_text("roundtrip_no_arguments (appends and replies)",
                        native_appends_and_replies, did_path,
@@ -2240,12 +2256,16 @@ int main() {
     std::cout << "ERROR: run_test_text left reply_out at: " << no_reply << "\n";
     return 1;
   }
-  if (failed != 7 || failing.test_summary() != 1) {
-    std::cout << "ERROR: " << 7 - failed
-              << " of the 7 tests that must fail passed\n";
+  // Rejected: no reply either
+  failed += failing.run_test_text(
+      "roundtrip_no_arguments (rejected)", native_rejects, did_path,
+      "roundtrip_no_arguments", "()", "()", silent_on_trap, my_principal);
+  if (failed != 8 || failing.test_summary() != 1) {
+    std::cout << "ERROR: " << 8 - failed
+              << " of the 8 tests that must fail passed\n";
     return 1;
   }
-  std::cout << "\nThe 7 tests that must fail failed.\n";
+  std::cout << "\nThe 8 tests that must fail failed.\n";
 
   // returns 1 if any tests failed
   return result;

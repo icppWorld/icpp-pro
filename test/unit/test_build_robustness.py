@@ -430,6 +430,23 @@ def test__a_single_library_build_stamps_only_its_library(
     assert not legacy.exists()
 
 
+def test__mine_no_lib_does_not_reuse_a_symlinked_library_folder(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from icpp import library_stamp
+
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "libhello.a").write_text("", encoding="utf-8")
+    (outside / library_stamp.STAMP_NAME).write_text(icpp.__version__, "utf-8")
+    build_root = tmp_path / "build-library"
+    build_root.mkdir()
+    (build_root / "libhello").symlink_to(outside)
+    libraries = [{"lib_name": "libhello"}]
+    assert library_stamp.must_rebuild(build_root, libraries, ".a")
+    assert "is a symlink" in capsys.readouterr().out
+
+
 class CanisterCompiled(BaseException):
     """Stops the build once it reused the libraries and compiles the canister.
     Not an Exception, which the build would catch and turn into an exit."""

@@ -52,6 +52,9 @@ def _reason_to_rebuild(
     for library in libraries:
         folder = build_root / library["lib_name"]
         archive = folder / f"{library['lib_name']}{ar_ext}"
+        # The build refuses it, as it would refuse to build into it
+        if folder.is_symlink():
+            return f"The library folder {folder} is a symlink"
         if not archive.is_file():
             return f"The library {archive} is missing"
         version = _version(folder / STAMP_NAME)

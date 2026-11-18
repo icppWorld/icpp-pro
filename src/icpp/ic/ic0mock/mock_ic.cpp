@@ -284,11 +284,13 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
                           const std::string &reply_expected,
                           const bool silent_on_trap, const std::string &caller,
                           std::string *reply_out) {
-  // Before *reply_out is cleared, which may be reply_expected itself
+  // Both before *reply_out is cleared: it may be reply_expected or arg_text
   const std::string expected = squeeze_spaces(reply_expected);
-  if (reply_out) reply_out->clear();
   std::string candid_in;
-  if (!encode_text_arg(test_name, did_path, method, arg_text, &candid_in)) {
+  const bool encoded =
+      encode_text_arg(test_name, did_path, method, arg_text, &candid_in);
+  if (reply_out) reply_out->clear();
+  if (!encoded) {
     return 1;
   }
   return run_test_checked(

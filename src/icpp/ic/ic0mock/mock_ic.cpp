@@ -284,6 +284,8 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
                           const std::string &reply_expected,
                           const bool silent_on_trap, const std::string &caller,
                           std::string *reply_out) {
+  // Before the call, which may change it
+  const std::string expected = squeeze_spaces(reply_expected);
   // Written to *reply_out last, which may be any of the arguments
   std::string decoded;
   std::string candid_in;
@@ -307,7 +309,6 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
           }
           decoded = run_didc("decode " + didc_types(did_path, method),
                              root.reply.as_hex_string());
-          const std::string expected = squeeze_spaces(reply_expected);
           if (expected.empty() ||
               squeeze_spaces(decoded).find(expected) != std::string::npos) {
             return true;

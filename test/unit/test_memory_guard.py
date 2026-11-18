@@ -78,7 +78,8 @@ def test__counts_only_the_guarded_command() -> None:
     script = (
         "import subprocess, sys\n"
         "from icpp.memory_guard import guard\n"
-        "subprocess.run([sys.executable, '-c', 'x = bytearray(300 * 2**20)'])\n"
+        "subprocess.run([sys.executable, '-c', 'x = bytearray(300 * 2**20)'], "
+        "check=True)\n"
         f"sys.exit(guard({SMALL!r}, 200 * 2**20))\n"
     )
     assert subprocess.run([sys.executable, "-c", script], check=False).returncode == 0

@@ -8,8 +8,8 @@ when no declaration changed. A build of all the libraries writes a stamp with
 its version, and mine-no-lib builds them again when the stamp is missing,
 unreadable or names another version, or when a library is missing or newer
 than the stamp: another version built it, or its build failed partway. A
-build of one library that succeeds refreshes a stamp of this version and drops
-one of another version.
+build of one library that succeeds refreshes a stamp of this version, unless
+another library is newer than it, and drops it otherwise.
 """
 
 from pathlib import Path
@@ -32,12 +32,15 @@ def write(build_root: Path) -> None:
     (build_root / STAMP_NAME).write_text(__version__, encoding="utf-8")
 
 
-def refresh(build_root: Path) -> None:
-    """After one library was built: a stamp of this version still holds, and is
-    made newer than the library. A stamp of another version no longer holds,
-    since the libraries are then a mix of two versions."""
+def refresh(build_root: Path, built: Path) -> None:
+    """After the library archive `built` was built: a stamp of this version
+    still holds, and is made newer than it. It no longer holds when it names
+    another version, since the libraries are then a mix of two versions, nor
+    when another library is newer than it: making the stamp newer would hide
+    that library from mine-no-lib."""
     stamp = build_root / STAMP_NAME
-    if _version(stamp) == __version__:
+    others = [a for a in build_root.glob(f"*/*{built.suffix}") if a != built]
+    if _version(stamp) == __version__ and _newer_than(stamp, others) is None:
         stamp.touch()
     else:
         stamp.unlink(missing_ok=True)
@@ -78,10 +81,16 @@ def _reason_to_rebuild(build_root: Path, archives: List[Path]) -> Optional[str]:
             f"The libraries in {build_root} were built by icpp {version}, "
             f"and this is icpp {__version__}"
         )
-    stamped = stamp.stat().st_mtime
     for archive in archives:
         if not archive.is_file():
             return f"The library {archive} is missing"
-        if archive.stat().st_mtime > stamped:
-            return f"The library {archive} is newer than the icpp version stamp"
+    newer = _newer_than(stamp, archives)
+    if newer is not None:
+        return f"The library {newer} is newer than the icpp version stamp"
     return None
+
+
+def _newer_than(stamp: Path, archives: List[Path]) -> Optional[Path]:
+    """The first of the archives that is newer than the stamp, if any."""
+    stamped = stamp.stat().st_mtime
+    return next((a for a in archives if a.stat().st_mtime > stamped), None)

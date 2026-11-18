@@ -414,7 +414,7 @@ install-didc:
 	  echo "$(DIDC_SHA256)  $$tmp/didc.tar.xz" | shasum -a 256 -c - && \
 	  tar -xf "$$tmp/didc.tar.xz" -C "$$tmp" && \
 	  sudo install -m 755 "$$tmp/didc-$(DIDC_TARGET)/didc" /usr/local/bin/didc
-	@test "$$(command -v didc)" = /usr/local/bin/didc || { echo "ERROR: $$(command -v didc) comes before /usr/local/bin/didc on the PATH"; exit 1; }
+	@test "$$(command -v didc)" = /usr/local/bin/didc || { echo "ERROR: the PATH finds didc at '$$(command -v didc)', not at /usr/local/bin/didc"; exit 1; }
 	didc --version
 
 .PHONY: install-jp-ubuntu

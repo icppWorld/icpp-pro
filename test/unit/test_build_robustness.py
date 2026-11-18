@@ -426,8 +426,54 @@ def test__a_single_library_build_refreshes_or_drops_the_stamp(
     os.utime(stamp, (0, 0))
     inspect.unwrap(build_library)(lib_name="libhello")
     assert stamp.exists() == kept
-    # Made newer than the library just built
     assert not kept or stamp.stat().st_mtime > 0
+
+
+def test__a_build_of_no_library_leaves_the_stamp(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from icpp import library_stamp
+    from icpp.commands_build_library import build_library
+
+    toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
+    load_icpp_toml(monkeypatch, toml_text)
+    stub_compiles(monkeypatch, "commands_build_library")
+    stamp = project / "build-library" / library_stamp.STAMP_NAME
+    stamp.parent.mkdir(exist_ok=True)
+    stamp.write_text(icpp.__version__, encoding="utf-8")
+    os.utime(stamp, (0, 0))
+    # A name of no library builds nothing, so it vouches for nothing
+    inspect.unwrap(build_library)(lib_name="libhelo")
+    assert stamp.stat().st_mtime == 0
+
+
+@pytest.mark.parametrize(
+    "version, other_mtime, kept",
+    [
+        (icpp.__version__, 50, True),
+        ("0.0.0", 50, False),
+        # Another library is newer than the stamp: touching it would hide that
+        (icpp.__version__, 200, False),
+    ],
+)
+def test__refresh_after_one_library(
+    tmp_path: Path, version: str, other_mtime: int, kept: bool
+) -> None:
+    from icpp import library_stamp
+
+    stamp = tmp_path / library_stamp.STAMP_NAME
+    built = tmp_path / "liba" / "liba.a"
+    other = tmp_path / "libb" / "libb.a"
+    for archive in (built, other):
+        archive.parent.mkdir()
+        archive.write_text("", encoding="utf-8")
+    stamp.write_text(version, encoding="utf-8")
+    os.utime(stamp, (100, 100))
+    os.utime(other, (other_mtime, other_mtime))
+    os.utime(built, (300, 300))
+    library_stamp.refresh(tmp_path, built)
+    assert stamp.exists() == kept
+    assert not kept or stamp.stat().st_mtime >= built.stat().st_mtime
 
 
 class CanisterCompiled(BaseException):

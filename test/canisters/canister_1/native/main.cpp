@@ -111,6 +111,31 @@ static void native_set_timer_from_query() {
   (void)IC_API::set_timer(1000000000, []() {});
 }
 
+// Appends the reply (), and does not send it
+static void native_appends_no_reply() {
+  IC_API ic_api(CanisterQuery{"native_appends_no_reply"}, false);
+  const uint8_t empty[] = {'D', 'I', 'D', 'L', 0, 0};
+  ic0_msg_reply_data_append((uintptr_t)empty, sizeof(empty));
+}
+
+// Appends the reply (), and rejects the call: the appended data decodes, so
+// the test fails only when the reply that was sent is checked
+static void native_rejects() {
+  IC_API ic_api(CanisterQuery{"native_rejects"}, false);
+  const uint8_t empty[] = {'D', 'I', 'D', 'L', 0, 0};
+  ic0_msg_reply_data_append((uintptr_t)empty, sizeof(empty));
+  const std::string message{"no reply for you"};
+  ic0_msg_reject((uintptr_t)message.data(), message.size());
+}
+
+// The same, and sends it: the control for native_appends_no_reply
+static void native_appends_and_replies() {
+  IC_API ic_api(CanisterQuery{"native_appends_and_replies"}, false);
+  const uint8_t empty[] = {'D', 'I', 'D', 'L', 0, 0};
+  ic0_msg_reply_data_append((uintptr_t)empty, sizeof(empty));
+  ic0_msg_reply();
+}
+
 static void native_cancel_all_timers_from_inspect() {
   IC_API ic_api(CanisterInspectMessage{"native_cancel_all_timers_from_inspect"},
                 false);
@@ -2152,6 +2177,20 @@ int main() {
                        "roundtrip_text", "(\"Hello C++ Canister\")",
                        "(\"Hello C++ Canister\")", silent_on_trap,
                        my_principal);
+  // The reply of a call as the argument of the next, in one string
+  std::string chained{"(\"Hello C++ Canister\")"};
+  mockIC.run_test_text("roundtrip_text (reply_out is arg_text)", roundtrip_text,
+                       did_path, "roundtrip_text", chained, "Hello",
+                       silent_on_trap, my_principal, &chained);
+  mockIC.run_test_text("roundtrip_text (the reply as argument)", roundtrip_text,
+                       did_path, "roundtrip_text", chained,
+                       "(\"Hello C++ Canister\")", silent_on_trap,
+                       my_principal);
+  // Control for the must-fail test "roundtrip_no_arguments (no reply)"
+  mockIC.run_test_text("roundtrip_no_arguments (appends and replies)",
+                       native_appends_and_replies, did_path,
+                       "roundtrip_no_arguments", "()", "()", silent_on_trap,
+                       my_principal);
   // A part of the reply, with other white space than didc prints
   std::string reply;
   mockIC.run_test_text(
@@ -2168,7 +2207,8 @@ int main() {
   mockIC.run_trap_test_text("trap_multiple_calls_from_wire (Candid text)",
                             trap_multiple_calls_from_wire, did_path,
                             "trap_multiple_calls_from_wire", "(true)",
-                            silent_on_trap, my_principal);
+                            silent_on_trap, my_principal,
+                            "ic_api.from_wire() more than once");
 
   int result = mockIC.test_summary();
 
@@ -2205,12 +2245,32 @@ int main() {
       "roundtrip_text (expected reply as reply_out)", roundtrip_text, did_path,
       "roundtrip_text", "(\"Hello C++ Canister\")", expected_and_out,
       silent_on_trap, my_principal, &expected_and_out);
-  if (failed != 6 || failing.test_summary() != 1) {
-    std::cout << "ERROR: " << 6 - failed
-              << " of the 6 tests that must fail passed\n";
+  if (expected_and_out != "(\"Hello C++ Canister\")") {
+    std::cout << "ERROR: run_test_text gave the reply: " << expected_and_out
+              << "\n";
     return 1;
   }
-  std::cout << "\nThe 6 tests that must fail failed.\n";
+  // Appended a reply and did not send it. The same call that sends it passes,
+  // above, so this one fails for the missing reply
+  std::string no_reply{"(\"stale\")"};
+  failed += failing.run_test_text("roundtrip_no_arguments (no reply)",
+                                  native_appends_no_reply, did_path,
+                                  "roundtrip_no_arguments", "()", "()",
+                                  silent_on_trap, my_principal, &no_reply);
+  if (!no_reply.empty()) {
+    std::cout << "ERROR: run_test_text left reply_out at: " << no_reply << "\n";
+    return 1;
+  }
+  // Rejected: no reply either
+  failed += failing.run_test_text(
+      "roundtrip_no_arguments (rejected)", native_rejects, did_path,
+      "roundtrip_no_arguments", "()", "()", silent_on_trap, my_principal);
+  if (failed != 8 || failing.test_summary() != 1) {
+    std::cout << "ERROR: " << 8 - failed
+              << " of the 8 tests that must fail passed\n";
+    return 1;
+  }
+  std::cout << "\nThe 8 tests that must fail failed.\n";
 
   // returns 1 if any tests failed
   return result;

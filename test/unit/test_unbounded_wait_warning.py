@@ -63,6 +63,9 @@ def test__bare_braces_do_not_compile(tmp_path: Path) -> None:
     # The acknowledgement must be named, so it can be found
     result = compile_call(tmp_path, 'IC_Call::unbounded_wait(callee, "m", {})')
     assert result.returncode != 0
+    # Refused for the braces, not for another error
+    assert "initializer list" in result.stderr, result.stderr
+    assert "IC_TrustedCallee" in result.stderr, result.stderr
 
 
 def test__allow_unbounded_wait_does_not_warn(tmp_path: Path) -> None:

@@ -56,6 +56,11 @@ def build_native(
     config_default.ICPP_TOML_PATH = Path(config)
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 
+    # Also when it is not deleted: the build writes into it. Checked before the
+    # libraries are built, so a refused build leaves them as they were
+    build_path = icpp_toml.icpp_toml_path.parent / "build-native"
+    refuse_symlinked_folder(build_path)
+
     # ----------------------------------------------------------------------
     # First build the libraries. mine-no-lib reuses them only when this icpp
     # version built all of them: after an upgrade they hold the old code
@@ -71,11 +76,8 @@ def build_native(
     typer.echo("Building the native executable...")
 
     # ----------------------------------------------------------------------
-    build_path = icpp_toml.icpp_toml_path.parent / "build-native"
     typer.echo(f"Build folder: {build_path.resolve()}")
 
-    # Also when it is not deleted: the build writes into it
-    refuse_symlinked_folder(build_path)
     if to_compile == "all":
         if build_path.exists():
             typer.echo("Deleting the build-native folder.")

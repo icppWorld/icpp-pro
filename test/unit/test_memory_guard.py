@@ -71,6 +71,18 @@ def test__fails_a_short_run_over_the_limit(capsys: pytest.CaptureFixture[str]) -
 
 
 def test__counts_only_the_guarded_command() -> None:
-    """A larger command that ran before, outside the guard, does not count."""
-    subprocess.run([sys.executable, "-c", "x = bytearray(800 * 2**20)"], check=True)
-    assert guard(SMALL, 400 * 2**20) == 0
+    """A larger command that ran before, outside the guard, does not count.
+
+    Both run from a fresh interpreter: on Linux a child's peak starts at its
+    parent's at exec, and pytest's own peak may be over the limit."""
+    script = (
+        "import subprocess, sys\n"
+        "from icpp.memory_guard import guard\n"
+        "subprocess.run([sys.executable, '-c', 'x = bytearray(300 * 2**20)'], "
+        "check=True)\n"
+        f"sys.exit(guard({SMALL!r}, 200 * 2**20))\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script], check=False, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

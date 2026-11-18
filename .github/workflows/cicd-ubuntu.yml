@@ -94,10 +94,11 @@ jobs:
       - name: install
         shell: bash -l {0} # activates the default conda environment ('test')
         run: |
+          set -e
           echo "Installing tool chains & dependencies"
           pwd
           sudo apt-get update
-          sudo apt-get install build-essential
+          sudo apt-get install -y build-essential
           make summary
           make install-icp
           make install-python

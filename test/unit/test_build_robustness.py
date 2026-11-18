@@ -20,9 +20,10 @@ import os
 import shlex
 import subprocess
 import sys
+import threading
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 import pytest
 
@@ -151,20 +152,41 @@ def test__a_dangling_symlink_as_library_folder_is_refused(
     assert "is a symlink" in capsys.readouterr().out
 
 
+class LibrariesBuilt(Exception):
+    """Stops the build once it decided to build the libraries."""
+
+
+def built(*_a: Any, **_k: Any) -> None:
+    """Stands in for a library builder."""
+    raise LibrariesBuilt
+
+
+@pytest.mark.parametrize(
+    "module, builder, folder",
+    [
+        ("build_wasm", "build_library", "build"),
+        ("build_native", "build_library_native", "build-native"),
+    ],
+)
 def test__a_symlinked_build_folder_is_refused_when_it_is_not_deleted(
     tmp_path: Path,
     project: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    module: str,
+    builder: str,
+    folder: str,
 ) -> None:
-    from icpp.commands_build_native import build_native
-
     target = tmp_path / "elsewhere"
     target.mkdir()
-    (project / "build-native").symlink_to(target, target_is_directory=True)
+    (project / folder).symlink_to(target, target_is_directory=True)
     load_icpp_toml(monkeypatch, WASM_TABLE)
+
+    # Refused before the libraries, which have no stamp, are built again
+    command = importlib.import_module(f"icpp.commands_{module}")
+    monkeypatch.setattr(command, builder, built)
     with pytest.raises(SystemExit):
-        inspect.unwrap(build_native)(to_compile="mine-no-lib")
+        inspect.unwrap(getattr(command, module))(to_compile="mine-no-lib")
     assert "is a symlink" in capsys.readouterr().out
 
 
@@ -339,77 +361,153 @@ def stub_compiles(monkeypatch: pytest.MonkeyPatch, module: str) -> list[str]:
     return commands
 
 
-def test__a_full_library_build_stamps_its_version(
-    project: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def stamp_of(project: Path, root: str, lib_name: str) -> Path:
+    """The icpp version stamp in a library folder."""
     from icpp import library_stamp
-    from icpp.commands_build_library import build_library
 
+    return project / root / lib_name / library_stamp.STAMP_NAME
+
+
+@pytest.mark.parametrize(
+    "module, root",
+    [
+        ("build_library", "build-library"),
+        ("build_library_native", "build-library-native"),
+    ],
+)
+def test__a_full_library_build_stamps_each_library(
+    project: Path, monkeypatch: pytest.MonkeyPatch, module: str, root: str
+) -> None:
     (project / "src" / "hello.cpp").write_text("", encoding="utf-8")
     toml_text = WASM_TABLE + (
         '\n[[build-library]]\nlib_name = "libhello"\ncpp_paths = ["src/hello.cpp"]\n'
     )
     load_icpp_toml(monkeypatch, toml_text)
-    stub_compiles(monkeypatch, "commands_build_library")
-    inspect.unwrap(build_library)()
-    stamp = project / "build-library" / library_stamp.STAMP_NAME
-    assert stamp.read_text(encoding="utf-8") == icpp.__version__
+    stub_compiles(monkeypatch, f"commands_{module}")
+    command = importlib.import_module(f"icpp.commands_{module}")
+    inspect.unwrap(getattr(command, module))()
+    for lib_name in ["libhello", "__ic_candid__"]:
+        stamp = stamp_of(project, root, lib_name)
+        assert stamp.read_text(encoding="utf-8") == icpp.__version__
 
 
+@pytest.mark.parametrize(
+    "module, root",
+    [
+        ("build_library", "build-library"),
+        ("build_library_native", "build-library-native"),
+    ],
+)
 def test__a_failed_library_build_leaves_no_stamp(
-    project: Path, monkeypatch: pytest.MonkeyPatch
+    project: Path, monkeypatch: pytest.MonkeyPatch, module: str, root: str
 ) -> None:
-    from icpp import library_stamp
-    from icpp.commands_build_library import build_library
-
-    (project / "build-library").mkdir()
-    (project / "build-library" / library_stamp.STAMP_NAME).write_text(
-        icpp.__version__, encoding="utf-8"
-    )
+    stamp = stamp_of(project, root, "__ic_candid__")
+    stamp.parent.mkdir(parents=True)
+    stamp.write_text(icpp.__version__, encoding="utf-8")
     load_icpp_toml(monkeypatch, WASM_TABLE)
-    stub_compiles(monkeypatch, "commands_build_library")
+    stub_compiles(monkeypatch, f"commands_{module}")
 
     def fail(*_a: Any, **_k: Any) -> str:
         raise subprocess.CalledProcessError(1, "ar")
 
-    monkeypatch.setattr("icpp.commands_build_library.run_shell_cmd", fail)
+    monkeypatch.setattr(f"icpp.commands_{module}.run_shell_cmd", fail)
+    command = importlib.import_module(f"icpp.commands_{module}")
     with pytest.raises(SystemExit):
-        inspect.unwrap(build_library)()
-    assert not (project / "build-library" / library_stamp.STAMP_NAME).exists()
+        inspect.unwrap(getattr(command, module))()
+    assert not stamp.exists()
 
 
-def test__a_single_library_build_writes_no_stamp(
-    project: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    "module, root",
+    [
+        ("build_library", "build-library"),
+        ("build_library_native", "build-library-native"),
+    ],
+)
+def test__a_single_library_build_stamps_only_its_library(
+    project: Path, monkeypatch: pytest.MonkeyPatch, module: str, root: str
 ) -> None:
-    from icpp import library_stamp
-    from icpp.commands_build_library import build_library
-
     toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
     load_icpp_toml(monkeypatch, toml_text)
-    stub_compiles(monkeypatch, "commands_build_library")
-    inspect.unwrap(build_library)(lib_name="libhello")
-    assert not (project / "build-library" / library_stamp.STAMP_NAME).exists()
+    stub_compiles(monkeypatch, f"commands_{module}")
+    for lib_name in ["libhello", "__ic_candid__"]:
+        stamp_of(project, root, lib_name).parent.mkdir(parents=True)
+        stamp_of(project, root, lib_name).write_text("0.0.0", encoding="utf-8")
+    command = importlib.import_module(f"icpp.commands_{module}")
+    inspect.unwrap(getattr(command, module))(lib_name="libhello")
+    assert stamp_of(project, root, "libhello").read_text("utf-8") == icpp.__version__
+    assert stamp_of(project, root, "__ic_candid__").read_text("utf-8") == "0.0.0"
 
 
-@pytest.mark.parametrize("version, kept", [(icpp.__version__, True), ("0.0.0", False)])
-def test__a_single_library_build_drops_a_stamp_of_another_version(
-    project: Path, monkeypatch: pytest.MonkeyPatch, version: str, kept: bool
+@pytest.mark.parametrize("linked", ["build-library", "libhello", "libhello.a", "stamp"])
+def test__mine_no_lib_does_not_reuse_a_symlinked_folder(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], linked: str
 ) -> None:
     from icpp import library_stamp
-    from icpp.commands_build_library import build_library
 
-    toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
-    load_icpp_toml(monkeypatch, toml_text)
-    stub_compiles(monkeypatch, "commands_build_library")
-    stamp = project / "build-library" / library_stamp.STAMP_NAME
-    stamp.parent.mkdir(exist_ok=True)
-    stamp.write_text(version, encoding="utf-8")
-    inspect.unwrap(build_library)(lib_name="libhello")
-    assert stamp.exists() == kept
+    outside = tmp_path / "outside"
+    (outside / "libhello").mkdir(parents=True)
+    (outside / "libhello" / "libhello.a").write_text("", encoding="utf-8")
+    stamp = outside / "libhello" / library_stamp.STAMP_NAME
+    stamp.write_text(icpp.__version__, "utf-8")
+    build_root = tmp_path / "build-library"
+    if linked == "build-library":
+        build_root.symlink_to(outside)
+    elif linked == "libhello":
+        build_root.mkdir()
+        (build_root / "libhello").symlink_to(outside / "libhello")
+    else:
+        # A real folder, with the archive or the stamp a symlink
+        (build_root / "libhello").mkdir(parents=True)
+        name = "libhello.a" if linked == "libhello.a" else library_stamp.STAMP_NAME
+        other = "libhello.a" if name != "libhello.a" else library_stamp.STAMP_NAME
+        (build_root / "libhello" / name).symlink_to(outside / "libhello" / name)
+        (build_root / "libhello" / other).write_text(icpp.__version__, "utf-8")
+    libraries = [{"lib_name": "libhello"}]
+    assert library_stamp.must_rebuild(build_root, libraries, ".a")
+    assert "is a symlink" in capsys.readouterr().out
 
 
-class LibrariesBuilt(Exception):
-    """Stops the build once it decided to build the libraries."""
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="no named pipes")
+def test__a_stamp_that_is_a_pipe_is_not_read(tmp_path: Path) -> None:
+    from icpp import library_stamp
+
+    (tmp_path / "libhello").mkdir()
+    (tmp_path / "libhello" / "libhello.a").write_text("", encoding="utf-8")
+    os.mkfifo(tmp_path / "libhello" / library_stamp.STAMP_NAME)
+    result: list[bool] = []
+    checker = threading.Thread(
+        target=lambda: result.append(
+            library_stamp.must_rebuild(tmp_path, [{"lib_name": "libhello"}], ".a")
+        ),
+        daemon=True,
+    )
+    checker.start()
+    # A read of the pipe would wait for a writer that never comes
+    checker.join(timeout=10)
+    assert result == [True]
+
+
+def test__a_stamp_that_cannot_be_written_warns(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from icpp import library_stamp
+
+    # A folder where the stamp of the first library goes
+    (tmp_path / "liba" / library_stamp.STAMP_NAME).mkdir(parents=True)
+    (tmp_path / "libb").mkdir()
+    libraries = [{"lib_name": "liba"}, {"lib_name": "libb"}]
+    library_stamp.after_build(tmp_path, libraries, None)
+    stamp_a = tmp_path / "liba" / library_stamp.STAMP_NAME
+    assert f"WARNING: cannot write {stamp_a}" in capsys.readouterr().out
+    # The next library is stamped all the same
+    stamp_b = tmp_path / "libb" / library_stamp.STAMP_NAME
+    assert stamp_b.read_text("utf-8") == icpp.__version__
+
+
+class CanisterCompiled(BaseException):
+    """Stops the build once it reused the libraries and compiles the canister.
+    Not an Exception, which the build would catch and turn into an exit."""
 
 
 @pytest.mark.parametrize(
@@ -425,12 +523,14 @@ class LibrariesBuilt(Exception):
     ],
 )
 @pytest.mark.parametrize(
-    "stamp, lib_names, rebuilds",
+    "stamps, lib_names, rebuilds",
     [
-        ("current", ["libhello", "__ic_candid__"], False),
-        (None, ["libhello", "__ic_candid__"], True),
-        ("6.0.0", ["libhello", "__ic_candid__"], True),
-        ("current", ["__ic_candid__"], True),
+        ({"libhello": "current", "__ic_candid__": "current"}, None, False),
+        ({}, None, True),
+        ({"libhello": "6.0.0", "__ic_candid__": "current"}, None, True),
+        ({"libhello": "current", "__ic_candid__": "current"}, ["__ic_candid__"], True),
+        ({"libhello": "unreadable", "__ic_candid__": "current"}, None, True),
+        ({"libhello": "", "__ic_candid__": "current"}, None, True),
     ],
 )
 def test__mine_no_lib_builds_the_libraries_unless_this_version_built_them(
@@ -441,35 +541,35 @@ def test__mine_no_lib_builds_the_libraries_unless_this_version_built_them(
     builder: str,
     root: str,
     ar_ext: str,
-    stamp: Optional[str],
-    lib_names: list[str],
+    stamps: Dict[str, str],
+    lib_names: Optional[list[str]],
     rebuilds: bool,
 ) -> None:
-    from icpp import library_stamp
-
     toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
     load_icpp_toml(monkeypatch, toml_text)
-    for lib_name in lib_names:
+    for lib_name in lib_names or ["libhello", "__ic_candid__"]:
         (project / root / lib_name).mkdir(parents=True)
         archive = f"{lib_name}{getattr(config_default, ar_ext)}"
         (project / root / lib_name / archive).write_text("", encoding="utf-8")
-    if stamp is not None:
-        version = icpp.__version__ if stamp == "current" else stamp
-        (project / root / library_stamp.STAMP_NAME).write_text(version, "utf-8")
+    for lib_name, stamp in stamps.items():
+        stamp_path = stamp_of(project, root, lib_name)
+        stamp_path.parent.mkdir(parents=True, exist_ok=True)
+        if stamp == "unreadable":
+            stamp_path.write_bytes(b"\xff")
+        else:
+            version = icpp.__version__ if stamp == "current" else stamp
+            stamp_path.write_text(version, "utf-8")
     (project / "src" / "my_canister.did").write_text("service : {}", "utf-8")
 
-    def built(*_a: Any, **_k: Any) -> None:
-        raise LibrariesBuilt
-
     def compiled(*_a: Any, **_k: Any) -> None:
-        raise SystemExit(0)
+        raise CanisterCompiled
 
     command = importlib.import_module(f"icpp.commands_{module}")
     monkeypatch.setattr(command, builder, built)
     # The build of the canister's own code stops at its first command
     monkeypatch.setattr(command, "run_in_parallel", compiled)
     monkeypatch.setattr(command, "run_shell_cmd", compiled)
-    with pytest.raises(LibrariesBuilt if rebuilds else SystemExit):
+    with pytest.raises(LibrariesBuilt if rebuilds else CanisterCompiled):
         inspect.unwrap(getattr(command, module))(to_compile="mine-no-lib")
     assert ("building the libraries" in capsys.readouterr().out) == rebuilds
 

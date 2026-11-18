@@ -179,28 +179,36 @@ std::string shell_quote(const std::string &s) {
   return quoted + "'";
 }
 
-// A new empty file in the temporary folder
-std::string temp_file() {
-  std::string path =
-      (std::filesystem::temp_directory_path() / "icpp-didc-XXXXXX").string();
-  int fd = mkstemp(path.data());
-  if (fd == -1) {
-    throw std::runtime_error("didc: cannot create a temporary file");
+// A new empty file in the temporary folder, removed when it goes out of scope
+struct TempFile {
+  std::string path;
+  TempFile()
+      : path((std::filesystem::temp_directory_path() / "icpp-didc-XXXXXX")
+                 .string()) {
+    int fd = mkstemp(path.data());
+    if (fd == -1) {
+      throw std::runtime_error("didc: cannot create a temporary file");
+    }
+    close(fd);
   }
-  close(fd);
-  return path;
-}
+  ~TempFile() {
+    std::error_code ignored;
+    std::filesystem::remove(path, ignored);
+  }
+  TempFile(const TempFile &) = delete;
+  TempFile &operator=(const TempFile &) = delete;
+};
 
 // Runs `didc <args>` with input on its standard input, and returns what it
 // writes to its standard output. Throws with its error output when it fails.
 std::string run_didc(const std::string &args, const std::string &input) {
-  const std::string in_path = temp_file();
-  const std::string err_path = temp_file();
+  const TempFile in;
+  const TempFile err;
   std::string output;
   int status = -1;
-  if (std::ofstream(in_path, std::ios::binary) << input) {
-    std::string cmd = "didc " + args + " < " + shell_quote(in_path) + " 2> " +
-                      shell_quote(err_path);
+  if (std::ofstream(in.path, std::ios::binary) << input) {
+    std::string cmd = "didc " + args + " < " + shell_quote(in.path) + " 2> " +
+                      shell_quote(err.path);
     if (FILE *pipe = popen(cmd.c_str(), "r")) {
       char buffer[4096];
       size_t n;
@@ -211,9 +219,7 @@ std::string run_didc(const std::string &args, const std::string &input) {
     }
   }
   std::stringstream errors;
-  errors << std::ifstream(err_path).rdbuf();
-  std::filesystem::remove(in_path);
-  std::filesystem::remove(err_path);
+  errors << std::ifstream(err.path).rdbuf();
   if (status != 0) {
     const bool not_found = WIFEXITED(status) && WEXITSTATUS(status) == 127;
     throw std::runtime_error("`didc " + args + "` failed" +
@@ -278,26 +284,43 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
                           const std::string &reply_expected,
                           const bool silent_on_trap, const std::string &caller,
                           std::string *reply_out) {
+  // Before the call, which may change it
+  const std::string expected = squeeze_spaces(reply_expected);
+  // Written to *reply_out last, which may be any of the arguments
+  std::string decoded;
   std::string candid_in;
-  if (!encode_text_arg(test_name, did_path, method, arg_text, &candid_in)) {
-    return 1;
+  int result = 1;
+  if (encode_text_arg(test_name, did_path, method, arg_text, &candid_in)) {
+    result = run_test_checked(
+        test_name, api_callback, candid_in, silent_on_trap, caller, [&]() {
+          // Only a reply the canister sent, not data it appended and kept
+          CallContext &root = m_contexts[m_root_context];
+          if (root.rejected) {
+            std::cout << "The call was rejected"
+                      << (root.reject_message.empty()
+                              ? ""
+                              : ": " + root.reject_message)
+                      << "\n";
+            return false;
+          }
+          if (!root.done) {
+            std::cout << "The call did not reply\n";
+            return false;
+          }
+          decoded = run_didc("decode " + didc_types(did_path, method),
+                             root.reply.as_hex_string());
+          if (expected.empty() ||
+              squeeze_spaces(decoded).find(expected) != std::string::npos) {
+            return true;
+          }
+          std::cout << "The reply:\n"
+                    << decoded << "\ndoes not contain:\n"
+                    << expected << "\n";
+          return false;
+        });
   }
-  return run_test_checked(
-      test_name, api_callback, candid_in, silent_on_trap, caller, [&]() {
-        std::string reply = run_didc("decode " + didc_types(did_path, method),
-                                     m_B_out.as_hex_string());
-        // Before *reply_out, which may be reply_expected itself
-        const std::string expected = squeeze_spaces(reply_expected);
-        if (reply_out) *reply_out = reply;
-        if (expected.empty() ||
-            squeeze_spaces(reply).find(expected) != std::string::npos) {
-          return true;
-        }
-        std::cout << "The reply:\n"
-                  << reply << "\ndoes not contain:\n"
-                  << expected << "\n";
-        return false;
-      });
+  if (reply_out) *reply_out = std::move(decoded);
+  return result;
 }
 
 int MockIC::run_trap_test_text(

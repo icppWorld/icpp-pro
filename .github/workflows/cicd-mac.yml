@@ -96,6 +96,7 @@ jobs:
       - name: install
         shell: bash -l {0} # activates the default conda environment ('test')
         run: |
+          set -e
           echo "Installing tool chains & dependencies"
           pwd
           make summary

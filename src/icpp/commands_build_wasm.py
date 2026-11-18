@@ -92,8 +92,6 @@ def build_wasm(
 
     # ----------------------------------------------------------------------
     typer.echo(f"Build folder: {build_path.resolve()}")
-    # Again: it may have changed while the libraries were built
-    refuse_symlinked_folder(build_path)
 
     if to_compile == "all":
         if build_path.exists():

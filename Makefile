@@ -415,7 +415,7 @@ install-didc:
 	  tar -xf "$$tmp/didc.tar.xz" -C "$$tmp" && \
 	  sudo mkdir -p /usr/local/bin && \
 	  sudo install -m 755 "$$tmp/didc-$(DIDC_TARGET)/didc" /usr/local/bin/didc
-	@test "$$(command -v didc)" = /usr/local/bin/didc || { echo "ERROR: the PATH finds didc at '$$(command -v didc)', not at /usr/local/bin/didc"; exit 1; }
+	@test "$$(command -v didc)" -ef /usr/local/bin/didc || { echo "ERROR: the PATH finds didc at '$$(command -v didc)', not at /usr/local/bin/didc"; exit 1; }
 	didc --version
 
 .PHONY: install-jp-ubuntu

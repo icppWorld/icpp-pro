@@ -168,7 +168,7 @@ run the whole suite as a different identity.
 
 ### Install `didc`
 
-A handy command line utility to test out [candid](https://github.com/dfinity/candid) generation:
+A command line utility for [candid](https://github.com/dfinity/candid). The native tests in Candid text, such as those of `canister_1`, run it to encode and decode their messages:
 
 ```bash
 # Make sure wget is installed
@@ -268,7 +268,8 @@ Configure clang-format:
             // "program": "${workspaceFolder}/test/canisters/canister_flags/build-native/mockic.exe",
             // "program": "${workspaceFolder}/test/canisters/canister_http/build-native/mockic.exe",
             "args": [],
-            "cwd": "${workspaceFolder}"
+            // The canister folder: its tests read files relative to it
+            "cwd": "${workspaceFolder}/test/canisters/canister_1"
         }
     ]
   }
@@ -292,7 +293,8 @@ Configure clang-format:
             // "program": "${workspaceFolder}/test/canisters/canister_flags/build-native/mockic.exe",
             "program": "${workspaceFolder}/test/canisters/canister_http/build-native/mockic.exe",
             "args": [],
-            "cwd": "${workspaceFolder}"
+            // The canister folder: its tests read files relative to it
+            "cwd": "${workspaceFolder}/test/canisters/canister_http"
         }
     ]
   }

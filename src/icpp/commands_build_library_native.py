@@ -68,8 +68,6 @@ def build_library_native(
 
     if not build_root_path.exists():
         build_root_path.mkdir()
-    if lib_name is not None:
-        library_stamp.drop_if_other_version(build_root_path)
 
     # ----------------------------------------------------------------------
     # build-library/lib_name
@@ -334,3 +332,5 @@ def build_library_native(
     # All of them are built, so mine-no-lib may reuse them
     if lib_name is None:
         library_stamp.write(build_root_path)
+    else:
+        library_stamp.refresh(build_root_path)

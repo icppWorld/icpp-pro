@@ -111,6 +111,13 @@ static void native_set_timer_from_query() {
   (void)IC_API::set_timer(1000000000, []() {});
 }
 
+// Appends the reply (), and does not send it
+static void native_appends_no_reply() {
+  IC_API ic_api(CanisterQuery{"native_appends_no_reply"}, false);
+  const uint8_t empty[] = {'D', 'I', 'D', 'L', 0, 0};
+  ic0_msg_reply_data_append((uintptr_t)empty, sizeof(empty));
+}
+
 static void native_cancel_all_timers_from_inspect() {
   IC_API ic_api(CanisterInspectMessage{"native_cancel_all_timers_from_inspect"},
                 false);
@@ -2168,7 +2175,8 @@ int main() {
   mockIC.run_trap_test_text("trap_multiple_calls_from_wire (Candid text)",
                             trap_multiple_calls_from_wire, did_path,
                             "trap_multiple_calls_from_wire", "(true)",
-                            silent_on_trap, my_principal);
+                            silent_on_trap, my_principal,
+                            "ic_api.from_wire() more than once");
 
   int result = mockIC.test_summary();
 
@@ -2205,12 +2213,21 @@ int main() {
       "roundtrip_text (expected reply as reply_out)", roundtrip_text, did_path,
       "roundtrip_text", "(\"Hello C++ Canister\")", expected_and_out,
       silent_on_trap, my_principal, &expected_and_out);
-  if (failed != 6 || failing.test_summary() != 1) {
-    std::cout << "ERROR: " << 6 - failed
-              << " of the 6 tests that must fail passed\n";
+  if (expected_and_out != "(\"Hello C++ Canister\")") {
+    std::cout << "ERROR: run_test_text gave the reply: " << expected_and_out
+              << "\n";
     return 1;
   }
-  std::cout << "\nThe 6 tests that must fail failed.\n";
+  // Appended a reply and did not send it
+  failed += failing.run_test_text(
+      "roundtrip_no_arguments (no reply)", native_appends_no_reply, did_path,
+      "roundtrip_no_arguments", "()", "()", silent_on_trap, my_principal);
+  if (failed != 7 || failing.test_summary() != 1) {
+    std::cout << "ERROR: " << 7 - failed
+              << " of the 7 tests that must fail passed\n";
+    return 1;
+  }
+  std::cout << "\nThe 7 tests that must fail failed.\n";
 
   // returns 1 if any tests failed
   return result;

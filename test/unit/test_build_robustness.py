@@ -151,20 +151,39 @@ def test__a_dangling_symlink_as_library_folder_is_refused(
     assert "is a symlink" in capsys.readouterr().out
 
 
+class LibrariesBuilt(Exception):
+    """Stops the build once it decided to build the libraries."""
+
+
+@pytest.mark.parametrize(
+    "module, builder, folder",
+    [
+        ("build_wasm", "build_library", "build"),
+        ("build_native", "build_library_native", "build-native"),
+    ],
+)
 def test__a_symlinked_build_folder_is_refused_when_it_is_not_deleted(
     tmp_path: Path,
     project: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    module: str,
+    builder: str,
+    folder: str,
 ) -> None:
-    from icpp.commands_build_native import build_native
-
     target = tmp_path / "elsewhere"
     target.mkdir()
-    (project / "build-native").symlink_to(target, target_is_directory=True)
+    (project / folder).symlink_to(target, target_is_directory=True)
     load_icpp_toml(monkeypatch, WASM_TABLE)
+
+    def built(*_a: Any, **_k: Any) -> None:
+        raise LibrariesBuilt
+
+    # Refused before the libraries, which have no stamp, are built again
+    command = importlib.import_module(f"icpp.commands_{module}")
+    monkeypatch.setattr(command, builder, built)
     with pytest.raises(SystemExit):
-        inspect.unwrap(build_native)(to_compile="mine-no-lib")
+        inspect.unwrap(getattr(command, module))(to_compile="mine-no-lib")
     assert "is a symlink" in capsys.readouterr().out
 
 
@@ -392,7 +411,7 @@ def test__a_single_library_build_writes_no_stamp(
 
 
 @pytest.mark.parametrize("version, kept", [(icpp.__version__, True), ("0.0.0", False)])
-def test__a_single_library_build_drops_a_stamp_of_another_version(
+def test__a_single_library_build_refreshes_or_drops_the_stamp(
     project: Path, monkeypatch: pytest.MonkeyPatch, version: str, kept: bool
 ) -> None:
     from icpp import library_stamp
@@ -404,12 +423,16 @@ def test__a_single_library_build_drops_a_stamp_of_another_version(
     stamp = project / "build-library" / library_stamp.STAMP_NAME
     stamp.parent.mkdir(exist_ok=True)
     stamp.write_text(version, encoding="utf-8")
+    os.utime(stamp, (0, 0))
     inspect.unwrap(build_library)(lib_name="libhello")
     assert stamp.exists() == kept
+    # Made newer than the library just built
+    assert not kept or stamp.stat().st_mtime > 0
 
 
-class LibrariesBuilt(Exception):
-    """Stops the build once it decided to build the libraries."""
+class CanisterCompiled(BaseException):
+    """Stops the build once it reused the libraries and compiles the canister.
+    Not an Exception, which the build would catch and turn into an exit."""
 
 
 @pytest.mark.parametrize(
@@ -431,6 +454,9 @@ class LibrariesBuilt(Exception):
         (None, ["libhello", "__ic_candid__"], True),
         ("6.0.0", ["libhello", "__ic_candid__"], True),
         ("current", ["__ic_candid__"], True),
+        # A library replaced after the stamp: by another version, or partway
+        ("older than a library", ["libhello", "__ic_candid__"], True),
+        ("unreadable", ["libhello", "__ic_candid__"], True),
     ],
 )
 def test__mine_no_lib_builds_the_libraries_unless_this_version_built_them(
@@ -453,23 +479,28 @@ def test__mine_no_lib_builds_the_libraries_unless_this_version_built_them(
         (project / root / lib_name).mkdir(parents=True)
         archive = f"{lib_name}{getattr(config_default, ar_ext)}"
         (project / root / lib_name / archive).write_text("", encoding="utf-8")
-    if stamp is not None:
-        version = icpp.__version__ if stamp == "current" else stamp
-        (project / root / library_stamp.STAMP_NAME).write_text(version, "utf-8")
+    stamp_path = project / root / library_stamp.STAMP_NAME
+    if stamp == "unreadable":
+        stamp_path.write_bytes(b"\xff")
+    elif stamp is not None:
+        version = stamp if stamp[0].isdigit() else icpp.__version__
+        stamp_path.write_text(version, "utf-8")
+        if stamp == "older than a library":
+            os.utime(stamp_path, (0, 0))
     (project / "src" / "my_canister.did").write_text("service : {}", "utf-8")
 
     def built(*_a: Any, **_k: Any) -> None:
         raise LibrariesBuilt
 
     def compiled(*_a: Any, **_k: Any) -> None:
-        raise SystemExit(0)
+        raise CanisterCompiled
 
     command = importlib.import_module(f"icpp.commands_{module}")
     monkeypatch.setattr(command, builder, built)
     # The build of the canister's own code stops at its first command
     monkeypatch.setattr(command, "run_in_parallel", compiled)
     monkeypatch.setattr(command, "run_shell_cmd", compiled)
-    with pytest.raises(LibrariesBuilt if rebuilds else SystemExit):
+    with pytest.raises(LibrariesBuilt if rebuilds else CanisterCompiled):
         inspect.unwrap(getattr(command, module))(to_compile="mine-no-lib")
     assert ("building the libraries" in capsys.readouterr().out) == rebuilds
 

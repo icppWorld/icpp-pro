@@ -173,11 +173,12 @@ public:
   // A best-effort call: the IC rejects it with SysUnknown when no response
   // arrived within the timeout (default and maximum 300 s). Use it unless
   // the response must never be lost.
-  // Its size limits are those of every call, bounded or not: an argument of up
-  // to 2 MiB to a canister on another subnet, and 10 MiB on the same subnet;
-  // a reply of up to 2 MiB. When a subnet runs short of memory for best-effort
-  // messages, it drops the largest first, so a large bounded call is the more
-  // likely to end in SysUnknown.
+  // Its size limits are those of every call, bounded or not: the method name
+  // and the argument together up to 2 MiB to a canister on another subnet, and
+  // 10 MiB on the same subnet; a reply of up to 2 MiB, or 3 MiB from a query
+  // that does not run replicated, as in a composite query. When a subnet runs
+  // short of memory for best-effort messages, it drops the largest first, so a
+  // large bounded call is the more likely to end in SysUnknown.
   static IC_Call bounded_wait(const CandidTypePrincipal &callee,
                               const std::string &method);
   // A guaranteed-response call: the reply or reject always arrives, however

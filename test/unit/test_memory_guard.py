@@ -82,4 +82,7 @@ def test__counts_only_the_guarded_command() -> None:
         "check=True)\n"
         f"sys.exit(guard({SMALL!r}, 200 * 2**20))\n"
     )
-    assert subprocess.run([sys.executable, "-c", script], check=False).returncode == 0
+    result = subprocess.run(
+        [sys.executable, "-c", script], check=False, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

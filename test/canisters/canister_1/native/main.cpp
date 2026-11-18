@@ -118,9 +118,12 @@ static void native_appends_no_reply() {
   ic0_msg_reply_data_append((uintptr_t)empty, sizeof(empty));
 }
 
-// Rejects the call
+// Appends the reply (), and rejects the call: only a check of the reject
+// fails the test, as the appended data decodes
 static void native_rejects() {
   IC_API ic_api(CanisterQuery{"native_rejects"}, false);
+  const uint8_t empty[] = {'D', 'I', 'D', 'L', 0, 0};
+  ic0_msg_reply_data_append((uintptr_t)empty, sizeof(empty));
   const std::string message{"no reply for you"};
   ic0_msg_reject((uintptr_t)message.data(), message.size());
 }

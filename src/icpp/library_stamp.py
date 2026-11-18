@@ -26,13 +26,17 @@ def after_build(
 ) -> None:
     """Stamps the libraries that a build just made: all of them, or the one
     named lib_name. Call it only when the build succeeded."""
-    # icpp 7.0.1 to 7.1.0rc4 stamped all the libraries at once, in build_root:
-    # after one library is built here, that stamp no longer holds for them
-    (build_root / STAMP_NAME).unlink(missing_ok=True)
-    for library in libraries:
-        if lib_name in (None, library["lib_name"]):
-            stamp = build_root / library["lib_name"] / STAMP_NAME
-            stamp.write_text(__version__, encoding="utf-8")
+    try:
+        # icpp 7.0.1 to 7.1.0rc4 stamped all the libraries at once, in
+        # build_root: after one library is built here, it no longer holds
+        (build_root / STAMP_NAME).unlink(missing_ok=True)
+        for library in libraries:
+            if lib_name in (None, library["lib_name"]):
+                stamp = build_root / library["lib_name"] / STAMP_NAME
+                stamp.write_text(__version__, encoding="utf-8")
+    except OSError as e:
+        # The libraries are built: mine-no-lib builds them again, that's all
+        typer.echo(f"WARNING: cannot write the icpp version stamp: {e}")
 
 
 def must_rebuild(
@@ -49,10 +53,12 @@ def _reason_to_rebuild(
     build_root: Path, libraries: List[Dict[Any, Any]], ar_ext: str
 ) -> Optional[str]:
     """Why the libraries in build_root can't be reused, or None if they can."""
+    # The build refuses a symlink, as it would refuse to build into it
+    if build_root.is_symlink():
+        return f"The folder {build_root} is a symlink"
     for library in libraries:
         folder = build_root / library["lib_name"]
         archive = folder / f"{library['lib_name']}{ar_ext}"
-        # The build refuses it, as it would refuse to build into it
         if folder.is_symlink():
             return f"The library folder {folder} is a symlink"
         if not archive.is_file():

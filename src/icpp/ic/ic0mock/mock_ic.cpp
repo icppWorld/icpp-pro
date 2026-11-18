@@ -19,7 +19,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <stdexcept>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -177,22 +179,28 @@ std::string shell_quote(const std::string &s) {
   return quoted + "'";
 }
 
-// Runs `didc <args>` with input on its standard input, and returns what it
-// writes. Throws with its messages when it fails.
-std::string run_didc(const std::string &args, const std::string &input) {
-  std::string in_path =
+// A new empty file in the temporary folder
+std::string temp_file() {
+  std::string path =
       (std::filesystem::temp_directory_path() / "icpp-didc-XXXXXX").string();
-  int fd = mkstemp(in_path.data());
+  int fd = mkstemp(path.data());
   if (fd == -1) {
     throw std::runtime_error("didc: cannot create a temporary file");
   }
-  bool written = write(fd, input.data(), input.size()) ==
-                 static_cast<ssize_t>(input.size());
   close(fd);
+  return path;
+}
+
+// Runs `didc <args>` with input on its standard input, and returns what it
+// writes to its standard output. Throws with its error output when it fails.
+std::string run_didc(const std::string &args, const std::string &input) {
+  const std::string in_path = temp_file();
+  const std::string err_path = temp_file();
   std::string output;
   int status = -1;
-  if (written) {
-    std::string cmd = "didc " + args + " < " + shell_quote(in_path) + " 2>&1";
+  if (std::ofstream(in_path, std::ios::binary) << input) {
+    std::string cmd = "didc " + args + " < " + shell_quote(in_path) + " 2> " +
+                      shell_quote(err_path);
     if (FILE *pipe = popen(cmd.c_str(), "r")) {
       char buffer[4096];
       size_t n;
@@ -202,12 +210,15 @@ std::string run_didc(const std::string &args, const std::string &input) {
       status = pclose(pipe);
     }
   }
+  std::stringstream errors;
+  errors << std::ifstream(err_path).rdbuf();
   std::filesystem::remove(in_path);
+  std::filesystem::remove(err_path);
   if (status != 0) {
+    const bool not_found = WIFEXITED(status) && WEXITSTATUS(status) == 127;
     throw std::runtime_error("`didc " + args + "` failed" +
-                             (output.empty()
-                                  ? std::string(" (is didc on the PATH?)")
-                                  : ":\n" + output));
+                             (not_found ? std::string(": is didc on the PATH?")
+                                        : ":\n" + errors.str()));
   }
   while (!output.empty() && std::isspace((unsigned char)output.back())) {
     output.pop_back();
@@ -243,12 +254,21 @@ int MockIC::count_failure() {
   return 1;
 }
 
-int MockIC::fail_to_start(const std::string &test_name,
-                          const std::string &why) {
-  ++m_tests_total;
-  std::cout << "\n----------\n";
-  std::cout << "Test: '" << test_name << "' Failed:\n" << why << "\n";
-  return count_failure();
+bool MockIC::encode_text_arg(const std::string &test_name,
+                             const std::string &did_path,
+                             const std::string &method,
+                             const std::string &arg_text,
+                             std::string *candid_in) {
+  try {
+    *candid_in = run_didc("encode " + didc_types(did_path, method), arg_text);
+    return true;
+  } catch (const std::exception &e) {
+    ++m_tests_total;
+    std::cout << "\n----------\n";
+    std::cout << "Test: '" << test_name << "' Failed:\n" << e.what() << "\n";
+    count_failure();
+    return false;
+  }
 }
 
 int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
@@ -258,21 +278,18 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
                           const std::string &reply_expected,
                           const bool silent_on_trap, const std::string &caller,
                           std::string *reply_out) {
-  const std::string types = didc_types(did_path, method);
   std::string candid_in;
-  try {
-    candid_in = run_didc("encode " + types, arg_text);
-  } catch (const std::exception &e) {
-    return fail_to_start(test_name, e.what());
+  if (!encode_text_arg(test_name, did_path, method, arg_text, &candid_in)) {
+    return 1;
   }
   return run_test_checked(
       test_name, api_callback, candid_in, silent_on_trap, caller, [&]() {
-        std::string reply =
-            run_didc("decode " + types, m_B_out.as_hex_string());
+        std::string reply = run_didc("decode " + didc_types(did_path, method),
+                                     m_B_out.as_hex_string());
         if (reply_out) *reply_out = reply;
-        if (reply_expected.empty() ||
-            squeeze_spaces(reply).find(squeeze_spaces(reply_expected)) !=
-                std::string::npos) {
+        const std::string expected = squeeze_spaces(reply_expected);
+        if (expected.empty() ||
+            squeeze_spaces(reply).find(expected) != std::string::npos) {
           return true;
         }
         std::cout << "The reply:\n"
@@ -288,10 +305,8 @@ int MockIC::run_trap_test_text(
     const std::string &arg_text, const bool silent_on_trap,
     const std::string &caller, const std::string &expected_trap_message) {
   std::string candid_in;
-  try {
-    candid_in = run_didc("encode " + didc_types(did_path, method), arg_text);
-  } catch (const std::exception &e) {
-    return fail_to_start(test_name, e.what());
+  if (!encode_text_arg(test_name, did_path, method, arg_text, &candid_in)) {
+    return 1;
   }
   return run_trap_test(test_name, api_callback, candid_in, silent_on_trap,
                        caller, expected_trap_message);

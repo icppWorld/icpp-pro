@@ -409,12 +409,11 @@ install-icp:
 install-didc:
 	@test -n "$(DIDC_SHA256)" || { echo "ERROR: no pinned didc for $(DIDC_TARGET)"; exit 1; }
 	@echo "Installing didc $(VERSION_DIDC) for $(DIDC_TARGET) ..."
-	@tmp=$$(mktemp -d) && \
+	@tmp=$$(mktemp -d) && trap 'rm -rf "$$tmp"' EXIT && \
 	  curl -fsSL -o $$tmp/didc.tar.xz https://github.com/dfinity/candid/releases/download/didc-v$(VERSION_DIDC)/didc-$(DIDC_TARGET).tar.xz && \
 	  echo "$(DIDC_SHA256)  $$tmp/didc.tar.xz" | shasum -a 256 -c - && \
 	  tar -xf $$tmp/didc.tar.xz -C $$tmp && \
-	  sudo install -m 755 $$tmp/didc-$(DIDC_TARGET)/didc /usr/local/bin/didc && \
-	  rm -rf $$tmp
+	  sudo install -m 755 $$tmp/didc-$(DIDC_TARGET)/didc /usr/local/bin/didc
 	didc --version
 
 .PHONY: install-jp-ubuntu

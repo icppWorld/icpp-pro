@@ -2191,12 +2191,20 @@ int main() {
       "roundtrip_text (does not trap)", roundtrip_text, did_path,
       "roundtrip_text", "(\"Hello C++ Canister\")", silent_on_trap,
       my_principal);
-  if (failed != 4 || failing.test_summary() != 1) {
-    std::cout << "ERROR: " << 4 - failed
-              << " of the 4 tests that must fail passed\n";
+  // didc not on the PATH
+  const char *path = std::getenv("PATH");
+  const std::string saved_path{path ? path : ""};
+  setenv("PATH", "/nonexistent", 1);
+  failed += failing.run_test_text(
+      "roundtrip_text (no didc)", roundtrip_text, did_path, "roundtrip_text",
+      "(\"Hello C++ Canister\")", "", silent_on_trap, my_principal);
+  setenv("PATH", saved_path.c_str(), 1);
+  if (failed != 5 || failing.test_summary() != 1) {
+    std::cout << "ERROR: " << 5 - failed
+              << " of the 5 tests that must fail passed\n";
     return 1;
   }
-  std::cout << "\nThe 4 tests that must fail failed.\n";
+  std::cout << "\nThe 5 tests that must fail failed.\n";
 
   // returns 1 if any tests failed
   return result;

@@ -43,11 +43,21 @@ def size(n: int) -> str:
     return f"{n / 2**30:.1f} GiB" if n >= 2**30 else f"{n / 2**20:.1f} MiB"
 
 
-def children_peak_bytes() -> int:
-    """The peak resident memory of the waited-for child processes so far. It
-    catches the peak of a run that ends before the first check."""
-    peak = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
-    return peak if platform.system() == "Darwin" else peak * 1024
+def reap(process: "subprocess.Popen[bytes]") -> Optional[resource.struct_rusage]:
+    """The command's own resource usage once it has ended, None while it runs.
+    It catches the peak of a run that ends before the first check, and counts
+    only this command: the peak of all children of this process would also
+    count every command that ran before it, such as a compiler in a test run."""
+    pid, status, usage = os.wait4(process.pid, os.WNOHANG)
+    if pid == 0:
+        return None
+    process.returncode = os.waitstatus_to_exitcode(status)
+    return usage
+
+
+def peak_bytes(usage: resource.struct_rusage) -> int:
+    """The peak resident memory in a resource usage: bytes on macOS, KiB on Linux."""
+    return usage.ru_maxrss if platform.system() == "Darwin" else usage.ru_maxrss * 1024
 
 
 def error(message: str) -> None:
@@ -75,13 +85,13 @@ def guard(
     measured. Returns the exit code."""
     with subprocess.Popen(command, cwd=cwd) as process:
         peak = 0
-        while process.poll() is None:
+        while (usage := reap(process)) is None:
             try:
                 rss = rss_bytes(process.pid)
             except OSError as e:
                 return stop(process, f"cannot run ps to measure {command[0]}: {e}")
             if rss is None:
-                if process.poll() is not None:
+                if (usage := reap(process)) is not None:
                     break  # it ended between the two checks
                 return stop(process, f"cannot measure the memory of {command[0]}")
             peak = max(peak, rss)
@@ -93,10 +103,8 @@ def guard(
                     "killed. Something allocates without limit.",
                 )
             time.sleep(interval)
-    # A run can end before a check sees its peak: the peak of the waited-for
-    # children also counts. (It is the largest of all children of this
-    # process so far, which for `icpp run-native` is the one run.)
-    peak = max(peak, children_peak_bytes())
+    # A run can end before a check sees its peak: its own peak also counts
+    peak = max(peak, peak_bytes(usage))
     if peak > max_bytes:
         error(
             f"{command[0]} used {size(peak)}, over the {size(max_bytes)} limit "

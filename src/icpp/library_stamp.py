@@ -26,6 +26,9 @@ def after_build(
 ) -> None:
     """Stamps the libraries that a build just made: all of them, or the one
     named lib_name. Call it only when the build succeeded."""
+    # icpp 7.0.1 to 7.1.0rc4 stamped all the libraries at once, in build_root:
+    # after one library is built here, that stamp no longer holds for them
+    (build_root / STAMP_NAME).unlink(missing_ok=True)
     for library in libraries:
         if lib_name in (None, library["lib_name"]):
             stamp = build_root / library["lib_name"] / STAMP_NAME

@@ -118,6 +118,12 @@ static void native_appends_no_reply() {
   ic0_msg_reply_data_append((uintptr_t)empty, sizeof(empty));
 }
 
+// The same, and sends it: the control for native_appends_no_reply
+static void native_appends_and_replies() {
+  native_appends_no_reply();
+  ic0_msg_reply();
+}
+
 static void native_cancel_all_timers_from_inspect() {
   IC_API ic_api(CanisterInspectMessage{"native_cancel_all_timers_from_inspect"},
                 false);
@@ -2159,6 +2165,11 @@ int main() {
                        "roundtrip_text", "(\"Hello C++ Canister\")",
                        "(\"Hello C++ Canister\")", silent_on_trap,
                        my_principal);
+  // Control for the must-fail test "roundtrip_no_arguments (no reply)"
+  mockIC.run_test_text("roundtrip_no_arguments (appends and replies)",
+                       native_appends_and_replies, did_path,
+                       "roundtrip_no_arguments", "()", "()", silent_on_trap,
+                       my_principal);
   // A part of the reply, with other white space than didc prints
   std::string reply;
   mockIC.run_test_text(
@@ -2218,15 +2229,15 @@ int main() {
               << "\n";
     return 1;
   }
-  // Appended a reply and did not send it. Only that check clears reply_out:
-  // a trap or a failed decode leaves it as it was
-  std::string no_reply{"unchanged"};
+  // Appended a reply and did not send it. The same call that sends it passes,
+  // above, so this one fails for the missing reply
+  std::string no_reply{"(\"stale\")"};
   failed += failing.run_test_text("roundtrip_no_arguments (no reply)",
                                   native_appends_no_reply, did_path,
                                   "roundtrip_no_arguments", "()", "()",
                                   silent_on_trap, my_principal, &no_reply);
   if (!no_reply.empty()) {
-    std::cout << "ERROR: the call without a reply failed for another reason\n";
+    std::cout << "ERROR: run_test_text left reply_out at: " << no_reply << "\n";
     return 1;
   }
   if (failed != 7 || failing.test_summary() != 1) {

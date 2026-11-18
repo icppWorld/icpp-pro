@@ -412,16 +412,22 @@ def test__a_failed_library_build_leaves_no_stamp(
 def test__a_single_library_build_stamps_only_its_library(
     project: Path, monkeypatch: pytest.MonkeyPatch, module: str, root: str
 ) -> None:
+    from icpp import library_stamp
+
     toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
     load_icpp_toml(monkeypatch, toml_text)
     stub_compiles(monkeypatch, f"commands_{module}")
     for lib_name in ["libhello", "__ic_candid__"]:
         stamp_of(project, root, lib_name).parent.mkdir(parents=True)
         stamp_of(project, root, lib_name).write_text("0.0.0", encoding="utf-8")
+    # The stamp of all the libraries that icpp 7.0.1 to 7.1.0rc4 wrote
+    legacy = project / root / library_stamp.STAMP_NAME
+    legacy.write_text("7.1.0rc4", encoding="utf-8")
     command = importlib.import_module(f"icpp.commands_{module}")
     inspect.unwrap(getattr(command, module))(lib_name="libhello")
     assert stamp_of(project, root, "libhello").read_text("utf-8") == icpp.__version__
     assert stamp_of(project, root, "__ic_candid__").read_text("utf-8") == "0.0.0"
+    assert not legacy.exists()
 
 
 class CanisterCompiled(BaseException):

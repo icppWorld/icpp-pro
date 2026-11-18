@@ -263,7 +263,7 @@ Configure clang-format:
             // "program": "${workspaceFolder}/test/canisters/canister_flags/build-native/mockic.exe",
             // "program": "${workspaceFolder}/test/canisters/canister_http/build-native/mockic.exe",
             "args": [],
-            // Keep it the folder of the canister that runs: canister_1's native tests read files relative to it
+            // Keep it the folder of the canister that runs: its native tests can read files relative to it
             "cwd": "${workspaceFolder}/test/canisters/canister_1"
         }
     ]
@@ -288,7 +288,7 @@ Configure clang-format:
             // "program": "${workspaceFolder}/test/canisters/canister_flags/build-native/mockic.exe",
             "program": "${workspaceFolder}/test/canisters/canister_http/build-native/mockic.exe",
             "args": [],
-            // Keep it the folder of the canister that runs: canister_1's native tests read files relative to it
+            // Keep it the folder of the canister that runs: its native tests can read files relative to it
             "cwd": "${workspaceFolder}/test/canisters/canister_http"
         }
     ]

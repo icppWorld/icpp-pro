@@ -413,6 +413,7 @@ install-didc:
 	  curl -fsSL -o "$$tmp/didc.tar.xz" https://github.com/dfinity/candid/releases/download/didc-v$(VERSION_DIDC)/didc-$(DIDC_TARGET).tar.xz && \
 	  echo "$(DIDC_SHA256)  $$tmp/didc.tar.xz" | shasum -a 256 -c - && \
 	  tar -xf "$$tmp/didc.tar.xz" -C "$$tmp" && \
+	  sudo mkdir -p /usr/local/bin && \
 	  sudo install -m 755 "$$tmp/didc-$(DIDC_TARGET)/didc" /usr/local/bin/didc
 	@test "$$(command -v didc)" = /usr/local/bin/didc || { echo "ERROR: the PATH finds didc at '$$(command -v didc)', not at /usr/local/bin/didc"; exit 1; }
 	didc --version
@@ -427,7 +428,7 @@ install-jp-mac:
 
 .PHONY: install-homebrew-mac
 install-homebrew-mac:
-	/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	@command -v brew >/dev/null || /bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Bootstrapping pip is its own target because the install-python-w-* targets
 # must install a sibling's requirements BEFORE the editable installs, and that

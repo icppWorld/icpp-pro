@@ -284,6 +284,9 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
                           const std::string &reply_expected,
                           const bool silent_on_trap, const std::string &caller,
                           std::string *reply_out) {
+  // Before *reply_out is cleared, which may be reply_expected itself
+  const std::string expected = squeeze_spaces(reply_expected);
+  if (reply_out) reply_out->clear();
   std::string candid_in;
   if (!encode_text_arg(test_name, did_path, method, arg_text, &candid_in)) {
     return 1;
@@ -293,7 +296,6 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
         // Only a reply the canister sent, not data it appended and kept
         CallContext &root = m_contexts[m_root_context];
         if (!root.done || root.rejected) {
-          if (reply_out) reply_out->clear();
           std::cout << "The call did not reply"
                     << (root.rejected ? ": " + root.reject_message : "")
                     << "\n";
@@ -301,8 +303,6 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
         }
         std::string reply = run_didc("decode " + didc_types(did_path, method),
                                      root.reply.as_hex_string());
-        // Before *reply_out, which may be reply_expected itself
-        const std::string expected = squeeze_spaces(reply_expected);
         if (reply_out) *reply_out = reply;
         if (expected.empty() ||
             squeeze_spaces(reply).find(expected) != std::string::npos) {

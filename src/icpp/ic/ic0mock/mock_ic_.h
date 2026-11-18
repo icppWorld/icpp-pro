@@ -244,7 +244,8 @@ public:
   // reply_expected, with every run of white space read as one space, also in a
   // text value. didc may lay out a long reply over several lines, so check a
   // part of it, e.g. "greeting = \"Hello\"". An empty reply_expected, or one
-  // of white space only, is not checked. *reply_out gets the decoded reply.
+  // of white space only, is not checked. *reply_out gets the decoded reply,
+  // or is left empty when the call did not reply or the reply was not decoded.
   int run_test_text(const std::string &test_name, void (*api_callback)(),
                     const std::string &did_path, const std::string &method,
                     const std::string &arg_text,

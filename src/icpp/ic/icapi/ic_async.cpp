@@ -252,8 +252,8 @@ IC_Call IC_Call::unbounded_wait(const CandidTypePrincipal &callee,
   return make(callee, method, std::nullopt);
 }
 
-IC_Call IC_Call::guaranteed_response(const CandidTypePrincipal &callee,
-                                     const std::string &method) {
+IC_Call IC_Call::unbounded_wait(const CandidTypePrincipal &callee,
+                                const std::string &method, IC_TrustedCallee) {
   return make(callee, method, std::nullopt);
 }
 

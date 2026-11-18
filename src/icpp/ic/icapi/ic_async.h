@@ -152,11 +152,20 @@ class IC_CallsAwaiter;
       "IC_Call::unbounded_wait: while this call is in flight, the canister "   \
       "can't be stopped or upgraded, and a callee that never responds blocks " \
       "that forever. Use IC_Call::bounded_wait unless you trust the callee. "  \
-      "To turn off this warning, add \"-DICPP_ALLOW_UNBOUNDED_WAIT\" to "      \
-      "cpp_compile_flags in both the [build-wasm] and [build-native] "         \
-      "sections of icpp.toml.",                                                \
+      "For a callee you trust, pass IC_TrustedCallee{} as a third argument, "  \
+      "which turns off this warning for that call only. To turn it off for "   \
+      "every call, add \"-DICPP_ALLOW_UNBOUNDED_WAIT\" to cpp_compile_flags "  \
+      "in both the [build-wasm] and [build-native] sections of icpp.toml.",    \
       "warning")))
 #endif
+
+// Passed to IC_Call::unbounded_wait, it says that you trust the callee of
+// that call: the call compiles without the warning, while every other
+// unbounded_wait keeps it. Write it out, IC_TrustedCallee{}: a bare {} does not
+// compile, so every acknowledgement can be found by its name.
+struct IC_TrustedCallee {
+  explicit IC_TrustedCallee() = default;
+};
 
 // A call to a method of a canister, possibly the canister itself.
 class IC_Call {
@@ -164,17 +173,27 @@ public:
   // A best-effort call: the IC rejects it with SysUnknown when no response
   // arrived within the timeout (default and maximum 300 s). Use it unless
   // the response must never be lost.
+  // Its size limits are those of every call, bounded or not: an argument of up
+  // to 2 MiB to a canister on another subnet, and 10 MiB on the same subnet;
+  // a reply of up to 2 MiB. When a subnet runs short of memory for best-effort
+  // messages, it drops the largest first, so a large bounded call is the more
+  // likely to end in SysUnknown.
   static IC_Call bounded_wait(const CandidTypePrincipal &callee,
                               const std::string &method);
   // A guaranteed-response call: the reply or reject always arrives, however
   // long the callee takes.
   // WARNING: while it is in flight, the canister can't be stopped, so it can't
   // be upgraded. A callee that never responds blocks that forever. Use it only
-  // for a callee you trust. Calling it gives a compiler warning, unless
-  // ICPP_ALLOW_UNBOUNDED_WAIT is defined.
+  // for a callee you trust. Calling it gives a compiler warning: acknowledge
+  // one call with IC_TrustedCallee{}, below, or every call by defining
+  // ICPP_ALLOW_UNBOUNDED_WAIT.
   static IC_Call
   unbounded_wait(const CandidTypePrincipal &callee,
                  const std::string &method) ICPP_UNBOUNDED_WAIT_WARNING;
+  // The same, for a callee you trust, without the warning:
+  //   co_await IC_Call::unbounded_wait(callee, method, IC_TrustedCallee{});
+  static IC_Call unbounded_wait(const CandidTypePrincipal &callee,
+                                const std::string &method, IC_TrustedCallee);
 
   // The argument. Without one, the call sends no arguments: ().
   IC_Call &with_arg(CandidType arg);
@@ -195,10 +214,6 @@ public:
 private:
   friend class IC_CallsAwaiter;
   friend class IC_Management;
-  // A guaranteed-response call to a trusted callee, without the warning of
-  // unbounded_wait: for the management canister helpers
-  static IC_Call guaranteed_response(const CandidTypePrincipal &callee,
-                                     const std::string &method);
   // Every IC_Call comes from bounded_wait or unbounded_wait
   IC_Call() = default;
   static IC_Call make(const CandidTypePrincipal &callee,

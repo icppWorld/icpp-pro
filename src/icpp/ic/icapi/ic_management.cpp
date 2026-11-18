@@ -478,7 +478,8 @@ IC_Management::create_canister(IC_CanisterSettings settings,
              CandidTypeOptNat64{ic0_canister_version()});
 
   IC_CallResult<IC_CallReply> r =
-      co_await IC_Call::guaranteed_response(management(), "create_canister")
+      co_await IC_Call::unbounded_wait(management(), "create_canister",
+                                       IC_TrustedCallee{})
           .with_arg(arg)
           .with_cycles(IC_API::cost_create_canister() + extra_cycles);
   if (!r) co_return r.error();
@@ -649,7 +650,8 @@ IC_Management::deposit_cycles(CandidTypePrincipal canister_id,
   arg.append("canister_id", canister_id);
   // The attached cycles are what is deposited, so the call must not time out
   IC_CallResult<IC_CallReply> r =
-      co_await IC_Call::guaranteed_response(management(), "deposit_cycles")
+      co_await IC_Call::unbounded_wait(management(), "deposit_cycles",
+                                       IC_TrustedCallee{})
           .with_arg(arg)
           .with_cycles(cycles);
   if (!r) co_return r.error();
@@ -1189,11 +1191,12 @@ IC_Management::sign_with_ecdsa(IC_Blob message_hash,
   arg.append("message_hash", CandidTypeVecNat8{message_hash});
   arg.append("derivation_path", CandidTypeVecBlob{derivation_path});
   arg.append("key_id", ecdsa_key_id(key));
-  co_return co_await call_for_blob(
-      IC_Call::guaranteed_response(management(), "sign_with_ecdsa")
-          .with_arg(arg)
-          .with_cycles(cost.cycles),
-      "signature");
+  co_return co_await call_for_blob(IC_Call::unbounded_wait(management(),
+                                                           "sign_with_ecdsa",
+                                                           IC_TrustedCallee{})
+                                       .with_arg(arg)
+                                       .with_cycles(cost.cycles),
+                                   "signature");
 }
 
 IC_Task<IC_CallResult<IC_PublicKey>> IC_Management::schnorr_public_key(
@@ -1227,11 +1230,12 @@ IC_Task<IC_CallResult<IC_Blob>> IC_Management::sign_with_schnorr(
     arg.append("aux",
                CandidTypeOptVariant{CandidTypeVariant{"bip341", bip341}});
   }
-  co_return co_await call_for_blob(
-      IC_Call::guaranteed_response(management(), "sign_with_schnorr")
-          .with_arg(arg)
-          .with_cycles(cost.cycles),
-      "signature");
+  co_return co_await call_for_blob(IC_Call::unbounded_wait(management(),
+                                                           "sign_with_schnorr",
+                                                           IC_TrustedCallee{})
+                                       .with_arg(arg)
+                                       .with_cycles(cost.cycles),
+                                   "signature");
 }
 
 IC_Task<IC_CallResult<IC_Blob>> IC_Management::vetkd_public_key(
@@ -1260,11 +1264,12 @@ IC_Management::vetkd_derive_key(IC_Blob input, IC_Blob context,
   arg.append("context", CandidTypeVecNat8{context});
   arg.append("transport_public_key", CandidTypeVecNat8{transport_public_key});
   arg.append("key_id", vetkd_key_id(key));
-  co_return co_await call_for_blob(
-      IC_Call::guaranteed_response(management(), "vetkd_derive_key")
-          .with_arg(arg)
-          .with_cycles(cost.cycles),
-      "encrypted_key");
+  co_return co_await call_for_blob(IC_Call::unbounded_wait(management(),
+                                                           "vetkd_derive_key",
+                                                           IC_TrustedCallee{})
+                                       .with_arg(arg)
+                                       .with_cycles(cost.cycles),
+                                   "encrypted_key");
 }
 
 namespace {
@@ -1391,7 +1396,8 @@ IC_Management::http_request(IC_HttpOutcallRequest request) {
                             : IC_API::HttpOutcallType::FullyReplicated)
           : IC_API::cost_http_request(request_size, max_response_bytes);
   IC_CallResult<IC_CallReply> r =
-      co_await IC_Call::guaranteed_response(management(), "http_request")
+      co_await IC_Call::unbounded_wait(management(), "http_request",
+                                       IC_TrustedCallee{})
           .with_arg(arg)
           .with_cycles(cycles);
   if (!r) co_return r.error();
@@ -1427,10 +1433,11 @@ IC_Management::flexible_http_request(IC_FlexibleHttpRequest request,
   __uint128_t attached = cycles.value_or(
       http_budget(request_size, max_response_bytes,
                   IC_API::HttpOutcallType::Flexible, request.replication));
-  IC_CallResult<IC_CallReply> r = co_await IC_Call::guaranteed_response(
-                                      management(), "flexible_http_request")
-                                      .with_arg(arg)
-                                      .with_cycles(attached);
+  IC_CallResult<IC_CallReply> r =
+      co_await IC_Call::unbounded_wait(management(), "flexible_http_request",
+                                       IC_TrustedCallee{})
+          .with_arg(arg)
+          .with_cycles(attached);
   if (!r) co_return r.error();
 
   IC_FlexibleHttpResult result;

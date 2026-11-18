@@ -13,9 +13,16 @@
 #include "mock_ic_.h"
 #include "mock_ic_constants.h"
 
+#include <cctype>
 #include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <stdexcept>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <iostream>
@@ -46,6 +53,20 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
                      const std::string &candid_in,
                      const std::string &candid_out_expected,
                      const bool silent_on_trap, const std::string &caller) {
+  // Assert the candid_out_expected, which is a string in "hex" format
+  return run_test_checked(test_name, api_callback, candid_in, silent_on_trap,
+                          caller, [&]() {
+                            return candid_out_expected.empty() ||
+                                   assert_candid_out(candid_out_expected) == 0;
+                          });
+}
+
+int MockIC::run_test_checked(const std::string &test_name,
+                             void (*api_callback)(),
+                             const std::string &candid_in,
+                             const bool silent_on_trap,
+                             const std::string &caller,
+                             const std::function<bool()> &reply_ok) {
   ++m_tests_total;
   std::cout << "\n----------\n";
   std::cout << "MockIC run_test: " << test_name << ": \n";
@@ -66,43 +87,23 @@ int MockIC::run_test(const std::string &test_name, void (*api_callback)(),
     }
     // A trap after a co_await fails the test, like a trap before it
     if (m_contexts[m_root_context].trapped) {
-      ++m_tests_failed;
       std::cout << "\nTest: '" << test_name
                 << "' Failed with a trap after a co_await:\n";
       std::cerr << m_contexts[m_root_context].trap_message << '\n';
-      if (m_exit_on_fail) {
-        test_summary();
-        exit(1);
-      }
-      return 1;
+      return count_failure();
     }
 
-    if (candid_out_expected == "") {
-      std::cout << "Test: " << test_name << ": Passed\n";
-      return 0;
-    }
-    // Assert the candid_out_expected, which is a string in "hex" format
-    if (assert_candid_out(candid_out_expected)) {
-      ++m_tests_failed;
+    if (!reply_ok()) {
       std::cout << "\nTest: '" << test_name << "' Failed\n";
-      if (m_exit_on_fail) {
-        test_summary();
-        exit(1);
-      }
-      return 1;
+      return count_failure();
     }
 
     std::cout << "Test: " << test_name << ": Passed\n";
     return 0;
   } catch (const std::exception &e) {
-    ++m_tests_failed;
     std::cout << "\nTest: '" << test_name << "' Failed with Exception:\n";
     std::cerr << e.what() << '\n';
-    if (m_exit_on_fail) {
-      test_summary();
-      exit(1);
-    }
-    return 1;
+    return count_failure();
   }
 }
 
@@ -155,18 +156,161 @@ int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
   }
 
   // If it did not trap, or with another message, give an error message
-  ++m_tests_failed;
   if (trapped) {
     std::cout << "Trapped with:\n"
               << trap_message << "\nExpecting a trap message with:\n"
               << expected_trap_message << "\n";
   }
   std::cout << "\nTest: '" << test_name << "' Failed\n";
+  return count_failure();
+}
+
+namespace {
+// A word for the shell: in single quotes, which keep everything but a quote
+std::string shell_quote(const std::string &s) {
+  std::string quoted = "'";
+  for (char c : s) {
+    if (c == '\'') {
+      quoted += "'\\''";
+    } else {
+      quoted += c;
+    }
+  }
+  return quoted + "'";
+}
+
+// A new empty file in the temporary folder
+std::string temp_file() {
+  std::string path =
+      (std::filesystem::temp_directory_path() / "icpp-didc-XXXXXX").string();
+  int fd = mkstemp(path.data());
+  if (fd == -1) {
+    throw std::runtime_error("didc: cannot create a temporary file");
+  }
+  close(fd);
+  return path;
+}
+
+// Runs `didc <args>` with input on its standard input, and returns what it
+// writes to its standard output. Throws with its error output when it fails.
+std::string run_didc(const std::string &args, const std::string &input) {
+  const std::string in_path = temp_file();
+  const std::string err_path = temp_file();
+  std::string output;
+  int status = -1;
+  if (std::ofstream(in_path, std::ios::binary) << input) {
+    std::string cmd = "didc " + args + " < " + shell_quote(in_path) + " 2> " +
+                      shell_quote(err_path);
+    if (FILE *pipe = popen(cmd.c_str(), "r")) {
+      char buffer[4096];
+      size_t n;
+      while ((n = fread(buffer, 1, sizeof(buffer), pipe)) > 0) {
+        output.append(buffer, n);
+      }
+      status = pclose(pipe);
+    }
+  }
+  std::stringstream errors;
+  errors << std::ifstream(err_path).rdbuf();
+  std::filesystem::remove(in_path);
+  std::filesystem::remove(err_path);
+  if (status != 0) {
+    const bool not_found = WIFEXITED(status) && WEXITSTATUS(status) == 127;
+    throw std::runtime_error("`didc " + args + "` failed" +
+                             (not_found ? std::string(": is didc on the PATH?")
+                                        : ":\n" + errors.str()));
+  }
+  while (!output.empty() && std::isspace((unsigned char)output.back())) {
+    output.pop_back();
+  }
+  return output;
+}
+
+// Every run of white space as one space
+std::string squeeze_spaces(const std::string &s) {
+  std::string squeezed;
+  for (char c : s) {
+    if (std::isspace((unsigned char)c)) {
+      if (!squeezed.empty() && squeezed.back() != ' ') squeezed += ' ';
+    } else {
+      squeezed += c;
+    }
+  }
+  if (!squeezed.empty() && squeezed.back() == ' ') squeezed.pop_back();
+  return squeezed;
+}
+
+std::string didc_types(const std::string &did_path, const std::string &method) {
+  return "-d " + shell_quote(did_path) + " -m " + shell_quote(method);
+}
+} // namespace
+
+int MockIC::count_failure() {
+  ++m_tests_failed;
   if (m_exit_on_fail) {
     test_summary();
     exit(1);
   }
   return 1;
+}
+
+bool MockIC::encode_text_arg(const std::string &test_name,
+                             const std::string &did_path,
+                             const std::string &method,
+                             const std::string &arg_text,
+                             std::string *candid_in) {
+  try {
+    *candid_in = run_didc("encode " + didc_types(did_path, method), arg_text);
+    return true;
+  } catch (const std::exception &e) {
+    ++m_tests_total;
+    std::cout << "\n----------\n";
+    std::cout << "Test: '" << test_name << "' Failed:\n" << e.what() << "\n";
+    count_failure();
+    return false;
+  }
+}
+
+int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
+                          const std::string &did_path,
+                          const std::string &method,
+                          const std::string &arg_text,
+                          const std::string &reply_expected,
+                          const bool silent_on_trap, const std::string &caller,
+                          std::string *reply_out) {
+  std::string candid_in;
+  if (!encode_text_arg(test_name, did_path, method, arg_text, &candid_in)) {
+    return 1;
+  }
+  return run_test_checked(
+      test_name, api_callback, candid_in, silent_on_trap, caller, [&]() {
+        std::string reply = run_didc("decode " + didc_types(did_path, method),
+                                     m_B_out.as_hex_string());
+        // Before *reply_out, which may be reply_expected itself
+        const std::string expected = squeeze_spaces(reply_expected);
+        if (reply_out) *reply_out = reply;
+        if (expected.empty() ||
+            squeeze_spaces(reply).find(expected) != std::string::npos) {
+          return true;
+        }
+        std::cout << "The reply:\n"
+                  << reply << "\ndoes not contain:\n"
+                  << expected << "\n";
+        return false;
+      });
+}
+
+int MockIC::run_trap_test_text(
+    const std::string &test_name, void (*api_callback)(),
+    const std::string &did_path, const std::string &method,
+    const std::string &arg_text, const bool silent_on_trap,
+    const std::string &caller, const std::string &expected_trap_message) {
+  std::string candid_in;
+  if (!encode_text_arg(test_name, did_path, method, arg_text, &candid_in)) {
+    return 1;
+  }
+  return run_trap_test(test_name, api_callback, candid_in, silent_on_trap,
+                       caller, expected_trap_message);
 }
 
 MockIC::CallHandle MockIC::start_call(const std::string &name,

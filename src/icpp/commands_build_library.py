@@ -13,7 +13,7 @@ import typer
 from icpp import __version__
 from icpp.__main__ import app
 
-from icpp import config_default, candid_library
+from icpp import config_default, candid_library, library_stamp
 from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
 from icpp.utils import delete_build_folder, refuse_symlinked_folder
 
@@ -68,6 +68,8 @@ def build_library(
 
     if not build_root_path.exists():
         build_root_path.mkdir()
+    if lib_name is not None:
+        library_stamp.drop_if_other_version(build_root_path)
 
     # ----------------------------------------------------------------------
     # build-library/lib_name
@@ -282,3 +284,7 @@ def build_library(
 
             # ----------------------------------------------------------------------
             typer.echo("-----")
+
+    # All of them are built, so mine-no-lib may reuse them
+    if lib_name is None:
+        library_stamp.write(build_root_path)

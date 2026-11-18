@@ -103,6 +103,7 @@ jobs:
           make install-python
           make install-clang-ubuntu
           make install-jp-ubuntu
+          make install-didc
 
       - name: versions
         shell: bash -l {0}

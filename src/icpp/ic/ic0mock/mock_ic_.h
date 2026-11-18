@@ -236,11 +236,51 @@ public:
                     const std::string &caller = "",
                     const std::string &expected_trap_message = "");
 
+  // run_test and run_trap_test with the argument in Candid text, as
+  // `icp canister call` takes it, e.g. "(\"x\", 3)". didc, which must be on
+  // the PATH, encodes the argument and decodes the reply with the types of
+  // `method` in the .did file at did_path (relative to the folder the test runs
+  // in). The test passes when the reply, as didc prints it, contains
+  // reply_expected, with every run of white space read as one space, also in a
+  // text value. didc may lay out a long reply over several lines, so check a
+  // part of it, e.g. "greeting = \"Hello\"". An empty reply_expected, or one
+  // of white space only, is not checked. *reply_out gets the decoded reply.
+  int run_test_text(const std::string &test_name, void (*api_callback)(),
+                    const std::string &did_path, const std::string &method,
+                    const std::string &arg_text,
+                    const std::string &reply_expected = "",
+                    const bool silent_on_trap = false,
+                    const std::string &caller = "",
+                    std::string *reply_out = nullptr);
+
+  int run_trap_test_text(const std::string &test_name, void (*api_callback)(),
+                         const std::string &did_path, const std::string &method,
+                         const std::string &arg_text,
+                         const bool silent_on_trap = true,
+                         const std::string &caller = "",
+                         const std::string &expected_trap_message = "");
+
   int test_summary();
 
   bool get_silent_on_trap() { return m_silent_on_trap; }
 
 private:
+  // run_test, with reply_ok to check the reply
+  int run_test_checked(const std::string &test_name, void (*api_callback)(),
+                       const std::string &candid_in, const bool silent_on_trap,
+                       const std::string &caller,
+                       const std::function<bool()> &reply_ok);
+
+  // Counts a failed test, and exits when the MockIC exits on a failure.
+  // Returns 1, what a failed test returns
+  int count_failure();
+
+  // didc's encoding of a test's argument. When didc can't encode it, counts the
+  // test as failed and returns false
+  bool encode_text_arg(const std::string &test_name,
+                       const std::string &did_path, const std::string &method,
+                       const std::string &arg_text, std::string *candid_in);
+
   VecBytes m_B_in;
   VecBytes m_B_out;
   CandidTypePrincipal m_caller;

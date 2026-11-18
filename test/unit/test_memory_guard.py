@@ -68,3 +68,9 @@ def test__fails_a_short_run_over_the_limit(capsys: pytest.CaptureFixture[str]) -
     quick = [sys.executable, "-c", "x = bytearray(400 * 2**20)"]
     assert guard(quick, 200 * 2**20, interval=10) == 1
     assert "over the 200.0 MiB limit of the memory guard" in capsys.readouterr().err
+
+
+def test__counts_only_the_guarded_command() -> None:
+    """A larger command that ran before, outside the guard, does not count."""
+    subprocess.run([sys.executable, "-c", "x = bytearray(800 * 2**20)"], check=True)
+    assert guard(SMALL, 400 * 2**20) == 0

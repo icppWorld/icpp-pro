@@ -123,6 +123,19 @@ def read_libraries(
         seen_lib_names.add(library["lib_name"])
 
         read_build_table_common(library, library_in)
+        if native:
+            # Opt-in: compile with the flags of the [[build-library]] section of
+            # the same name too, so a native library builds like the wasm one
+            library["inherit_compile_flags"] = library_in.get(
+                "inherit_compile_flags", False
+            )
+            if not isinstance(library["inherit_compile_flags"], bool):
+                typer.echo(
+                    f"ERROR: 'inherit_compile_flags' of [[build-library-native]] "
+                    f"'{library['lib_name']}' must be true or false\n"
+                    f"       {icpp_toml_path.resolve()}"
+                )
+                sys.exit(1)
         libs.append(library)
 
     # If not defined in the icpp.toml, add the library for the IC & CANDID files

@@ -20,6 +20,7 @@ import os
 import shlex
 import subprocess
 import sys
+import threading
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Dict, Optional
@@ -465,6 +466,26 @@ def test__mine_no_lib_does_not_reuse_a_symlinked_folder(
     libraries = [{"lib_name": "libhello"}]
     assert library_stamp.must_rebuild(build_root, libraries, ".a")
     assert "is a symlink" in capsys.readouterr().out
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="no named pipes")
+def test__a_stamp_that_is_a_pipe_is_not_read(tmp_path: Path) -> None:
+    from icpp import library_stamp
+
+    (tmp_path / "libhello").mkdir()
+    (tmp_path / "libhello" / "libhello.a").write_text("", encoding="utf-8")
+    os.mkfifo(tmp_path / "libhello" / library_stamp.STAMP_NAME)
+    result: list[bool] = []
+    checker = threading.Thread(
+        target=lambda: result.append(
+            library_stamp.must_rebuild(tmp_path, [{"lib_name": "libhello"}], ".a")
+        ),
+        daemon=True,
+    )
+    checker.start()
+    # A read of the pipe would wait for a writer that never comes
+    checker.join(timeout=10)
+    assert result == [True]
 
 
 def test__a_stamp_that_cannot_be_written_warns(

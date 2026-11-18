@@ -318,7 +318,7 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
           return false;
         });
   }
-  if (reply_out) *reply_out = decoded;
+  if (reply_out) *reply_out = std::move(decoded);
   return result;
 }
 

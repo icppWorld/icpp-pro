@@ -10,4 +10,4 @@ see:
 https://packaging.python.org/guides/single-sourcing-package-version/
 """
 
-__version__ = "7.1.0rc4"
+__version__ = "7.1.0rc5"

@@ -218,8 +218,9 @@ IC_Async call_reject_async() {
   args.append(CandidTypePrincipal{&callee_text});
   CandidTypePrincipal callee = principal_arg(ic_api, args, callee_text);
 
-  // Acknowledged per call: compiles without the unbounded_wait warning also
-  // without -DICPP_ALLOW_UNBOUNDED_WAIT
+  // Acknowledged per call, with IC_TrustedCallee{}. This canister also sets
+  // -DICPP_ALLOW_UNBOUNDED_WAIT for its other calls; the unit test
+  // test_unbounded_wait_warning.py checks the warning of each form
   IC_CallResult<IC_CallReply> r =
       co_await IC_Call::unbounded_wait(callee, "reject_me", IC_TrustedCallee{});
   ic_api.to_wire(CandidTypeText{r ? "replied" : error_text(r.error())});

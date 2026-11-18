@@ -20,8 +20,10 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def compile_warnings(tmp_path: Path, call: str, flags: str = "") -> str:
-    """Compiles a call of unbounded_wait, and returns the compiler's output."""
+def compile_call(
+    tmp_path: Path, call: str, flags: str = ""
+) -> "subprocess.CompletedProcess[str]":
+    """Compiles a function that returns call."""
     source = tmp_path / "call.cpp"
     source.write_text(
         '#include "ic_api.h"\n'
@@ -30,13 +32,19 @@ def compile_warnings(tmp_path: Path, call: str, flags: str = "") -> str:
         "}\n",
         encoding="utf-8",
     )
-    cmd = (
-        f"{config_default.NATIVE_CPP} {config_default.NATIVE_CPP_REQUIRED_FLAGS} "
-        f"{flags} -fsyntax-only {shlex.quote(str(source))}"
-    )
-    result = subprocess.run(
-        cmd, shell=True, capture_output=True, text=True, check=False
-    )
+    cmd = [
+        config_default.NATIVE_CPP,
+        *shlex.split(config_default.NATIVE_CPP_REQUIRED_FLAGS),
+        *shlex.split(flags),
+        "-fsyntax-only",
+        str(source),
+    ]
+    return subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+
+def compile_warnings(tmp_path: Path, call: str, flags: str = "") -> str:
+    """The compiler's output for a call that must compile."""
+    result = compile_call(tmp_path, call, flags)
     assert result.returncode == 0, result.stderr
     return result.stderr
 
@@ -49,6 +57,12 @@ def test__trusted_callee_does_not_warn(tmp_path: Path) -> None:
     assert WARNING not in compile_warnings(
         tmp_path, 'IC_Call::unbounded_wait(callee, "m", IC_TrustedCallee{})'
     )
+
+
+def test__bare_braces_do_not_compile(tmp_path: Path) -> None:
+    # The acknowledgement must be named, so it can be found
+    result = compile_call(tmp_path, 'IC_Call::unbounded_wait(callee, "m", {})')
+    assert result.returncode != 0
 
 
 def test__allow_unbounded_wait_does_not_warn(tmp_path: Path) -> None:

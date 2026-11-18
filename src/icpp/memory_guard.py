@@ -44,11 +44,14 @@ def size(n: int) -> str:
 
 
 def reap(process: "subprocess.Popen[bytes]") -> Optional[resource.struct_rusage]:
-    """The command's own resource usage once it has ended, None while it runs.
-    It catches the peak of a run that ends before the first check, and counts
-    only this command: the peak of all children of this process would also
-    count every command that ran before it, such as a compiler in a test run."""
-    pid, status, usage = os.wait4(process.pid, os.WNOHANG)
+    """Reaps the command once it has ended, and returns its own resource usage;
+    None while it runs."""
+    try:
+        pid, status, usage = os.wait4(process.pid, os.WNOHANG)
+    except ChildProcessError:
+        # Reaped elsewhere, e.g. with SIGCHLD ignored: as Popen.poll() does
+        process.returncode = 0
+        return resource.struct_rusage((0,) * 16)
     if pid == 0:
         return None
     process.returncode = os.waitstatus_to_exitcode(status)
@@ -103,7 +106,11 @@ def guard(
                     "killed. Something allocates without limit.",
                 )
             time.sleep(interval)
-    # A run can end before a check sees its peak: its own peak also counts
+    # A run can end before a check sees its peak: its own peak also counts.
+    # Only this command's, not that of every child this process ran before,
+    # such as a compiler in a test run. On Linux it is at least the peak of
+    # this process when it started the command (exec keeps the high-water mark
+    # of the memory it replaces), which for icpp is small.
     peak = max(peak, peak_bytes(usage))
     if peak > max_bytes:
         error(

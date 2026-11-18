@@ -286,8 +286,9 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
       test_name, api_callback, candid_in, silent_on_trap, caller, [&]() {
         std::string reply = run_didc("decode " + didc_types(did_path, method),
                                      m_B_out.as_hex_string());
-        if (reply_out) *reply_out = reply;
+        // Before *reply_out, which may be reply_expected itself
         const std::string expected = squeeze_spaces(reply_expected);
+        if (reply_out) *reply_out = reply;
         if (expected.empty() ||
             squeeze_spaces(reply).find(expected) != std::string::npos) {
           return true;

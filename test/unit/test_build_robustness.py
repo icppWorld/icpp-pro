@@ -391,6 +391,23 @@ def test__a_single_library_build_writes_no_stamp(
     assert not (project / "build-library" / library_stamp.STAMP_NAME).exists()
 
 
+@pytest.mark.parametrize("version, kept", [(icpp.__version__, True), ("0.0.0", False)])
+def test__a_single_library_build_drops_a_stamp_of_another_version(
+    project: Path, monkeypatch: pytest.MonkeyPatch, version: str, kept: bool
+) -> None:
+    from icpp import library_stamp
+    from icpp.commands_build_library import build_library
+
+    toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
+    load_icpp_toml(monkeypatch, toml_text)
+    stub_compiles(monkeypatch, "commands_build_library")
+    stamp = project / "build-library" / library_stamp.STAMP_NAME
+    stamp.parent.mkdir(exist_ok=True)
+    stamp.write_text(version, encoding="utf-8")
+    inspect.unwrap(build_library)(lib_name="libhello")
+    assert stamp.exists() == kept
+
+
 class LibrariesBuilt(Exception):
     """Stops the build once it decided to build the libraries."""
 

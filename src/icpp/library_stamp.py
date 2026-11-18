@@ -6,7 +6,8 @@ previous version compiled, icpp's own (`__ic_candid__`) among them, and the
 wasm or the native executable would link the old code: with no error at all
 when no declaration changed. A build of all the libraries writes a stamp with
 its version, and mine-no-lib builds them again when the stamp is missing or
-names another version, or when a library is missing.
+names another version, or when a library is missing. A build of one library
+drops a stamp of another version.
 """
 
 from pathlib import Path
@@ -27,6 +28,14 @@ def write(build_root: Path) -> None:
     build_root first, so a build that fails partway leaves no stamp.
     """
     (build_root / STAMP_NAME).write_text(__version__, encoding="utf-8")
+
+
+def drop_if_other_version(build_root: Path) -> None:
+    """Before one library is built: a stamp of another version no longer holds,
+    since the libraries are then a mix of two versions."""
+    stamp = build_root / STAMP_NAME
+    if stamp.is_file() and stamp.read_text(encoding="utf-8").strip() != __version__:
+        stamp.unlink()
 
 
 def must_rebuild(

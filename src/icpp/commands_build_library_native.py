@@ -68,6 +68,8 @@ def build_library_native(
 
     if not build_root_path.exists():
         build_root_path.mkdir()
+    if lib_name is not None:
+        library_stamp.drop_if_other_version(build_root_path)
 
     # ----------------------------------------------------------------------
     # build-library/lib_name

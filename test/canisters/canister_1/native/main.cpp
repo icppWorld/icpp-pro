@@ -2199,12 +2199,18 @@ int main() {
       "roundtrip_text (no didc)", roundtrip_text, did_path, "roundtrip_text",
       "(\"Hello C++ Canister\")", "", silent_on_trap, my_principal);
   setenv("PATH", saved_path.c_str(), 1);
-  if (failed != 5 || failing.test_summary() != 1) {
-    std::cout << "ERROR: " << 5 - failed
-              << " of the 5 tests that must fail passed\n";
+  // Another reply, with the expected reply as reply_out too
+  std::string expected_and_out{"(\"Bye\")"};
+  failed += failing.run_test_text(
+      "roundtrip_text (expected reply as reply_out)", roundtrip_text, did_path,
+      "roundtrip_text", "(\"Hello C++ Canister\")", expected_and_out,
+      silent_on_trap, my_principal, &expected_and_out);
+  if (failed != 6 || failing.test_summary() != 1) {
+    std::cout << "ERROR: " << 6 - failed
+              << " of the 6 tests that must fail passed\n";
     return 1;
   }
-  std::cout << "\nThe 5 tests that must fail failed.\n";
+  std::cout << "\nThe 6 tests that must fail failed.\n";
 
   // returns 1 if any tests failed
   return result;

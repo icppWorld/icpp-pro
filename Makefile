@@ -419,7 +419,7 @@ install-didc:
 
 .PHONY: install-jp-ubuntu
 install-jp-ubuntu:
-	sudo apt-get update && sudo apt-get install jp
+	sudo apt-get update && sudo apt-get install -y jp
 
 .PHONY: install-jp-mac
 install-jp-mac:
@@ -427,7 +427,7 @@ install-jp-mac:
 
 .PHONY: install-homebrew-mac
 install-homebrew-mac:
-	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Bootstrapping pip is its own target because the install-python-w-* targets
 # must install a sibling's requirements BEFORE the editable installs, and that

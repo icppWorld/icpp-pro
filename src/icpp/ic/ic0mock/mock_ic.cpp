@@ -293,6 +293,7 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
         // Only a reply the canister sent, not data it appended and kept
         CallContext &root = m_contexts[m_root_context];
         if (!root.done || root.rejected) {
+          if (reply_out) reply_out->clear();
           std::cout << "The call did not reply"
                     << (root.rejected ? ": " + root.reject_message : "")
                     << "\n";

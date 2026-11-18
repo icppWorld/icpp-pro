@@ -283,7 +283,5 @@ def build_library(
             # ----------------------------------------------------------------------
             typer.echo("-----")
 
-    # What mine-no-lib may reuse now
-    library_stamp.after_build(
-        build_root_path, icpp_toml.libraries, lib_name, config_default.WASM_AR_EXT
-    )
+    # Built, so mine-no-lib may reuse them
+    library_stamp.after_build(build_root_path, icpp_toml.libraries, lib_name)

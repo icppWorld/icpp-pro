@@ -1,15 +1,13 @@
-"""The icpp version that built the libraries of a project.
+"""The icpp version that built each library of a project.
 
 `--to-compile mine-no-lib` links the libraries that are already in the
 build-library folder. After an upgrade of icpp they hold the objects that the
 previous version compiled, icpp's own (`__ic_candid__`) among them, and the
 wasm or the native executable would link the old code: with no error at all
-when no declaration changed. A build of all the libraries writes a stamp with
-its version, and mine-no-lib builds them again when the stamp is missing,
-unreadable or names another version, or when a library is missing or newer
-than the stamp: another version built it, or its build failed partway. A
-build of one library that succeeds refreshes a stamp of this version, unless
-another library is newer than it, and drops it otherwise.
+when no declaration changed. Once a library is built, its folder gets a stamp
+with this version. Every build of a library, by any icpp version, starts by
+deleting its folder, so mine-no-lib builds the libraries again when a library
+or its stamp is missing, or a stamp is unreadable or names another version.
 """
 
 from pathlib import Path
@@ -24,42 +22,44 @@ STAMP_NAME = ".icpp-version"
 
 
 def after_build(
-    build_root: Path,
-    libraries: List[Dict[Any, Any]],
-    lib_name: Optional[str],
-    ar_ext: str,
+    build_root: Path, libraries: List[Dict[Any, Any]], lib_name: Optional[str]
 ) -> None:
-    """After a library build that succeeded: of all the libraries, or of the one
-    named lib_name. A name of no library built nothing, and vouches for nothing."""
-    if lib_name is None:
-        _write(build_root)
-    elif any(library["lib_name"] == lib_name for library in libraries):
-        _refresh(build_root, build_root / lib_name / f"{lib_name}{ar_ext}")
+    """Stamps the libraries that a build just made: all of them, or the one
+    named lib_name. Call it only when the build succeeded."""
+    for library in libraries:
+        if lib_name in (None, library["lib_name"]):
+            stamp = build_root / library["lib_name"] / STAMP_NAME
+            stamp.write_text(__version__, encoding="utf-8")
 
 
-def _write(build_root: Path) -> None:
-    """Records that this icpp version built all the libraries in build_root.
+def must_rebuild(
+    build_root: Path, libraries: List[Dict[Any, Any]], ar_ext: str
+) -> bool:
+    """Whether mine-no-lib must build the libraries again. Says why, if so."""
+    reason = _reason_to_rebuild(build_root, libraries, ar_ext)
+    if reason is not None:
+        typer.echo(f"{reason}: building the libraries.")
+    return reason is not None
 
-    The full build deletes build_root first, so a build that fails partway
-    leaves no stamp.
-    """
-    (build_root / STAMP_NAME).write_text(__version__, encoding="utf-8")
 
-
-def _refresh(build_root: Path, built: Path) -> None:
-    """After the library archive `built` was built: a stamp of this version
-    still holds, and is made newer than it. It no longer holds when it names
-    another version, since the libraries are then a mix of two versions, nor
-    when another library is newer than it: making the stamp newer would hide
-    that library from mine-no-lib."""
-    stamp = build_root / STAMP_NAME
-    others = [
-        a for a in build_root.glob(f"*/*{built.suffix}") if a != built and a.is_file()
-    ]
-    if _version(stamp) == __version__ and _newer_than(stamp, others) is None:
-        stamp.touch()
-    else:
-        stamp.unlink(missing_ok=True)
+def _reason_to_rebuild(
+    build_root: Path, libraries: List[Dict[Any, Any]], ar_ext: str
+) -> Optional[str]:
+    """Why the libraries in build_root can't be reused, or None if they can."""
+    for library in libraries:
+        folder = build_root / library["lib_name"]
+        archive = folder / f"{library['lib_name']}{ar_ext}"
+        if not archive.is_file():
+            return f"The library {archive} is missing"
+        version = _version(folder / STAMP_NAME)
+        if version is None:
+            return f"The library {archive} has no readable icpp version stamp"
+        if version != __version__:
+            return (
+                f"The library {archive} was built by icpp {version}, "
+                f"and this is icpp {__version__}"
+            )
+    return None
 
 
 def _version(stamp: Path) -> Optional[str]:
@@ -68,45 +68,3 @@ def _version(stamp: Path) -> Optional[str]:
         return stamp.read_text(encoding="utf-8").strip()
     except (OSError, UnicodeDecodeError):
         return None
-
-
-def must_rebuild(
-    build_root: Path, libraries: List[Dict[Any, Any]], ar_ext: str
-) -> bool:
-    """Whether mine-no-lib must build the libraries again. Says why, if so."""
-    reason = _reason_to_rebuild(
-        build_root,
-        [
-            build_root / lib["lib_name"] / f"{lib['lib_name']}{ar_ext}"
-            for lib in libraries
-        ],
-    )
-    if reason is not None:
-        typer.echo(f"{reason}: building the libraries.")
-    return reason is not None
-
-
-def _reason_to_rebuild(build_root: Path, archives: List[Path]) -> Optional[str]:
-    """Why the libraries in build_root can't be reused, or None if they can."""
-    stamp = build_root / STAMP_NAME
-    version = _version(stamp)
-    if version is None:
-        return f"The libraries in {build_root} have no readable icpp version stamp"
-    if version != __version__:
-        return (
-            f"The libraries in {build_root} were built by icpp {version}, "
-            f"and this is icpp {__version__}"
-        )
-    for archive in archives:
-        if not archive.is_file():
-            return f"The library {archive} is missing"
-    newer = _newer_than(stamp, archives)
-    if newer is not None:
-        return f"The library {newer} is newer than the icpp version stamp"
-    return None
-
-
-def _newer_than(stamp: Path, archives: List[Path]) -> Optional[Path]:
-    """The first of the archives that is newer than the stamp, if any."""
-    stamped = stamp.stat().st_mtime
-    return next((a for a in archives if a.stat().st_mtime > stamped), None)

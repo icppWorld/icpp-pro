@@ -2218,10 +2218,17 @@ int main() {
               << "\n";
     return 1;
   }
-  // Appended a reply and did not send it
-  failed += failing.run_test_text(
-      "roundtrip_no_arguments (no reply)", native_appends_no_reply, did_path,
-      "roundtrip_no_arguments", "()", "()", silent_on_trap, my_principal);
+  // Appended a reply and did not send it. Only that check clears reply_out:
+  // a trap or a failed decode leaves it as it was
+  std::string no_reply{"unchanged"};
+  failed += failing.run_test_text("roundtrip_no_arguments (no reply)",
+                                  native_appends_no_reply, did_path,
+                                  "roundtrip_no_arguments", "()", "()",
+                                  silent_on_trap, my_principal, &no_reply);
+  if (!no_reply.empty()) {
+    std::cout << "ERROR: the call without a reply failed for another reason\n";
+    return 1;
+  }
   if (failed != 7 || failing.test_summary() != 1) {
     std::cout << "ERROR: " << 7 - failed
               << " of the 7 tests that must fail passed\n";

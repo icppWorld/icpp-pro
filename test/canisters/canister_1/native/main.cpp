@@ -2143,6 +2143,61 @@ int main() {
   mockIC.run_test("native_cost_in_start", native_cost_in_start, "4449444c0000",
                   "", silent_on_trap, my_principal);
 
+  // ------------------------------------------------------------------------
+  // Tests in Candid text, which didc encodes and decodes with the types of the
+  // .did file. The path is relative to the canister folder, where
+  // `icpp run-native` runs.
+  const std::string did_path{"src/my_canister.did"};
+  mockIC.run_test_text("roundtrip_text (Candid text)", roundtrip_text, did_path,
+                       "roundtrip_text", "(\"Hello C++ Canister\")",
+                       "(\"Hello C++ Canister\")", silent_on_trap,
+                       my_principal);
+  // A part of the reply, with other white space than didc prints
+  std::string reply;
+  mockIC.run_test_text(
+      "roundtrip_record (Candid text)", roundtrip_record, did_path,
+      "roundtrip_record",
+      "(record { name = \"C++ Developer\"; \"secret float64\" = 0.01; "
+      "\"secret int\" = 11 })",
+      "greeting =\n   \"Hello C++ Developer!\"", silent_on_trap, my_principal,
+      &reply);
+  if (reply.find("\"secret int\" = 11 : int") == std::string::npos) {
+    std::cout << "ERROR: run_test_text gave the reply: " << reply << "\n";
+    return 1;
+  }
+  mockIC.run_trap_test_text("trap_multiple_calls_from_wire (Candid text)",
+                            trap_multiple_calls_from_wire, did_path,
+                            "trap_multiple_calls_from_wire", "(true)",
+                            silent_on_trap, my_principal);
+
+  int result = mockIC.test_summary();
+
+  // Tests that must fail, in a MockIC that does not exit on a failure. It is
+  // the last one: it replaces the MockIC above
+  MockIC failing(false);
+  int failed = 0;
+  failed += failing.run_test_text("roundtrip_text (another reply)",
+                                  roundtrip_text, did_path, "roundtrip_text",
+                                  "(\"Hello C++ Canister\")", "(\"Bye\")",
+                                  silent_on_trap, my_principal);
+  failed += failing.run_test_text("roundtrip_text (no such method)",
+                                  roundtrip_text, did_path, "no_such_method",
+                                  "(\"Hello C++ Canister\")", "",
+                                  silent_on_trap, my_principal);
+  failed += failing.run_test_text("roundtrip_text (not Candid text)",
+                                  roundtrip_text, did_path, "roundtrip_text",
+                                  "(Hello", "", silent_on_trap, my_principal);
+  failed += failing.run_trap_test_text(
+      "roundtrip_text (does not trap)", roundtrip_text, did_path,
+      "roundtrip_text", "(\"Hello C++ Canister\")", silent_on_trap,
+      my_principal);
+  if (failed != 4 || failing.test_summary() != 1) {
+    std::cout << "ERROR: " << 4 - failed
+              << " of the 4 tests that must fail passed\n";
+    return 1;
+  }
+  std::cout << "\nThe 4 tests that must fail failed.\n";
+
   // returns 1 if any tests failed
-  return mockIC.test_summary();
+  return result;
 }

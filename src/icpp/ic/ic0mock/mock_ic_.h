@@ -236,11 +236,41 @@ public:
                     const std::string &caller = "",
                     const std::string &expected_trap_message = "");
 
+  // run_test and run_trap_test in Candid text, as `icp canister call` takes and
+  // shows it, e.g. "(\"x\", 3)". didc, which must be on the PATH, encodes the
+  // argument and decodes the reply with the types of `method` in the .did file
+  // at did_path. The test passes when the decoded reply contains
+  // reply_expected, with every run of white space read as one space; an empty
+  // reply_expected is not checked. *reply_out gets the decoded reply.
+  int run_test_text(const std::string &test_name, void (*api_callback)(),
+                    const std::string &did_path, const std::string &method,
+                    const std::string &arg_text,
+                    const std::string &reply_expected = "",
+                    const bool silent_on_trap = false,
+                    const std::string &caller = "",
+                    std::string *reply_out = nullptr);
+
+  int run_trap_test_text(const std::string &test_name, void (*api_callback)(),
+                         const std::string &did_path, const std::string &method,
+                         const std::string &arg_text,
+                         const bool silent_on_trap = true,
+                         const std::string &caller = "",
+                         const std::string &expected_trap_message = "");
+
   int test_summary();
 
   bool get_silent_on_trap() { return m_silent_on_trap; }
 
 private:
+  // run_test, with reply_ok to check the reply
+  int run_test_checked(const std::string &test_name, void (*api_callback)(),
+                       const std::string &candid_in, const bool silent_on_trap,
+                       const std::string &caller,
+                       const std::function<bool()> &reply_ok);
+
+  // A test that fails before it runs, eg. when didc can't encode its argument
+  int fail_to_start(const std::string &test_name, const std::string &why);
+
   VecBytes m_B_in;
   VecBytes m_B_out;
   CandidTypePrincipal m_caller;

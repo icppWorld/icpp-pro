@@ -14,7 +14,7 @@ import typer
 from icpp import __version__
 from icpp.__main__ import app
 
-from icpp import config_default, candid_library
+from icpp import config_default, candid_library, library_stamp
 from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
 from icpp.utils import delete_build_folder, refuse_symlinked_folder
 
@@ -103,7 +103,8 @@ def build_library_native(
         run_shell_cmd(cmd, cwd=path)
 
     # loop over the [[build-library]], then add routines of [[build-library-native]];
-    # use flags of [[build-library-native]]
+    # use flags of [[build-library-native]], after those of [[build-library]] when
+    # it sets inherit_compile_flags
     for lib in icpp_toml.libraries:
         # when we apply the hack below, we do not want to overwrite reference data
         library = copy.deepcopy(lib)
@@ -155,6 +156,8 @@ def build_library_native(
 
             cpp_compile_flags_s = ""
             if library_native:
+                if library_native["inherit_compile_flags"]:
+                    cpp_compile_flags_s += library["cpp_compile_flags_s"]
                 cpp_compile_flags_s += library_native["cpp_compile_flags_s"]
 
             c_files = library["c_files"]
@@ -171,6 +174,8 @@ def build_library_native(
 
             c_compile_flags_s = ""
             if library_native:
+                if library_native["inherit_compile_flags"]:
+                    c_compile_flags_s += library["c_compile_flags_s"]
                 c_compile_flags_s += library_native["c_compile_flags_s"]
 
             if library_native:
@@ -323,3 +328,7 @@ def build_library_native(
 
             # ----------------------------------------------------------------------
             typer.echo("-----")
+
+    # All of them are built, so mine-no-lib may reuse them
+    if lib_name is None:
+        library_stamp.write(build_root_path)

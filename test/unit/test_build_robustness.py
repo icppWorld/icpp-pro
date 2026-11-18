@@ -7,7 +7,9 @@ Regressions:
   or one outside it;
 - a build folder that could not be deleted was built on top of;
 - a project file named like a module icpp imports, eg. `tomllib.py`, was
-  imported instead of it.
+  imported instead of it;
+- `--to-compile mine-no-lib` linked the libraries an older icpp built;
+- a native library did not get the compile flags of its [[build-library]].
 """
 
 # pylint: disable=missing-function-docstring, import-outside-toplevel, redefined-outer-name
@@ -16,9 +18,11 @@ import importlib
 import inspect
 import os
 import shlex
+import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
+from typing import Any, Callable, Optional
 
 import pytest
 
@@ -314,3 +318,184 @@ def test__a_post_wasm_function_package_wins_over_an_installed_one(
     call_function("colorsys.hook.run")
     assert (project / "ran.txt").read_text(encoding="utf-8") == "yes"
     assert sys.path == before
+
+
+# ---------------------------------------------------------------------------
+# The libraries that `--to-compile mine-no-lib` reuses
+
+
+def stub_compiles(monkeypatch: pytest.MonkeyPatch, module: str) -> list[str]:
+    """The compiles of a library build only record their compile commands."""
+    commands: list[str] = []
+
+    def record(fn: Any, files: list[str]) -> None:
+        del files
+        commands.append(
+            fn.keywords.get("cpp_compile_cmd", fn.keywords.get("c_compile_cmd"))
+        )
+
+    monkeypatch.setattr(f"icpp.{module}.run_in_parallel", record)
+    monkeypatch.setattr(f"icpp.{module}.run_shell_cmd", lambda *_a, **_k: "")
+    return commands
+
+
+def test__a_full_library_build_stamps_its_version(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from icpp import library_stamp
+    from icpp.commands_build_library import build_library
+
+    (project / "src" / "hello.cpp").write_text("", encoding="utf-8")
+    toml_text = WASM_TABLE + (
+        '\n[[build-library]]\nlib_name = "libhello"\ncpp_paths = ["src/hello.cpp"]\n'
+    )
+    load_icpp_toml(monkeypatch, toml_text)
+    stub_compiles(monkeypatch, "commands_build_library")
+    inspect.unwrap(build_library)()
+    stamp = project / "build-library" / library_stamp.STAMP_NAME
+    assert stamp.read_text(encoding="utf-8") == icpp.__version__
+
+
+def test__a_failed_library_build_leaves_no_stamp(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from icpp import library_stamp
+    from icpp.commands_build_library import build_library
+
+    (project / "build-library").mkdir()
+    (project / "build-library" / library_stamp.STAMP_NAME).write_text(
+        icpp.__version__, encoding="utf-8"
+    )
+    load_icpp_toml(monkeypatch, WASM_TABLE)
+    stub_compiles(monkeypatch, "commands_build_library")
+
+    def fail(*_a: Any, **_k: Any) -> str:
+        raise subprocess.CalledProcessError(1, "ar")
+
+    monkeypatch.setattr("icpp.commands_build_library.run_shell_cmd", fail)
+    with pytest.raises(SystemExit):
+        inspect.unwrap(build_library)()
+    assert not (project / "build-library" / library_stamp.STAMP_NAME).exists()
+
+
+def test__a_single_library_build_writes_no_stamp(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from icpp import library_stamp
+    from icpp.commands_build_library import build_library
+
+    toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
+    load_icpp_toml(monkeypatch, toml_text)
+    stub_compiles(monkeypatch, "commands_build_library")
+    inspect.unwrap(build_library)(lib_name="libhello")
+    assert not (project / "build-library" / library_stamp.STAMP_NAME).exists()
+
+
+def stamp_libraries(root: Path, version: str, lib_names: list[str], ext: str) -> None:
+    for lib_name in lib_names:
+        (root / lib_name).mkdir(parents=True)
+        (root / lib_name / f"{lib_name}{ext}").write_text("", encoding="utf-8")
+    (root / ".icpp-version").write_text(version, encoding="utf-8")
+
+
+class LibrariesBuilt(Exception):
+    """Stops the build once it decided to build the libraries."""
+
+
+@pytest.mark.parametrize("native", [False, True])
+@pytest.mark.parametrize(
+    "case, rebuilds",
+    [
+        ("current", False),
+        ("no stamp", True),
+        ("other version", True),
+        ("missing library", True),
+    ],
+)
+def test__mine_no_lib_builds_the_libraries_unless_this_version_built_them(
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    native: bool,
+    case: str,
+    rebuilds: bool,
+) -> None:
+    from icpp.commands_build_native import build_native
+    from icpp.commands_build_wasm import build_wasm
+
+    build: Callable[..., None] = build_native if native else build_wasm
+    if native:
+        root, ext, module = "build-library-native", "NATIVE_AR_EXT", "build_native"
+    else:
+        root, ext, module = "build-library", "WASM_AR_EXT", "build_wasm"
+    toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
+    load_icpp_toml(monkeypatch, toml_text)
+    lib_names = ["libhello", "__ic_candid__"]
+    if case == "missing library":
+        lib_names = ["__ic_candid__"]
+    version = "6.0.0" if case == "other version" else icpp.__version__
+    stamp_libraries(project / root, version, lib_names, getattr(config_default, ext))
+    if case == "no stamp":
+        (project / root / ".icpp-version").unlink()
+
+    def built(*_a: Any, **_k: Any) -> None:
+        raise LibrariesBuilt
+
+    library_builder = "build_library_native" if native else "build_library"
+    monkeypatch.setattr(f"icpp.commands_{module}.{library_builder}", built)
+
+    def compiled(*_a: Any, **_k: Any) -> None:
+        raise SystemExit(0)
+
+    # The build of the canister's own code stops at the first command
+    monkeypatch.setattr(f"icpp.commands_{module}.run_in_parallel", compiled)
+    monkeypatch.setattr(f"icpp.commands_{module}.run_shell_cmd", compiled)
+    (project / "src" / "my_canister.did").write_text("service : {}", "utf-8")
+    (project / "src" / "my_canister.cpp").write_text("", encoding="utf-8")
+    if rebuilds:
+        with pytest.raises(LibrariesBuilt):
+            inspect.unwrap(build)(to_compile="mine-no-lib")
+        assert "building the libraries" in capsys.readouterr().out
+    else:
+        with pytest.raises(SystemExit):
+            inspect.unwrap(build)(to_compile="mine-no-lib")
+        assert "building the libraries" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("inherit", [None, False, True])
+def test__a_native_library_inherits_the_wasm_compile_flags_when_asked(
+    project: Path, monkeypatch: pytest.MonkeyPatch, inherit: Optional[bool]
+) -> None:
+    from icpp.commands_build_library_native import build_library_native
+
+    (project / "src" / "hello.cpp").write_text("", encoding="utf-8")
+    toml_text = WASM_TABLE + (
+        '\n[[build-library]]\nlib_name = "libhello"\ncpp_paths = ["src/hello.cpp"]\n'
+        'cpp_compile_flags = ["-DFROM_WASM"]\n'
+        '\n[[build-library-native]]\nlib_name = "libhello"\n'
+        'cpp_compile_flags = ["-DFROM_NATIVE"]\n'
+    )
+    if inherit is not None:
+        toml_text += f"inherit_compile_flags = {str(inherit).lower()}\n"
+    load_icpp_toml(monkeypatch, toml_text)
+    commands = stub_compiles(monkeypatch, "commands_build_library_native")
+    inspect.unwrap(build_library_native)(lib_name="libhello")
+    assert len(commands) == 1
+    command = commands[0]
+    assert "-DFROM_NATIVE" in command
+    if inherit:
+        assert command.index("-DFROM_WASM") < command.index("-DFROM_NATIVE")
+    else:
+        assert "-DFROM_WASM" not in command
+
+
+def test__inherit_compile_flags_must_be_a_bool(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    del project
+    toml_text = WASM_TABLE + (
+        '\n[[build-library-native]]\nlib_name = "libhello"\n'
+        'inherit_compile_flags = "yes"\n'
+    )
+    with pytest.raises(SystemExit):
+        load_icpp_toml(monkeypatch, toml_text)

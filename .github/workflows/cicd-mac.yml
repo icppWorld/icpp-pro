@@ -103,6 +103,7 @@ jobs:
           make install-python
           make install-homebrew-mac
           make install-jp-mac
+          make install-didc
 
       - name: versions
         shell: bash -l {0}

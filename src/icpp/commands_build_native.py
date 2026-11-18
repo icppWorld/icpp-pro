@@ -11,7 +11,7 @@ from typing import Annotated
 import typer
 
 from icpp.__main__ import app
-from icpp import config_default
+from icpp import config_default, library_stamp
 from icpp.icpp_pro_message import icpp_pro_message
 from icpp.run_shell_cmd import run_in_parallel, run_shell_cmd
 from icpp.utils import delete_build_folder, refuse_symlinked_folder
@@ -57,8 +57,23 @@ def build_native(
     from icpp import icpp_toml  # pylint: disable = import-outside-toplevel
 
     # ----------------------------------------------------------------------
-    # First build the libraries
-    if to_compile != "mine-no-lib":
+    # First build the libraries. mine-no-lib reuses them only when this icpp
+    # version built all of them: after an upgrade they hold the old code
+    rebuild_reason = None
+    if to_compile == "mine-no-lib":
+        build_library_root = icpp_toml.icpp_toml_path.parent / "build-library-native"
+        rebuild_reason = library_stamp.reason_to_rebuild(
+            build_library_root,
+            [
+                build_library_root
+                / library["lib_name"]
+                / f"{library['lib_name']}{config_default.NATIVE_AR_EXT}"
+                for library in icpp_toml.libraries
+            ],
+        )
+        if rebuild_reason is not None:
+            typer.echo(f"{rebuild_reason}: building the libraries.")
+    if to_compile != "mine-no-lib" or rebuild_reason is not None:
         build_library_native(config, candid_library_dir=candid_library_dir)
 
     # ----------------------------------------------------------------------

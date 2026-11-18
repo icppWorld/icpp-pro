@@ -16,11 +16,9 @@ endif
 
 ifeq ($(detected_OS),Darwin)	  # Mac OS X  (Intel)
 	OS += macos
-	DIDC += didc-macos
 endif
 ifeq ($(detected_OS),Linux)		  # Ubuntu
 	OS += linux
-	DIDC += didc-linux64 
 endif
 
 ifeq ($(detected_OS),Windows_NT)  # Windows (icpp supports it but you cannot run this Makefile)
@@ -31,8 +29,15 @@ ifeq ($(detected_OS),Unknown)     # Unknown
 endif
 
 ###########################################################################
-# latest release of didc
-VERSION_DIDC := $(shell curl --silent "https://api.github.com/repos/dfinity/candid/releases/latest" | grep -e '"tag_name"' | cut -c 16-25)
+# didc, pinned with the sha256 of each release archive. The native tests in
+# Candid text (MockIC::run_test_text) run it.
+VERSION_DIDC := 0.6.2
+DIDC_TARGET := $(shell sh -c 'echo "$$(uname -s)-$$(uname -m)"' | sed -e 's/^Darwin-x86_64$$/x86_64-apple-darwin/' -e 's/^Darwin-arm64$$/aarch64-apple-darwin/' -e 's/^Linux-x86_64$$/x86_64-unknown-linux-gnu/' -e 's/^Linux-aarch64$$/aarch64-unknown-linux-gnu/')
+DIDC_SHA256_x86_64-apple-darwin := f279437b1322843d682c5afd2d2722e740559ef764fc655c9a31b559ee754dec
+DIDC_SHA256_aarch64-apple-darwin := 1c3f117e4273cbb10670c44c34e70a58599ec180bc814fb6e3346609d330771f
+DIDC_SHA256_x86_64-unknown-linux-gnu := 9990d2646a2b023df50c8765fd34e43951ba947303d3ce9d06590b2d58e89469
+DIDC_SHA256_aarch64-unknown-linux-gnu := e081ab7b406232e82078a00891b883f50a121c6e9da1848aade6bc1d34d49fc5
+DIDC_SHA256 := $(DIDC_SHA256_$(DIDC_TARGET))
 # version to install for clang
 VERSION_CLANG := $(shell cat version_clang.txt)
 
@@ -402,14 +407,15 @@ install-icp:
 
 .PHONY: install-didc
 install-didc:
-	@echo "Installing didc $(VERSION_DIDC) ..."
-	sudo rm -rf /usr/local/bin/didc
-	wget https://github.com/dfinity/candid/releases/download/${VERSION_DIDC}/$(DIDC)
-	sudo mv $(DIDC) /usr/local/bin/didc
-	chmod +x /usr/local/bin/didc
-	@echo " "
-	@echo "Installed successfully in:"
-	@echo /usr/local/bin/didc
+	@test -n "$(DIDC_SHA256)" || { echo "ERROR: no pinned didc for $(DIDC_TARGET)"; exit 1; }
+	@echo "Installing didc $(VERSION_DIDC) for $(DIDC_TARGET) ..."
+	@tmp=$$(mktemp -d) && \
+	  curl -fsSL -o $$tmp/didc.tar.xz https://github.com/dfinity/candid/releases/download/didc-v$(VERSION_DIDC)/didc-$(DIDC_TARGET).tar.xz && \
+	  echo "$(DIDC_SHA256)  $$tmp/didc.tar.xz" | shasum -a 256 -c - && \
+	  tar -xf $$tmp/didc.tar.xz -C $$tmp && \
+	  sudo install -m 755 $$tmp/didc-$(DIDC_TARGET)/didc /usr/local/bin/didc && \
+	  rm -rf $$tmp
+	didc --version
 
 .PHONY: install-jp-ubuntu
 install-jp-ubuntu:

@@ -295,7 +295,7 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
         }
         std::cout << "The reply:\n"
                   << reply << "\ndoes not contain:\n"
-                  << reply_expected << "\n";
+                  << expected << "\n";
         return false;
       });
 }

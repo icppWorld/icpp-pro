@@ -74,6 +74,9 @@ def _reason_to_rebuild(
 
 def _version(stamp: Path) -> Optional[str]:
     """The version in the stamp, or None when there is none or it is unreadable."""
+    # Not a pipe, which a read would wait on
+    if not stamp.is_file():
+        return None
     try:
         return stamp.read_text(encoding="utf-8").strip() or None
     except (OSError, UnicodeDecodeError):

@@ -284,37 +284,42 @@ int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),
                           const std::string &reply_expected,
                           const bool silent_on_trap, const std::string &caller,
                           std::string *reply_out) {
-  // Both before *reply_out is cleared: it may be reply_expected or arg_text
-  const std::string expected = squeeze_spaces(reply_expected);
+  // Written to *reply_out last, which may be any of the arguments
+  std::string decoded;
   std::string candid_in;
-  const bool encoded =
-      encode_text_arg(test_name, did_path, method, arg_text, &candid_in);
-  if (reply_out) reply_out->clear();
-  if (!encoded) {
-    return 1;
-  }
-  return run_test_checked(
-      test_name, api_callback, candid_in, silent_on_trap, caller, [&]() {
-        // Only a reply the canister sent, not data it appended and kept
-        CallContext &root = m_contexts[m_root_context];
-        if (!root.done || root.rejected) {
-          std::cout << "The call did not reply"
-                    << (root.rejected ? ": " + root.reject_message : "")
-                    << "\n";
+  int result = 1;
+  if (encode_text_arg(test_name, did_path, method, arg_text, &candid_in)) {
+    result = run_test_checked(
+        test_name, api_callback, candid_in, silent_on_trap, caller, [&]() {
+          // Only a reply the canister sent, not data it appended and kept
+          CallContext &root = m_contexts[m_root_context];
+          if (root.rejected) {
+            std::cout << "The call was rejected"
+                      << (root.reject_message.empty()
+                              ? ""
+                              : ": " + root.reject_message)
+                      << "\n";
+            return false;
+          }
+          if (!root.done) {
+            std::cout << "The call did not reply\n";
+            return false;
+          }
+          decoded = run_didc("decode " + didc_types(did_path, method),
+                             root.reply.as_hex_string());
+          const std::string expected = squeeze_spaces(reply_expected);
+          if (expected.empty() ||
+              squeeze_spaces(decoded).find(expected) != std::string::npos) {
+            return true;
+          }
+          std::cout << "The reply:\n"
+                    << decoded << "\ndoes not contain:\n"
+                    << expected << "\n";
           return false;
-        }
-        std::string reply = run_didc("decode " + didc_types(did_path, method),
-                                     root.reply.as_hex_string());
-        if (reply_out) *reply_out = reply;
-        if (expected.empty() ||
-            squeeze_spaces(reply).find(expected) != std::string::npos) {
-          return true;
-        }
-        std::cout << "The reply:\n"
-                  << reply << "\ndoes not contain:\n"
-                  << expected << "\n";
-        return false;
-      });
+        });
+  }
+  if (reply_out) *reply_out = decoded;
+  return result;
 }
 
 int MockIC::run_trap_test_text(

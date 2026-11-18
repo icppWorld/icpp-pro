@@ -10,7 +10,9 @@ names another version, or when a library is missing.
 """
 
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
+
+import typer
 
 from icpp import __version__
 
@@ -27,7 +29,23 @@ def write(build_root: Path) -> None:
     (build_root / STAMP_NAME).write_text(__version__, encoding="utf-8")
 
 
-def reason_to_rebuild(build_root: Path, archives: List[Path]) -> Optional[str]:
+def must_rebuild(
+    build_root: Path, libraries: List[Dict[Any, Any]], ar_ext: str
+) -> bool:
+    """Whether mine-no-lib must build the libraries again. Says why, if so."""
+    reason = _reason_to_rebuild(
+        build_root,
+        [
+            build_root / lib["lib_name"] / f"{lib['lib_name']}{ar_ext}"
+            for lib in libraries
+        ],
+    )
+    if reason is not None:
+        typer.echo(f"{reason}: building the libraries.")
+    return reason is not None
+
+
+def _reason_to_rebuild(build_root: Path, archives: List[Path]) -> Optional[str]:
     """Why the libraries in build_root can't be reused, or None if they can."""
     stamp = build_root / STAMP_NAME
     if not stamp.is_file():

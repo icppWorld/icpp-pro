@@ -268,6 +268,10 @@ private:
                        const std::string &caller,
                        const std::function<bool()> &reply_ok);
 
+  // Counts a failed test, and exits when the MockIC exits on a failure.
+  // Returns 1, what a failed test returns
+  int count_failure();
+
   // A test that fails before it runs, eg. when didc can't encode its argument
   int fail_to_start(const std::string &test_name, const std::string &why);
 

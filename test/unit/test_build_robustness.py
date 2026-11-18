@@ -22,7 +22,7 @@ import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 import pytest
 
@@ -391,75 +391,70 @@ def test__a_single_library_build_writes_no_stamp(
     assert not (project / "build-library" / library_stamp.STAMP_NAME).exists()
 
 
-def stamp_libraries(root: Path, version: str, lib_names: list[str], ext: str) -> None:
-    for lib_name in lib_names:
-        (root / lib_name).mkdir(parents=True)
-        (root / lib_name / f"{lib_name}{ext}").write_text("", encoding="utf-8")
-    (root / ".icpp-version").write_text(version, encoding="utf-8")
-
-
 class LibrariesBuilt(Exception):
     """Stops the build once it decided to build the libraries."""
 
 
-@pytest.mark.parametrize("native", [False, True])
 @pytest.mark.parametrize(
-    "case, rebuilds",
+    "module, builder, root, ar_ext",
     [
-        ("current", False),
-        ("no stamp", True),
-        ("other version", True),
-        ("missing library", True),
+        ("build_wasm", "build_library", "build-library", "WASM_AR_EXT"),
+        (
+            "build_native",
+            "build_library_native",
+            "build-library-native",
+            "NATIVE_AR_EXT",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "stamp, lib_names, rebuilds",
+    [
+        ("current", ["libhello", "__ic_candid__"], False),
+        (None, ["libhello", "__ic_candid__"], True),
+        ("6.0.0", ["libhello", "__ic_candid__"], True),
+        ("current", ["__ic_candid__"], True),
     ],
 )
 def test__mine_no_lib_builds_the_libraries_unless_this_version_built_them(
     project: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
-    native: bool,
-    case: str,
+    module: str,
+    builder: str,
+    root: str,
+    ar_ext: str,
+    stamp: Optional[str],
+    lib_names: list[str],
     rebuilds: bool,
 ) -> None:
-    from icpp.commands_build_native import build_native
-    from icpp.commands_build_wasm import build_wasm
+    from icpp import library_stamp
 
-    build: Callable[..., None] = build_native if native else build_wasm
-    if native:
-        root, ext, module = "build-library-native", "NATIVE_AR_EXT", "build_native"
-    else:
-        root, ext, module = "build-library", "WASM_AR_EXT", "build_wasm"
     toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
     load_icpp_toml(monkeypatch, toml_text)
-    lib_names = ["libhello", "__ic_candid__"]
-    if case == "missing library":
-        lib_names = ["__ic_candid__"]
-    version = "6.0.0" if case == "other version" else icpp.__version__
-    stamp_libraries(project / root, version, lib_names, getattr(config_default, ext))
-    if case == "no stamp":
-        (project / root / ".icpp-version").unlink()
+    for lib_name in lib_names:
+        (project / root / lib_name).mkdir(parents=True)
+        archive = f"{lib_name}{getattr(config_default, ar_ext)}"
+        (project / root / lib_name / archive).write_text("", encoding="utf-8")
+    if stamp is not None:
+        version = icpp.__version__ if stamp == "current" else stamp
+        (project / root / library_stamp.STAMP_NAME).write_text(version, "utf-8")
+    (project / "src" / "my_canister.did").write_text("service : {}", "utf-8")
 
     def built(*_a: Any, **_k: Any) -> None:
         raise LibrariesBuilt
 
-    library_builder = "build_library_native" if native else "build_library"
-    monkeypatch.setattr(f"icpp.commands_{module}.{library_builder}", built)
-
     def compiled(*_a: Any, **_k: Any) -> None:
         raise SystemExit(0)
 
-    # The build of the canister's own code stops at the first command
-    monkeypatch.setattr(f"icpp.commands_{module}.run_in_parallel", compiled)
-    monkeypatch.setattr(f"icpp.commands_{module}.run_shell_cmd", compiled)
-    (project / "src" / "my_canister.did").write_text("service : {}", "utf-8")
-    (project / "src" / "my_canister.cpp").write_text("", encoding="utf-8")
-    if rebuilds:
-        with pytest.raises(LibrariesBuilt):
-            inspect.unwrap(build)(to_compile="mine-no-lib")
-        assert "building the libraries" in capsys.readouterr().out
-    else:
-        with pytest.raises(SystemExit):
-            inspect.unwrap(build)(to_compile="mine-no-lib")
-        assert "building the libraries" not in capsys.readouterr().out
+    command = importlib.import_module(f"icpp.commands_{module}")
+    monkeypatch.setattr(command, builder, built)
+    # The build of the canister's own code stops at its first command
+    monkeypatch.setattr(command, "run_in_parallel", compiled)
+    monkeypatch.setattr(command, "run_shell_cmd", compiled)
+    with pytest.raises(LibrariesBuilt if rebuilds else SystemExit):
+        inspect.unwrap(getattr(command, module))(to_compile="mine-no-lib")
+    assert ("building the libraries" in capsys.readouterr().out) == rebuilds
 
 
 @pytest.mark.parametrize("inherit", [None, False, True])

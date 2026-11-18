@@ -74,21 +74,11 @@ def build_wasm(
     # ----------------------------------------------------------------------
     # First build the libraries. mine-no-lib reuses them only when this icpp
     # version built all of them: after an upgrade they hold the old code
-    rebuild_reason = None
-    if to_compile == "mine-no-lib":
-        build_library_root = icpp_toml.icpp_toml_path.parent / "build-library"
-        rebuild_reason = library_stamp.reason_to_rebuild(
-            build_library_root,
-            [
-                build_library_root
-                / library["lib_name"]
-                / f"{library['lib_name']}{config_default.WASM_AR_EXT}"
-                for library in icpp_toml.libraries
-            ],
-        )
-        if rebuild_reason is not None:
-            typer.echo(f"{rebuild_reason}: building the libraries.")
-    if to_compile != "mine-no-lib" or rebuild_reason is not None:
+    if to_compile != "mine-no-lib" or library_stamp.must_rebuild(
+        icpp_toml.icpp_toml_path.parent / "build-library",
+        icpp_toml.libraries,
+        config_default.WASM_AR_EXT,
+    ):
         build_library(config, candid_library_dir=candid_library_dir)
 
     # ----------------------------------------------------------------------

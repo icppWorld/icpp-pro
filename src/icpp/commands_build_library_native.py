@@ -156,7 +156,7 @@ def build_library_native(
 
             cpp_compile_flags_s = ""
             if library_native:
-                if library_native["inherit_compile_flags"]:
+                if library_native.get("inherit_compile_flags"):
                     cpp_compile_flags_s += library["cpp_compile_flags_s"]
                 cpp_compile_flags_s += library_native["cpp_compile_flags_s"]
 
@@ -174,7 +174,7 @@ def build_library_native(
 
             c_compile_flags_s = ""
             if library_native:
-                if library_native["inherit_compile_flags"]:
+                if library_native.get("inherit_compile_flags"):
                     c_compile_flags_s += library["c_compile_flags_s"]
                 c_compile_flags_s += library_native["c_compile_flags_s"]
 

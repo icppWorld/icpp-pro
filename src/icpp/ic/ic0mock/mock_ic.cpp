@@ -85,38 +85,23 @@ int MockIC::run_test_checked(const std::string &test_name,
     }
     // A trap after a co_await fails the test, like a trap before it
     if (m_contexts[m_root_context].trapped) {
-      ++m_tests_failed;
       std::cout << "\nTest: '" << test_name
                 << "' Failed with a trap after a co_await:\n";
       std::cerr << m_contexts[m_root_context].trap_message << '\n';
-      if (m_exit_on_fail) {
-        test_summary();
-        exit(1);
-      }
-      return 1;
+      return count_failure();
     }
 
     if (!reply_ok()) {
-      ++m_tests_failed;
       std::cout << "\nTest: '" << test_name << "' Failed\n";
-      if (m_exit_on_fail) {
-        test_summary();
-        exit(1);
-      }
-      return 1;
+      return count_failure();
     }
 
     std::cout << "Test: " << test_name << ": Passed\n";
     return 0;
   } catch (const std::exception &e) {
-    ++m_tests_failed;
     std::cout << "\nTest: '" << test_name << "' Failed with Exception:\n";
     std::cerr << e.what() << '\n';
-    if (m_exit_on_fail) {
-      test_summary();
-      exit(1);
-    }
-    return 1;
+    return count_failure();
   }
 }
 
@@ -169,18 +154,13 @@ int MockIC::run_trap_test(const std::string &test_name, void (*api_callback)(),
   }
 
   // If it did not trap, or with another message, give an error message
-  ++m_tests_failed;
   if (trapped) {
     std::cout << "Trapped with:\n"
               << trap_message << "\nExpecting a trap message with:\n"
               << expected_trap_message << "\n";
   }
   std::cout << "\nTest: '" << test_name << "' Failed\n";
-  if (m_exit_on_fail) {
-    test_summary();
-    exit(1);
-  }
-  return 1;
+  return count_failure();
 }
 
 namespace {
@@ -254,17 +234,21 @@ std::string didc_types(const std::string &did_path, const std::string &method) {
 }
 } // namespace
 
-int MockIC::fail_to_start(const std::string &test_name,
-                          const std::string &why) {
-  ++m_tests_total;
+int MockIC::count_failure() {
   ++m_tests_failed;
-  std::cout << "\n----------\n";
-  std::cout << "Test: '" << test_name << "' Failed:\n" << why << "\n";
   if (m_exit_on_fail) {
     test_summary();
     exit(1);
   }
   return 1;
+}
+
+int MockIC::fail_to_start(const std::string &test_name,
+                          const std::string &why) {
+  ++m_tests_total;
+  std::cout << "\n----------\n";
+  std::cout << "Test: '" << test_name << "' Failed:\n" << why << "\n";
+  return count_failure();
 }
 
 int MockIC::run_test_text(const std::string &test_name, void (*api_callback)(),

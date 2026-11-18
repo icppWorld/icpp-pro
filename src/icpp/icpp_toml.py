@@ -180,8 +180,6 @@ def library_ic_candid(
         d["c_files"] = config_default.IC_C_FILES
 
     d["lib_name"] = "__ic_candid__"
-    if native:
-        d["inherit_compile_flags"] = False
 
     # if non-empty, these defaults will overwrite internal settings
     # d["cpp_compile_flags_defaults"] = []

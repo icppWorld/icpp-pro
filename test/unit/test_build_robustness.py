@@ -410,21 +410,33 @@ def test__a_single_library_build_writes_no_stamp(
     assert not (project / "build-library" / library_stamp.STAMP_NAME).exists()
 
 
+@pytest.mark.parametrize(
+    "module, root",
+    [
+        ("build_library", "build-library"),
+        ("build_library_native", "build-library-native"),
+    ],
+)
 @pytest.mark.parametrize("version, kept", [(icpp.__version__, True), ("0.0.0", False)])
 def test__a_single_library_build_refreshes_or_drops_the_stamp(
-    project: Path, monkeypatch: pytest.MonkeyPatch, version: str, kept: bool
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    module: str,
+    root: str,
+    version: str,
+    kept: bool,
 ) -> None:
     from icpp import library_stamp
-    from icpp.commands_build_library import build_library
 
     toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
     load_icpp_toml(monkeypatch, toml_text)
-    stub_compiles(monkeypatch, "commands_build_library")
-    stamp = project / "build-library" / library_stamp.STAMP_NAME
+    stub_compiles(monkeypatch, f"commands_{module}")
+    stamp = project / root / library_stamp.STAMP_NAME
     stamp.parent.mkdir(exist_ok=True)
     stamp.write_text(version, encoding="utf-8")
     os.utime(stamp, (0, 0))
-    inspect.unwrap(build_library)(lib_name="libhello")
+    command = importlib.import_module(f"icpp.commands_{module}")
+    inspect.unwrap(getattr(command, module))(lib_name="libhello")
     assert stamp.exists() == kept
     assert not kept or stamp.stat().st_mtime > 0
 
@@ -471,9 +483,24 @@ def test__refresh_after_one_library(
     os.utime(stamp, (100, 100))
     os.utime(other, (other_mtime, other_mtime))
     os.utime(built, (300, 300))
-    library_stamp.refresh(tmp_path, built)
+    libraries = [{"lib_name": "liba"}, {"lib_name": "libb"}]
+    library_stamp.after_build(tmp_path, libraries, "liba", ".a")
     assert stamp.exists() == kept
     assert not kept or stamp.stat().st_mtime >= built.stat().st_mtime
+
+
+def test__refresh_skips_a_dangling_library_link(tmp_path: Path) -> None:
+    from icpp import library_stamp
+
+    built = tmp_path / "liba" / "liba.a"
+    built.parent.mkdir()
+    built.write_text("", encoding="utf-8")
+    (tmp_path / "libb").mkdir()
+    (tmp_path / "libb" / "libb.a").symlink_to(tmp_path / "missing")
+    stamp = tmp_path / library_stamp.STAMP_NAME
+    stamp.write_text(icpp.__version__, encoding="utf-8")
+    library_stamp.after_build(tmp_path, [{"lib_name": "liba"}], "liba", ".a")
+    assert stamp.exists()
 
 
 class CanisterCompiled(BaseException):

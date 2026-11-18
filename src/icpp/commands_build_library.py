@@ -283,11 +283,7 @@ def build_library(
             # ----------------------------------------------------------------------
             typer.echo("-----")
 
-    # All of them are built, so mine-no-lib may reuse them
-    if lib_name is None:
-        library_stamp.write(build_root_path)
-    elif any(library["lib_name"] == lib_name for library in icpp_toml.libraries):
-        library_stamp.refresh(
-            build_root_path,
-            build_root_path / lib_name / f"{lib_name}{config_default.WASM_AR_EXT}",
-        )
+    # What mine-no-lib may reuse now
+    library_stamp.after_build(
+        build_root_path, icpp_toml.libraries, lib_name, config_default.WASM_AR_EXT
+    )

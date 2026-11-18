@@ -23,23 +23,39 @@ from icpp import __version__
 STAMP_NAME = ".icpp-version"
 
 
-def write(build_root: Path) -> None:
+def after_build(
+    build_root: Path,
+    libraries: List[Dict[Any, Any]],
+    lib_name: Optional[str],
+    ar_ext: str,
+) -> None:
+    """After a library build that succeeded: of all the libraries, or of the one
+    named lib_name. A name of no library built nothing, and vouches for nothing."""
+    if lib_name is None:
+        _write(build_root)
+    elif any(library["lib_name"] == lib_name for library in libraries):
+        _refresh(build_root, build_root / lib_name / f"{lib_name}{ar_ext}")
+
+
+def _write(build_root: Path) -> None:
     """Records that this icpp version built all the libraries in build_root.
 
-    Call it only when every library was built: the full build deletes
-    build_root first, so a build that fails partway leaves no stamp.
+    The full build deletes build_root first, so a build that fails partway
+    leaves no stamp.
     """
     (build_root / STAMP_NAME).write_text(__version__, encoding="utf-8")
 
 
-def refresh(build_root: Path, built: Path) -> None:
+def _refresh(build_root: Path, built: Path) -> None:
     """After the library archive `built` was built: a stamp of this version
     still holds, and is made newer than it. It no longer holds when it names
     another version, since the libraries are then a mix of two versions, nor
     when another library is newer than it: making the stamp newer would hide
     that library from mine-no-lib."""
     stamp = build_root / STAMP_NAME
-    others = [a for a in build_root.glob(f"*/*{built.suffix}") if a != built]
+    others = [
+        a for a in build_root.glob(f"*/*{built.suffix}") if a != built and a.is_file()
+    ]
     if _version(stamp) == __version__ and _newer_than(stamp, others) is None:
         stamp.touch()
     else:

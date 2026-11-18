@@ -57,6 +57,7 @@ jobs:
       - name: install
         shell: bash -l {0} # activates the default conda environment ('test')
         run: |
+          set -e
           sudo apt-get update
           make install-python
           make install-clang-ubuntu

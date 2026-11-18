@@ -26,16 +26,19 @@ def after_build(
 ) -> None:
     """Stamps the libraries that a build just made: all of them, or the one
     named lib_name. Call it only when the build succeeded."""
+    # The libraries are built: a stamp that fails costs a rebuild, that's all
     try:
         # icpp 7.0.1 to 7.1.0rc4 stamped all the libraries at once, in
         # build_root: after one library is built here, it no longer holds
         (build_root / STAMP_NAME).unlink(missing_ok=True)
+    except OSError as e:
+        typer.echo(f"WARNING: cannot remove the old icpp version stamp: {e}")
+    try:
         for library in libraries:
             if lib_name in (None, library["lib_name"]):
                 stamp = build_root / library["lib_name"] / STAMP_NAME
                 stamp.write_text(__version__, encoding="utf-8")
     except OSError as e:
-        # The libraries are built: mine-no-lib builds them again, that's all
         typer.echo(f"WARNING: cannot write the icpp version stamp: {e}")
 
 
@@ -59,8 +62,9 @@ def _reason_to_rebuild(
     for library in libraries:
         folder = build_root / library["lib_name"]
         archive = folder / f"{library['lib_name']}{ar_ext}"
-        if folder.is_symlink():
-            return f"The library folder {folder} is a symlink"
+        for path in (folder, archive):
+            if path.is_symlink():
+                return f"{path} is a symlink"
         if not archive.is_file():
             return f"The library {archive} is missing"
         version = _version(folder / STAMP_NAME)

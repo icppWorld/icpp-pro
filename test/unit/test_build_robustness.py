@@ -155,6 +155,11 @@ class LibrariesBuilt(Exception):
     """Stops the build once it decided to build the libraries."""
 
 
+def built(*_a: Any, **_k: Any) -> None:
+    """Stands in for a library builder."""
+    raise LibrariesBuilt
+
+
 @pytest.mark.parametrize(
     "module, builder, folder",
     [
@@ -175,9 +180,6 @@ def test__a_symlinked_build_folder_is_refused_when_it_is_not_deleted(
     target.mkdir()
     (project / folder).symlink_to(target, target_is_directory=True)
     load_icpp_toml(monkeypatch, WASM_TABLE)
-
-    def built(*_a: Any, **_k: Any) -> None:
-        raise LibrariesBuilt
 
     # Refused before the libraries, which have no stamp, are built again
     command = importlib.import_module(f"icpp.commands_{module}")
@@ -430,7 +432,7 @@ def test__a_single_library_build_stamps_only_its_library(
     assert not legacy.exists()
 
 
-@pytest.mark.parametrize("linked", ["build-library", "libhello"])
+@pytest.mark.parametrize("linked", ["build-library", "libhello", "libhello.a"])
 def test__mine_no_lib_does_not_reuse_a_symlinked_folder(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], linked: str
 ) -> None:
@@ -444,9 +446,17 @@ def test__mine_no_lib_does_not_reuse_a_symlinked_folder(
     build_root = tmp_path / "build-library"
     if linked == "build-library":
         build_root.symlink_to(outside)
-    else:
+    elif linked == "libhello":
         build_root.mkdir()
         (build_root / "libhello").symlink_to(outside / "libhello")
+    else:
+        (build_root / "libhello").mkdir(parents=True)
+        (build_root / "libhello" / "libhello.a").symlink_to(
+            outside / "libhello" / "libhello.a"
+        )
+        (build_root / "libhello" / library_stamp.STAMP_NAME).write_text(
+            icpp.__version__, "utf-8"
+        )
     libraries = [{"lib_name": "libhello"}]
     assert library_stamp.must_rebuild(build_root, libraries, ".a")
     assert "is a symlink" in capsys.readouterr().out
@@ -517,9 +527,6 @@ def test__mine_no_lib_builds_the_libraries_unless_this_version_built_them(
             version = icpp.__version__ if stamp == "current" else stamp
             stamp_path.write_text(version, "utf-8")
     (project / "src" / "my_canister.did").write_text("service : {}", "utf-8")
-
-    def built(*_a: Any, **_k: Any) -> None:
-        raise LibrariesBuilt
 
     def compiled(*_a: Any, **_k: Any) -> None:
         raise CanisterCompiled

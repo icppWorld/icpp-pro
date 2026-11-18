@@ -17,7 +17,7 @@ import typer
 
 from icpp import __version__
 
-# A library folder is named after its lib_name, which can't start with '.'
+# In the library folder, next to objects named *.o and the archive
 STAMP_NAME = ".icpp-version"
 
 

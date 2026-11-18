@@ -367,40 +367,52 @@ def stamp_of(project: Path, root: str, lib_name: str) -> Path:
     return project / root / lib_name / library_stamp.STAMP_NAME
 
 
+@pytest.mark.parametrize(
+    "module, root",
+    [
+        ("build_library", "build-library"),
+        ("build_library_native", "build-library-native"),
+    ],
+)
 def test__a_full_library_build_stamps_each_library(
-    project: Path, monkeypatch: pytest.MonkeyPatch
+    project: Path, monkeypatch: pytest.MonkeyPatch, module: str, root: str
 ) -> None:
-    from icpp.commands_build_library import build_library
-
     (project / "src" / "hello.cpp").write_text("", encoding="utf-8")
     toml_text = WASM_TABLE + (
         '\n[[build-library]]\nlib_name = "libhello"\ncpp_paths = ["src/hello.cpp"]\n'
     )
     load_icpp_toml(monkeypatch, toml_text)
-    stub_compiles(monkeypatch, "commands_build_library")
-    inspect.unwrap(build_library)()
+    stub_compiles(monkeypatch, f"commands_{module}")
+    command = importlib.import_module(f"icpp.commands_{module}")
+    inspect.unwrap(getattr(command, module))()
     for lib_name in ["libhello", "__ic_candid__"]:
-        stamp = stamp_of(project, "build-library", lib_name)
+        stamp = stamp_of(project, root, lib_name)
         assert stamp.read_text(encoding="utf-8") == icpp.__version__
 
 
+@pytest.mark.parametrize(
+    "module, root",
+    [
+        ("build_library", "build-library"),
+        ("build_library_native", "build-library-native"),
+    ],
+)
 def test__a_failed_library_build_leaves_no_stamp(
-    project: Path, monkeypatch: pytest.MonkeyPatch
+    project: Path, monkeypatch: pytest.MonkeyPatch, module: str, root: str
 ) -> None:
-    from icpp.commands_build_library import build_library
-
-    stamp = stamp_of(project, "build-library", "__ic_candid__")
+    stamp = stamp_of(project, root, "__ic_candid__")
     stamp.parent.mkdir(parents=True)
     stamp.write_text(icpp.__version__, encoding="utf-8")
     load_icpp_toml(monkeypatch, WASM_TABLE)
-    stub_compiles(monkeypatch, "commands_build_library")
+    stub_compiles(monkeypatch, f"commands_{module}")
 
     def fail(*_a: Any, **_k: Any) -> str:
         raise subprocess.CalledProcessError(1, "ar")
 
-    monkeypatch.setattr("icpp.commands_build_library.run_shell_cmd", fail)
+    monkeypatch.setattr(f"icpp.commands_{module}.run_shell_cmd", fail)
+    command = importlib.import_module(f"icpp.commands_{module}")
     with pytest.raises(SystemExit):
-        inspect.unwrap(build_library)()
+        inspect.unwrap(getattr(command, module))()
     assert not stamp.exists()
 
 

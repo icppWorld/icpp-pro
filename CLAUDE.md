@@ -47,7 +47,7 @@ make install-icp
 
 ```bash
 # Native build (for debugging) - from a canister directory. Once, from the
-# repo root: `make install-didc`, which the native tests in Candid text run.
+# repo root: `make install-didc`; the native tests in Candid text run didc.
 cd test/canisters/canister_1
 icpp build-native
 icpp run-native   # runs ./build-native/mockic.exe under the memory guard

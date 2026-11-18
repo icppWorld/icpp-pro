@@ -26,20 +26,14 @@ def after_build(
 ) -> None:
     """Stamps the libraries that a build just made: all of them, or the one
     named lib_name. Call it only when the build succeeded."""
-    # The libraries are built: a stamp that fails costs a rebuild, that's all
-    try:
-        # icpp 7.0.1 to 7.1.0rc4 stamped all the libraries at once, in
-        # build_root: after one library is built here, it no longer holds
-        (build_root / STAMP_NAME).unlink(missing_ok=True)
-    except OSError as e:
-        typer.echo(f"WARNING: cannot remove the old icpp version stamp: {e}")
-    try:
-        for library in libraries:
-            if lib_name in (None, library["lib_name"]):
-                stamp = build_root / library["lib_name"] / STAMP_NAME
+    for library in libraries:
+        if lib_name in (None, library["lib_name"]):
+            stamp = build_root / library["lib_name"] / STAMP_NAME
+            try:
                 stamp.write_text(__version__, encoding="utf-8")
-    except OSError as e:
-        typer.echo(f"WARNING: cannot write the icpp version stamp: {e}")
+            except OSError as e:
+                # The library is built: mine-no-lib builds it again, that's all
+                typer.echo(f"WARNING: cannot write {stamp}: {e}")
 
 
 def must_rebuild(
@@ -62,7 +56,7 @@ def _reason_to_rebuild(
     for library in libraries:
         folder = build_root / library["lib_name"]
         archive = folder / f"{library['lib_name']}{ar_ext}"
-        for path in (folder, archive):
+        for path in (folder, archive, folder / STAMP_NAME):
             if path.is_symlink():
                 return f"{path} is a symlink"
         if not archive.is_file():
@@ -81,6 +75,6 @@ def _reason_to_rebuild(
 def _version(stamp: Path) -> Optional[str]:
     """The version in the stamp, or None when there is none or it is unreadable."""
     try:
-        return stamp.read_text(encoding="utf-8").strip()
+        return stamp.read_text(encoding="utf-8").strip() or None
     except (OSError, UnicodeDecodeError):
         return None

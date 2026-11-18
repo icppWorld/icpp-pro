@@ -414,25 +414,19 @@ def test__a_failed_library_build_leaves_no_stamp(
 def test__a_single_library_build_stamps_only_its_library(
     project: Path, monkeypatch: pytest.MonkeyPatch, module: str, root: str
 ) -> None:
-    from icpp import library_stamp
-
     toml_text = WASM_TABLE + '\n[[build-library]]\nlib_name = "libhello"\n'
     load_icpp_toml(monkeypatch, toml_text)
     stub_compiles(monkeypatch, f"commands_{module}")
     for lib_name in ["libhello", "__ic_candid__"]:
         stamp_of(project, root, lib_name).parent.mkdir(parents=True)
         stamp_of(project, root, lib_name).write_text("0.0.0", encoding="utf-8")
-    # The stamp of all the libraries that icpp 7.0.1 to 7.1.0rc4 wrote
-    legacy = project / root / library_stamp.STAMP_NAME
-    legacy.write_text("7.1.0rc4", encoding="utf-8")
     command = importlib.import_module(f"icpp.commands_{module}")
     inspect.unwrap(getattr(command, module))(lib_name="libhello")
     assert stamp_of(project, root, "libhello").read_text("utf-8") == icpp.__version__
     assert stamp_of(project, root, "__ic_candid__").read_text("utf-8") == "0.0.0"
-    assert not legacy.exists()
 
 
-@pytest.mark.parametrize("linked", ["build-library", "libhello", "libhello.a"])
+@pytest.mark.parametrize("linked", ["build-library", "libhello", "libhello.a", "stamp"])
 def test__mine_no_lib_does_not_reuse_a_symlinked_folder(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], linked: str
 ) -> None:
@@ -450,13 +444,12 @@ def test__mine_no_lib_does_not_reuse_a_symlinked_folder(
         build_root.mkdir()
         (build_root / "libhello").symlink_to(outside / "libhello")
     else:
+        # A real folder, with the archive or the stamp a symlink
         (build_root / "libhello").mkdir(parents=True)
-        (build_root / "libhello" / "libhello.a").symlink_to(
-            outside / "libhello" / "libhello.a"
-        )
-        (build_root / "libhello" / library_stamp.STAMP_NAME).write_text(
-            icpp.__version__, "utf-8"
-        )
+        name = "libhello.a" if linked == "libhello.a" else library_stamp.STAMP_NAME
+        other = "libhello.a" if name != "libhello.a" else library_stamp.STAMP_NAME
+        (build_root / "libhello" / name).symlink_to(outside / "libhello" / name)
+        (build_root / "libhello" / other).write_text(icpp.__version__, "utf-8")
     libraries = [{"lib_name": "libhello"}]
     assert library_stamp.must_rebuild(build_root, libraries, ".a")
     assert "is a symlink" in capsys.readouterr().out
@@ -467,10 +460,16 @@ def test__a_stamp_that_cannot_be_written_warns(
 ) -> None:
     from icpp import library_stamp
 
-    # A folder where the stamp goes
-    (tmp_path / "libhello" / library_stamp.STAMP_NAME).mkdir(parents=True)
-    library_stamp.after_build(tmp_path, [{"lib_name": "libhello"}], None)
-    assert "WARNING: cannot write the icpp version stamp" in capsys.readouterr().out
+    # A folder where the stamp of the first library goes
+    (tmp_path / "liba" / library_stamp.STAMP_NAME).mkdir(parents=True)
+    (tmp_path / "libb").mkdir()
+    libraries = [{"lib_name": "liba"}, {"lib_name": "libb"}]
+    library_stamp.after_build(tmp_path, libraries, None)
+    stamp_a = tmp_path / "liba" / library_stamp.STAMP_NAME
+    assert f"WARNING: cannot write {stamp_a}" in capsys.readouterr().out
+    # The next library is stamped all the same
+    stamp_b = tmp_path / "libb" / library_stamp.STAMP_NAME
+    assert stamp_b.read_text("utf-8") == icpp.__version__
 
 
 class CanisterCompiled(BaseException):
@@ -498,6 +497,7 @@ class CanisterCompiled(BaseException):
         ({"libhello": "6.0.0", "__ic_candid__": "current"}, None, True),
         ({"libhello": "current", "__ic_candid__": "current"}, ["__ic_candid__"], True),
         ({"libhello": "unreadable", "__ic_candid__": "current"}, None, True),
+        ({"libhello": "", "__ic_candid__": "current"}, None, True),
     ],
 )
 def test__mine_no_lib_builds_the_libraries_unless_this_version_built_them(

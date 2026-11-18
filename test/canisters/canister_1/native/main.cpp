@@ -130,7 +130,9 @@ static void native_rejects() {
 
 // The same, and sends it: the control for native_appends_no_reply
 static void native_appends_and_replies() {
-  native_appends_no_reply();
+  IC_API ic_api(CanisterQuery{"native_appends_and_replies"}, false);
+  const uint8_t empty[] = {'D', 'I', 'D', 'L', 0, 0};
+  ic0_msg_reply_data_append((uintptr_t)empty, sizeof(empty));
   ic0_msg_reply();
 }
 

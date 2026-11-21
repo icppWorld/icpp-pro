@@ -87,6 +87,14 @@ int main() {
   mockIC.run_test("reset again", reset, EMPTY, EMPTY, silent_on_trap,
                   my_principal);
 
+  // The Mock IC's file system has no chunks: it accepts every valid size
+  // and refuses any other, as the IC does
+  mockIC.run_test("chunk_size_is 65536", chunk_size_is,
+                  "4449444c00017900000100", "4449444c00017500000000",
+                  silent_on_trap, my_principal);
+  mockIC.run_test("chunk_size_is 1000", chunk_size_is, "4449444c000179e8030000",
+                  "4449444c0001751c000000", silent_on_trap, my_principal);
+
   // returns 1 if any tests failed
   return mockIC.test_summary();
 }

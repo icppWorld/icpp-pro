@@ -17,3 +17,6 @@ void ask_cq() WASM_SYMBOL_EXPORTED("canister_composite_query ask_cq");
 // The instruction budget of a composite query and the queries it calls
 void burn_q() WASM_SYMBOL_EXPORTED("canister_query burn_q");
 void cq_burn() WASM_SYMBOL_EXPORTED("canister_composite_query cq_burn");
+
+// The chunk size of the file system, from stable_fs_chunk_size in icpp.toml
+void chunk_size_is() WASM_SYMBOL_EXPORTED("canister_update chunk_size_is");

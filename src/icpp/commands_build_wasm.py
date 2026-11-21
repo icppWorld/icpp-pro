@@ -196,6 +196,27 @@ def build_wasm(
 
     try:
         # ----------------------------------------------------------------------
+        # The chunk size of the file system, read by ic_wasi_polyfill.h. In its
+        # own file, compiled in every build, so no library holds an old value
+        chunk_size_file = "icpp_stable_fs_chunk_size.c"
+        (build_path / chunk_size_file).write_text(
+            "#include <stdint.h>\n"
+            "const uint32_t icpp_stable_fs_chunk_size = "
+            f"{icpp_toml.build_wasm['stable_fs_chunk_size']};\n",
+            encoding="utf-8",
+        )
+        typer.echo("--")
+        typer.echo(
+            f"stable_fs_chunk_size: {icpp_toml.build_wasm['stable_fs_chunk_size']}"
+            " (0: the size the file system has)"
+        )
+        run_shell_cmd(
+            f"{c_compile_cmd_default()} -c {chunk_size_file} "
+            "-o icpp_stable_fs_chunk_size.o",
+            cwd=build_path,
+        )
+
+        # ----------------------------------------------------------------------
         # compile 'mine' C++ files, if we have any
         if len(cpp_files.strip()) > 0:
             if CONCURRENCY == "multi-threading":

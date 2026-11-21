@@ -1,5 +1,6 @@
 """Handles 'icpp install-rust'"""
 
+import hashlib
 import sys
 import platform
 import shlex
@@ -7,10 +8,12 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Annotated
 import typer
 from icpp.__main__ import app
 from icpp import config_default
 from icpp import __version_rust__, __version_ic_wasi_polyfill__, __version_wasi2ic__
+from icpp import install_marker
 from icpp.run_shell_cmd import run_shell_cmd_with_log
 from icpp.utils import rmtree_force
 
@@ -171,11 +174,39 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
     )
 
 
+def installed_versions() -> str:
+    """Names what install_rust installs: the pinned versions, and the lockfiles."""
+    locks = hashlib.sha256()
+    for lock in sorted(CARGO_LOCKS.glob("*.Cargo.lock")):
+        locks.update(lock.read_bytes())
+    return (
+        f"rust {__version_rust__}, wasi2ic {__version_wasi2ic__}, "
+        f"ic-wasi-polyfill {__version_ic_wasi_polyfill__}, "
+        f"cargo locks {locks.hexdigest()}"
+    )
+
+
 @app.command()
-def install_rust() -> None:
+def install_rust(
+    force: Annotated[
+        bool,
+        typer.Option(help="Install again, also when it is installed already."),
+    ] = False,
+) -> None:
     """Installs rust and required dependencies.
 
-    Compiler will be installed in ~/.icpp"""
+    Compiler will be installed in ~/.icpp. Skipped when it is installed already,
+    unless --force is given."""
+
+    installed = installed_versions()
+    if not force and install_marker.is_complete(
+        config_default.RUST_COMPILER_ROOT, installed
+    ):
+        typer.echo(
+            f"rust is installed already in {config_default.RUST_COMPILER_ROOT}"
+            f"\n(--force installs it again)"
+        )
+        return
 
     typer.echo(f"Installing rust into {config_default.RUST_COMPILER_ROOT}")
     typer.echo(f"Details in {LOG_FILE}")
@@ -205,6 +236,9 @@ def install_rust() -> None:
 
         install_ic_wasi_polyfill(nstep, num_steps)
         nstep += 1
+
+        # Last, so an install that failed is not taken as done
+        install_marker.mark_complete(config_default.RUST_COMPILER_ROOT, installed)
 
         typer.echo("\nSuccessfully installed rust & required dependencies ")
         try:

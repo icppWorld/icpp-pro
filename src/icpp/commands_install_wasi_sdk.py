@@ -5,6 +5,7 @@ import platform
 import shutil
 from pathlib import Path
 import math
+from typing import Annotated
 import tarfile
 import time
 import requests
@@ -13,6 +14,7 @@ import typer
 from icpp.__main__ import app
 from icpp import config_default
 from icpp import __version_wasi_sdk__
+from icpp import install_marker
 
 # linux, darwin, windows
 PLATFORM_SYSTEM = platform.system().lower()
@@ -123,10 +125,16 @@ def download_wasi_sdk_with_retries(fpath: Path) -> None:
 
 
 @app.command()
-def install_wasi_sdk() -> None:
+def install_wasi_sdk(
+    force: Annotated[
+        bool,
+        typer.Option(help="Install again, also when it is installed already."),
+    ] = False,
+) -> None:
     """Installs wasi-sdk compiler.
 
-    Compiler will be installed in ~/.icpp"""
+    Compiler will be installed in ~/.icpp. Skipped when it is installed already,
+    unless --force is given."""
 
     if WASI_SDK_OS_NAME == "unknown":
         typer.echo("ERROR: a wasi-sdk binary is not available for your system.")
@@ -140,6 +148,22 @@ def install_wasi_sdk() -> None:
         sys.exit(1)
 
     # ----------------------------------------------------------------
+    if install_marker.skip(
+        "wasi-sdk",
+        config_default.WASI_SDK_COMPILER_ROOT,
+        WASI_SDK_URL,
+        force,
+        files_ok=all(
+            path.exists()
+            for path in (
+                config_default.WASM_C,
+                config_default.WASM_CPP,
+                config_default.SYSROOT,
+            )
+        ),
+    ):
+        return
+
     typer.echo(f"Installing wasi-sdk into {config_default.WASI_SDK_ROOT}")
 
     typer.echo(f"- Your system: {PLATFORM_SYSTEM}")
@@ -153,7 +177,13 @@ def install_wasi_sdk() -> None:
     except FileNotFoundError:
         pass
     except OSError as e:
-        typer.echo(f"Warning: {e.strerror}")
+        # The new wasi-sdk would be moved into the old folder, and the marker
+        # would then name an old compiler
+        typer.echo(
+            f"ERROR: cannot remove {config_default.WASI_SDK_COMPILER_ROOT}: "
+            f"{e.strerror}\n       Remove it, then install again."
+        )
+        sys.exit(1)
 
     try:
         shutil.rmtree(ICPP_ROOT_UNTAR_DIR)
@@ -201,6 +231,11 @@ def install_wasi_sdk() -> None:
         nstep += 1
         typer.echo(f"- {nstep}/{num_steps} Cleaning up")
         fpath.unlink(missing_ok=True)
+
+        # Last, so an install that failed is not taken as done
+        install_marker.mark_complete(
+            config_default.WASI_SDK_COMPILER_ROOT, WASI_SDK_URL
+        )
 
         typer.echo(
             f"\nSuccessfully installed wasi-sdk in "

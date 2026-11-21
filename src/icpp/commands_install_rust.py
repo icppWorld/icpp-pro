@@ -190,6 +190,19 @@ def installed_versions() -> str:
     )
 
 
+def is_toolchain_installed() -> bool:
+    """Returns True if rustup holds the pinned toolchain with its wasm target.
+
+    The files of is_rust_installed() are rustup's proxies; the toolchain they
+    run lives in RUSTUP_HOME, named after the version and the host.
+    """
+    toolchains = config_default.RUST_COMPILER_ROOT / "toolchains"
+    return any(
+        (toolchain / "lib/rustlib/wasm32-wasip1").is_dir()
+        for toolchain in toolchains.glob(f"{__version_rust__}-*")
+    )
+
+
 @app.command()
 def install_rust(
     force: Annotated[
@@ -208,7 +221,7 @@ def install_rust(
         config_default.RUST_COMPILER_ROOT,
         installed,
         force,
-        files_ok=is_rust_installed(),
+        files_ok=is_rust_installed() and is_toolchain_installed(),
     ):
         return
 

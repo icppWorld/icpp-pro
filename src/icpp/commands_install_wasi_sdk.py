@@ -153,7 +153,14 @@ def install_wasi_sdk(
         config_default.WASI_SDK_COMPILER_ROOT,
         WASI_SDK_URL,
         force,
-        files_ok=config_default.WASM_C.exists(),
+        files_ok=all(
+            path.exists()
+            for path in (
+                config_default.WASM_C,
+                config_default.WASM_CPP,
+                config_default.SYSROOT,
+            )
+        ),
     ):
         return
 
@@ -170,7 +177,13 @@ def install_wasi_sdk(
     except FileNotFoundError:
         pass
     except OSError as e:
-        typer.echo(f"Warning: {e.strerror}")
+        # The new wasi-sdk would be moved into the old folder, and the marker
+        # would then name an old compiler
+        typer.echo(
+            f"ERROR: cannot remove {config_default.WASI_SDK_COMPILER_ROOT}: "
+            f"{e.strerror}\n       Remove it, then install again."
+        )
+        sys.exit(1)
 
     try:
         shutil.rmtree(ICPP_ROOT_UNTAR_DIR)

@@ -6,6 +6,8 @@ install of other versions wrote another name: both are installed again.
 
 from pathlib import Path
 
+import typer
+
 MARKER_NAME = ".icpp-installed"
 
 
@@ -18,6 +20,21 @@ def is_complete(root: Path, installed: str) -> bool:
         )
     except (OSError, UnicodeDecodeError):
         return False
+
+
+def skip(name: str, root: Path, installed: str, force: bool, files_ok: bool) -> bool:
+    """Returns True, and says so, when the install can be skipped.
+
+    Otherwise removes the marker first, so an install that fails is not taken
+    as done, also when it cannot delete the old files.
+    """
+    if not force and files_ok and is_complete(root, installed):
+        typer.echo(
+            f"{name} is installed already in {root}\n(--force installs it again)"
+        )
+        return True
+    (root / MARKER_NAME).unlink(missing_ok=True)
+    return False
 
 
 def mark_complete(root: Path, installed: str) -> None:

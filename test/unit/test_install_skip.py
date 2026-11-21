@@ -30,6 +30,9 @@ def rust_steps(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> List[str]:
     """Points the rust folder into tmp_path, and records the steps that run."""
     monkeypatch.setattr(config_default, "RUST_COMPILER_ROOT", tmp_path / "rust")
     monkeypatch.setattr(config_default, "ICPP_LOGS", tmp_path / "logs")
+    monkeypatch.setattr(commands_install_rust, "LOG_FILE", tmp_path / "logs/x.log")
+    # The files the skip checks are there; a test removes one to see it repaired
+    monkeypatch.setattr(commands_install_rust, "is_rust_installed", lambda: True)
     calls: List[str] = []
     for step in RUST_STEPS:
         monkeypatch.setattr(
@@ -81,6 +84,38 @@ def test__rust_of_other_versions_is_installed_again(rust_steps: List[str]) -> No
     assert rust_steps == RUST_STEPS
 
 
+def test__rust_with_missing_files_is_installed_again(
+    rust_steps: List[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    commands_install_rust.install_rust()
+    rust_steps.clear()
+    # E.g. a cache that was restored in part: the marker is there, wasi2ic not
+    monkeypatch.setattr(commands_install_rust, "is_rust_installed", lambda: False)
+    commands_install_rust.install_rust()
+    assert rust_steps == RUST_STEPS
+
+
+def test__a_forced_install_that_fails_leaves_no_marker(
+    rust_steps: List[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    commands_install_rust.install_rust()
+    assert rust_steps == RUST_STEPS
+    assert (config_default.RUST_COMPILER_ROOT / MARKER_NAME).exists()
+
+    def fail(path: Path) -> None:
+        raise OSError(16, "Resource busy")
+
+    def fail_step(nstep: int, num_steps: int) -> None:
+        raise RuntimeError("rustup failed")
+
+    with monkeypatch.context() as m:
+        m.setattr(commands_install_rust, "rmtree_force", fail)
+        m.setattr(commands_install_rust, "install_rustup", fail_step)
+        with pytest.raises(SystemExit):
+            commands_install_rust.install_rust(force=True)
+    assert not (config_default.RUST_COMPILER_ROOT / MARKER_NAME).exists()
+
+
 @pytest.fixture
 def downloads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> List[Path]:
     """Points the wasi-sdk folders into tmp_path; the download writes a small tar."""
@@ -92,6 +127,9 @@ def downloads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> List[Path]:
     )
     monkeypatch.setattr(commands_install_wasi_sdk, "ICPP_ROOT_UNTAR_DIR", untar_dir)
     monkeypatch.setattr(commands_install_wasi_sdk, "WASI_SDK_OS_NAME", "arm64-macos")
+    monkeypatch.setattr(
+        config_default, "WASM_C", root / "wasi-sdk-25.0" / "bin" / "clang"
+    )
     calls: List[Path] = []
 
     def download(fpath: Path) -> None:
@@ -139,6 +177,16 @@ def test__wasi_sdk_that_failed_is_installed_again(
 
     commands_install_wasi_sdk.install_wasi_sdk()
     assert len(downloads) == 1
+
+
+def test__wasi_sdk_without_its_compiler_is_installed_again(
+    downloads: List[Path],
+) -> None:
+    commands_install_wasi_sdk.install_wasi_sdk()
+    config_default.WASM_C.unlink()
+    commands_install_wasi_sdk.install_wasi_sdk()
+    assert len(downloads) == 2
+    assert config_default.WASM_C.exists()
 
 
 def test__a_folder_without_a_marker_is_installed_again(downloads: List[Path]) -> None:

@@ -13,6 +13,7 @@ import typer
 from icpp.__main__ import app
 from icpp import config_default
 from icpp import __version_rust__, __version_ic_wasi_polyfill__, __version_wasi2ic__
+from icpp import __version__
 from icpp import install_marker
 from icpp.run_shell_cmd import run_shell_cmd_with_log
 from icpp.utils import rmtree_force
@@ -175,14 +176,17 @@ def install_ic_wasi_polyfill(nstep: int, num_steps: int) -> None:
 
 
 def installed_versions() -> str:
-    """Names what install_rust installs: the pinned versions, and the lockfiles."""
+    """Names what install_rust installs, and how: the pinned versions, the
+    lockfiles, the icpp-pro version that has the install steps, and the platform.
+    """
     locks = hashlib.sha256()
     for lock in sorted(CARGO_LOCKS.glob("*.Cargo.lock")):
         locks.update(lock.read_bytes())
     return (
         f"rust {__version_rust__}, wasi2ic {__version_wasi2ic__}, "
         f"ic-wasi-polyfill {__version_ic_wasi_polyfill__}, "
-        f"cargo locks {locks.hexdigest()}"
+        f"cargo locks {locks.hexdigest()}, icpp-pro {__version__}, "
+        f"{platform.system()} {platform.machine()}"
     )
 
 
@@ -199,13 +203,13 @@ def install_rust(
     unless --force is given."""
 
     installed = installed_versions()
-    if not force and install_marker.is_complete(
-        config_default.RUST_COMPILER_ROOT, installed
+    if install_marker.skip(
+        "rust",
+        config_default.RUST_COMPILER_ROOT,
+        installed,
+        force,
+        files_ok=is_rust_installed(),
     ):
-        typer.echo(
-            f"rust is installed already in {config_default.RUST_COMPILER_ROOT}"
-            f"\n(--force installs it again)"
-        )
         return
 
     typer.echo(f"Installing rust into {config_default.RUST_COMPILER_ROOT}")

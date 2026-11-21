@@ -148,13 +148,13 @@ def install_wasi_sdk(
         sys.exit(1)
 
     # ----------------------------------------------------------------
-    if not force and install_marker.is_complete(
-        config_default.WASI_SDK_COMPILER_ROOT, WASI_SDK_URL
+    if install_marker.skip(
+        "wasi-sdk",
+        config_default.WASI_SDK_COMPILER_ROOT,
+        WASI_SDK_URL,
+        force,
+        files_ok=config_default.WASM_C.exists(),
     ):
-        typer.echo(
-            f"wasi-sdk is installed already in {config_default.WASI_SDK_COMPILER_ROOT}"
-            f"\n(--force installs it again)"
-        )
         return
 
     typer.echo(f"Installing wasi-sdk into {config_default.WASI_SDK_ROOT}")

@@ -176,7 +176,9 @@ void chunk_size_is() {
   // With a chunk in the file system, only the size it has is accepted. The
   // size stays fixed after the file is removed
   constexpr const char *PROBE_PATH = "chunk_size_probe.txt";
-  std::ofstream(PROBE_PATH) << "probe";
+  if (!(std::ofstream(PROBE_PATH) << "probe")) {
+    IC_API::trap("chunk_size_is: cannot write the probe file");
+  }
   int32_t errno_ = raw_set_chunk_size(size);
   std::remove(PROBE_PATH);
   ic_api.to_wire(CandidTypeInt32{errno_});

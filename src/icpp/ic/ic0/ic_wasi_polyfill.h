@@ -5,9 +5,6 @@
 // See: https://github.com/wasm-forge/demo2
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
-
-#include "ic0.h"
 
 #define __IMPORT(module, name)                                                 \
   __attribute__((__import_module__(#module), __import_name__(#name)))
@@ -29,9 +26,9 @@ extern "C" void raw_init_seed(const unsigned char *seed, std::size_t len)
 extern "C" int32_t raw_set_chunk_size(uint32_t size)
     __IMPORT(polyfill, raw_set_chunk_size);
 
-// The `stable_fs_chunk_size` of icpp.toml, or 0 to keep the file system's size:
-// icpp build-wasm defines it in a file it generates in the build folder.
-extern "C" const uint32_t icpp_stable_fs_chunk_size;
+// Calls raw_init, then sets the stable_fs_chunk_size of icpp.toml. It traps
+// when the file system has another size: see ic_wasi_polyfill.cpp
+void icpp_init_wasi_polyfill();
 
 // -------------------------------------------------------------------
 // Singleton class to ensure the WASI polyfill library is initialized only once.
@@ -41,17 +38,7 @@ public:
     // A static local variable is initialized only once and
     // is thread-safe in C++11 and later
     static bool initialized = []() {
-      raw_init(nullptr, 0);
-      // An upgrade to another size traps, so the canister keeps running its
-      // old code on the file system it was created with
-      if (icpp_stable_fs_chunk_size != 0 &&
-          raw_set_chunk_size(icpp_stable_fs_chunk_size) != 0) {
-        const char *msg =
-            "ERROR: the file system's chunk size is not the "
-            "stable_fs_chunk_size of icpp.toml, and it cannot change once a "
-            "file exists. Build with the size the canister was installed with.";
-        ic0_trap(reinterpret_cast<uintptr_t>(msg), std::strlen(msg));
-      }
+      icpp_init_wasi_polyfill();
       return true;
     }();
     (void)initialized; // To avoid unused variable warning

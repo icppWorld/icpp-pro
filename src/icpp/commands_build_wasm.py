@@ -198,7 +198,7 @@ def build_wasm(
         # ----------------------------------------------------------------------
         # The chunk size of the file system, read by ic_wasi_polyfill.h. In its
         # own file, compiled in every build, so no library holds an old value
-        chunk_size_file = "icpp_stable_fs_chunk_size.c"
+        chunk_size_file = "icpp_generated_stable_fs_chunk_size.c"
         (build_path / chunk_size_file).write_text(
             "#include <stdint.h>\n"
             "const uint32_t icpp_stable_fs_chunk_size = "
@@ -212,7 +212,7 @@ def build_wasm(
         )
         run_shell_cmd(
             f"{c_compile_cmd_default()} -c {chunk_size_file} "
-            "-o icpp_stable_fs_chunk_size.o",
+            "-o icpp_generated_stable_fs_chunk_size.o",
             cwd=build_path,
         )
 

@@ -1,6 +1,8 @@
 [build-wasm]
 canister = "canister_ingest"
 did_path = "src/canister_ingest.did"
+# Not the default 16 KiB: test_apis.py checks the file system got this size
+stable_fs_chunk_size = 65536
 cpp_paths = ["src/*.cpp"]
 cpp_include_dirs = []
 cpp_compile_flags = []

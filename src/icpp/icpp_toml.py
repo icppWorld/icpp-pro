@@ -63,6 +63,10 @@ def validate(d_in: Dict[Any, Any]) -> None:
 NAME_PATTERN = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]*")
 
 
+# The chunk sizes stable-fs offers, in bytes
+STABLE_FS_CHUNK_SIZES = (4096, 8192, 16384, 32768, 65536)
+
+
 def validate_name(key: str, value: Any) -> None:
     """Exits with an ERROR when a name can't be used as a file name."""
     if not isinstance(value, str) or NAME_PATTERN.fullmatch(value) is None:
@@ -89,6 +93,22 @@ def read_build_wasm_table(d_in: Dict[Any, Any]) -> Dict[Any, Any]:
     # so it is not applied twice - a second run changes the wasm bytes and
     # overwrites the _before_opt backup with already-fixed bytes.
     d["fix_globals_limit"] = d_in.get("fix_globals_limit", True)
+
+    # The chunk size of the file system in stable memory. 0 keeps the size the
+    # file system has: the stable-fs default, 16 KiB, for a new one
+    d["stable_fs_chunk_size"] = d_in.get("stable_fs_chunk_size", 0)
+    if "stable_fs_chunk_size" in d_in and (
+        not isinstance(d["stable_fs_chunk_size"], int)  # not a float
+        or isinstance(d["stable_fs_chunk_size"], bool)
+        or d["stable_fs_chunk_size"] not in STABLE_FS_CHUNK_SIZES
+    ):
+        typer.echo(
+            f"ERROR: 'stable_fs_chunk_size' in '[build-wasm]' must be one of "
+            f"{', '.join(map(str, STABLE_FS_CHUNK_SIZES))}, "
+            f"but it is: {d['stable_fs_chunk_size']!r}\n"
+            f"       {icpp_toml_path.resolve()}"
+        )
+        sys.exit(1)
 
     icpp_toml_path_dir = icpp_toml_path.parent.resolve()
     d["cpp_include_dirs"] = [icpp_toml_path_dir, icpp_toml_path_dir / "src"]

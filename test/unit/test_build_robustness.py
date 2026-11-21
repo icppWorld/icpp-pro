@@ -611,3 +611,31 @@ def test__inherit_compile_flags_must_be_a_bool(
     )
     with pytest.raises(SystemExit):
         load_icpp_toml(monkeypatch, toml_text)
+
+
+@pytest.mark.parametrize("size", [None, 4096, 8192, 16384, 32768, 65536])
+def test__a_stable_fs_chunk_size_is_read(
+    project: Path, monkeypatch: pytest.MonkeyPatch, size: Optional[int]
+) -> None:
+    del project
+    toml_text = WASM_TABLE
+    if size is not None:
+        toml_text += f"stable_fs_chunk_size = {size}\n"
+    icpp_toml = load_icpp_toml(monkeypatch, toml_text)
+    # 0: the canister keeps the size its file system has
+    assert icpp_toml.build_wasm["stable_fs_chunk_size"] == (size or 0)
+
+
+@pytest.mark.parametrize("value", ["0", "1000", "131072", '"65536"', "true", "65536.0"])
+def test__a_bad_stable_fs_chunk_size_exits(
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    value: str,
+) -> None:
+    del project
+    with pytest.raises(SystemExit):
+        load_icpp_toml(monkeypatch, WASM_TABLE + f"stable_fs_chunk_size = {value}\n")
+    assert "'stable_fs_chunk_size' in '[build-wasm]' must be one of" in (
+        capsys.readouterr().out
+    )

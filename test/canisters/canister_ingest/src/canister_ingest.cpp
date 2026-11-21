@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "ic_api.h"
+#include "ic_wasi_polyfill.h"
 
 namespace {
 // The ingested state: one message per line
@@ -167,3 +168,18 @@ IC_Async cq_burn_async() {
                                 error});
 }
 void cq_burn() { cq_burn_async(); }
+
+void chunk_size_is() {
+  IC_API ic_api(CanisterUpdate{std::string(__func__)}, false);
+  uint32_t size{0};
+  ic_api.from_wire(CandidTypeNat32{&size});
+  // With a chunk in the file system, only the size it has is accepted. The
+  // size stays fixed after the file is removed
+  constexpr const char *PROBE_PATH = "chunk_size_probe.txt";
+  if (!(std::ofstream(PROBE_PATH) << "probe")) {
+    IC_API::trap("chunk_size_is: cannot write the probe file");
+  }
+  int32_t errno_ = raw_set_chunk_size(size);
+  std::remove(PROBE_PATH);
+  ic_api.to_wire(CandidTypeInt32{errno_});
+}

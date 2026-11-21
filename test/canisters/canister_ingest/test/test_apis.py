@@ -82,3 +82,11 @@ def test__ingest_refuses_newline(network: str) -> None:
     assert "a message can't contain a newline" in response, response
     response = call(network, "ask", '("apple")')
     assert response.startswith('("0 messages, 0 mention apple'), response
+
+
+def test__stable_fs_chunk_size(network: str) -> None:
+    # icpp.toml sets stable_fs_chunk_size = 65536: the file system accepts that
+    # size, and refuses the default 16 KiB and the smallest, 4 KiB
+    assert call(network, "chunk_size_is", "(65536 : nat32)") == "(0 : int32)"
+    assert call(network, "chunk_size_is", "(16384 : nat32)") == "(28 : int32)"
+    assert call(network, "chunk_size_is", "(4096 : nat32)") == "(28 : int32)"

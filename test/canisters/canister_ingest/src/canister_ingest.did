@@ -16,4 +16,7 @@ service : {
   // Calls burn_q on itself `parts` times, one after the other:
   // '(parts, n)' -> '("parts: 2 of 2; burn_q: 1000, 1000; own: 50")'
   "cq_burn" : (nat32, nat64) -> (text) composite_query;
+  // Writes a file, then asks the file system to take this chunk size:
+  // '(65536 : nat32)' -> '(0 : int32)' when it is the size it has, else 28 (EINVAL)
+  "chunk_size_is" : (nat32) -> (int32);
 };

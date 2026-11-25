@@ -46,6 +46,7 @@ EXPORT_IF_DEFINED = tuple(
 )
 _WASM_MAGIC = b"\x00asm"
 _EXPORT_SECTION_ID = 7
+_KIND_FUNCTION = 0
 
 
 class WasmExportsError(Exception):
@@ -67,21 +68,22 @@ def _read_leb128(data: bytes, pos: int) -> Tuple[int, int]:
         shift += 7
 
 
-def _read_export_section(section: bytes) -> List[bytes]:
-    """The names in an export section; raises when an entry runs past its end."""
+def _read_export_section(section: bytes) -> List[Tuple[bytes, int]]:
+    """The names and kinds in an export section; raises when an entry runs past
+    its end."""
     count, p = _read_leb128(section, 0)
-    names: List[bytes] = []
+    exports: List[Tuple[bytes, int]] = []
     for _ in range(count):
         length, p = _read_leb128(section, p)
         if p + length + 1 > len(section):  # the name, then the kind byte
             raise WasmExportsError("an export runs past the export section")
-        names.append(section[p : p + length])
+        exports.append((section[p : p + length], section[p + length]))
         _, p = _read_leb128(section, p + length + 1)  # the index
-    return names
+    return exports
 
 
-def _export_name_bytes(wasm_path: Path) -> List[bytes]:
-    """The names of all exports of the wasm module, as the bytes they are."""
+def _read_exports(wasm_path: Path) -> List[Tuple[bytes, int]]:
+    """The exports of the wasm module: each name as the bytes it is, and kind."""
     try:
         data = wasm_path.read_bytes()
     except OSError as e:
@@ -101,9 +103,13 @@ def _export_name_bytes(wasm_path: Path) -> List[bytes]:
     return []
 
 
+def _decode(name: bytes) -> str:
+    return name.decode("utf-8", errors="replace")
+
+
 def export_names(wasm_path: Path) -> List[str]:
     """The names of all exports of the wasm module, of any kind."""
-    return [n.decode("utf-8", errors="replace") for n in _export_name_bytes(wasm_path)]
+    return [_decode(n) for n, _ in _read_exports(wasm_path)]
 
 
 def is_entry_point(name: str) -> bool:
@@ -116,15 +122,21 @@ def stray_exports(names: List[str]) -> List[str]:
     return [n for n in names if not is_entry_point(n) and n != "memory"]
 
 
-def _check_entry_point_names(wasm_path: Path, names: List[str]) -> None:
-    """Raises on a canister_ name the IC refuses."""
-    unknown = [n for n in names if n.startswith("canister_") and not is_entry_point(n)]
+def _check_entry_point_names(wasm_path: Path, exports: List[Tuple[bytes, int]]) -> None:
+    """Raises on a canister_ name the IC refuses, or one that is no function."""
+    unknown = [
+        _decode(n)
+        for n, kind in exports
+        if n.startswith(b"canister_")
+        and (kind != _KIND_FUNCTION or not is_entry_point(_decode(n)))
+    ]
     if unknown:
         raise WasmExportsError(
             f"{wasm_path} exports {', '.join(unknown[:5])}, and the IC refuses a "
             f"canister_ export that is neither a method (canister_query, "
             f"canister_composite_query or canister_update, a space, and its "
-            f"name) nor one of {', '.join(SYSTEM_FUNCTIONS)}."
+            f"name) nor one of {', '.join(SYSTEM_FUNCTIONS)}, or that is not a "
+            f"function."
         )
 
 
@@ -147,7 +159,7 @@ def _check_methods(wasm_path: Path, methods: List[bytes]) -> None:
         if method in seen:
             raise WasmExportsError(
                 f"{wasm_path} exports the method "
-                f"{method.decode('utf-8', errors='replace')} twice, and the IC "
+                f"{_decode(method)} twice, and the IC "
                 f"refuses a method name under two of query, composite query and "
                 f"update."
             )
@@ -160,15 +172,17 @@ def check_export_limit(wasm_path: Path) -> str:
     Returns a summary of the counts otherwise, with a WARNING when the wasm
     exports no method at all.
     """
-    raw_names = _export_name_bytes(wasm_path)
-    names = [n.decode("utf-8", errors="replace") for n in raw_names]
+    exports = _read_exports(wasm_path)
+    names = [_decode(n) for n, _ in exports]
     if len(names) > MAX_EXPORTS:
         others = stray_exports(names)
         hint = (
             f"{len(others)} of them are neither entry points nor the memory, "
             f"e.g. {', '.join(others[:5])}\n"
-            f"       Export entry points only with WASM_SYMBOL_EXPORTED, and do "
-            f"not link with -Wl,--export-dynamic"
+            f"       icpp-pro exports only what WASM_SYMBOL_EXPORTED names. Look "
+            f"for flags in cpp_link_flags that export more, such as "
+            f"-Wl,--export-dynamic or -Wl,--export-all, and for a "
+            f"post_wasm_function that adds exports"
             if others
             else "All of them are entry points: the canister has too many."
         )
@@ -176,10 +190,10 @@ def check_export_limit(wasm_path: Path) -> str:
             f"{wasm_path} has {len(names)} exports, and the IC refuses a wasm "
             f"with more than {MAX_EXPORTS}. {hint}"
         )
-    _check_entry_point_names(wasm_path, names)
+    _check_entry_point_names(wasm_path, exports)
     # The method names without their prefix, as the bytes the IC counts
     methods = [
-        n.split(b" ", 1)[1] for n in raw_names if n.startswith(_METHOD_PREFIX_BYTES)
+        n.split(b" ", 1)[1] for n, _ in exports if n.startswith(_METHOD_PREFIX_BYTES)
     ]
     _check_methods(wasm_path, methods)
     summary = (

@@ -97,7 +97,7 @@ def test__one_over_the_limit_fails(tmp_path: Path) -> None:
     assert f"more than {MAX_EXPORTS}" in message
     assert f"{MAX_EXPORTS} of them are neither entry points nor the memory" in message
     assert "e.g. _Z0, _Z1, _Z2, _Z3, _Z4\n" in message
-    assert "--export-dynamic" in message
+    assert "cpp_link_flags" in message and "post_wasm_function" in message
 
 
 def test__too_many_entry_points_say_so(tmp_path: Path) -> None:
@@ -178,6 +178,15 @@ def test__an_unknown_canister_export_fails(tmp_path: Path, name: str) -> None:
     with pytest.raises(WasmExportsError) as e:
         check_export_limit(_write(tmp_path, _wasm(exports)))
     assert f"exports {name}, and the IC refuses a canister_ export" in str(e.value)
+
+
+@pytest.mark.parametrize("kind", [TABLE, MEMORY, GLOBAL])
+def test__a_canister_export_that_is_no_function_fails(
+    tmp_path: Path, kind: int
+) -> None:
+    exports = [("canister_query greet", FUNC), ("canister_query data", kind)]
+    with pytest.raises(WasmExportsError, match="or that is not a function"):
+        check_export_limit(_write(tmp_path, _wasm(exports)))
 
 
 def test__a_method_under_two_call_types_fails(tmp_path: Path) -> None:

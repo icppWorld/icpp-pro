@@ -197,8 +197,9 @@ def check_export_limit(wasm_path: Path) -> str:
     ]
     _check_methods(wasm_path, methods)
     summary = (
-        f"Exports: {len(names)}, of which {len(methods)} methods "
-        f"(the IC allows {MAX_EXPORTS} and {MAX_METHODS})"
+        f"Exports: {len(names)}, of which {len(methods)} methods with names of "
+        f"{sum(len(m) for m in methods)} bytes (the IC allows {MAX_EXPORTS} "
+        f"exports, {MAX_METHODS} methods, {MAX_METHOD_NAME_LENGTHS} bytes)"
     )
     if not methods:
         summary += (

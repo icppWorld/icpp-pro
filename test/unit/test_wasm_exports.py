@@ -83,8 +83,9 @@ def test__the_limits_are_allowed(tmp_path: Path) -> None:
     exports += [(f"_Z{i}", FUNC) for i in range(MAX_EXPORTS - MAX_METHODS)]
     summary = check_export_limit(_write(tmp_path, _wasm(exports)))
     assert summary == (
-        f"Exports: {MAX_EXPORTS}, of which {MAX_METHODS} methods "
-        f"(the IC allows {MAX_EXPORTS} and {MAX_METHODS})"
+        f"Exports: {MAX_EXPORTS}, of which {MAX_METHODS} methods with names of "
+        f"{MAX_METHOD_NAME_LENGTHS} bytes (the IC allows {MAX_EXPORTS} exports, "
+        f"{MAX_METHODS} methods, {MAX_METHOD_NAME_LENGTHS} bytes)"
     )
 
 

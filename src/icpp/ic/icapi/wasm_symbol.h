@@ -11,9 +11,10 @@
 // --export-dynamic. export_name is a wasm attribute; a native build only needs
 // the asm label.
 #if defined(__wasm__)
-#define WASM_SYMBOL_EXPORTED(name)                                             \
-  asm(name) __attribute__((visibility("default"), export_name(name)));
+#define WASM_SYMBOL_EXPORT_NAME(name) __attribute__((export_name(name)))
 #else
-#define WASM_SYMBOL_EXPORTED(name)                                             \
-  asm(name) __attribute__((visibility("default")));
+#define WASM_SYMBOL_EXPORT_NAME(name)
 #endif
+#define WASM_SYMBOL_EXPORTED(name)                                             \
+  asm(name)                                                                    \
+      __attribute__((visibility("default"))) WASM_SYMBOL_EXPORT_NAME(name);

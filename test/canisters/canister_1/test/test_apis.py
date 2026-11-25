@@ -21,7 +21,7 @@ from icpp.smoketest import (
     flatten_candid_text,
     get_canister_id,
 )
-from icpp.wasm_exports import MAX_EXPORTS, export_names, stray_exports
+from icpp.wasm_exports import check_export_limit, export_names, stray_exports
 
 # Path to the icp.yaml file
 ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
@@ -44,7 +44,8 @@ def test__wasm_exports_only_entry_points() -> None:
     assert not stray_exports(names), stray_exports(names)
     assert "canister_query roundtrip_text" in names
     assert "canister_global_timer" in names
-    assert len(names) <= MAX_EXPORTS
+    # The deployed wasm meets all of the IC's export rules
+    check_export_limit(wasm_path)
 
 
 # ----------------------------------------------------------------------------------

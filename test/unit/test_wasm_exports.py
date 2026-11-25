@@ -15,6 +15,7 @@ from icpp.wasm_exports import (
     MAX_EXPORTS,
     MAX_METHOD_NAME_LENGTHS,
     MAX_METHODS,
+    SYSTEM_FUNCTIONS,
     WasmExportsError,
     check_export_limit,
     export_names,
@@ -148,6 +149,45 @@ def test__a_truncated_wasm_fails(tmp_path: Path) -> None:
     data = _wasm([("canister_init", FUNC)])
     with pytest.raises(WasmExportsError, match="the wasm ends inside a section"):
         export_names(_write(tmp_path, data[:-3]))
+
+
+def test__every_system_function_is_allowed(tmp_path: Path) -> None:
+    exports = [("canister_query greet", FUNC)] + [(n, FUNC) for n in SYSTEM_FUNCTIONS]
+    summary = check_export_limit(_write(tmp_path, _wasm(exports)))
+    assert "WARNING" not in summary
+
+
+@pytest.mark.parametrize(
+    "name", ["canister_querry greet", "canister_query", "canister_start", "canister_"]
+)
+def test__an_unknown_canister_export_fails(tmp_path: Path, name: str) -> None:
+    exports = [("canister_query greet", FUNC), (name, FUNC)]
+    with pytest.raises(WasmExportsError) as e:
+        check_export_limit(_write(tmp_path, _wasm(exports)))
+    assert f"exports {name}, and the IC refuses a canister_ export" in str(e.value)
+
+
+def test__a_method_under_two_call_types_fails(tmp_path: Path) -> None:
+    exports = [("canister_query get", FUNC), ("canister_update get", FUNC)]
+    with pytest.raises(WasmExportsError, match="exports the method get twice"):
+        check_export_limit(_write(tmp_path, _wasm(exports)))
+
+
+def test__a_wasm_without_methods_warns(tmp_path: Path) -> None:
+    exports = [("memory", MEMORY), ("canister_global_timer", FUNC)]
+    summary = check_export_limit(_write(tmp_path, _wasm(exports)))
+    assert "WARNING: the wasm exports no query or update method" in summary
+
+
+def test__the_link_exports_every_system_function() -> None:
+    # Also one a canister defines without WASM_SYMBOL_EXPORTED
+    flags = config_default.WASM_LD_REQUIRED_FLAGS
+    assert "-Wl,--export=canister_global_timer" in flags
+    for name in SYSTEM_FUNCTIONS:
+        if name not in ("canister_global_timer", "canister_pre_upgrade"):
+            assert f"-Wl,--export-if-defined={name} " in flags
+    # It would pull the weak default of ic_async.cpp into every canister
+    assert "canister_pre_upgrade" not in flags
 
 
 def test__an_invalid_utf8_name_counts_its_bytes(tmp_path: Path) -> None:

@@ -5,7 +5,7 @@ The IC refuses a wasm module with more than 1100 exports of any kind
 installed canister once the replica compiles it again. See dfinity/ic PR
 #12100, `MAX_NUMBER_EXPORTS` in rs/config/src/embedders.rs. The check covers
 the IC's two older export limits too: the number of methods, and the length
-of their names.
+of their names, and its rules for canister_ names.
 
 This reads the export section without any dependency, so the check also runs
 when a project opts out of the globals-limit fix.
@@ -25,6 +25,17 @@ _METHOD_PREFIXES = (
     b"canister_query ",
     b"canister_composite_query ",
     b"canister_update ",
+)
+# The IC's other canister_ exports, WASM_VALID_SYSTEM_FUNCTIONS in
+# rs/embedders/src/wasm_utils/validation.rs. It refuses any other canister_ name
+SYSTEM_FUNCTIONS = (
+    "canister_init",
+    "canister_inspect_message",
+    "canister_pre_upgrade",
+    "canister_post_upgrade",
+    "canister_heartbeat",
+    "canister_global_timer",
+    "canister_on_low_wasm_memory",
 )
 _WASM_MAGIC = b"\x00asm"
 _EXPORT_SECTION_ID = 7
@@ -90,10 +101,41 @@ def stray_exports(names: List[str]) -> List[str]:
     return [n for n in names if not n.startswith("canister_") and n != "memory"]
 
 
-def check_export_limit(wasm_path: Path) -> str:
-    """Raises WasmExportsError when the wasm breaks one of the IC's export limits.
+def _check_entry_point_names(
+    wasm_path: Path, names: List[str], methods: List[bytes]
+) -> None:
+    """Raises on a canister_ name the IC refuses, or a method exported twice."""
+    unknown = [
+        n
+        for n in names
+        if n.startswith("canister_")
+        and n not in SYSTEM_FUNCTIONS
+        and not n.encode("utf-8").startswith(_METHOD_PREFIXES)
+    ]
+    if unknown:
+        raise WasmExportsError(
+            f"{wasm_path} exports {', '.join(unknown)}, and the IC refuses a "
+            f"canister_ export that is neither a method (canister_query, "
+            f"canister_composite_query or canister_update, a space, and its "
+            f"name) nor one of {', '.join(SYSTEM_FUNCTIONS)}."
+        )
+    seen = set()
+    for method in methods:
+        if method in seen:
+            raise WasmExportsError(
+                f"{wasm_path} exports the method "
+                f"{method.decode('utf-8', errors='replace')} twice, and the IC "
+                f"refuses a method name under two of query, composite query and "
+                f"update."
+            )
+        seen.add(method)
 
-    Returns a one-line summary of the counts otherwise.
+
+def check_export_limit(wasm_path: Path) -> str:
+    """Raises WasmExportsError when the wasm breaks one of the IC's export rules.
+
+    Returns a summary of the counts otherwise, with a WARNING when the wasm
+    exports no method at all.
     """
     raw_names = _export_name_bytes(wasm_path)
     names = [n.decode("utf-8", errors="replace") for n in raw_names]
@@ -114,6 +156,7 @@ def check_export_limit(wasm_path: Path) -> str:
             f"{wasm_path} has {len(names)} exports, and the IC refuses a wasm "
             f"with more than {MAX_EXPORTS}. {hint}"
         )
+    _check_entry_point_names(wasm_path, names, methods)
     if len(methods) > MAX_METHODS:
         raise WasmExportsError(
             f"{wasm_path} has {len(methods)} query and update methods, and the "
@@ -125,7 +168,13 @@ def check_export_limit(wasm_path: Path) -> str:
             f"{wasm_path} are {name_lengths} bytes long together, and the IC "
             f"refuses a wasm with more than {MAX_METHOD_NAME_LENGTHS}."
         )
-    return (
+    summary = (
         f"Exports: {len(names)}, of which {len(methods)} query and update methods "
         f"(the IC allows {MAX_EXPORTS} and {MAX_METHODS})"
     )
+    if not methods:
+        summary += (
+            "\nWARNING: the wasm exports no query or update method. Declare "
+            "them with WASM_SYMBOL_EXPORTED, or the IC cannot call them."
+        )
+    return summary

@@ -21,6 +21,7 @@ from icpp.smoketest import (
     flatten_candid_text,
     get_canister_id,
 )
+from icpp.wasm_exports import MAX_EXPORTS, export_names
 
 # Path to the icp.yaml file
 ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
@@ -32,6 +33,19 @@ CANISTER_NAME = "my_canister"
 # Note: network is specified on the pytest command:
 #       pytest --network=[local/ic] ....
 #
+
+
+# ----------------------------------------------------------------------------------
+# The wasm exports only the entry points and the memory: the IC refuses a wasm with
+# more than 1100 exports, and -Wl,--export-dynamic exported over 2000
+def test__wasm_exports_only_entry_points() -> None:
+    wasm_path = Path(__file__).parent / "../build/my_canister.wasm"
+    names = export_names(wasm_path)
+    others = [n for n in names if not n.startswith("canister_") and n != "memory"]
+    assert not others, others
+    assert "canister_query roundtrip_text" in names
+    assert "canister_global_timer" in names
+    assert len(names) <= MAX_EXPORTS
 
 
 # ----------------------------------------------------------------------------------

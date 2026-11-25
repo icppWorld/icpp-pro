@@ -30,6 +30,7 @@ from icpp.options_build import (
 from icpp.commands_build_library import build_library
 from icpp.call_function_from_name import call_function
 from icpp.fix_globals_step import FixGlobalsError, run_fix_globals_limit
+from icpp.wasm_exports import WasmExportsError, check_export_limit
 
 # options are: "none", "multi-threading"
 CONCURRENCY = "multi-threading"
@@ -405,7 +406,15 @@ def build_wasm(
         typer.echo(cmd)
         run_shell_cmd(cmd, cwd=build_path)
 
-    except FixGlobalsError as e:
+        # ----------------------------------------------------------------------
+        # The IC refuses a wasm with more than 1100 exports. Checked last, on
+        # the wasm that gets deployed, also after a post_wasm_function
+        typer.echo("--")
+        typer.echo(
+            check_export_limit(build_path / f"{icpp_toml.build_wasm['canister']}.wasm")
+        )
+
+    except (FixGlobalsError, WasmExportsError) as e:
         typer.echo(f"ERROR: {e}")
         sys.exit(1)
     except subprocess.CalledProcessError as e:

@@ -156,7 +156,10 @@ WASM_CPPFLAGS = WASM_CFLAGS
 # `cpp_link_flags` still wins over them, e.g. a larger stack size.
 WASM_LD_REQUIRED_FLAGS = (
     " -mexec-model=reactor "
-    " -Wl,--stack-first -Wl,--export-dynamic "
+    # No --export-dynamic: it exported every libc++ and polyfill symbol, over
+    # 2000, and the IC refuses a module with more than 1100 exports. The wasm
+    # exports what WASM_SYMBOL_EXPORTED names, through export_name.
+    " -Wl,--stack-first "
     # A 1 MiB stack, as Rust canisters have, instead of wasm-ld's 64 KiB. The
     # Candid decoder's nesting limit (128 levels) must trap before the stack
     # runs out. With --stack-first an overflow traps as "heap out of bounds"

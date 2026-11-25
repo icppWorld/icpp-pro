@@ -13,6 +13,8 @@ import pytest
 from icpp import config_default
 from icpp.wasm_exports import (
     MAX_EXPORTS,
+    MAX_METHOD_NAME_LENGTHS,
+    MAX_METHODS,
     WasmExportsError,
     check_export_limit,
     export_names,
@@ -70,10 +72,18 @@ def test__a_module_without_exports_has_none(tmp_path: Path) -> None:
     assert not export_names(_write(tmp_path, b"\x00asm\x01\x00\x00\x00"))
 
 
-def test__the_limit_is_allowed(tmp_path: Path) -> None:
-    exports = [(f"canister_query m{i}", FUNC) for i in range(MAX_EXPORTS)]
+def test__the_limits_are_allowed(tmp_path: Path) -> None:
+    # The most methods, the longest names, and the most exports, all at once
+    name_length = MAX_METHOD_NAME_LENGTHS // MAX_METHODS
+    exports = [
+        (f"canister_update {i:0{name_length}d}", FUNC) for i in range(MAX_METHODS)
+    ]
+    exports += [(f"_Z{i}", FUNC) for i in range(MAX_EXPORTS - MAX_METHODS)]
     summary = check_export_limit(_write(tmp_path, _wasm(exports)))
-    assert summary == f"Exports: {MAX_EXPORTS} (the IC allows {MAX_EXPORTS})"
+    assert summary == (
+        f"Exports: {MAX_EXPORTS}, of which {MAX_METHODS} query and update methods "
+        f"(the IC allows {MAX_EXPORTS} and {MAX_METHODS})"
+    )
 
 
 def test__one_over_the_limit_fails(tmp_path: Path) -> None:
@@ -83,8 +93,47 @@ def test__one_over_the_limit_fails(tmp_path: Path) -> None:
     message = str(e.value)
     assert f"has {MAX_EXPORTS + 1} exports" in message
     assert f"more than {MAX_EXPORTS}" in message
-    assert f"{MAX_EXPORTS + 1} of them are not canister_ entry points" in message
-    assert "memory, _Z0, _Z1, _Z2, _Z3\n" in message
+    assert f"{MAX_EXPORTS} of them are neither canister_ entry points" in message
+    assert "e.g. _Z0, _Z1, _Z2, _Z3, _Z4\n" in message
+    assert "--export-dynamic" in message
+
+
+def test__too_many_entry_points_say_so(tmp_path: Path) -> None:
+    exports = [(f"canister_query m{i}", FUNC) for i in range(MAX_METHODS)]
+    exports += [(f"canister_update u{i}", FUNC) for i in range(MAX_EXPORTS - 999)]
+    with pytest.raises(WasmExportsError) as e:
+        check_export_limit(_write(tmp_path, _wasm(exports)))
+    assert "All of them are entry points: the canister has too many." in str(e.value)
+    assert "--export-dynamic" not in str(e.value)
+
+
+@pytest.mark.parametrize(
+    "prefix", ["canister_query ", "canister_composite_query ", "canister_update "]
+)
+def test__one_method_over_the_limit_fails(tmp_path: Path, prefix: str) -> None:
+    exports = [(f"{prefix}m{i}", FUNC) for i in range(MAX_METHODS + 1)]
+    with pytest.raises(WasmExportsError) as e:
+        check_export_limit(_write(tmp_path, _wasm(exports)))
+    assert f"has {MAX_METHODS + 1} query and update methods" in str(e.value)
+
+
+def test__other_entry_points_are_not_methods(tmp_path: Path) -> None:
+    exports = [(f"canister_query m{i}", FUNC) for i in range(MAX_METHODS)]
+    exports += [("canister_init", FUNC), ("canister_global_timer", FUNC)]
+    assert f"of which {MAX_METHODS} query" in check_export_limit(
+        _write(tmp_path, _wasm(exports))
+    )
+
+
+def test__method_names_one_byte_too_long_fail(tmp_path: Path) -> None:
+    # Only the name after the prefix counts, in bytes: "é" is 2
+    exports = [("canister_query " + "é" * 5000, FUNC)] * 2
+    exports += [("canister_update " + "x" * (MAX_METHOD_NAME_LENGTHS - 20000), FUNC)]
+    assert check_export_limit(_write(tmp_path, _wasm(exports)))
+    exports.append(("canister_update y", FUNC))
+    with pytest.raises(WasmExportsError) as e:
+        check_export_limit(_write(tmp_path, _wasm(exports)))
+    assert f"{MAX_METHOD_NAME_LENGTHS + 1} bytes long together" in str(e.value)
 
 
 def test__a_file_that_is_not_wasm_fails(tmp_path: Path) -> None:
@@ -96,6 +145,14 @@ def test__a_truncated_wasm_fails(tmp_path: Path) -> None:
     data = _wasm([("canister_init", FUNC)])
     with pytest.raises(WasmExportsError, match="the wasm ends inside a section"):
         export_names(_write(tmp_path, data[:-3]))
+
+
+def test__an_export_past_its_section_fails(tmp_path: Path) -> None:
+    # The name's length says 9 bytes, and the section ends after 4
+    section = b"\x01" + b"\x09" + b"init"
+    data = b"\x00asm\x01\x00\x00\x00" + _section(7, section) + _section(0, b"\x01x")
+    with pytest.raises(WasmExportsError, match="runs past the export section"):
+        export_names(_write(tmp_path, data))
 
 
 def test__the_link_does_not_export_every_symbol() -> None:

@@ -3,7 +3,9 @@
 The IC refuses a wasm module with more than 1100 exports of any kind
 (functions, globals, memories, tables), on install and on every call to an
 installed canister once the replica compiles it again. See dfinity/ic PR
-#12100, `MAX_NUMBER_EXPORTS` in rs/config/src/embedders.rs.
+#12100, `MAX_NUMBER_EXPORTS` in rs/config/src/embedders.rs. The check covers
+the IC's two older export limits too: the number of methods, and the length
+of their names.
 
 This reads the export section without any dependency, so the check also runs
 when a project opts out of the globals-limit fix.
@@ -12,8 +14,14 @@ when a project opts out of the globals-limit fix.
 from pathlib import Path
 from typing import List, Tuple
 
-# The IC's limit of exports of any kind
+# The IC's limits, in rs/config/src/embedders.rs of dfinity/ic: exports of any
+# kind; query, composite query and update methods; the summed byte lengths of
+# those methods' names, without the "canister_query " etc. prefix
 MAX_EXPORTS = 1100
+MAX_METHODS = 1000
+MAX_METHOD_NAME_LENGTHS = 20000
+
+_METHOD_PREFIXES = ("canister_query ", "canister_composite_query ", "canister_update ")
 
 _WASM_MAGIC = b"\x00asm"
 
@@ -54,29 +62,59 @@ def export_names(wasm_path: Path) -> List[str]:
         if end > len(data):
             raise WasmExportsError("the wasm ends inside a section")
         if section_id == _EXPORT_SECTION_ID:
-            count, p = _read_leb128(data, pos)
-            for _ in range(count):
-                length, p = _read_leb128(data, p)
-                names.append(data[p : p + length].decode("utf-8", errors="replace"))
-                p += length + 1  # the name, then the kind byte
-                _, p = _read_leb128(data, p)  # the index
+            names = _read_export_section(data[pos:end])
         pos = end
     return names
 
 
-def check_export_limit(wasm_path: Path) -> str:
-    """Raises WasmExportsError when the wasm has more exports than the IC allows.
+def _read_export_section(section: bytes) -> List[str]:
+    """The names in an export section; raises when an entry runs past its end."""
+    count, p = _read_leb128(section, 0)
+    names: List[str] = []
+    for _ in range(count):
+        length, p = _read_leb128(section, p)
+        if p + length + 1 > len(section):  # the name, then the kind byte
+            raise WasmExportsError("an export runs past the export section")
+        names.append(section[p : p + length].decode("utf-8", errors="replace"))
+        _, p = _read_leb128(section, p + length + 1)  # the index
+    return names
 
-    Returns a one-line summary of the count otherwise.
+
+def check_export_limit(wasm_path: Path) -> str:
+    """Raises WasmExportsError when the wasm breaks one of the IC's export limits.
+
+    Returns a one-line summary of the counts otherwise.
     """
     names = export_names(wasm_path)
+    # The query, composite query and update methods, without their prefix
+    methods = [n.split(" ", 1)[1] for n in names if n.startswith(_METHOD_PREFIXES)]
+    name_lengths = sum(len(m.encode("utf-8")) for m in methods)
     if len(names) > MAX_EXPORTS:
-        others = [n for n in names if not n.startswith("canister_")]
+        others = [n for n in names if not n.startswith("canister_") and n != "memory"]
+        hint = (
+            f"{len(others)} of them are neither canister_ entry points nor the "
+            f"memory, e.g. {', '.join(others[:5])}\n"
+            f"       Export entry points only with WASM_SYMBOL_EXPORTED, and do "
+            f"not link with -Wl,--export-dynamic"
+            if others
+            else "All of them are entry points: the canister has too many."
+        )
         raise WasmExportsError(
             f"{wasm_path} has {len(names)} exports, and the IC refuses a wasm "
-            f"with more than {MAX_EXPORTS}. {len(others)} of them are not "
-            f"canister_ entry points, e.g. {', '.join(others[:5])}\n"
-            f"       Export entry points only with WASM_SYMBOL_EXPORTED, and "
-            f"do not link with -Wl,--export-dynamic"
+            f"with more than {MAX_EXPORTS}. {hint}"
         )
-    return f"Exports: {len(names)} (the IC allows {MAX_EXPORTS})"
+    if len(methods) > MAX_METHODS:
+        raise WasmExportsError(
+            f"{wasm_path} has {len(methods)} query and update methods, and the "
+            f"IC refuses a wasm with more than {MAX_METHODS}."
+        )
+    if name_lengths > MAX_METHOD_NAME_LENGTHS:
+        raise WasmExportsError(
+            f"The names of the {len(methods)} query and update methods of "
+            f"{wasm_path} are {name_lengths} bytes long together, and the IC "
+            f"refuses a wasm with more than {MAX_METHOD_NAME_LENGTHS}."
+        )
+    return (
+        f"Exports: {len(names)}, of which {len(methods)} query and update methods "
+        f"(the IC allows {MAX_EXPORTS} and {MAX_METHODS})"
+    )

@@ -5,6 +5,10 @@ error IC0505). A wasi-sdk build of a large C++ project blows past that: what
 keeps the dead globals alive is that they are exported, so removing the global
 exports and letting Binaryen's optimizer drop them brings the count down.
 
+Since icpp-pro links without --export-dynamic, a wasm exports no globals of
+its own, but a project can still export one, and the optimizer pass also
+strips the name section and dead code.
+
 This lives in its own module, rather than inline in commands_build_wasm.py, so
 it can be tested against a wasm without running a full compile + link. See
 test/unit/test_fix_globals_step.py.
@@ -12,6 +16,7 @@ test/unit/test_fix_globals_step.py.
 Ordering contract (documented for canister authors):
 
     wasi2ic  ->  THIS STEP  ->  post_wasm_function  ->  objcopy metadata
+             ->  the export check (wasm_exports.py)
 
 It runs after wasi2ic because that is the artifact whose globals matter, and
 before the user's hook so a project doing custom passes receives an

@@ -401,9 +401,13 @@ install-clang-ubuntu:
 
 # icp-cli is the successor of the deprecated dfx.
 # It is distributed as an npm package & needs >= 1.2.0
+# icp-cli 1.9.0 dropped macOS on Intel: no npm package for darwin-x64. There,
+# install the last release that has one, 1.8.0. npm picks the package by the
+# platform of node, so that is what decides
+ICP_CLI_PACKAGE = @icp-sdk/icp-cli$(if $(filter darwin-x64,$(shell node -p 'process.platform + "-" + process.arch' 2>/dev/null)),@1.8.0,)
 .PHONY: install-icp
 install-icp:
-	npm install -g @icp-sdk/icp-cli
+	npm install -g $(ICP_CLI_PACKAGE)
 
 .PHONY: install-didc
 install-didc:

@@ -15,6 +15,7 @@ from icpp import (
     __version_wasi2ic__,
     __version_ic_wasi_polyfill__,
 )
+from icpp.wasm_exports import EXPORT_IF_DEFINED
 
 # The OS we're running on - https://stackoverflow.com/a/1857/5480536
 
@@ -156,7 +157,10 @@ WASM_CPPFLAGS = WASM_CFLAGS
 # `cpp_link_flags` still wins over them, e.g. a larger stack size.
 WASM_LD_REQUIRED_FLAGS = (
     " -mexec-model=reactor "
-    " -Wl,--stack-first -Wl,--export-dynamic "
+    # No --export-dynamic: it exported every libc++ and polyfill symbol, over
+    # 2000, and the IC refuses a module with more than 1100 exports. The wasm
+    # exports what WASM_SYMBOL_EXPORTED names, through export_name.
+    " -Wl,--stack-first "
     # A 1 MiB stack, as Rust canisters have, instead of wasm-ld's 64 KiB. The
     # Candid decoder's nesting limit (128 levels) must trap before the stack
     # runs out. With --stack-first an overflow traps as "heap out of bounds"
@@ -164,8 +168,13 @@ WASM_LD_REQUIRED_FLAGS = (
     # Force the built-in canister_global_timer dispatcher to be linked in and
     # exported. It lives in __ic_candid__.a and would otherwise be dropped
     # by the WASM linker's archive-selection rules (no caller references it
-    # statically — the IC invokes it at runtime).
+    # statically - the IC invokes it at runtime). --export also exports a
+    # canister's own strong one with C linkage, without WASM_SYMBOL_EXPORTED.
     " -Wl,-u,canister_global_timer -Wl,--export=canister_global_timer "
+    # The IC's other system functions, also when a canister defines one with C
+    # linkage or an asm label but without WASM_SYMBOL_EXPORTED. Only if
+    # defined: a canister needs none of them. See EXPORT_IF_DEFINED
+    + "".join(f" -Wl,--export-if-defined={name} " for name in EXPORT_IF_DEFINED)
 )
 # The default link flags that `cpp_link_flags_defaults` replaces
 WASM_LDFLAGS = " -Wl,--lto-O3 -Wl,--strip-debug "

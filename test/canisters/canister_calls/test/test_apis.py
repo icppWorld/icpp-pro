@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Tuple
 
 from icpp.run_shell_cmd import run_shell_cmd
 from icpp.smoketest import ICP, call_canister_api, flatten_candid_text, get_canister_id
+from icpp.wasm_exports import export_names, stray_exports
 
 # Path to the icp.yaml file
 ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
@@ -54,6 +55,17 @@ def nat64s(response: str) -> List[int]:
         for token in response.replace("(", " ").replace(")", " ").split(",")
         if ": nat64" in token
     ]
+
+
+def test__wasm_exports_the_async_runtime() -> None:
+    # Without --export-dynamic, the entry points of the icpp-candid library still
+    # come through: the weak canister_pre_upgrade that refuses an upgrade with
+    # calls in flight, and the internal method IC_API::yield_fresh_budget calls
+    names = export_names(Path(__file__).parent / "../build/my_canister.wasm")
+    assert not stray_exports(names), stray_exports(names)
+    assert "canister_pre_upgrade" in names
+    assert "canister_update __icpp_yield" in names
+    assert "canister_global_timer" in names
 
 
 def test__call_greet_b(network: str) -> None:

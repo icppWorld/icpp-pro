@@ -15,6 +15,7 @@ from icpp.wasm_exports import (
     MAX_EXPORTS,
     MAX_METHOD_NAME_LENGTHS,
     MAX_METHODS,
+    EXPORT_IF_DEFINED,
     SYSTEM_FUNCTIONS,
     WasmExportsError,
     check_export_limit,
@@ -82,7 +83,7 @@ def test__the_limits_are_allowed(tmp_path: Path) -> None:
     exports += [(f"_Z{i}", FUNC) for i in range(MAX_EXPORTS - MAX_METHODS)]
     summary = check_export_limit(_write(tmp_path, _wasm(exports)))
     assert summary == (
-        f"Exports: {MAX_EXPORTS}, of which {MAX_METHODS} query and update methods "
+        f"Exports: {MAX_EXPORTS}, of which {MAX_METHODS} methods "
         f"(the IC allows {MAX_EXPORTS} and {MAX_METHODS})"
     )
 
@@ -94,7 +95,7 @@ def test__one_over_the_limit_fails(tmp_path: Path) -> None:
     message = str(e.value)
     assert f"has {MAX_EXPORTS + 1} exports" in message
     assert f"more than {MAX_EXPORTS}" in message
-    assert f"{MAX_EXPORTS} of them are neither canister_ entry points" in message
+    assert f"{MAX_EXPORTS} of them are neither entry points nor the memory" in message
     assert "e.g. _Z0, _Z1, _Z2, _Z3, _Z4\n" in message
     assert "--export-dynamic" in message
 
@@ -117,13 +118,13 @@ def test__one_method_over_the_limit_fails(tmp_path: Path, prefix: str) -> None:
     exports = [(f"{prefix}m{i}", FUNC) for i in range(MAX_METHODS + 1)]
     with pytest.raises(WasmExportsError) as e:
         check_export_limit(_write(tmp_path, _wasm(exports)))
-    assert f"has {MAX_METHODS + 1} query and update methods" in str(e.value)
+    assert f"has {MAX_METHODS + 1} methods (query, composite query" in str(e.value)
 
 
 def test__other_entry_points_are_not_methods(tmp_path: Path) -> None:
     exports = [(f"canister_query m{i}", FUNC) for i in range(MAX_METHODS)]
     exports += [("canister_init", FUNC), ("canister_global_timer", FUNC)]
-    assert f"of which {MAX_METHODS} query" in check_export_limit(
+    assert f"of which {MAX_METHODS} methods" in check_export_limit(
         _write(tmp_path, _wasm(exports))
     )
 
@@ -138,6 +139,18 @@ def test__method_names_one_byte_too_long_fail(tmp_path: Path) -> None:
     with pytest.raises(WasmExportsError) as e:
         check_export_limit(_write(tmp_path, _wasm(exports)))
     assert f"{MAX_METHOD_NAME_LENGTHS + 1} bytes long together" in str(e.value)
+
+
+def test__unknown_canister_names_over_the_limit_are_named(tmp_path: Path) -> None:
+    exports = [(f"canister_querry m{i}", FUNC) for i in range(MAX_EXPORTS + 1)]
+    with pytest.raises(WasmExportsError) as e:
+        check_export_limit(_write(tmp_path, _wasm(exports)))
+    assert "e.g. canister_querry m0, canister_querry m1" in str(e.value)
+
+
+def test__a_missing_wasm_fails(tmp_path: Path) -> None:
+    with pytest.raises(WasmExportsError, match="cannot read"):
+        export_names(tmp_path / "missing.wasm")
 
 
 def test__a_file_that_is_not_wasm_fails(tmp_path: Path) -> None:
@@ -176,17 +189,19 @@ def test__a_method_under_two_call_types_fails(tmp_path: Path) -> None:
 def test__a_wasm_without_methods_warns(tmp_path: Path) -> None:
     exports = [("memory", MEMORY), ("canister_global_timer", FUNC)]
     summary = check_export_limit(_write(tmp_path, _wasm(exports)))
-    assert "WARNING: the wasm exports no query or update method" in summary
+    assert "WARNING: the wasm exports no query, composite query or update" in summary
 
 
 def test__the_link_exports_every_system_function() -> None:
     # Also one a canister defines without WASM_SYMBOL_EXPORTED
     flags = config_default.WASM_LD_REQUIRED_FLAGS
     assert "-Wl,--export=canister_global_timer" in flags
-    for name in SYSTEM_FUNCTIONS:
-        if name not in ("canister_global_timer", "canister_pre_upgrade"):
-            assert f"-Wl,--export-if-defined={name} " in flags
-    # It would pull the weak default of ic_async.cpp into every canister
+    for name in EXPORT_IF_DEFINED:
+        assert f"-Wl,--export-if-defined={name} " in flags
+    # Every other system function, except canister_pre_upgrade: the flag would
+    # pull the weak default of ic_async.cpp into every canister
+    rest = set(SYSTEM_FUNCTIONS) - set(EXPORT_IF_DEFINED)
+    assert rest == {"canister_global_timer", "canister_pre_upgrade"}
     assert "canister_pre_upgrade" not in flags
 
 

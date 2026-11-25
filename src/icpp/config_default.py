@@ -15,7 +15,7 @@ from icpp import (
     __version_wasi2ic__,
     __version_ic_wasi_polyfill__,
 )
-from icpp.wasm_exports import SYSTEM_FUNCTIONS
+from icpp.wasm_exports import EXPORT_IF_DEFINED
 
 # The OS we're running on - https://stackoverflow.com/a/1857/5480536
 
@@ -169,18 +169,12 @@ WASM_LD_REQUIRED_FLAGS = (
     # exported. It lives in __ic_candid__.a and would otherwise be dropped
     # by the WASM linker's archive-selection rules (no caller references it
     # statically - the IC invokes it at runtime). --export also exports a
-    # canister's own strong definition declared without WASM_SYMBOL_EXPORTED.
+    # canister's own strong one with C linkage, without WASM_SYMBOL_EXPORTED.
     " -Wl,-u,canister_global_timer -Wl,--export=canister_global_timer "
-    # The IC's other system functions, also when a canister defines one without
-    # WASM_SYMBOL_EXPORTED. Only if defined: a canister needs none of them. Not
-    # canister_pre_upgrade: the flag pulls the weak default of ic_async.cpp,
-    # and the async runtime with it, into every canister. A canister's own
-    # canister_pre_upgrade must be declared with WASM_SYMBOL_EXPORTED
-    + "".join(
-        f" -Wl,--export-if-defined={name} "
-        for name in SYSTEM_FUNCTIONS
-        if name not in ("canister_global_timer", "canister_pre_upgrade")
-    )
+    # The IC's other system functions, also when a canister defines one with C
+    # linkage or an asm label but without WASM_SYMBOL_EXPORTED. Only if
+    # defined: a canister needs none of them. See EXPORT_IF_DEFINED
+    + "".join(f" -Wl,--export-if-defined={name} " for name in EXPORT_IF_DEFINED)
 )
 # The default link flags that `cpp_link_flags_defaults` replaces
 WASM_LDFLAGS = " -Wl,--lto-O3 -Wl,--strip-debug "

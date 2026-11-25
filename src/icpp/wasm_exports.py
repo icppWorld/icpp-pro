@@ -21,11 +21,9 @@ MAX_EXPORTS = 1100
 MAX_METHODS = 1000
 MAX_METHOD_NAME_LENGTHS = 20000
 
-_METHOD_PREFIXES = (
-    b"canister_query ",
-    b"canister_composite_query ",
-    b"canister_update ",
-)
+# The prefixes of the query, composite query and update methods
+METHOD_PREFIXES = ("canister_query ", "canister_composite_query ", "canister_update ")
+_METHOD_PREFIX_BYTES = tuple(p.encode("utf-8") for p in METHOD_PREFIXES)
 # The IC's other canister_ exports, WASM_VALID_SYSTEM_FUNCTIONS in
 # rs/embedders/src/wasm_utils/validation.rs. It refuses any other canister_ name
 SYSTEM_FUNCTIONS = (
@@ -36,6 +34,15 @@ SYSTEM_FUNCTIONS = (
     "canister_heartbeat",
     "canister_global_timer",
     "canister_on_low_wasm_memory",
+)
+# The system functions the link exports with -Wl,--export-if-defined. Not the
+# timer, which it always exports, and not canister_pre_upgrade: the flag would
+# pull the weak default of ic_async.cpp, and the async runtime with it, into
+# every canister
+EXPORT_IF_DEFINED = tuple(
+    n
+    for n in SYSTEM_FUNCTIONS
+    if n not in ("canister_global_timer", "canister_pre_upgrade")
 )
 _WASM_MAGIC = b"\x00asm"
 _EXPORT_SECTION_ID = 7
@@ -75,7 +82,10 @@ def _read_export_section(section: bytes) -> List[bytes]:
 
 def _export_name_bytes(wasm_path: Path) -> List[bytes]:
     """The names of all exports of the wasm module, as the bytes they are."""
-    data = wasm_path.read_bytes()
+    try:
+        data = wasm_path.read_bytes()
+    except OSError as e:
+        raise WasmExportsError(f"cannot read {wasm_path}: {e}") from e
     if data[:4] != _WASM_MAGIC:
         raise WasmExportsError(f"{wasm_path} is not a wasm module")
     pos = 8  # after the magic number and the version
@@ -96,28 +106,41 @@ def export_names(wasm_path: Path) -> List[str]:
     return [n.decode("utf-8", errors="replace") for n in _export_name_bytes(wasm_path)]
 
 
+def is_entry_point(name: str) -> bool:
+    """Whether the IC accepts this export as a method or a system function."""
+    return name in SYSTEM_FUNCTIONS or name.startswith(METHOD_PREFIXES)
+
+
 def stray_exports(names: List[str]) -> List[str]:
-    """The exports that are neither a canister_ entry point nor the memory."""
-    return [n for n in names if not n.startswith("canister_") and n != "memory"]
+    """The exports that are neither an entry point the IC accepts nor the memory."""
+    return [n for n in names if not is_entry_point(n) and n != "memory"]
 
 
-def _check_entry_point_names(
-    wasm_path: Path, names: List[str], methods: List[bytes]
-) -> None:
-    """Raises on a canister_ name the IC refuses, or a method exported twice."""
-    unknown = [
-        n
-        for n in names
-        if n.startswith("canister_")
-        and n not in SYSTEM_FUNCTIONS
-        and not n.encode("utf-8").startswith(_METHOD_PREFIXES)
-    ]
+def _check_entry_point_names(wasm_path: Path, names: List[str]) -> None:
+    """Raises on a canister_ name the IC refuses."""
+    unknown = [n for n in names if n.startswith("canister_") and not is_entry_point(n)]
     if unknown:
         raise WasmExportsError(
-            f"{wasm_path} exports {', '.join(unknown)}, and the IC refuses a "
+            f"{wasm_path} exports {', '.join(unknown[:5])}, and the IC refuses a "
             f"canister_ export that is neither a method (canister_query, "
             f"canister_composite_query or canister_update, a space, and its "
             f"name) nor one of {', '.join(SYSTEM_FUNCTIONS)}."
+        )
+
+
+def _check_methods(wasm_path: Path, methods: List[bytes]) -> None:
+    """Raises on too many methods, too long names, or a method exported twice."""
+    if len(methods) > MAX_METHODS:
+        raise WasmExportsError(
+            f"{wasm_path} has {len(methods)} methods (query, composite query and "
+            f"update), and the IC refuses a wasm with more than {MAX_METHODS}."
+        )
+    name_lengths = sum(len(m) for m in methods)
+    if name_lengths > MAX_METHOD_NAME_LENGTHS:
+        raise WasmExportsError(
+            f"The names of the {len(methods)} methods of {wasm_path} are "
+            f"{name_lengths} bytes long together, and the IC refuses a wasm with "
+            f"more than {MAX_METHOD_NAME_LENGTHS}."
         )
     seen = set()
     for method in methods:
@@ -139,14 +162,11 @@ def check_export_limit(wasm_path: Path) -> str:
     """
     raw_names = _export_name_bytes(wasm_path)
     names = [n.decode("utf-8", errors="replace") for n in raw_names]
-    # The query, composite query and update methods, without their prefix
-    methods = [n.split(b" ", 1)[1] for n in raw_names if n.startswith(_METHOD_PREFIXES)]
-    name_lengths = sum(len(m) for m in methods)
     if len(names) > MAX_EXPORTS:
         others = stray_exports(names)
         hint = (
-            f"{len(others)} of them are neither canister_ entry points nor the "
-            f"memory, e.g. {', '.join(others[:5])}\n"
+            f"{len(others)} of them are neither entry points nor the memory, "
+            f"e.g. {', '.join(others[:5])}\n"
             f"       Export entry points only with WASM_SYMBOL_EXPORTED, and do "
             f"not link with -Wl,--export-dynamic"
             if others
@@ -156,25 +176,20 @@ def check_export_limit(wasm_path: Path) -> str:
             f"{wasm_path} has {len(names)} exports, and the IC refuses a wasm "
             f"with more than {MAX_EXPORTS}. {hint}"
         )
-    _check_entry_point_names(wasm_path, names, methods)
-    if len(methods) > MAX_METHODS:
-        raise WasmExportsError(
-            f"{wasm_path} has {len(methods)} query and update methods, and the "
-            f"IC refuses a wasm with more than {MAX_METHODS}."
-        )
-    if name_lengths > MAX_METHOD_NAME_LENGTHS:
-        raise WasmExportsError(
-            f"The names of the {len(methods)} query and update methods of "
-            f"{wasm_path} are {name_lengths} bytes long together, and the IC "
-            f"refuses a wasm with more than {MAX_METHOD_NAME_LENGTHS}."
-        )
+    _check_entry_point_names(wasm_path, names)
+    # The method names without their prefix, as the bytes the IC counts
+    methods = [
+        n.split(b" ", 1)[1] for n in raw_names if n.startswith(_METHOD_PREFIX_BYTES)
+    ]
+    _check_methods(wasm_path, methods)
     summary = (
-        f"Exports: {len(names)}, of which {len(methods)} query and update methods "
+        f"Exports: {len(names)}, of which {len(methods)} methods "
         f"(the IC allows {MAX_EXPORTS} and {MAX_METHODS})"
     )
     if not methods:
         summary += (
-            "\nWARNING: the wasm exports no query or update method. Declare "
-            "them with WASM_SYMBOL_EXPORTED, or the IC cannot call them."
+            "\nWARNING: the wasm exports no query, composite query or update "
+            "method. Declare them with WASM_SYMBOL_EXPORTED, or the IC cannot "
+            "call them."
         )
     return summary

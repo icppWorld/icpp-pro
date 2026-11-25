@@ -6,7 +6,7 @@ the exports of real builds (test_apis.py of canister_1)."""
 # pylint: disable=missing-function-docstring
 
 from pathlib import Path
-from typing import List, Tuple
+from typing import Sequence, Tuple, Union
 
 import pytest
 
@@ -40,12 +40,12 @@ def _section(section_id: int, payload: bytes) -> bytes:
     return bytes([section_id]) + _leb128(len(payload)) + payload
 
 
-def _wasm(exports: List[Tuple[str, int]]) -> bytes:
+def _wasm(exports: Sequence[Tuple[Union[str, bytes], int]]) -> bytes:
     """A module with a custom section and an export section. Only the export
     section is read, so the indices need not point anywhere."""
     payload = _leb128(len(exports))
     for index, (name, kind) in enumerate(exports):
-        encoded = name.encode("utf-8")
+        encoded = name.encode("utf-8") if isinstance(name, str) else name
         payload += _leb128(len(encoded)) + encoded + bytes([kind]) + _leb128(index)
     custom = _section(0, _leb128(4) + b"note" + b"x" * 200)
     return b"\x00asm\x01\x00\x00\x00" + custom + _section(7, payload)
@@ -100,7 +100,9 @@ def test__one_over_the_limit_fails(tmp_path: Path) -> None:
 
 def test__too_many_entry_points_say_so(tmp_path: Path) -> None:
     exports = [(f"canister_query m{i}", FUNC) for i in range(MAX_METHODS)]
-    exports += [(f"canister_update u{i}", FUNC) for i in range(MAX_EXPORTS - 999)]
+    exports += [
+        (f"canister_update u{i}", FUNC) for i in range(MAX_EXPORTS - MAX_METHODS + 1)
+    ]
     with pytest.raises(WasmExportsError) as e:
         check_export_limit(_write(tmp_path, _wasm(exports)))
     assert "All of them are entry points: the canister has too many." in str(e.value)
@@ -127,8 +129,9 @@ def test__other_entry_points_are_not_methods(tmp_path: Path) -> None:
 
 def test__method_names_one_byte_too_long_fail(tmp_path: Path) -> None:
     # Only the name after the prefix counts, in bytes: "é" is 2
-    exports = [("canister_query " + "é" * 5000, FUNC)] * 2
-    exports += [("canister_update " + "x" * (MAX_METHOD_NAME_LENGTHS - 20000), FUNC)]
+    half = MAX_METHOD_NAME_LENGTHS // 4
+    exports = [("canister_query " + "é" * half, FUNC)]
+    exports += [("canister_update " + "x" * (MAX_METHOD_NAME_LENGTHS - 2 * half), FUNC)]
     assert check_export_limit(_write(tmp_path, _wasm(exports)))
     exports.append(("canister_update y", FUNC))
     with pytest.raises(WasmExportsError) as e:
@@ -145,6 +148,12 @@ def test__a_truncated_wasm_fails(tmp_path: Path) -> None:
     data = _wasm([("canister_init", FUNC)])
     with pytest.raises(WasmExportsError, match="the wasm ends inside a section"):
         export_names(_write(tmp_path, data[:-3]))
+
+
+def test__an_invalid_utf8_name_counts_its_bytes(tmp_path: Path) -> None:
+    # Decoded, each 0xff byte would become a 3-byte U+FFFD
+    exports = [(b"canister_query " + b"\xff" * MAX_METHOD_NAME_LENGTHS, FUNC)]
+    assert check_export_limit(_write(tmp_path, _wasm(exports)))
 
 
 def test__an_export_past_its_section_fails(tmp_path: Path) -> None:

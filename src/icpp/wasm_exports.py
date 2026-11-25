@@ -21,16 +21,17 @@ MAX_EXPORTS = 1100
 MAX_METHODS = 1000
 MAX_METHOD_NAME_LENGTHS = 20000
 
-_METHOD_PREFIXES = ("canister_query ", "canister_composite_query ", "canister_update ")
-
+_METHOD_PREFIXES = (
+    b"canister_query ",
+    b"canister_composite_query ",
+    b"canister_update ",
+)
 _WASM_MAGIC = b"\x00asm"
+_EXPORT_SECTION_ID = 7
 
 
 class WasmExportsError(Exception):
-    """The wasm cannot be read, or has more exports than the IC allows."""
-
-
-_EXPORT_SECTION_ID = 7
+    """The wasm cannot be read, or breaks one of the IC's export limits."""
 
 
 def _read_leb128(data: bytes, pos: int) -> Tuple[int, int]:
@@ -48,12 +49,24 @@ def _read_leb128(data: bytes, pos: int) -> Tuple[int, int]:
         shift += 7
 
 
-def export_names(wasm_path: Path) -> List[str]:
-    """The names of all exports of the wasm module, of any kind."""
+def _read_export_section(section: bytes) -> List[bytes]:
+    """The names in an export section; raises when an entry runs past its end."""
+    count, p = _read_leb128(section, 0)
+    names: List[bytes] = []
+    for _ in range(count):
+        length, p = _read_leb128(section, p)
+        if p + length + 1 > len(section):  # the name, then the kind byte
+            raise WasmExportsError("an export runs past the export section")
+        names.append(section[p : p + length])
+        _, p = _read_leb128(section, p + length + 1)  # the index
+    return names
+
+
+def _export_name_bytes(wasm_path: Path) -> List[bytes]:
+    """The names of all exports of the wasm module, as the bytes they are."""
     data = wasm_path.read_bytes()
     if data[:4] != _WASM_MAGIC:
         raise WasmExportsError(f"{wasm_path} is not a wasm module")
-    names: List[str] = []
     pos = 8  # after the magic number and the version
     while pos < len(data):
         section_id = data[pos]
@@ -62,22 +75,19 @@ def export_names(wasm_path: Path) -> List[str]:
         if end > len(data):
             raise WasmExportsError("the wasm ends inside a section")
         if section_id == _EXPORT_SECTION_ID:
-            names = _read_export_section(data[pos:end])
+            return _read_export_section(data[pos:end])
         pos = end
-    return names
+    return []
 
 
-def _read_export_section(section: bytes) -> List[str]:
-    """The names in an export section; raises when an entry runs past its end."""
-    count, p = _read_leb128(section, 0)
-    names: List[str] = []
-    for _ in range(count):
-        length, p = _read_leb128(section, p)
-        if p + length + 1 > len(section):  # the name, then the kind byte
-            raise WasmExportsError("an export runs past the export section")
-        names.append(section[p : p + length].decode("utf-8", errors="replace"))
-        _, p = _read_leb128(section, p + length + 1)  # the index
-    return names
+def export_names(wasm_path: Path) -> List[str]:
+    """The names of all exports of the wasm module, of any kind."""
+    return [n.decode("utf-8", errors="replace") for n in _export_name_bytes(wasm_path)]
+
+
+def stray_exports(names: List[str]) -> List[str]:
+    """The exports that are neither a canister_ entry point nor the memory."""
+    return [n for n in names if not n.startswith("canister_") and n != "memory"]
 
 
 def check_export_limit(wasm_path: Path) -> str:
@@ -85,12 +95,13 @@ def check_export_limit(wasm_path: Path) -> str:
 
     Returns a one-line summary of the counts otherwise.
     """
-    names = export_names(wasm_path)
+    raw_names = _export_name_bytes(wasm_path)
+    names = [n.decode("utf-8", errors="replace") for n in raw_names]
     # The query, composite query and update methods, without their prefix
-    methods = [n.split(" ", 1)[1] for n in names if n.startswith(_METHOD_PREFIXES)]
-    name_lengths = sum(len(m.encode("utf-8")) for m in methods)
+    methods = [n.split(b" ", 1)[1] for n in raw_names if n.startswith(_METHOD_PREFIXES)]
+    name_lengths = sum(len(m) for m in methods)
     if len(names) > MAX_EXPORTS:
-        others = [n for n in names if not n.startswith("canister_") and n != "memory"]
+        others = stray_exports(names)
         hint = (
             f"{len(others)} of them are neither canister_ entry points nor the "
             f"memory, e.g. {', '.join(others[:5])}\n"

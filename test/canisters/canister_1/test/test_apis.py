@@ -21,7 +21,7 @@ from icpp.smoketest import (
     flatten_candid_text,
     get_canister_id,
 )
-from icpp.wasm_exports import MAX_EXPORTS, export_names
+from icpp.wasm_exports import MAX_EXPORTS, export_names, stray_exports
 
 # Path to the icp.yaml file
 ICP_YAML_PATH = Path(__file__).parent / "../icp.yaml"
@@ -41,8 +41,7 @@ CANISTER_NAME = "my_canister"
 def test__wasm_exports_only_entry_points() -> None:
     wasm_path = Path(__file__).parent / "../build/my_canister.wasm"
     names = export_names(wasm_path)
-    others = [n for n in names if not n.startswith("canister_") and n != "memory"]
-    assert not others, others
+    assert not stray_exports(names), stray_exports(names)
     assert "canister_query roundtrip_text" in names
     assert "canister_global_timer" in names
     assert len(names) <= MAX_EXPORTS

@@ -164,11 +164,12 @@ WASM_LD_REQUIRED_FLAGS = (
     # Candid decoder's nesting limit (128 levels) must trap before the stack
     # runs out. With --stack-first an overflow traps as "heap out of bounds"
     " -Wl,-z,stack-size=1048576 "
-    # Force the built-in canister_global_timer dispatcher to be linked in. It
-    # lives in __ic_candid__.a and would otherwise be dropped by the WASM
-    # linker's archive-selection rules (no caller references it statically -
-    # the IC invokes it at runtime). WASM_SYMBOL_EXPORTED exports it.
-    " -Wl,-u,canister_global_timer "
+    # Force the built-in canister_global_timer dispatcher to be linked in and
+    # exported. It lives in __ic_candid__.a and would otherwise be dropped
+    # by the WASM linker's archive-selection rules (no caller references it
+    # statically - the IC invokes it at runtime). --export also exports a
+    # canister's own strong definition declared without WASM_SYMBOL_EXPORTED.
+    " -Wl,-u,canister_global_timer -Wl,--export=canister_global_timer "
 )
 # The default link flags that `cpp_link_flags_defaults` replaces
 WASM_LDFLAGS = " -Wl,--lto-O3 -Wl,--strip-debug "

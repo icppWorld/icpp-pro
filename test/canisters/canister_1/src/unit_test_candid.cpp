@@ -1605,6 +1605,41 @@ int unit_test_candid() {
     A_r.append(r);
     CandidDeserialize::decode(CandidSerialize(a).get_B(), A_r);
     if (label != "b" || vb != 5) IC_API::trap(std::string(__func__) + ": vr3");
+
+    // Decoding leaves the encoding as it was before, whether or not it was
+    // read before: r was not, r_read was
+    std::string label_read;
+    uint64_t vb_read{0};
+    CandidTypeVariant r_read{&label_read};
+    r_read.append("c", CandidTypeText{&vc});
+    r_read.append("a", CandidTypeNat64{&va});
+    r_read.append("b", CandidTypeNat64{&vb_read});
+    const VecBytes before = r_read.get_M();
+    CandidArgs A_read;
+    A_read.append(r_read);
+    CandidDeserialize::decode(CandidSerialize(a).get_B(), A_read);
+    if (!(A_r.m_args_ptrs[0]->get_M() == before) ||
+        !(A_read.m_args_ptrs[0]->get_M() == before))
+      IC_API::trap(std::string(__func__) + ": vr4");
+
+    // The same for a record holding the variant
+    std::string label_in;
+    uint64_t vb_in{0};
+    CandidTypeVariant inner{&label_in};
+    inner.append("c", CandidTypeText{&vc});
+    inner.append("a", CandidTypeNat64{&va});
+    inner.append("b", CandidTypeNat64{&vb_in});
+    CandidTypeRecord holder;
+    holder.append("v", inner);
+    const VecBytes holder_before = CandidTypeRecord(holder).get_M();
+    CandidTypeRecord wire_holder;
+    wire_holder.append("v", a);
+    CandidArgs A_h;
+    A_h.append(holder);
+    CandidDeserialize::decode(CandidSerialize(wire_holder).get_B(), A_h);
+    if (label_in != "b" || vb_in != 5 ||
+        !(A_h.m_args_ptrs[0]->get_M() == holder_before))
+      IC_API::trap(std::string(__func__) + ": vr5");
   }
 
   { // Verify the VecBytes static utils

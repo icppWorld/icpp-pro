@@ -146,7 +146,49 @@ int make_list(CandidTypeGraph &g) {
   return list;
 }
 
+// A recursive record with a field in its rest, at every level:
+// type L = record { head : nat8; tail : opt L; z : null }
+// Each level is decoded before the one around it stores the rest it shares.
+void test_recursive_rest() {
+  CandidTypeGraph g;
+  int l = g.reserve();
+  CandidGraphNode n;
+  n.kind = CandidKind::Record;
+  n.fields = {{h("head"), prim(CandidKind::Nat8)},
+              {h("tail"), g.opt(l)},
+              {h("z"), prim(CandidKind::Null)}};
+  std::sort(n.fields.begin(), n.fields.end(),
+            [](const CandidGraphField &a, const CandidGraphField &b) {
+              return a.id < b.id;
+            });
+  g.define(l, n);
+  std::vector<CandidValue> values, back;
+  std::string err;
+  check(CandidTextValue::parse(
+            "(record {head=1; z=null; tail=opt record {head=2; z=null; "
+            "tail=opt record {head=3; z=null; tail=null}}})",
+            g, {l}, values, err),
+        "recursive rest: the value parses: " + err);
+  std::vector<uint8_t> out;
+  check(CandidEncoder::encode(g, {l}, values, out, err),
+        "recursive rest: encodes: " + err);
+  check(CandidDecoder::decode(out.data(), out.size(), g, {l}, back, err),
+        "recursive rest: decodes: " + err);
+  check(back == values, "recursive rest: round trip");
+  const CandidValue *level = back.empty() ? nullptr : &back[0];
+  for (uint64_t head = 1; head <= 3; ++head) {
+    check(level && level->rest && level->field(h("z")) &&
+              level->field(h("head")) && level->field(h("head"))->u == head,
+          "recursive rest: level " + std::to_string(head));
+    if (!level) break;
+    const CandidValue *tail = level->field(h("tail"));
+    level = tail && !tail->items.empty() ? &tail->items[0] : nullptr;
+  }
+  check(!level, "recursive rest: three levels");
+}
+
 __attribute__((noinline)) void test_recursive() {
+  test_recursive_rest();
   {
     CandidTypeGraph g;
     int list = make_list(g);
@@ -671,8 +713,7 @@ void test_record_room() {
   for (size_t i = 0; i < 2; ++i) {
     const CandidValue &r = back[0].at(i);
     // Room for the 3 nat8, not for the 18 null fields
-    check(r.items.capacity() >= 3 && r.items.capacity() < 6 &&
-              r.ids.capacity() >= 3 && r.ids.capacity() < 6 &&
+    check(r.items.capacity() == 3 && r.ids.capacity() == 3 &&
               r.field_count() == 21 && r.field(0) && r.field(0)->u == 7 &&
               r.field(2) && r.field(2)->u == 8 && r.field(20),
           "record room: element " + std::to_string(i));

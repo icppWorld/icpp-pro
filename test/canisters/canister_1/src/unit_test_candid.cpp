@@ -1501,15 +1501,30 @@ int unit_test_candid() {
     const auto opcodes = mixed.get_field_opcodes();
     const auto content_opcodes = mixed.get_field_content_opcodes();
     const auto content_datatypes = mixed.get_field_content_datatypes();
-    bool fields_ok = ptrs.size() == 3 && datatypes.size() == 3 &&
-                     opcodes == datatypes && content_opcodes.size() == 3 &&
-                     content_datatypes.size() == 3;
+    // Expected, independent of the record: the fields in the order of their
+    // hashed ids, with the opcode each was appended with
+    CandidOpcode op;
+    std::vector<std::pair<uint32_t, int>> expected_fields{
+        {mixed.idl_hash("a"), op.Nat64},
+        {mixed.idl_hash("b"), op.Text},
+        {mixed.idl_hash("c"), op.Vec}};
+    std::sort(expected_fields.begin(), expected_fields.end());
+    std::vector<uint32_t> expected_ids;
+    std::vector<int> expected_datatypes;
+    for (const auto &e : expected_fields) {
+      expected_ids.push_back(e.first);
+      expected_datatypes.push_back(e.second);
+    }
+    bool fields_ok =
+        ptrs.size() == 3 && mixed.get_field_ids() == expected_ids &&
+        datatypes == expected_datatypes && opcodes == datatypes &&
+        content_opcodes.size() == 3 && content_datatypes.size() == 3;
     for (size_t k = 0; fields_ok && k < ptrs.size(); ++k) {
       fields_ok = datatypes[k] == ptrs[k]->get_datatype_opcode() &&
                   content_opcodes[k] == ptrs[k]->get_content_opcode() &&
                   content_datatypes[k] == ptrs[k]->get_content_datatype();
-      if (ptrs[k]->get_datatype_opcode() == CandidOpcode().Vec)
-        fields_ok = fields_ok && content_opcodes[k] == CandidOpcode().Nat64;
+      if (expected_datatypes[k] == op.Vec)
+        fields_ok = fields_ok && content_opcodes[k] == op.Nat64;
     }
     if (!fields_ok) IC_API::trap(std::string(__func__) + ": rc5");
 

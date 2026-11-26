@@ -2,7 +2,7 @@
 
 First deploy the canister, then run:
 
-$ pytest --network=local
+$ pytest --network=local --identity icpp-pro-testing
 
 Each case checks that the canister decoded the right values, or encoded the
 same bytes as didc, and compares its instructions with test/baseline.json,
@@ -12,7 +12,7 @@ within TOLERANCE (10%):
 
 To record new baselines, after a change that makes a case faster:
 
-$ ICPP_CANDID_BENCH_UPDATE=1 pytest --network=local
+$ ICPP_CANDID_BENCH_UPDATE=1 pytest --network=local --identity icpp-pro-testing
 
 An update still fails a case that got more than 10% slower, and does not
 record it. To record a slowdown on purpose, use ICPP_CANDID_BENCH_UPDATE=force.

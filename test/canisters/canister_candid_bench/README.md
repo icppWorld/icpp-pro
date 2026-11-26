@@ -40,11 +40,12 @@ way, records of 10 and 50 fields, and a small `variant` reply.
 
 The results of the last run are in `build/bench-results.json`.
 
-After a change that makes a case faster, record the new baseline, and commit
+After a change that makes a case faster, record the new baseline as the test
+identity the canister was deployed with, and commit
 it with the change:
 
 ```bash
-ICPP_CANDID_BENCH_UPDATE=1 pytest --network=local
+ICPP_CANDID_BENCH_UPDATE=1 pytest --network=local --identity icpp-pro-testing
 ```
 
 An update still fails, and does not record, a case that got more than 10%

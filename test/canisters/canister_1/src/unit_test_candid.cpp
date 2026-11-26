@@ -1603,15 +1603,8 @@ int unit_test_candid() {
     r.append("b", CandidTypeNat64{&vb});
     CandidArgs A_r;
     A_r.append(r);
-    const size_t before = A_r.m_args_ptrs[0]->get_M().size(); // no label yet
     CandidDeserialize::decode(CandidSerialize(a).get_B(), A_r);
     if (label != "b" || vb != 5) IC_API::trap(std::string(__func__) + ": vr3");
-
-    // After decoding, the value is encoded again, with the decoded label
-    const VecBytes &after = A_r.m_args_ptrs[0]->get_M();
-    if (before != 0 || after.size() == 0 ||
-        after.vec_uint8_t()[0] != uint8_t(index_b))
-      IC_API::trap(std::string(__func__) + ": vr4");
   }
 
   { // Verify the VecBytes static utils

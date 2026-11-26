@@ -25,6 +25,11 @@ networks:
   # (which is what icpp.smoketest does for you).
   - name: local
     mode: managed
+    # The benchmarks compare instruction counts with test/baseline.json, and
+    # the replica decides what a system call costs. So this network runs a
+    # pinned launcher (and its PocketIC), not the latest one. Bump it on
+    # purpose, and record the baseline again in the same change.
+    version: v16.1.0-2026-11-20-03-19
     gateway:
       port: 0
 

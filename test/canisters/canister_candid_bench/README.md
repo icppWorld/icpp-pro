@@ -5,11 +5,11 @@ Candid, on wasm, and guards against slowdowns in CI.
 
 Each method replies with a `Result`:
 
-| Field          | Decode methods                                                        | Encode methods                                    |
-|----------------|-----------------------------------------------------------------------|---------------------------------------------------|
-| `instructions` | the whole message up to the end of decoding, argument copy included    | building the Candid types and serializing them    |
-| `size`         | the number of payload bytes decoded                                   | the number of bytes of the encoded message        |
-| `fnv1a`        | the 64-bit FNV-1a hash of those payload bytes                         | the 64-bit FNV-1a hash of the encoded message     |
+| Field          | Decode methods                                                      | Encode methods                                 |
+|----------------|---------------------------------------------------------------------|------------------------------------------------|
+| `instructions` | the whole message up to the end of decoding, argument copy included | building the Candid types and serializing them |
+| `size`         | the number of payload bytes decoded                                 | the number of bytes of the encoded message     |
+| `fnv1a`        | the 64-bit FNV-1a hash of those payload bytes                       | the 64-bit FNV-1a hash of the encoded message  |
 
 The cases follow the email-canister's most common calls, with its own code:
 
@@ -33,7 +33,8 @@ way, records of 10 and 50 fields, and a small `variant` reply.
   the canister decoded.
 - An encode case has `didc encode` the same value, and checks that the
   canister's bytes are the same, byte for byte.
-- Every case compares its instructions with `test/baseline.json`:
+- Every case compares its instructions with `test/baseline.json`, within
+  `TOLERANCE` (10%):
   - more than 10% above its baseline fails;
   - more than 10% below it passes, with a warning to update the baseline.
 
@@ -46,8 +47,15 @@ it with the change:
 ICPP_CANDID_BENCH_UPDATE=1 pytest --network=local
 ```
 
+An update still fails, and does not record, a case that got more than 10%
+slower. To record a slowdown on purpose, use `ICPP_CANDID_BENCH_UPDATE=force`.
+
+The replica decides what a system call costs, so `icp.yaml` pins the network
+launcher. Bump its `version` on purpose, and record the baseline again in the
+same change.
+
 Natively, `ic0.performance_counter` counts nanoseconds, so `native/main.cpp`
 checks only that each method replies the right size.
 
-The baseline was recorded with icpp-pro 7.1.0 (wasi-sdk 25, a local icp-cli
-1.8.0 network).
+The baseline was recorded with icpp-pro 7.1.0 (wasi-sdk 25), on
+icp-cli-network-launcher v16.1.0-2026-11-20-03-19.

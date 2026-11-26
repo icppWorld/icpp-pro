@@ -5,13 +5,18 @@ First deploy the canister, then run:
 $ pytest --network=local
 
 Each case checks that the canister decoded the right values, or encoded the
-same bytes as didc, and compares its instructions with test/baseline.json:
+same bytes as didc, and compares its instructions with test/baseline.json,
+within TOLERANCE (10%):
 - more than 10% above the baseline fails;
 - more than 10% below it passes, with a reminder to update the baseline.
 
 To record new baselines, after a change that makes a case faster:
 
 $ ICPP_CANDID_BENCH_UPDATE=1 pytest --network=local
+
+An update still fails a case that got more than 10% slower, and does not
+record it. To record a slowdown on purpose, use ICPP_CANDID_BENCH_UPDATE=force.
+An update also drops the baseline of a case that no longer exists.
 
 The results of the last run are in build/bench-results.json.
 """
@@ -171,6 +176,7 @@ def decode_smtp_request(body_size: int) -> Tuple[str, Tuple[int, int]]:
 def decode_mail_send(attachment_sizes: List[int]) -> Tuple[str, Tuple[int, int]]:
     to = ["a@example.com", "b@example.com"]
     cc = ["c@example.com"]
+    bcc: List[str] = []
     html = "<p>" + "h" * 1000 + "</p>"
     attachments = [
         (f"a{k}.bin", make_blob(size)) for k, size in enumerate(attachment_sizes)
@@ -186,7 +192,7 @@ def decode_mail_send(attachment_sizes: List[int]) -> Tuple[str, Tuple[int, int]]
         f" attachments = vec {{ {attachments_text} }} }})"
     )
     f = Fnv1a().add_text("client-1")
-    for s in to + cc:
+    for s in to + cc + bcc:
         f.add_text(s)
     f.add_text("Benchmark").add_text(html)
     for n, c in attachments:
@@ -355,26 +361,55 @@ def parse_result(response: str) -> Dict[str, int]:
     return result
 
 
+def load_baseline() -> Dict[str, Dict[str, int]]:
+    if not BASELINE_PATH.exists():
+        return {}
+    data: Dict[str, Dict[str, int]] = json.loads(
+        BASELINE_PATH.read_text(encoding="utf-8")
+    )
+    return data
+
+
+UPDATE = os.environ.get("ICPP_CANDID_BENCH_UPDATE", "")
+BASELINE = load_baseline()
+ALL_CASES = {f"decode {c[0]}" for c in DECODE_CASES} | {
+    f"encode {c[0]}" for c in ENCODE_CASES
+}
+
+
+def write_baseline() -> None:
+    """Writes the baseline of every case that still exists, after each case,
+    so that an interrupted update keeps what it measured"""
+    kept = {case: v for case, v in BASELINE.items() if case in ALL_CASES}
+    BASELINE_PATH.write_text(
+        json.dumps(dict(sorted(kept.items())), indent=2) + "\n", encoding="utf-8"
+    )
+
+
 def check_baseline(case: str, result: Dict[str, int]) -> None:
     RESULTS[case] = result
-    if os.environ.get("ICPP_CANDID_BENCH_UPDATE"):
-        return
-    baseline = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
-    assert (
-        case in baseline
-    ), f"No baseline for '{case}': record it with ICPP_CANDID_BENCH_UPDATE=1"
-    expected = baseline[case]["instructions"]
+    pct = f"{TOLERANCE:.0%}"
     used = result["instructions"]
-    assert used <= expected * (1 + TOLERANCE), (
-        f"'{case}' takes {used:,} instructions, more than 10% above its"
-        f" baseline of {expected:,}"
-    )
-    if used < expected * (1 - TOLERANCE):
-        warnings.warn(
-            f"'{case}' takes {used:,} instructions, more than 10% below its"
-            f" baseline of {expected:,}: update the baseline with"
-            " ICPP_CANDID_BENCH_UPDATE=1"
+    expected = BASELINE.get(case, {}).get("instructions")
+    if expected is None:
+        assert (
+            UPDATE
+        ), f"No baseline for '{case}': record it with ICPP_CANDID_BENCH_UPDATE=1"
+    else:
+        assert used <= expected * (1 + TOLERANCE) or UPDATE == "force", (
+            f"'{case}' takes {used:,} instructions, more than {pct} above its"
+            f" baseline of {expected:,}. If that is intended, record it with"
+            " ICPP_CANDID_BENCH_UPDATE=force"
         )
+        if not UPDATE and used < expected * (1 - TOLERANCE):
+            warnings.warn(
+                f"'{case}' takes {used:,} instructions, more than {pct} below"
+                f" its baseline of {expected:,}: update the baseline with"
+                " ICPP_CANDID_BENCH_UPDATE=1"
+            )
+    if UPDATE:
+        BASELINE[case] = {"instructions": used}
+        write_baseline()
 
 
 def call(
@@ -398,19 +433,6 @@ def write_results() -> Iterator[None]:
         return
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     RESULTS_PATH.write_text(json.dumps(RESULTS, indent=2) + "\n", encoding="utf-8")
-    if os.environ.get("ICPP_CANDID_BENCH_UPDATE"):
-        baseline = (
-            json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
-            if BASELINE_PATH.exists()
-            else {}
-        )
-        baseline.update(
-            {case: {"instructions": r["instructions"]} for case, r in RESULTS.items()}
-        )
-        BASELINE_PATH.write_text(
-            json.dumps(dict(sorted(baseline.items())), indent=2) + "\n",
-            encoding="utf-8",
-        )
     print("\n\n" + f"{'Case':<36} {'Instructions':>16} {'Bytes':>12}")
     for case, r in RESULTS.items():
         print(f"{case:<36} {r['instructions']:>16,} {r['size']:>12,}")

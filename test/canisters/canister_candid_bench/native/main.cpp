@@ -46,13 +46,16 @@ int main() {
       "= \"bb\"; f7 = \"\"; f8 = \"c\"; f9 = \"d\" } })",
       "size = 45 : nat64");
 
-  // Encoding: the size is the number of bytes of the encoded message
+  // Encoding: the size is the number of bytes of the encoded message, the
+  // same as didc's encoding of the value (test/test_apis.py)
   mockIC.run_test_text("encode_mail_list", encode_mail_list, did,
-                       "encode_mail_list", "(2 : nat64)");
+                       "encode_mail_list", "(2 : nat64)", "size = 632 : nat64");
   mockIC.run_test_text("encode_mail_get", encode_mail_get, did,
-                       "encode_mail_get", "(100 : nat64)");
+                       "encode_mail_get", "(100 : nat64)",
+                       "size = 533 : nat64");
   mockIC.run_test_text("encode_mail_export_chunk", encode_mail_export_chunk,
-                       did, "encode_mail_export_chunk", "(100 : nat64)");
+                       did, "encode_mail_export_chunk", "(100 : nat64)",
+                       "size = 146 : nat64");
   mockIC.run_test_text("encode_blob", encode_blob, did, "encode_blob",
                        "(100 : nat64)", "size = 110 : nat64");
   mockIC.run_test_text("encode_text", encode_text, did, "encode_text",
@@ -60,11 +63,12 @@ int main() {
   mockIC.run_test_text("encode_vec_nat64", encode_vec_nat64, did,
                        "encode_vec_nat64", "(10 : nat64)", "size = 90 : nat64");
   mockIC.run_test_text("encode_vec_record10", encode_vec_record10, did,
-                       "encode_vec_record10", "(3 : nat64)");
+                       "encode_vec_record10", "(3 : nat64)",
+                       "size = 283 : nat64");
   mockIC.run_test_text("encode_record", encode_record, did, "encode_record",
-                       "(10 : nat64)");
+                       "(10 : nat64)", "size = 129 : nat64");
   mockIC.run_test_text("encode_small", encode_small, did, "encode_small",
-                       "(7 : nat64)");
+                       "(7 : nat64)", "size = 55 : nat64");
 
   return mockIC.test_summary();
 }

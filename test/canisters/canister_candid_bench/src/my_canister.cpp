@@ -341,8 +341,8 @@ void decode_mail_send() {
   const uint64_t instructions = IC_API::performance_counter(PC::Instructions);
   Fnv1a f;
   f.add(client_id);
-  for (const auto &v : {to, cc, bcc})
-    for (const auto &s : v)
+  for (const auto *v : {&to, &cc, &bcc})
+    for (const auto &s : *v)
       f.add(s);
   f.add(subject);
   f.add(html_body);

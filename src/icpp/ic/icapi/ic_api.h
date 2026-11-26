@@ -335,8 +335,8 @@ public:
   // Send things back over the wire in candid format
   // docs start: to_wire
   void to_wire();
-  void to_wire(const CandidType &arg_out);
-  void to_wire(const CandidArgs &args_out);
+  void to_wire(CandidType arg_out);
+  void to_wire(CandidArgs args_out);
   void to_wire(const IC_HttpResponse response); // docs end: to_wire
 
   // A transform query of an HTTPS outcall: its argument, and its result

@@ -21,6 +21,7 @@
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 
 // Helpers & mock-only state for the 128-bit cycles + inspect-message APIs.
 // Convention (same as the replica): a 128-bit amount passed IN arrives as a
@@ -689,8 +690,8 @@ void ic0_cost_http_request_v2(uintptr_t params_src, uint32_t params_size,
   VecBytes B;
   B.store(reinterpret_cast<const uint8_t *>(params_src), params_size);
   CandidArgs args;
-  args.append(record);
-  CandidDeserialize(B, args);
+  args.append(std::move(record));
+  CandidDeserialize(std::move(B), std::move(args));
 
   __uint128_t one_node =
       (__uint128_t)MOCKIC_COST_HTTP_REQUEST_BASE +

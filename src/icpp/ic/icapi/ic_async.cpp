@@ -6,6 +6,7 @@
 
 #include <cstring>
 #include <limits>
+#include <utility>
 
 #include "candid_deserialize.h"
 #include "candid_serialize.h"
@@ -482,11 +483,13 @@ void IC_CallReply::decode() { decode(CandidArgs{}); }
 
 void IC_CallReply::decode(CandidType arg) {
   CandidArgs args;
-  args.append(arg);
-  decode(args);
+  args.append(std::move(arg));
+  decode(std::move(args));
 }
 
-void IC_CallReply::decode(CandidArgs args) { CandidDeserialize(bytes, args); }
+void IC_CallReply::decode(CandidArgs args) {
+  bytes = CandidDeserialize(std::move(bytes), std::move(args)).get_B();
+}
 
 bool IC_CallError::is_clean_reject() const {
   return kind == Kind::CallRejected &&

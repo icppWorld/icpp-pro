@@ -571,7 +571,6 @@ void IC_API::from_wire(CandidArgs A) {
   }
   m_called_from_wire = true;
 
-  // Lends m_B_in to the decoder without a copy, and takes it back
   m_B_in = CandidDeserialize(std::move(m_B_in), std::move(A)).get_B();
 }
 // DeSerialize the byte stream received over the wire
@@ -755,13 +754,13 @@ void IC_API::to_wire() {
 }
 
 // Serialize to byte stream & send out over the wire
-void IC_API::to_wire(const CandidType &arg_out) {
+void IC_API::to_wire(CandidType arg_out) {
   CandidArgs args_out;
-  args_out.append(arg_out);
-  to_wire(args_out);
+  args_out.append(std::move(arg_out));
+  to_wire(std::move(args_out));
 }
 
-void IC_API::to_wire(const CandidArgs &args_out) {
+void IC_API::to_wire(CandidArgs args_out) {
   if (m_called_to_wire) {
     trap("ERROR: The canister is calling ic_api.to_wire() more than once.");
   }
@@ -775,7 +774,7 @@ void IC_API::to_wire(const CandidArgs &args_out) {
   }
   m_called_to_wire = true;
 
-  m_B_out = CandidSerialize(args_out).get_B();
+  m_B_out = CandidSerialize(std::move(args_out)).get_B();
 
   // Optionally, debug print the final result
   if (m_debug_print) {

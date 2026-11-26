@@ -1391,6 +1391,19 @@ int unit_test_candid() {
     if (!(B_ref == B_moved) || B_ref.size() < 2000)
       IC_API::trap(std::string(__func__) + ": mv1");
 
+    // The read-only VecBytes methods work on the const references
+    __uint128_t offset = 0, numbytes = 0, v = 0;
+    std::string err;
+    if (B_ref.as_hex_string().rfind("4449444c", 0) != 0 ||
+        B_ref.parse_uleb128(offset, v, numbytes, err) || v != 'D')
+      IC_API::trap(std::string(__func__) + ": mv1b");
+    B_ref.trap_if_vec_does_not_start_with_DIDL();
+
+    // vec_uint8_t() of a temporary moves the bytes out
+    std::vector<uint8_t> raw = CandidSerialize(A).get_B().vec_uint8_t();
+    if (raw != B_ref.vec_uint8_t())
+      IC_API::trap(std::string(__func__) + ": mv1c");
+
     // get_M of a temporary moves; of an object, it is a reference
     CandidTypeText t{std::string("hello")};
     const VecBytes &M_ref = t.get_M();

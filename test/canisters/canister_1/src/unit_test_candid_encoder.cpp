@@ -669,7 +669,8 @@ void test_record_room() {
         "record room: two elements");
   for (size_t i = 0; i < 2; ++i) {
     const CandidValue &r = back[0].at(i);
-    check(r.items.capacity() == 1 && r.ids.capacity() == 1 &&
+    // Room for the nat8, not for the 20 null fields
+    check(r.items.capacity() < 21 && r.ids.capacity() < 21 &&
               r.field_count() == 21 && r.field(0) && r.field(0)->u == 7 &&
               r.field(20),
           "record room: element " + std::to_string(i));

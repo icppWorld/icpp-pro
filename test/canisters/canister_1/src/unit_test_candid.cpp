@@ -1571,17 +1571,19 @@ int unit_test_candid() {
     CandidTypeVariant b("b", CandidTypeNat64{uint64_t(5)});
     b.append("a", CandidTypeNat64{uint64_t(1)});
     b.append("c", CandidTypeText{std::string("x")});
+    // The index of "b" among the ids of a, b and c, sorted
     VecBytes expected_M;
     const auto ids = a.get_field_ids();
-    const auto names = a.get_field_names();
-    size_t index_b = 0;
-    while (index_b < names.size() && names[index_b] != "b")
-      ++index_b;
+    std::vector<uint32_t> hashes{a.idl_hash("a"), a.idl_hash("b"),
+                                 a.idl_hash("c")};
+    std::sort(hashes.begin(), hashes.end());
+    const size_t index_b =
+        size_t(std::find(hashes.begin(), hashes.end(), a.idl_hash("b")) -
+               hashes.begin());
     expected_M.append_uleb128(__uint128_t(index_b));
     expected_M.append_int_fixed_width(uint64_t(5));
-    if (ids.size() != 3 || !std::is_sorted(ids.begin(), ids.end()) ||
-        ids != b.get_field_ids() || !(a.get_M() == expected_M) ||
-        !(b.get_M() == expected_M) ||
+    if (ids != hashes || ids != b.get_field_ids() ||
+        !(a.get_M() == expected_M) || !(b.get_M() == expected_M) ||
         !(CandidSerialize(a).get_B() == CandidSerialize(b).get_B()))
       IC_API::trap(std::string(__func__) + ": vr1");
 
@@ -1601,8 +1603,15 @@ int unit_test_candid() {
     r.append("b", CandidTypeNat64{&vb});
     CandidArgs A_r;
     A_r.append(r);
+    const size_t before = A_r.m_args_ptrs[0]->get_M().size(); // no label yet
     CandidDeserialize::decode(CandidSerialize(a).get_B(), A_r);
     if (label != "b" || vb != 5) IC_API::trap(std::string(__func__) + ": vr3");
+
+    // After decoding, the value is encoded again, with the decoded label
+    const VecBytes &after = A_r.m_args_ptrs[0]->get_M();
+    if (before != 0 || after.size() == 0 ||
+        after.vec_uint8_t()[0] != uint8_t(index_b))
+      IC_API::trap(std::string(__func__) + ": vr4");
   }
 
   { // Verify the VecBytes static utils

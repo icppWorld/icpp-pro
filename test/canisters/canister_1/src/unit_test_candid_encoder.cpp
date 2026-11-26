@@ -633,6 +633,49 @@ __attribute__((noinline)) void test_candid_type_value() {
   }
 }
 
+// A record's decoded value has room only for the fields that take bytes: the
+// fields that are null on the wire go in the shared rest, not in each value
+void test_record_room() {
+  // On the wire: vec record {0: nat8; 1: null; ...; 20: null}
+  CandidTypeGraph wire;
+  std::vector<CandidGraphField> wire_fields, expected_fields;
+  CandidTypeGraph g;
+  std::string element = "record { 0 = 7";
+  for (uint32_t id = 0; id <= 20; ++id) {
+    wire_fields.push_back(
+        {id, prim(id == 0 ? CandidKind::Nat8 : CandidKind::Null)});
+    if (id > 0) element += "; " + std::to_string(id) + " = null";
+  }
+  element += " }";
+  int wire_t = wire.vec(wire.record(wire_fields));
+  // Expected: vec record {0: nat8; 1: opt nat8; ...; 20: opt nat8}
+  for (uint32_t id = 0; id <= 20; ++id)
+    expected_fields.push_back(
+        {id, id == 0 ? prim(CandidKind::Nat8) : g.opt(prim(CandidKind::Nat8))});
+  int expected_t = g.vec(g.record(expected_fields));
+
+  std::vector<CandidValue> values, back;
+  std::string err;
+  check(CandidTextValue::parse("(vec { " + element + "; " + element + " })",
+                               wire, {wire_t}, values, err),
+        "record room: the value parses: " + err);
+  std::vector<uint8_t> out;
+  check(CandidEncoder::encode(wire, {wire_t}, values, out, err),
+        "record room: encodes: " + err);
+  check(
+      CandidDecoder::decode(out.data(), out.size(), g, {expected_t}, back, err),
+      "record room: decodes: " + err);
+  check(back.size() == 1 && back[0].vec_size() == 2,
+        "record room: two elements");
+  for (size_t i = 0; i < 2; ++i) {
+    const CandidValue &r = back[0].at(i);
+    check(r.items.capacity() == 1 && r.ids.capacity() == 1 &&
+              r.field_count() == 21 && r.field(0) && r.field(0)->u == 7 &&
+              r.field(20),
+          "record room: element " + std::to_string(i));
+  }
+}
+
 } // namespace
 
 int unit_test_candid_encoder() {
@@ -641,5 +684,6 @@ int unit_test_candid_encoder() {
   test_tables();
   test_value_checks();
   test_candid_type_value();
+  test_record_room();
   return 0;
 }

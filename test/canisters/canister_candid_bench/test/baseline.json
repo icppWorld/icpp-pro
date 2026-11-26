@@ -9,22 +9,22 @@
     "instructions": 1509901
   },
   "decode mail_send 1 x 1 MB": {
-    "instructions": 13739390
+    "instructions": 13740567
   },
   "decode mail_send 3 x 600 KB": {
-    "instructions": 21302076
+    "instructions": 21303741
   },
   "decode mail_send no attachments": {
-    "instructions": 555448
+    "instructions": 556408
   },
   "decode smtp_request body 1 KB": {
-    "instructions": 739846
+    "instructions": 745981
   },
   "decode smtp_request body 1.9 MB": {
-    "instructions": 15296532
+    "instructions": 15302554
   },
   "decode smtp_request body 100 KB": {
-    "instructions": 1536532
+    "instructions": 1542554
   },
   "decode text 1 KB": {
     "instructions": 446504
@@ -45,13 +45,13 @@
     "instructions": 1509780
   },
   "decode vec record10 x 10": {
-    "instructions": 1173865
+    "instructions": 1186735
   },
   "decode vec record10 x 1000": {
-    "instructions": 59687269
+    "instructions": 60974269
   },
   "decode vec record10 x 10000": {
-    "instructions": 595757763
+    "instructions": 608627763
   },
   "encode blob 1 KB": {
     "instructions": 105514
@@ -63,28 +63,28 @@
     "instructions": 644102
   },
   "encode mail_export_chunk 1.9 MB": {
-    "instructions": 17016353
+    "instructions": 17016344
   },
   "encode mail_get raw 1.9 MB": {
-    "instructions": 21463882
+    "instructions": 21463813
   },
   "encode mail_get raw 100 KB": {
-    "instructions": 1503848
+    "instructions": 1503779
   },
   "encode mail_list 50": {
-    "instructions": 3828171
+    "instructions": 3826065
   },
   "encode mail_list 500": {
-    "instructions": 37072256
+    "instructions": 37051250
   },
   "encode record 10 fields": {
-    "instructions": 154811
+    "instructions": 154781
   },
   "encode record 50 fields": {
-    "instructions": 304432
+    "instructions": 304282
   },
   "encode small reply": {
-    "instructions": 54564
+    "instructions": 55188
   },
   "encode text 1 KB": {
     "instructions": 90983
@@ -105,12 +105,12 @@
     "instructions": 643973
   },
   "encode vec record10 x 10": {
-    "instructions": 611900
+    "instructions": 611600
   },
   "encode vec record10 x 1000": {
-    "instructions": 48618226
+    "instructions": 48588226
   },
   "encode vec record10 x 10000": {
-    "instructions": 488536703
+    "instructions": 488236703
   }
 }

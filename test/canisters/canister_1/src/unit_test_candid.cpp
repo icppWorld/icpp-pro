@@ -1563,6 +1563,48 @@ int unit_test_candid() {
       IC_API::trap(std::string(__func__) + ": rc7");
   }
 
+  { // Verify variants: options kept sorted, the label's default replaced
+    CandidTypeVariant a("b");
+    a.append("c", CandidTypeText{std::string("x")});
+    a.append("a", CandidTypeNat64{uint64_t(1)});
+    a.append("b", CandidTypeNat64{uint64_t(5)}); // replaces the default null
+    CandidTypeVariant b("b", CandidTypeNat64{uint64_t(5)});
+    b.append("a", CandidTypeNat64{uint64_t(1)});
+    b.append("c", CandidTypeText{std::string("x")});
+    VecBytes expected_M;
+    const auto ids = a.get_field_ids();
+    const auto names = a.get_field_names();
+    size_t index_b = 0;
+    while (index_b < names.size() && names[index_b] != "b")
+      ++index_b;
+    expected_M.append_uleb128(__uint128_t(index_b));
+    expected_M.append_int_fixed_width(uint64_t(5));
+    if (ids.size() != 3 || !std::is_sorted(ids.begin(), ids.end()) ||
+        ids != b.get_field_ids() || !(a.get_M() == expected_M) ||
+        !(b.get_M() == expected_M) ||
+        !(CandidSerialize(a).get_B() == CandidSerialize(b).get_B()))
+      IC_API::trap(std::string(__func__) + ": vr1");
+
+    // Before its value is appended, the label's default is null
+    CandidTypeVariant d("b");
+    VecBytes null_M;
+    null_M.append_uleb128(__uint128_t(0));
+    if (!(d.get_M() == null_M)) IC_API::trap(std::string(__func__) + ": vr2");
+
+    // Decoded back: the label and its value
+    std::string label;
+    uint64_t va = 0, vb = 0;
+    std::string vc;
+    CandidTypeVariant r(&label);
+    r.append("c", CandidTypeText{&vc});
+    r.append("a", CandidTypeNat64{&va});
+    r.append("b", CandidTypeNat64{&vb});
+    CandidArgs A_r;
+    A_r.append(r);
+    CandidDeserialize::decode(CandidSerialize(a).get_B(), A_r);
+    if (label != "b" || vb != 5) IC_API::trap(std::string(__func__) + ": vr3");
+  }
+
   { // Verify the VecBytes static utils
     const std::byte b = std::byte(42);
     if (VecBytes::byte_to_hex(b) != "0x2a")

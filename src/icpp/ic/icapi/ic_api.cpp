@@ -105,9 +105,7 @@ IC_API::IC_API(const CanisterBase &canister_entry, const bool &dbug)
 
   if (has_arg_data) {
     // Fill 'm_B_in' with the bytes of msg_arg_data
-    std::vector<uint8_t> bytes =
-        read_size_copy(ic0_msg_arg_data_size, ic0_msg_arg_data_copy);
-    m_B_in.store(bytes.data(), bytes.size());
+    m_B_in.store(read_size_copy(ic0_msg_arg_data_size, ic0_msg_arg_data_copy));
   }
 
   if (has_caller) {
@@ -830,7 +828,7 @@ void IC_API::msg_reply() {
 
   m_B_out.trap_if_vec_does_not_start_with_DIDL();
 
-  ic0_msg_reply_data_append((uintptr_t)(void *)m_B_out.vec().data(),
+  ic0_msg_reply_data_append((uintptr_t)(void *)m_B_out.vec_uint8_t().data(),
                             (uint32_t)m_B_out.size());
   // clear the didl vectors
   m_B_in.clear();

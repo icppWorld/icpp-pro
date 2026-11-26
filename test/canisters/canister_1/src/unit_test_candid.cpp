@@ -1310,6 +1310,73 @@ int unit_test_candid() {
     // }
   }
 
+  { // Verify the VecBytes buffer: appends, vec() after a change, store by move
+    VecBytes B;
+    B.append_didl();
+    B.append_byte(std::byte(1));
+    const uint8_t two[] = {2, 3};
+    B.append_bytes(two, 2);
+    const std::vector<uint8_t> expected{'D', 'I', 'D', 'L', 1, 2, 3};
+    if (B.vec_uint8_t() != expected || B.size() != 7)
+      IC_API::trap(std::string(__func__) + ": vb1");
+    B.trap_if_vec_does_not_start_with_DIDL();
+
+    // vec() is a copy that follows every change
+    if (B.vec().size() != 7 || B.vec()[4] != std::byte(1))
+      IC_API::trap(std::string(__func__) + ": vb2");
+    B.append_byte(std::byte(4));
+    if (B.vec().size() != 8 || B.vec()[7] != std::byte(4))
+      IC_API::trap(std::string(__func__) + ": vb3");
+
+    // Appending to itself doubles the bytes
+    VecBytes C;
+    C.append_bytes(two, 2);
+    C.append(C);
+    if (C.vec_uint8_t() != std::vector<uint8_t>{2, 3, 2, 3})
+      IC_API::trap(std::string(__func__) + ": vb4");
+
+    // So does appending its own bytes, also from a part of them
+    C.append_vec_fixed_width(C.vec_uint8_t());
+    C.append_bytes(C.vec_uint8_t().data() + 1, 2);
+    if (C.vec_uint8_t() != std::vector<uint8_t>{2, 3, 2, 3, 2, 3, 2, 3, 3, 2})
+      IC_API::trap(std::string(__func__) + ": vb4b");
+
+    // store takes over a vector; parse_bytes reads both types
+    VecBytes D;
+    D.store(std::vector<uint8_t>{9, 8, 7});
+    __uint128_t offset = 1, n = 2, numbytes = 0;
+    std::vector<std::byte> out;
+    std::string err;
+    if (D.parse_bytes(offset, out, n, numbytes, err) || out.size() != 2 ||
+        out[0] != std::byte(8) || out[1] != std::byte(7) || offset != 3 ||
+        D.vec().size() != 3 || D.vec()[0] != std::byte(9))
+      IC_API::trap(std::string(__func__) + ": vb5");
+    offset = 2;
+    if (!D.parse_bytes(offset, out, n, numbytes, err))
+      IC_API::trap(std::string(__func__) + ": vb6");
+
+    // A vector of fixed-width values gives the bytes of value by value
+    const std::vector<uint16_t> u16{1, 0x0203, 0xffff};
+    const std::vector<int64_t> i64{-1, 42};
+    const std::vector<double> f64{1.5, -0.25};
+    VecBytes bulk, one_by_one;
+    bulk.append_vec_fixed_width(u16);
+    bulk.append_vec_fixed_width(i64);
+    bulk.append_vec_fixed_width(f64);
+    for (uint16_t v : u16)
+      one_by_one.append_int_fixed_width(v);
+    for (int64_t v : i64)
+      one_by_one.append_int_fixed_width(v);
+    for (double v : f64)
+      one_by_one.append_float_ieee754(v);
+    if (!(bulk == one_by_one) || bulk.size() != 6 + 16 + 16)
+      IC_API::trap(std::string(__func__) + ": vb7");
+
+    D.clear();
+    if (D.size() != 0 || !D.vec().empty())
+      IC_API::trap(std::string(__func__) + ": vb8");
+  }
+
   { // Verify the VecBytes static utils
     const std::byte b = std::byte(42);
     if (VecBytes::byte_to_hex(b) != "0x2a")

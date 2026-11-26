@@ -61,11 +61,7 @@ std::vector<uint8_t> canister_self_bytes() {
 std::vector<uint8_t> empty_args() { return {'D', 'I', 'D', 'L', 0, 0}; }
 
 std::vector<uint8_t> serialize(const CandidArgs &args) {
-  VecBytes B = CandidSerialize(args).get_B();
-  std::vector<uint8_t> bytes;
-  for (std::byte b : B.vec())
-    bytes.push_back(static_cast<uint8_t>(b));
-  return bytes;
+  return CandidSerialize(args).get_B().vec_uint8_t();
 }
 
 void check_call_entry(const char *api) {

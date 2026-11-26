@@ -25,6 +25,7 @@ The results of the last run are in build/bench-results.json.
 
 import json
 import os
+import platform
 import re
 import subprocess
 import warnings
@@ -371,6 +372,11 @@ def load_baseline() -> Dict[str, Dict[str, int]]:
 
 
 UPDATE = os.environ.get("ICPP_CANDID_BENCH_UPDATE", "")
+
+# The network launcher for macOS on ARM charges less for some system calls than
+# the one for Linux and Intel macOS, which record the same counts. There, the
+# cases still check what they decode and encode, but not their instructions.
+COUNTS_DIFFER = platform.system() == "Darwin" and platform.machine() == "arm64"
 BASELINE = load_baseline()
 ALL_CASES = {f"decode {c[0]}" for c in DECODE_CASES} | {
     f"encode {c[0]}" for c in ENCODE_CASES
@@ -391,6 +397,7 @@ def write_baseline() -> None:
 
 def check_baseline(case: str, result: Dict[str, int]) -> None:
     RESULTS[case] = result
+    assert not (COUNTS_DIFFER and UPDATE), "Record the baseline on Linux or Intel macOS"
     pct = f"{TOLERANCE:.0%}"
     used = result["instructions"]
     expected = BASELINE.get(case, {}).get("instructions")
@@ -398,6 +405,8 @@ def check_baseline(case: str, result: Dict[str, int]) -> None:
         assert (
             UPDATE
         ), f"No baseline for '{case}': record it with ICPP_CANDID_BENCH_UPDATE=1"
+    elif COUNTS_DIFFER:
+        return
     else:
         assert used <= expected * (1 + TOLERANCE) or UPDATE == "force", (
             f"'{case}' takes {used:,} instructions, more than {pct} above its"

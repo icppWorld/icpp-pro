@@ -43,7 +43,12 @@ The results of the last run are in `build/bench-results.json`.
 After a change that makes a case faster, record the new baseline, as the test
 identity the canister was deployed with, and commit it with the change:
 
+Record it on a freshly installed canister, as CI runs it: on a new network, or
+after `icp deploy --mode reinstall`. After an upgrade the small cases count
+about 80,000 instructions less, and the cases of 100 KB about as many more.
+
 ```bash
+icp deploy --environment local --yes --identity icpp-pro-testing --mode reinstall
 ICPP_CANDID_BENCH_UPDATE=1 pytest --network=local --identity icpp-pro-testing
 ```
 
@@ -54,8 +59,12 @@ The replica decides what a system call costs, so `icp.yaml` pins the network
 launcher. Bump its `version` on purpose, and record the baseline again in the
 same change.
 
+The launcher for macOS on ARM charges less for some system calls than the ones
+for Linux and Intel macOS, which give the same counts. On macOS ARM the cases
+check only what they decode and encode, and the baseline is not recorded there.
+
 Natively, `ic0.performance_counter` counts nanoseconds, so `native/main.cpp`
 checks only that each method replies the right size.
 
-The baseline was recorded with icpp-pro 7.1.0 (wasi-sdk 25), on
+The baseline was recorded with icpp-pro 7.2.0 in development (wasi-sdk 25), on
 icp-cli-network-launcher v16.1.0-2026-11-20-03-19.

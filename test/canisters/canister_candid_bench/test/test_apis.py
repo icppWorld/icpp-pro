@@ -379,11 +379,14 @@ ALL_CASES = {f"decode {c[0]}" for c in DECODE_CASES} | {
 
 def write_baseline() -> None:
     """Writes the baseline of every case that still exists, after each case,
-    so that an interrupted update keeps what it measured"""
+    so that an interrupted update keeps what it measured. Through a temporary
+    file, so that an interruption leaves the old file or the new one whole"""
     kept = {case: v for case, v in BASELINE.items() if case in ALL_CASES}
-    BASELINE_PATH.write_text(
+    tmp = BASELINE_PATH.with_suffix(".json.tmp")
+    tmp.write_text(
         json.dumps(dict(sorted(kept.items())), indent=2) + "\n", encoding="utf-8"
     )
+    os.replace(tmp, BASELINE_PATH)
 
 
 def check_baseline(case: str, result: Dict[str, int]) -> None:

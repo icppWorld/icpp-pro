@@ -5,6 +5,7 @@
 
 #include "unit_test_candid_encoder.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -148,8 +149,10 @@ int make_list(CandidTypeGraph &g) {
 
 // A recursive record with a field in its rest, at every level:
 // type L = record { head : nat8; tail : opt L; z : null }
-// Each level is decoded before the one around it stores the rest it shares.
-void test_recursive_rest() {
+// Each level is decoded before the one around it, so the outer levels start
+// before any rest of their type is stored, and make their own: every level
+// must still get its rest.
+__attribute__((noinline)) void test_recursive_rest() {
   CandidTypeGraph g;
   int l = g.reserve();
   CandidGraphNode n;

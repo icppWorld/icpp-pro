@@ -280,9 +280,9 @@ void decode_smtp_request() {
     const std::vector<int> args{smtp_request_type(graph)};
     std::vector<CandidValue> values;
     std::string err;
-    if (!CandidDecoder::decode(
-            reinterpret_cast<const uint8_t *>(bytes.vec().data()),
-            bytes.vec().size(), graph, args, values, err)) {
+    if (!CandidDecoder::decode(bytes.vec_uint8_t().data(),
+                               bytes.vec_uint8_t().size(), graph, args, values,
+                               err)) {
       IC_API::trap(err);
     }
     if (const CandidValue *message = opt_value(values[0], "message")) {

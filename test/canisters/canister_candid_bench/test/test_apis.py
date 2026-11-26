@@ -397,9 +397,7 @@ def write_baseline() -> None:
 
 def check_baseline(case: str, result: Dict[str, int]) -> None:
     RESULTS[case] = result
-    if COUNTS_DIFFER:
-        assert not UPDATE, "Record the baseline on Linux or Intel macOS"
-        return
+    assert not (COUNTS_DIFFER and UPDATE), "Record the baseline on Linux or Intel macOS"
     pct = f"{TOLERANCE:.0%}"
     used = result["instructions"]
     expected = BASELINE.get(case, {}).get("instructions")
@@ -407,6 +405,8 @@ def check_baseline(case: str, result: Dict[str, int]) -> None:
         assert (
             UPDATE
         ), f"No baseline for '{case}': record it with ICPP_CANDID_BENCH_UPDATE=1"
+    elif COUNTS_DIFFER:
+        return
     else:
         assert used <= expected * (1 + TOLERANCE) or UPDATE == "force", (
             f"'{case}' takes {used:,} instructions, more than {pct} above its"

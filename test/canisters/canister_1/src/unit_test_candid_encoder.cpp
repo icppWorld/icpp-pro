@@ -721,6 +721,30 @@ void test_record_room() {
               r.field(2) && r.field(2)->u == 8 && r.field(20),
           "record room: element " + std::to_string(i));
   }
+
+  // A record wider than the room reserved up front decodes all its fields
+  CandidTypeGraph wide;
+  std::vector<CandidGraphField> wide_fields;
+  std::string wide_text = "(record {";
+  for (uint32_t id = 0; id < 100; ++id) {
+    wide_fields.push_back({id, prim(CandidKind::Nat8)});
+    wide_text +=
+        (id ? "; " : " ") + std::to_string(id) + " = " + std::to_string(id);
+  }
+  wide_text += " })";
+  int wide_t = wide.record(wide_fields);
+  std::vector<CandidValue> wide_values, wide_back;
+  check(CandidTextValue::parse(wide_text, wide, {wide_t}, wide_values, err),
+        "wide record: the value parses: " + err);
+  out.clear();
+  check(CandidEncoder::encode(wide, {wide_t}, wide_values, out, err),
+        "wide record: encodes: " + err);
+  check(CandidDecoder::decode(out.data(), out.size(), wide, {wide_t}, wide_back,
+                              err),
+        "wide record: decodes: " + err);
+  check(wide_back == wide_values && wide_back[0].field_count() == 100 &&
+            wide_back[0].field(99) && wide_back[0].field(99)->u == 99,
+        "wide record: all 100 fields");
 }
 
 } // namespace

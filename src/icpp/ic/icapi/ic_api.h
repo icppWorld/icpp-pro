@@ -345,8 +345,8 @@ public:
   void
   to_wire(const IC_HttpOutcallResponse &response); // docs end: http_transform
 
-  VecBytes get_B_in() { return m_B_in; }
-  VecBytes get_B_out() { return m_B_out; }
+  const VecBytes &get_B_in() const { return m_B_in; }
+  const VecBytes &get_B_out() const { return m_B_out; }
 
   // Orthogonal Persistence
   template <typename T>

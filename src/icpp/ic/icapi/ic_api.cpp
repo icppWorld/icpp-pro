@@ -17,6 +17,7 @@
 #include <cstring>
 #include <limits.h>
 #include <string>
+#include <utility>
 
 #include "current_entry.h"
 #include "entry_contexts.h"
@@ -570,13 +571,14 @@ void IC_API::from_wire(CandidArgs A) {
   }
   m_called_from_wire = true;
 
-  CandidDeserialize(m_B_in, A);
+  // Lends m_B_in to the decoder without a copy, and takes it back
+  m_B_in = CandidDeserialize(std::move(m_B_in), std::move(A)).get_B();
 }
 // DeSerialize the byte stream received over the wire
 void IC_API::from_wire(CandidType c) {
   CandidArgs A;
-  A.append(c);
-  from_wire(A);
+  A.append(std::move(c));
+  from_wire(std::move(A));
 }
 // DeSerialize the byte stream received over the wire, when no arguments are expected
 void IC_API::from_wire() {

@@ -1,116 +1,116 @@
 {
   "decode blob 1 KB": {
-    "instructions": 452025
+    "instructions": 442481
   },
   "decode blob 1.9 MB": {
-    "instructions": 25347814
+    "instructions": 21118762
   },
   "decode blob 100 KB": {
-    "instructions": 1787814
+    "instructions": 1518762
   },
   "decode mail_send 1 x 1 MB": {
-    "instructions": 16096435
+    "instructions": 13824372
   },
   "decode mail_send 3 x 600 KB": {
-    "instructions": 25557758
+    "instructions": 21417834
   },
   "decode mail_send no attachments": {
-    "instructions": 685134
+    "instructions": 625283
   },
   "decode smtp_request body 1 KB": {
-    "instructions": 861489
+    "instructions": 771702
   },
   "decode smtp_request body 1.9 MB": {
-    "instructions": 19557541
+    "instructions": 15330740
   },
   "decode smtp_request body 100 KB": {
-    "instructions": 1837541
+    "instructions": 1571257
   },
   "decode text 1 KB": {
-    "instructions": 464116
+    "instructions": 454544
   },
   "decode text 1.9 MB": {
-    "instructions": 61440915
+    "instructions": 57211835
   },
   "decode text 100 KB": {
-    "instructions": 3680915
+    "instructions": 3411835
   },
   "decode vec nat64 1 KB": {
-    "instructions": 451957
+    "instructions": 442301
   },
   "decode vec nat64 1.9 MB": {
-    "instructions": 25347805
+    "instructions": 21118640
   },
   "decode vec nat64 100 KB": {
-    "instructions": 1787746
+    "instructions": 1518582
   },
   "decode vec record10 x 10": {
-    "instructions": 2615497
+    "instructions": 1987827
   },
   "decode vec record10 x 1000": {
-    "instructions": 191625748
+    "instructions": 135089924
   },
   "decode vec record10 x 10000": {
-    "instructions": 1912842749
+    "instructions": 1344587346
   },
   "encode blob 1 KB": {
-    "instructions": 119927
+    "instructions": 108168
   },
   "encode blob 1.9 MB": {
-    "instructions": 30632530
+    "instructions": 12686756
   },
   "encode blob 100 KB": {
-    "instructions": 1592530
+    "instructions": 646756
   },
   "encode mail_export_chunk 1.9 MB": {
-    "instructions": 61299601
+    "instructions": 20830446
   },
   "encode mail_get raw 1.9 MB": {
-    "instructions": 64702179
+    "instructions": 23545490
   },
   "encode mail_get raw 100 KB": {
-    "instructions": 4098573
+    "instructions": 1784454
   },
   "encode mail_list 50": {
-    "instructions": 16753306
+    "instructions": 10217696
   },
   "encode mail_list 500": {
-    "instructions": 163426591
+    "instructions": 99782928
   },
   "encode record 10 fields": {
-    "instructions": 271299
+    "instructions": 212327
   },
   "encode record 50 fields": {
-    "instructions": 2555363
+    "instructions": 1861280
   },
   "encode small reply": {
-    "instructions": 101265
+    "instructions": 73759
   },
   "encode text 1 KB": {
-    "instructions": 104771
+    "instructions": 92817
   },
   "encode text 1.9 MB": {
-    "instructions": 30617356
+    "instructions": 12671414
   },
   "encode text 100 KB": {
-    "instructions": 1577356
+    "instructions": 631414
   },
   "encode vec nat64 1 KB": {
-    "instructions": 119853
+    "instructions": 108059
   },
   "encode vec nat64 1.9 MB": {
-    "instructions": 30632513
+    "instructions": 12686700
   },
   "encode vec nat64 100 KB": {
-    "instructions": 1592469
+    "instructions": 646660
   },
   "encode vec record10 x 10": {
-    "instructions": 2192400
+    "instructions": 1395732
   },
   "encode vec record10 x 1000": {
-    "instructions": 193314760
+    "instructions": 123005412
   },
   "encode vec record10 x 10000": {
-    "instructions": 1978027177
+    "instructions": 1235614146
   }
 }

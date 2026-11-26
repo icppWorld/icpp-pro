@@ -275,7 +275,7 @@ void decode_smtp_request() {
   IC_API ic_api(CanisterQuery{std::string(__func__)}, false);
   SmtpMessage out;
   {
-    const VecBytes bytes = ic_api.get_B_in();
+    const VecBytes &bytes = ic_api.get_B_in();
     CandidTypeGraph graph;
     const std::vector<int> args{smtp_request_type(graph)};
     std::vector<CandidValue> values;

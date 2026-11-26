@@ -1335,6 +1335,12 @@ int unit_test_candid() {
     if (C.vec_uint8_t() != std::vector<uint8_t>{2, 3, 2, 3})
       IC_API::trap(std::string(__func__) + ": vb4");
 
+    // So does appending its own bytes, also from a part of them
+    C.append_vec_fixed_width(C.vec_uint8_t());
+    C.append_bytes(C.vec_uint8_t().data() + 1, 2);
+    if (C.vec_uint8_t() != std::vector<uint8_t>{2, 3, 2, 3, 2, 3, 2, 3, 3, 2})
+      IC_API::trap(std::string(__func__) + ": vb4b");
+
     // store takes over a vector; parse_bytes reads both types
     VecBytes D;
     D.store(std::vector<uint8_t>{9, 8, 7});

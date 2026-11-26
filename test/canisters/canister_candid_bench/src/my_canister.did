@@ -1,0 +1,89 @@
+// Candid performance benchmarks: instructions per decode and per encode.
+//
+// A decode method counts the instructions of the whole message up to the end
+// of decoding its argument, so the copy of the argument into IC_API is part
+// of it. An encode method builds its value from `n` and counts only the
+// building of the Candid types and the serialization, as a reply does.
+//
+// Every method replies with a Result:
+// - instructions: the count;
+// - size:         the number of bytes decoded (payload bytes) or encoded
+//                 (the whole message);
+// - fnv1a:        the 64-bit FNV-1a hash of those bytes, so a test can check
+//                 that decoding read the right values and that the encoded
+//                 bytes did not change.
+
+type Result = record { instructions : nat64; size : nat64; fnv1a : nat64 };
+
+// The email-canister's types (its src/email-canister.did)
+type Header = record { name : text; value : text };
+type Message = record { headers : vec Header; body : blob };
+type Address = record { user : text; domain : text };
+type Envelope = record { from : Address; to : vec Address };
+type SmtpRequest = record {
+    message : opt Message;
+    envelope : opt Envelope;
+    gateway_flags : opt vec text;
+    message_id : opt text;
+};
+type Attachment = record { filename : text; content : blob };
+type SendRequest = record {
+    client_id : text;
+    to : vec text;
+    cc : vec text;
+    bcc : vec text;
+    subject : text;
+    html_body : text;
+    attachments : vec Attachment;
+};
+
+// The values the encode methods build, so that test_apis.py can have didc
+// encode the same values and compare the bytes
+type Summary = record {
+    uid : nat64;
+    state : nat64;
+    flags : nat64;
+    modseq : nat64;
+    received_ns : nat64;
+    sent_at : nat64;
+    envelope_from : text;
+    subject : text;
+    sender : text;
+    attachments : nat64;
+    preview : text;
+    raw_bytes : nat64;
+    folder : nat64;
+    sender_address : text;
+};
+type Page = record { items : vec Summary; cursor : opt nat64 };
+type SeenBy = record { "principal" : principal; name : opt text; at_ns : nat64 };
+type FullMessage = record { summary : Summary; raw : blob; seen_by : vec SeenBy };
+type ExportChunk = record { data : blob; size : nat64; started_ns : nat64 };
+type SmtpError = variant { Err : record { code : nat64; message : text } };
+
+// Generic cases
+type Record10 = record {
+    f0 : nat64; f1 : nat64; f2 : nat64; f3 : nat64; f4 : nat64;
+    f5 : text; f6 : text; f7 : text; f8 : text; f9 : text;
+};
+
+service : {
+    // Decoding, with the argument as sent
+    "decode_smtp_request" : (SmtpRequest) -> (Result) query;
+    "decode_mail_send" : (SendRequest) -> (Result) query;
+    "decode_blob" : (blob) -> (Result) query;
+    "decode_text" : (text) -> (Result) query;
+    "decode_vec_nat64" : (vec nat64) -> (Result) query;
+    "decode_vec_record10" : (vec Record10) -> (Result) query;
+
+    // Encoding a value built from n
+    "encode_mail_list" : (nat64) -> (Result) query;
+    "encode_mail_get" : (nat64) -> (Result) query;
+    "encode_mail_export_chunk" : (nat64) -> (Result) query;
+    "encode_blob" : (nat64) -> (Result) query;
+    "encode_text" : (nat64) -> (Result) query;
+    "encode_vec_nat64" : (nat64) -> (Result) query;
+    "encode_vec_record10" : (nat64) -> (Result) query;
+    "encode_record" : (nat64) -> (Result) query;
+    "encode_small" : (nat64) -> (Result) query;
+};

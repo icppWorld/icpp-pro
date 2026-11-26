@@ -5,6 +5,7 @@
 
 #include "unit_test_candid_encoder.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -146,7 +147,51 @@ int make_list(CandidTypeGraph &g) {
   return list;
 }
 
+// A recursive record with a field in its rest, at every level:
+// type L = record { head : nat8; tail : opt L; z : null }
+// Each level is decoded before the one around it, so the outer levels start
+// before any rest of their type is stored, and make their own: every level
+// must still get its rest.
+__attribute__((noinline)) void test_recursive_rest() {
+  CandidTypeGraph g;
+  int l = g.reserve();
+  CandidGraphNode n;
+  n.kind = CandidKind::Record;
+  n.fields = {{h("head"), prim(CandidKind::Nat8)},
+              {h("tail"), g.opt(l)},
+              {h("z"), prim(CandidKind::Null)}};
+  std::sort(n.fields.begin(), n.fields.end(),
+            [](const CandidGraphField &a, const CandidGraphField &b) {
+              return a.id < b.id;
+            });
+  g.define(l, n);
+  std::vector<CandidValue> values, back;
+  std::string err;
+  check(CandidTextValue::parse(
+            "(record {head=1; z=null; tail=opt record {head=2; z=null; "
+            "tail=opt record {head=3; z=null; tail=null}}})",
+            g, {l}, values, err),
+        "recursive rest: the value parses: " + err);
+  std::vector<uint8_t> out;
+  check(CandidEncoder::encode(g, {l}, values, out, err),
+        "recursive rest: encodes: " + err);
+  check(CandidDecoder::decode(out.data(), out.size(), g, {l}, back, err),
+        "recursive rest: decodes: " + err);
+  check(back == values, "recursive rest: round trip");
+  const CandidValue *level = back.empty() ? nullptr : &back[0];
+  for (uint64_t head = 1; head <= 3; ++head) {
+    check(level && level->rest && level->field(h("z")) &&
+              level->field(h("head")) && level->field(h("head"))->u == head,
+          "recursive rest: level " + std::to_string(head));
+    if (!level) break;
+    const CandidValue *tail = level->field(h("tail"));
+    level = tail && !tail->items.empty() ? &tail->items[0] : nullptr;
+  }
+  check(!level, "recursive rest: three levels");
+}
+
 __attribute__((noinline)) void test_recursive() {
+  test_recursive_rest();
   {
     CandidTypeGraph g;
     int list = make_list(g);
@@ -633,6 +678,75 @@ __attribute__((noinline)) void test_candid_type_value() {
   }
 }
 
+// A record's decoded value has room only for the fields that take bytes: the
+// fields that are null on the wire go in the shared rest, not in each value
+void test_record_room() {
+  // On the wire: vec record {0, 1, 2: nat8; 3: null; ...; 20: null}
+  CandidTypeGraph wire;
+  std::vector<CandidGraphField> wire_fields, expected_fields;
+  CandidTypeGraph g;
+  std::string element = "record { 0 = 7";
+  for (uint32_t id = 0; id <= 20; ++id) {
+    wire_fields.push_back(
+        {id, prim(id < 3 ? CandidKind::Nat8 : CandidKind::Null)});
+    if (id > 0)
+      element += "; " + std::to_string(id) + (id < 3 ? " = 8" : " = null");
+  }
+  element += " }";
+  int wire_t = wire.vec(wire.record(wire_fields));
+  // Expected: vec record {0, 1, 2: nat8; 3: opt nat8; ...; 20: opt nat8}
+  for (uint32_t id = 0; id <= 20; ++id)
+    expected_fields.push_back(
+        {id, id < 3 ? prim(CandidKind::Nat8) : g.opt(prim(CandidKind::Nat8))});
+  int expected_t = g.vec(g.record(expected_fields));
+
+  std::vector<CandidValue> values, back;
+  std::string err;
+  check(CandidTextValue::parse("(vec { " + element + "; " + element + " })",
+                               wire, {wire_t}, values, err),
+        "record room: the value parses: " + err);
+  std::vector<uint8_t> out;
+  check(CandidEncoder::encode(wire, {wire_t}, values, out, err),
+        "record room: encodes: " + err);
+  check(
+      CandidDecoder::decode(out.data(), out.size(), g, {expected_t}, back, err),
+      "record room: decodes: " + err);
+  check(back.size() == 1 && back[0].vec_size() == 2,
+        "record room: two elements");
+  for (size_t i = 0; i < 2; ++i) {
+    const CandidValue &r = back[0].at(i);
+    // Room for the 3 nat8, not for the 18 null fields
+    check(r.items.capacity() == 3 && r.ids.capacity() == 3 &&
+              r.field_count() == 21 && r.field(0) && r.field(0)->u == 7 &&
+              r.field(2) && r.field(2)->u == 8 && r.field(20),
+          "record room: element " + std::to_string(i));
+  }
+
+  // A record wider than the room reserved up front decodes all its fields
+  CandidTypeGraph wide;
+  std::vector<CandidGraphField> wide_fields;
+  std::string wide_text = "(record {";
+  for (uint32_t id = 0; id < 100; ++id) {
+    wide_fields.push_back({id, prim(CandidKind::Nat8)});
+    wide_text +=
+        (id ? "; " : " ") + std::to_string(id) + " = " + std::to_string(id);
+  }
+  wide_text += " })";
+  int wide_t = wide.record(wide_fields);
+  std::vector<CandidValue> wide_values, wide_back;
+  check(CandidTextValue::parse(wide_text, wide, {wide_t}, wide_values, err),
+        "wide record: the value parses: " + err);
+  out.clear();
+  check(CandidEncoder::encode(wide, {wide_t}, wide_values, out, err),
+        "wide record: encodes: " + err);
+  check(CandidDecoder::decode(out.data(), out.size(), wide, {wide_t}, wide_back,
+                              err),
+        "wide record: decodes: " + err);
+  check(wide_back == wide_values && wide_back[0].field_count() == 100 &&
+            wide_back[0].field(99) && wide_back[0].field(99)->u == 99,
+        "wide record: all 100 fields");
+}
+
 } // namespace
 
 int unit_test_candid_encoder() {
@@ -641,5 +755,6 @@ int unit_test_candid_encoder() {
   test_tables();
   test_value_checks();
   test_candid_type_value();
+  test_record_room();
   return 0;
 }

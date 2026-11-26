@@ -18,6 +18,7 @@
 #include "candid_serialize_type_table_registry.h"
 #include "candid_subtype.h"
 #include "candid_text_value.h"
+#include "candid_opcode.h"
 #include "ic_api.h"
 #include "test_vec_of.h"
 
@@ -1448,6 +1449,177 @@ int unit_test_candid() {
     std::vector<uint8_t> taken = std::move(C).vec_uint8_t();
     if (taken != B_ref.vec_uint8_t() || C.size() != 0 || !C.vec().empty())
       IC_API::trap(std::string(__func__) + ": mv6");
+  }
+
+  { // Verify records: fields kept sorted, the value encoded when it is read
+    auto in_order = []() {
+      CandidTypeRecord r;
+      for (uint32_t j = 0; j < 10; ++j)
+        r.append(j, CandidTypeNat64{uint64_t(j * 7)});
+      return r;
+    };
+    CandidTypeRecord reversed;
+    for (uint32_t j = 10; j-- > 0;)
+      reversed.append(j, CandidTypeNat64{uint64_t(j * 7)});
+    CandidTypeRecord ordered = in_order();
+    if (!(ordered.get_M() == reversed.get_M()) ||
+        ordered.get_field_ids() != reversed.get_field_ids() ||
+        !(CandidSerialize(ordered).get_B() ==
+          CandidSerialize(reversed).get_B()))
+      IC_API::trap(std::string(__func__) + ": rc1");
+
+    // A field appended after the value was read is in the next read
+    CandidTypeRecord grown;
+    for (uint32_t j = 0; j < 9; ++j)
+      grown.append(j, CandidTypeNat64{uint64_t(j * 7)});
+    const size_t size_before = grown.get_M().size();
+    grown.append(uint32_t(9), CandidTypeNat64{uint64_t(63)});
+    if (size_before != 72 || !(grown.get_M() == ordered.get_M()))
+      IC_API::trap(std::string(__func__) + ": rc2");
+
+    // A copy made before the value was read encodes it the same
+    CandidTypeRecord fresh = in_order();
+    CandidTypeRecord copy = fresh;
+    if (!(copy.get_M() == ordered.get_M()) ||
+        !(CandidTypeRecord(in_order()).get_M() == ordered.get_M()))
+      IC_API::trap(std::string(__func__) + ": rc3");
+
+    // get_I() is the type's opcode, made when it is read
+    if (CandidTypeNat64{uint64_t(1)}.get_I().vec_uint8_t() !=
+            std::vector<uint8_t>{0x78} ||
+        ordered.get_I().vec_uint8_t() != std::vector<uint8_t>{0x6c})
+      IC_API::trap(std::string(__func__) + ": rc4");
+
+    // The (content) datatypes and opcodes come from the fields, in their order
+    std::vector<uint64_t> nats{1, 2};
+    CandidTypeRecord mixed;
+    mixed.append("a", CandidTypeNat64{uint64_t(1)});
+    mixed.append("b", CandidTypeText{std::string("x")});
+    mixed.append("c", CandidTypeVecNat64{nats});
+    const auto ptrs = mixed.get_field_ptrs();
+    const auto datatypes = mixed.get_field_datatypes();
+    const auto opcodes = mixed.get_field_opcodes();
+    const auto content_opcodes = mixed.get_field_content_opcodes();
+    const auto content_datatypes = mixed.get_field_content_datatypes();
+    // Expected, independent of the record: the fields in the order of their
+    // hashed ids, with the opcode each was appended with
+    CandidOpcode op;
+    std::vector<std::pair<uint32_t, int>> expected_fields{
+        {mixed.idl_hash("a"), op.Nat64},
+        {mixed.idl_hash("b"), op.Text},
+        {mixed.idl_hash("c"), op.Vec}};
+    std::sort(expected_fields.begin(), expected_fields.end());
+    std::vector<uint32_t> expected_ids;
+    std::vector<int> expected_datatypes;
+    for (const auto &e : expected_fields) {
+      expected_ids.push_back(e.first);
+      expected_datatypes.push_back(e.second);
+    }
+    bool fields_ok =
+        ptrs.size() == 3 && mixed.get_field_ids() == expected_ids &&
+        datatypes == expected_datatypes && opcodes == datatypes &&
+        content_opcodes.size() == 3 && content_datatypes.size() == 3;
+    for (size_t k = 0; fields_ok && k < ptrs.size(); ++k) {
+      fields_ok = datatypes[k] == ptrs[k]->get_datatype_opcode() &&
+                  content_opcodes[k] == ptrs[k]->get_content_opcode() &&
+                  content_datatypes[k] == ptrs[k]->get_content_datatype();
+      if (expected_datatypes[k] == op.Vec)
+        fields_ok = fields_ok && content_opcodes[k] == op.Nat64;
+    }
+    if (!fields_ok) IC_API::trap(std::string(__func__) + ": rc5");
+
+    // certainly_same_type: only when that is certain without a type graph
+    auto rec = [](const std::string &second, CandidType first) {
+      CandidTypeRecord r;
+      r.append("a", std::move(first));
+      r.append(second, CandidTypeText{std::string("v")});
+      return r;
+    };
+    bool optional_on_wire = false;
+    CandidTypeRecord with_optional;
+    with_optional.append("a", CandidTypeNat64{uint64_t(1)});
+    with_optional.append_optional("b", CandidTypeText{std::string("v")},
+                                  &optional_on_wire);
+    if (!CandidTypeNat64{uint64_t(1)}.certainly_same_type(
+            CandidTypeNat64{uint64_t(2)}) ||
+        CandidTypeNat64{uint64_t(1)}.certainly_same_type(
+            CandidTypeNat32{uint32_t(1)}) ||
+        !rec("b", CandidTypeNat64{uint64_t(1)})
+             .certainly_same_type(rec("b", CandidTypeNat64{uint64_t(9)})) ||
+        rec("b", CandidTypeNat64{uint64_t(1)})
+            .certainly_same_type(rec("c", CandidTypeNat64{uint64_t(1)})) ||
+        rec("b", CandidTypeNat64{uint64_t(1)})
+            .certainly_same_type(rec("b", CandidTypeNat32{uint32_t(1)})) ||
+        rec("b", CandidTypeNat64{uint64_t(1)})
+            .certainly_same_type(with_optional))
+      IC_API::trap(std::string(__func__) + ": rc6");
+
+    // A vec of records, its fields appended in any order, decodes back
+    std::vector<CandidType> elements;
+    elements.push_back(in_order());
+    elements.push_back(reversed);
+    VecBytes B = CandidSerialize(CandidTypeVecOf(in_order(), elements)).get_B();
+    std::vector<std::vector<uint64_t>> back;
+    std::vector<uint64_t> row(10);
+    CandidArgs A_back;
+    A_back.append(CandidTypeVecOf(
+        [&]() -> CandidType {
+          CandidTypeRecord r;
+          for (uint32_t j = 0; j < 10; ++j)
+            r.append(j, CandidTypeNat64{&row[j]});
+          return r;
+        },
+        [&]() { back.push_back(row); }));
+    CandidDeserialize::decode(B, A_back);
+    std::vector<uint64_t> expected;
+    for (uint64_t j = 0; j < 10; ++j)
+      expected.push_back(j * 7);
+    if (back.size() != 2 || back[0] != expected || back[1] != expected)
+      IC_API::trap(std::string(__func__) + ": rc7");
+  }
+
+  { // Verify variants: options kept sorted, the label's default replaced
+    CandidTypeVariant a("b");
+    a.append("c", CandidTypeText{std::string("x")});
+    a.append("a", CandidTypeNat64{uint64_t(1)});
+    a.append("b", CandidTypeNat64{uint64_t(5)}); // replaces the default null
+    CandidTypeVariant b("b", CandidTypeNat64{uint64_t(5)});
+    b.append("a", CandidTypeNat64{uint64_t(1)});
+    b.append("c", CandidTypeText{std::string("x")});
+    // The index of "b" among the ids of a, b and c, sorted
+    VecBytes expected_M;
+    const auto ids = a.get_field_ids();
+    std::vector<uint32_t> hashes{a.idl_hash("a"), a.idl_hash("b"),
+                                 a.idl_hash("c")};
+    std::sort(hashes.begin(), hashes.end());
+    const size_t index_b =
+        size_t(std::find(hashes.begin(), hashes.end(), a.idl_hash("b")) -
+               hashes.begin());
+    expected_M.append_uleb128(__uint128_t(index_b));
+    expected_M.append_int_fixed_width(uint64_t(5));
+    if (ids != hashes || ids != b.get_field_ids() ||
+        !(a.get_M() == expected_M) || !(b.get_M() == expected_M) ||
+        !(CandidSerialize(a).get_B() == CandidSerialize(b).get_B()))
+      IC_API::trap(std::string(__func__) + ": vr1");
+
+    // Before its value is appended, the label's default is null
+    CandidTypeVariant d("b");
+    VecBytes null_M;
+    null_M.append_uleb128(__uint128_t(0));
+    if (!(d.get_M() == null_M)) IC_API::trap(std::string(__func__) + ": vr2");
+
+    // Decoded back: the label and its value
+    std::string label;
+    uint64_t va = 0, vb = 0;
+    std::string vc;
+    CandidTypeVariant r(&label);
+    r.append("c", CandidTypeText{&vc});
+    r.append("a", CandidTypeNat64{&va});
+    r.append("b", CandidTypeNat64{&vb});
+    CandidArgs A_r;
+    A_r.append(r);
+    CandidDeserialize::decode(CandidSerialize(a).get_B(), A_r);
+    if (label != "b" || vb != 5) IC_API::trap(std::string(__func__) + ": vr3");
   }
 
   { // Verify the VecBytes static utils

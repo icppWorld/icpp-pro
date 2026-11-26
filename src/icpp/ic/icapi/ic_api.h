@@ -335,8 +335,8 @@ public:
   // Send things back over the wire in candid format
   // docs start: to_wire
   void to_wire();
-  void to_wire(const CandidType &arg_out);
-  void to_wire(const CandidArgs &args_out);
+  void to_wire(CandidType arg_out);
+  void to_wire(CandidArgs args_out);
   void to_wire(const IC_HttpResponse response); // docs end: to_wire
 
   // A transform query of an HTTPS outcall: its argument, and its result
@@ -345,8 +345,8 @@ public:
   void
   to_wire(const IC_HttpOutcallResponse &response); // docs end: http_transform
 
-  VecBytes get_B_in() { return m_B_in; }
-  VecBytes get_B_out() { return m_B_out; }
+  const VecBytes &get_B_in() const { return m_B_in; }
+  const VecBytes &get_B_out() const { return m_B_out; }
 
   // Orthogonal Persistence
   template <typename T>

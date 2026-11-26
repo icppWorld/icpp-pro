@@ -1377,6 +1377,79 @@ int unit_test_candid() {
       IC_API::trap(std::string(__func__) + ": vb8");
   }
 
+  { // Verify the copy-free paths: values moved in, bytes moved out
+    std::string text(1000, 'x');
+    std::vector<uint8_t> blob(1000, 7);
+    CandidArgs A;
+    A.append(CandidTypeText{std::move(text)});
+    A.append(CandidTypeVecNat8{std::move(blob)});
+
+    // get_B of a CandidSerialize: a reference, or moved out of a temporary
+    CandidSerialize serialized(A);
+    const VecBytes &B_ref = serialized.get_B();
+    VecBytes B_moved = CandidSerialize(A).get_B();
+    if (!(B_ref == B_moved) || B_ref.size() < 2000)
+      IC_API::trap(std::string(__func__) + ": mv1");
+
+    // The read-only VecBytes methods work on the const references
+    __uint128_t offset = 0, numbytes = 0, v = 0;
+    std::string err;
+    if (B_ref.as_hex_string().rfind("4449444c", 0) != 0 ||
+        B_ref.parse_uleb128(offset, v, numbytes, err) || v != 'D')
+      IC_API::trap(std::string(__func__) + ": mv1b");
+    B_ref.trap_if_vec_does_not_start_with_DIDL();
+
+    // vec_uint8_t() of a temporary moves the bytes out
+    std::vector<uint8_t> raw = CandidSerialize(A).get_B().vec_uint8_t();
+    if (raw != B_ref.vec_uint8_t())
+      IC_API::trap(std::string(__func__) + ": mv1c");
+
+    // get_M of a temporary moves; of an object, it is a reference
+    CandidTypeText t{std::string("hello")};
+    const VecBytes &M_ref = t.get_M();
+    VecBytes M_moved = CandidTypeText{std::string("hello")}.get_M();
+    if (!(M_ref == M_moved) || M_ref.size() != 6)
+      IC_API::trap(std::string(__func__) + ": mv2");
+
+    // CandidDeserialize takes the bytes and gives them back unchanged
+    std::string text_out;
+    std::vector<uint8_t> blob_out;
+    CandidArgs A_out;
+    A_out.append(CandidTypeText{&text_out});
+    A_out.append(CandidTypeVecNat8{&blob_out});
+    VecBytes B_back = CandidDeserialize(std::move(B_moved), A_out).get_B();
+    if (!(B_back == B_ref) || text_out != std::string(1000, 'x') ||
+        blob_out != std::vector<uint8_t>(1000, 7))
+      IC_API::trap(std::string(__func__) + ": mv3");
+
+    // Passed as an lvalue, the bytes are copied and stay as they were
+    std::string text_out2;
+    std::vector<uint8_t> blob_out2;
+    CandidArgs A_out2;
+    A_out2.append(CandidTypeText{&text_out2});
+    A_out2.append(CandidTypeVecNat8{&blob_out2});
+    CandidDeserialize(B_back, A_out2);
+    if (!(B_back == B_ref) || text_out2 != text_out || blob_out2 != blob_out)
+      IC_API::trap(std::string(__func__) + ": mv4");
+
+    // CandidDeserialize::decode reads the bytes without taking them
+    std::string text_out3;
+    std::vector<uint8_t> blob_out3;
+    CandidArgs A_out3;
+    A_out3.append(CandidTypeText{&text_out3});
+    A_out3.append(CandidTypeVecNat8{&blob_out3});
+    CandidDeserialize::decode(B_back, A_out3);
+    if (!(B_back == B_ref) || text_out3 != text_out || blob_out3 != blob_out)
+      IC_API::trap(std::string(__func__) + ": mv5");
+
+    // A VecBytes whose bytes were moved out shows none, also in vec()
+    VecBytes C = B_ref;
+    C.vec();
+    std::vector<uint8_t> taken = std::move(C).vec_uint8_t();
+    if (taken != B_ref.vec_uint8_t() || C.size() != 0 || !C.vec().empty())
+      IC_API::trap(std::string(__func__) + ": mv6");
+  }
+
   { // Verify the VecBytes static utils
     const std::byte b = std::byte(42);
     if (VecBytes::byte_to_hex(b) != "0x2a")

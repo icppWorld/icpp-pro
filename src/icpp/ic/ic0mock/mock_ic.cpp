@@ -33,6 +33,7 @@
 #include <limits>
 #include <numeric>
 #include <sstream>
+#include <utility>
 
 MockIC::MockIC(const bool &exit_on_fail) {
   m_tests_total = 0;
@@ -609,8 +610,7 @@ bool MockIC::management_reply(const std::string &method,
   } else {
     return false;
   }
-  VecBytes B = CandidSerialize(out).get_B();
-  reply = B.vec_uint8_t();
+  reply = CandidSerialize(std::move(out)).get_B().vec_uint8_t();
   return true;
 }
 

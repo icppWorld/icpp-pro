@@ -488,7 +488,7 @@ void IC_CallReply::decode(CandidType arg) {
 }
 
 void IC_CallReply::decode(CandidArgs args) {
-  bytes = CandidDeserialize(std::move(bytes), std::move(args)).get_B();
+  CandidDeserialize::decode(bytes, args);
 }
 
 bool IC_CallError::is_clean_reject() const {

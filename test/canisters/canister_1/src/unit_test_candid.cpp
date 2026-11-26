@@ -1422,7 +1422,7 @@ int unit_test_candid() {
         blob_out != std::vector<uint8_t>(1000, 7))
       IC_API::trap(std::string(__func__) + ": mv3");
 
-    // The const VecBytes & constructor leaves its argument as it was
+    // Passed as an lvalue, the bytes are copied and stay as they were
     std::string text_out2;
     std::vector<uint8_t> blob_out2;
     CandidArgs A_out2;
@@ -1431,6 +1431,23 @@ int unit_test_candid() {
     CandidDeserialize(B_back, A_out2);
     if (!(B_back == B_ref) || text_out2 != text_out || blob_out2 != blob_out)
       IC_API::trap(std::string(__func__) + ": mv4");
+
+    // CandidDeserialize::decode reads the bytes without taking them
+    std::string text_out3;
+    std::vector<uint8_t> blob_out3;
+    CandidArgs A_out3;
+    A_out3.append(CandidTypeText{&text_out3});
+    A_out3.append(CandidTypeVecNat8{&blob_out3});
+    CandidDeserialize::decode(B_back, A_out3);
+    if (!(B_back == B_ref) || text_out3 != text_out || blob_out3 != blob_out)
+      IC_API::trap(std::string(__func__) + ": mv5");
+
+    // A VecBytes whose bytes were moved out shows none, also in vec()
+    VecBytes C = B_ref;
+    C.vec();
+    std::vector<uint8_t> taken = std::move(C).vec_uint8_t();
+    if (taken != B_ref.vec_uint8_t() || C.size() != 0 || !C.vec().empty())
+      IC_API::trap(std::string(__func__) + ": mv6");
   }
 
   { // Verify the VecBytes static utils

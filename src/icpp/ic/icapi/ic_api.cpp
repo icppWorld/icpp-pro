@@ -482,9 +482,9 @@ __uint128_t IC_API::cost_http_request_v2(const HttpOutcallCostParams &params) {
                 CandidTypeNat64{params.transform_instructions});
   record.append("outcall_type", CandidTypeOptVariant{outcall_type});
   CandidArgs args;
-  args.append(record);
-  VecBytes B = CandidSerialize(args).get_B();
-  std::vector<uint8_t> bytes = B.vec_uint8_t();
+  args.append(std::move(record));
+  std::vector<uint8_t> bytes =
+      CandidSerialize(std::move(args)).get_B().vec_uint8_t();
 
   __uint128_t cycles;
   ic0_cost_http_request_v2(reinterpret_cast<uintptr_t>(bytes.data()),
@@ -571,7 +571,7 @@ void IC_API::from_wire(CandidArgs A) {
   }
   m_called_from_wire = true;
 
-  m_B_in = CandidDeserialize(std::move(m_B_in), std::move(A)).get_B();
+  CandidDeserialize::decode(m_B_in, A);
 }
 // DeSerialize the byte stream received over the wire
 void IC_API::from_wire(CandidType c) {
@@ -605,11 +605,11 @@ void IC_API::from_wire(IC_HttpRequest &request) {
   http_in.append("url", CandidTypeText{&request.url});
   http_in.append("method", CandidTypeText{&request.method});
   http_in.append("body", CandidTypeVecNat8{&request.body});
-  http_in.append("headers", headers_in);
+  http_in.append("headers", std::move(headers_in));
   http_in.append("certificate_version",
                  CandidTypeOptNat16{&request.certificate_version});
 
-  from_wire(http_in);
+  from_wire(std::move(http_in));
 
   // Map the header vectors `names` and `values` onto `request.headers`
   if (names.size() != values.size()) {
@@ -651,9 +651,9 @@ void IC_API::from_wire(IC_HttpTransformArgs &args) {
   response.append("headers", CandidTypeVecRecord{&header});
   response.append("body", CandidTypeVecNat8{&args.response.body});
   CandidTypeRecord record;
-  record.append("response", response);
+  record.append("response", std::move(response));
   record.append("context", CandidTypeVecNat8{&args.context});
-  from_wire(record);
+  from_wire(std::move(record));
 
   args.response.headers.clear();
   for (size_t i = 0; i < names.size() && i < values.size(); ++i) {
@@ -669,13 +669,13 @@ void IC_API::to_wire(const IC_HttpOutcallResponse &response) {
     values.push_back(h.value);
   }
   CandidTypeRecord header;
-  header.append("name", CandidTypeVecText{names});
-  header.append("value", CandidTypeVecText{values});
+  header.append("name", CandidTypeVecText{std::move(names)});
+  header.append("value", CandidTypeVecText{std::move(values)});
   CandidTypeRecord result;
   result.append("status", CandidTypeNat{response.status});
   result.append("headers", CandidTypeVecRecord{header});
   result.append("body", CandidTypeVecNat8{response.body});
-  to_wire(result);
+  to_wire(std::move(result));
 }
 
 std::optional<__uint128_t> IC_API::string_to_uint128_t(const std::string &str) {
@@ -798,7 +798,7 @@ void IC_API::to_wire(IC_HttpResponse response) {
   std::vector<std::string> values;
 
   // Map the `response.headers` onto the header vectors `names` and `values`
-  for (IC_HeaderField headerField : response.headers) {
+  for (const IC_HeaderField &headerField : response.headers) {
     names.push_back(headerField.name);
     values.push_back(headerField.value);
   }
@@ -809,19 +809,19 @@ void IC_API::to_wire(IC_HttpResponse response) {
   // which internally results in
   // record { 0: text; 1: text; }
   CandidTypeRecord header_fields_out;
-  header_fields_out.append(CandidTypeVecText{names});
-  header_fields_out.append(CandidTypeVecText{values});
+  header_fields_out.append(CandidTypeVecText{std::move(names)});
+  header_fields_out.append(CandidTypeVecText{std::move(values)});
   CandidTypeVecRecord headers_out{header_fields_out};
 
   // The HttpRequest
   CandidTypeRecord http_out;
   http_out.append("status_code", CandidTypeNat16{response.status_code});
-  http_out.append("headers", headers_out);
-  http_out.append("body", CandidTypeVecNat8(response.body));
+  http_out.append("headers", std::move(headers_out));
+  http_out.append("body", CandidTypeVecNat8(std::move(response.body)));
   if (response.upgrade.has_value())
     http_out.append("upgrade", CandidTypeOptBool{response.upgrade});
 
-  to_wire(http_out);
+  to_wire(std::move(http_out));
 }
 
 // Appends the content of m_B_out, replies over the wire, re-sets the didl vectors
